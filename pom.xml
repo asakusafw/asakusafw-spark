@@ -25,6 +25,10 @@
 		<scalatest.version>2.2.3</scalatest.version>
 	</properties>
 
+	<modules>
+		<module>tools</module>
+	</modules>
+
 	<build>
 		<pluginManagement>
 			<plugins>
