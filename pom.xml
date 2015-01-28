@@ -163,6 +163,11 @@ encoding/<project>=UTF-8
 				<artifactId>asakusa-dsl-vocabulary</artifactId>
 				<version>${asakusafw.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>com.asakusafw</groupId>
+				<artifactId>simple-graph</artifactId>
+				<version>${asakusafw.version}</version>
+			</dependency>
 
 			<dependency>
 				<groupId>com.asakusafw.lang.compiler</groupId>
