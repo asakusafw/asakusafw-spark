@@ -27,6 +27,7 @@
 
 	<modules>
 		<module>core</module>
+		<module>runtime</module>
 		<module>tools</module>
 	</modules>
 
