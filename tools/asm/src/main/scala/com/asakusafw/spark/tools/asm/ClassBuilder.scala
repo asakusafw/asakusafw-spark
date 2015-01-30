@@ -14,12 +14,15 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.util.TraceClassVisitor
 import org.slf4j.LoggerFactory
 
-abstract class ClassBuilder(val thisType: Type, val signature: String, val superType: Type, val interfaceTypes: Type*) {
+abstract class ClassBuilder(val thisType: Type, val signature: Option[String], val superType: Type, val interfaceTypes: Type*) {
 
   val logger = LoggerFactory.getLogger(getClass)
 
+  def this(thisType: Type, signature: String, superType: Type, interfaceTypes: Type*) =
+    this(thisType, Option(signature), superType, interfaceTypes: _*)
+
   def this(thisType: Type, superType: Type, interfaceTypes: Type*) =
-    this(thisType, null: String, superType, interfaceTypes: _*)
+    this(thisType, None, superType, interfaceTypes: _*)
 
   final def build(): Array[Byte] = {
     val cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES)
@@ -27,7 +30,7 @@ abstract class ClassBuilder(val thisType: Type, val signature: String, val super
       V1_7,
       ACC_PUBLIC,
       thisType.getInternalName(),
-      signature,
+      signature.orNull,
       superType.getInternalName(),
       interfaceTypes.map(_.getInternalName()).toArray)
     defAnnotations(new AnnotationDef(cw))
@@ -139,18 +142,26 @@ abstract class ClassBuilder(val thisType: Type, val signature: String, val super
     private val methodDef = new MethodDef(cv)
 
     final def newInit(argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newInit(ACC_PUBLIC, argumentTypes, null: String, exceptionTypes: _*)(block)
+      newInit(ACC_PUBLIC, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
     final def newInit(argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newInit(ACC_PUBLIC, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newInit(argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(ACC_PUBLIC, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
     final def newInit(access: Int, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newInit(access, argumentTypes, null: String, exceptionTypes: _*)(block)
+      newInit(access, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
     final def newInit(access: Int, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newInit(access, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newInit(access: Int, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       methodDef.newMethod(access, "<init>", argumentTypes, signature, exceptionTypes: _*) { mb =>
         block(mb)
         mb.`return`()
@@ -172,55 +183,116 @@ abstract class ClassBuilder(val thisType: Type, val signature: String, val super
   final class MethodDef private[ClassBuilder] (cv: ClassVisitor) {
 
     final def newMethod(name: String, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, null: String, exceptionTypes: _*)(block)
+      newMethod(ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
     final def newMethod(name: String, retType: Type, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, retType, argumentTypes, null: String, exceptionTypes: _*)(block)
+      newMethod(ACC_PUBLIC, name, retType, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
     final def newStaticMethod(name: String, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, Type.VOID_TYPE, argumentTypes, null: String, exceptionTypes: _*)(block)
+      newMethod(ACC_PUBLIC | ACC_STATIC, name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
     final def newStaticMethod(name: String, retType: Type, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, retType, argumentTypes, null: String, exceptionTypes: _*)(block)
+      newMethod(ACC_PUBLIC | ACC_STATIC, name, retType, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
     final def newMethod(name: String, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(name: String, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
     final def newMethod(name: String, retType: Type, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(name: String, retType: Type, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(ACC_PUBLIC, name, retType, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
     final def newStaticMethod(name: String, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC | ACC_STATIC, name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newStaticMethod(name: String, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(ACC_PUBLIC | ACC_STATIC, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
     final def newStaticMethod(name: String, retType: Type, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC | ACC_STATIC, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newStaticMethod(name: String, retType: Type, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(ACC_PUBLIC | ACC_STATIC, name, retType, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
     final def newMethod(access: Int, name: String, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, Type.VOID_TYPE, argumentTypes, null: String, exceptionTypes: _*)(block)
+      newMethod(access, name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
     final def newMethod(access: Int, name: String, retType: Type, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, retType, argumentTypes, null: String, exceptionTypes: _*)(block)
+      newMethod(access, name, retType, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
     final def newMethod(access: Int, name: String, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(access, name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(access: Int, name: String, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(access, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
     final def newMethod(access: Int, name: String, retType: Type, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(access, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(access: Int, name: String, retType: Type, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(access, name, Type.getMethodType(retType, argumentTypes: _*), signature, exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(name: String, methodType: Type, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC, name, methodType, None, exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(name: String, methodType: Type, signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC, name, methodType, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(name: String, methodType: Type, signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC, name, methodType, signature, exceptionTypes: _*)(block)
+    }
+
+    final def newStaticMethod(name: String, methodType: Type, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC | ACC_STATIC, name, methodType, None, exceptionTypes: _*)(block)
+    }
+
+    final def newStaticMethod(name: String, methodType: Type, signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC | ACC_STATIC, name, methodType, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newStaticMethod(name: String, methodType: Type, signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(ACC_PUBLIC | ACC_STATIC, name, methodType, signature, exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(access: Int, name: String, methodType: Type, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(access, name, methodType, None, exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(access: Int, name: String, methodType: Type, signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(access, name, methodType, Option(signature), exceptionTypes: _*)(block)
+    }
+
+    final def newMethod(access: Int, name: String, methodType: Type, signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      assert(methodType.getSort == Type.METHOD)
       val mv = cv.visitMethod(
         access,
         name,
-        Type.getMethodDescriptor(retType, argumentTypes: _*),
-        signature,
+        methodType.getDescriptor,
+        signature.orNull,
         exceptionTypes.map(_.getInternalName()).toArray)
       mv.visitCode()
       try {
