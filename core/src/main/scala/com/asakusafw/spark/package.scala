@@ -6,7 +6,9 @@ import com.asakusafw.lang.compiler.model.description._
 
 package object spark {
 
-  implicit class AugmentedReifiableTypeDescription(val desc: ReifiableTypeDescription) extends AnyVal {
+  type MethodDesc = (String, Type)
+
+  implicit class AugmentedTypeDescription(val desc: TypeDescription) extends AnyVal {
 
     def asType: Type =
       desc match {

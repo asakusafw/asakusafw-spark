@@ -30,8 +30,18 @@
 
 		<dependency>
 			<groupId>com.asakusafw</groupId>
+			<artifactId>asakusafw-spark-runtime</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw</groupId>
 			<artifactId>asakusafw-spark-tools-asm</artifactId>
 			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-core_${scala.binary.version}</artifactId>
 		</dependency>
 
 		<dependency>
@@ -39,14 +49,6 @@
 			<artifactId>scala-library</artifactId>
 		</dependency>
 
-		<dependency>
-			<groupId>org.ow2.asm</groupId>
-			<artifactId>asm</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.ow2.asm</groupId>
-			<artifactId>asm-util</artifactId>
-		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
@@ -71,6 +73,13 @@
 		<dependency>
 			<groupId>org.scalatest</groupId>
 			<artifactId>scalatest_${scala.binary.version}</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw</groupId>
+			<artifactId>asakusafw-spark-tools-asm</artifactId>
+			<version>${project.version}</version>
+			<classifier>tests</classifier>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
