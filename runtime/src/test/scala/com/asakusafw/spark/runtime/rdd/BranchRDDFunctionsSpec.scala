@@ -83,4 +83,27 @@ class BranchRDDFunctionsSpec extends FlatSpec with SparkSugar {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.forall(_ == true))
   }
+
+  it should "branch by odd or even ordering desc" in {
+    val rdd = sc.parallelize(0 until 100)
+    val branched = rdd.branch(Set(true, false), iter => {
+      iter.map(i => ((i % 2 == 0, i), (i, TaskContext.get.partitionId)))
+    },
+      keyOrderings = Map(true -> implicitly[Ordering[Int]].reverse))
+
+    assert(branched(true).map(_._2._1).collect.toSeq ===
+      rdd.mapPartitions(iter => iter.toSeq.filter(_ % 2 == 0).reverse.iterator).collect.toSeq)
+    assert(branched(true).partitioner.isEmpty)
+    assert(branched(true).partitions.length === rdd.partitions.length)
+    assert(branched(true).map {
+      case (_, (_, partid)) => partid == TaskContext.get.partitionId
+    }.collect.forall(_ == true))
+
+    assert(branched(false).map(_._2._1).collect.toSeq === (1 until 100 by 2))
+    assert(branched(false).partitioner.isEmpty)
+    assert(branched(false).partitions.length === rdd.partitions.length)
+    assert(branched(false).map {
+      case (_, (_, partid)) => partid == TaskContext.get.partitionId
+    }.collect.forall(_ == true))
+  }
 }
