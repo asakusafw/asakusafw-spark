@@ -8,7 +8,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.spi.OrderingCompilers
+import com.asakusafw.spark.compiler.spi.OrderingCompiler
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])
@@ -20,7 +20,7 @@ class OrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
 
   behavior of classOf[OrderingClassBuilder[_]].getSimpleName
 
-  val resolvers = OrderingCompilers(Thread.currentThread.getContextClassLoader)
+  val resolvers = OrderingCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "build data model ordering class" in {
     val dataModelType = classOf[TestModel].asType
