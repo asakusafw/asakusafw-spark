@@ -1,4 +1,4 @@
-package com.asakusafw.spark.spi
+package com.asakusafw.spark.compiler.spi
 
 import scala.math.BigDecimal
 

@@ -1,4 +1,4 @@
-package com.asakusafw.spark.ordering
+package com.asakusafw.spark.compiler.ordering
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -8,13 +8,14 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.spi.OrderingCompilers
+import com.asakusafw.spark.compiler.spi.OrderingCompilers
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])
 class OrderingClassBuilderSpecTest extends OrderingClassBuilderSpec
 
 class OrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
+
   import OrderingClassBuilderSpec._
 
   behavior of classOf[OrderingClassBuilder[_]].getSimpleName

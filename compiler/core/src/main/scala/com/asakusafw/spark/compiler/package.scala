@@ -1,10 +1,10 @@
-package com.asakusafw
+package com.asakusafw.spark
 
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.description._
 
-package object spark {
+package object compiler {
 
   type MethodDesc = (String, Type)
 

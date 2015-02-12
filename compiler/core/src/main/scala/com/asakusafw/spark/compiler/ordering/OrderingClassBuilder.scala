@@ -1,4 +1,4 @@
-package com.asakusafw.spark
+package com.asakusafw.spark.compiler
 package ordering
 
 import java.util.concurrent.atomic.AtomicLong
@@ -10,8 +10,8 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.reference._
+import com.asakusafw.spark.compiler.spi.OrderingCompiler
 import com.asakusafw.spark.runtime.orderings.AbstractOrdering
-import com.asakusafw.spark.spi.OrderingCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
