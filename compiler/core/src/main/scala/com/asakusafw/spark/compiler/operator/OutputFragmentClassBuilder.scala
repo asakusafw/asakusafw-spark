@@ -3,15 +3,30 @@ package com.asakusafw.spark.compiler.operator
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
 
 class OutputFragmentClassBuilder(dataModelType: Type)
-  extends FragmentClassBuilder(
-    dataModelType,
-    Some(OutputFragmentClassBuilder.signature(dataModelType)),
-    classOf[OutputFragment[_]].asType)
-  with DefineNewDataModel
+    extends FragmentClassBuilder(
+      dataModelType,
+      Some(OutputFragmentClassBuilder.signature(dataModelType)),
+      classOf[OutputFragment[_]].asType) {
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { mb =>
+      import mb._
+      `return`(pushNew0(dataModelType))
+    }
+
+    methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { mb =>
+      import mb._
+      `return`(thisVar.push().invokeV("newDataModel", dataModelType))
+    }
+  }
+}
 
 object OutputFragmentClassBuilder {
 
