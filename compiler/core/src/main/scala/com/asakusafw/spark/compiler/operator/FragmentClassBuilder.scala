@@ -24,4 +24,16 @@ object FragmentClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
+
+  def signature(dataModelType: Type): String = {
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[Fragment[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+            _.newClassType(dataModelType)
+          }
+        }
+      }
+      .build()
+  }
 }

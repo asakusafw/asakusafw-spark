@@ -6,13 +6,14 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.spark.compiler.operator.FragmentClassBuilder
 
 trait CoreOperatorCompiler {
 
-  case class Context()
+  case class Context(jpContext: JPContext)
 
   def of: CoreOperatorKind
 
