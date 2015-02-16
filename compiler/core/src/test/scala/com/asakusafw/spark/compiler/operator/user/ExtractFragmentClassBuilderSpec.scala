@@ -15,9 +15,9 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
 import com.asakusafw.vocabulary.operator.Extract
 
 @RunWith(classOf[JUnitRunner])

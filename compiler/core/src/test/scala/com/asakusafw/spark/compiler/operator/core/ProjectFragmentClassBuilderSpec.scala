@@ -15,9 +15,9 @@ import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
 
 @RunWith(classOf[JUnitRunner])
 class ProjectFragmentClassBuilderSpecTest extends ProjectFragmentClassBuilderSpec
