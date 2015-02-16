@@ -14,7 +14,7 @@ abstract class FragmentClassBuilder(
   superType: Type,
   interfaceTypes: Type*)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[FragmentClassBuilder].asType.getInternalName}$$${FragmentClassBuilder.nextId};"),
+      Type.getType(s"L${classOf[Fragment[_]].asType.getInternalName}$$${FragmentClassBuilder.nextId};"),
       signature,
       superType,
       interfaceTypes: _*) {
