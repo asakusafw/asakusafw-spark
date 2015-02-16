@@ -39,7 +39,7 @@ object CoreOperatorCompiler {
 
 trait UserOperatorCompiler {
 
-  case class Context()
+  case class Context(jpContext: JPContext)
 
   def of: Type
 

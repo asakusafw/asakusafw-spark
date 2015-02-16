@@ -24,6 +24,11 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>com.asakusafw</groupId>
+			<artifactId>asakusa-dsl-vocabulary</artifactId>
+		</dependency>
+
+		<dependency>
 			<groupId>com.asakusafw.lang.compiler</groupId>
 			<artifactId>asakusa-compiler-api</artifactId>
 		</dependency>

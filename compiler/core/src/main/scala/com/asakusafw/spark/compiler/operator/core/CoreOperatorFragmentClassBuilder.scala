@@ -9,10 +9,7 @@ import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 
 abstract class CoreOperatorFragmentClassBuilder(dataModelType: Type, childDataModelType: Type)
-    extends FragmentClassBuilder(
-      dataModelType,
-      Some(FragmentClassBuilder.signature(dataModelType)),
-      classOf[Fragment[_]].asType) {
+    extends FragmentClassBuilder(dataModelType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     fieldDef.newFinalField("child", classOf[Fragment[_]].asType)

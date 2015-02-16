@@ -18,14 +18,14 @@ class ProjectOperatorCompiler extends CoreOperatorCompiler {
   def compile(operator: CoreOperator)(implicit context: Context): FragmentClassBuilder = {
     assert(operator.getCoreOperatorKind == of)
 
-    val inputs = operator.getInputs
+    val inputs = operator.getInputs.toSeq
     assert(inputs.size > 0)
     val input = inputs.head
     assert(inputs.tail.forall(_.getDataType == input.getDataType))
     val inputDataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
     val inputDataModelType = inputDataModelRef.getDeclaration.asType
 
-    val outputs = operator.getOutputs
+    val outputs = operator.getOutputs.toSeq
     assert(outputs.size > 0)
     val output = outputs.head
     assert(outputs.tail.forall(_.getDataType == output.getDataType))

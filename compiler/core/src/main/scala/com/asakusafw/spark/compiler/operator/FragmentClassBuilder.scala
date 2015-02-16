@@ -17,7 +17,14 @@ abstract class FragmentClassBuilder(
       Type.getType(s"L${classOf[FragmentClassBuilder].asType.getInternalName}$$${FragmentClassBuilder.nextId};"),
       signature,
       superType,
-      interfaceTypes: _*)
+      interfaceTypes: _*) {
+
+  def this(dataModelType: Type) =
+    this(
+      dataModelType,
+      Option(FragmentClassBuilder.signature(dataModelType)),
+      classOf[Fragment[_]].asType)
+}
 
 object FragmentClassBuilder {
 
