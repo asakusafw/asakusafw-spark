@@ -14,7 +14,7 @@ class FloatOptionOrderingCompiler extends OrderingCompiler {
     import mb._
     assert(x.`type` == of)
     assert(y.`type` == of)
-    getStatic(orderings.FloatOption.getClass.asType, "MODULE$", orderings.FloatOption.getClass.asType)
+    getStatic(orderings.FloatOptionOrdering.getClass.asType, "MODULE$", orderings.FloatOptionOrdering.getClass.asType)
       .invokeV("compare", Type.INT_TYPE, x.push(), y.push())
   }
 }

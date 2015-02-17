@@ -14,7 +14,7 @@ class LongOptionOrderingCompiler extends OrderingCompiler {
     import mb._
     assert(x.`type` == of)
     assert(y.`type` == of)
-    getStatic(orderings.LongOption.getClass.asType, "MODULE$", orderings.LongOption.getClass.asType)
+    getStatic(orderings.LongOptionOrdering.getClass.asType, "MODULE$", orderings.LongOptionOrdering.getClass.asType)
       .invokeV("compare", Type.INT_TYPE, x.push(), y.push())
   }
 }
