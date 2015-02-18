@@ -10,13 +10,13 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
 
 @RunWith(classOf[JUnitRunner])
-class ConfluentRDDFunctionsSpecTest extends ConfluentRDDFunctionsSpec
+class ConfluentSpecTest extends ConfluentSpec
 
-class ConfluentRDDFunctionsSpec extends FlatSpec with SparkSugar {
+class ConfluentSpec extends FlatSpec with SparkSugar {
 
-  import ConfluentRDDFunctionsSpec._
+  import ConfluentSpec._
 
-  behavior of "ConfluentRDDFunctions"
+  behavior of "Confluent"
 
   it should "confluent rdds" in {
     val rdd1 = sc.parallelize(0 until 100).map(i => ((i.toString, 0), i))
@@ -29,7 +29,7 @@ class ConfluentRDDFunctionsSpec extends FlatSpec with SparkSugar {
         sc.parallelize(0 until 100).flatMap(i => Seq(((i.toString, 4), i + 400), ((i.toString, 3), i + 300))), part)
         .setKeyOrdering(ord)
 
-    val confluented = confluent(Seq(rdd1, rdd2, rdd3), part, ord)
+    val confluented = confluent(Seq(rdd1, rdd2, rdd3), part, Some(ord))
     val (part0, part1) = (0 until 100).sortBy(_.toString).partition { i =>
       val part = i.toString.hashCode % 2
       (if (part < 0) part + 2 else part) == 0
@@ -39,7 +39,7 @@ class ConfluentRDDFunctionsSpec extends FlatSpec with SparkSugar {
   }
 }
 
-object ConfluentRDDFunctionsSpec {
+object ConfluentSpec {
 
   class GroupingPartitioner(val numPartitions: Int) extends Partitioner {
 
