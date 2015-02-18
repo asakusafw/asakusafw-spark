@@ -7,9 +7,9 @@ import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
 
 class ExtendOperatorCompiler extends CoreOperatorCompiler {
 
-  def of: CoreOperatorKind = CoreOperatorKind.EXTEND
+  override def of: CoreOperatorKind = CoreOperatorKind.EXTEND
 
-  def compile(operator: CoreOperator)(implicit context: Context): FragmentClassBuilder = {
+  override def compile(operator: CoreOperator)(implicit context: Context): FragmentClassBuilder = {
     ???
   }
 }

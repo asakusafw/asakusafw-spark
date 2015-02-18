@@ -17,11 +17,11 @@ import com.asakusafw.vocabulary.operator.Extract
 
 class ExtractOperatorCompiler extends UserOperatorCompiler {
 
-  def of: Type = classOf[Extract].asType
+  override def of: Class[_] = classOf[Extract]
 
-  def compile(operator: UserOperator)(implicit context: Context): FragmentClassBuilder = {
+  override def compile(operator: UserOperator)(implicit context: Context): FragmentClassBuilder = {
     val annotationDesc = operator.getAnnotation
-    assert(annotationDesc.getDeclaringClass.asType == of)
+    assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
     val methodDesc = operator.getMethod
     val methodType = Type.getType(methodDesc.resolve(context.jpContext.getClassLoader))
     val implementationClassType = operator.getImplementationClass.asType
