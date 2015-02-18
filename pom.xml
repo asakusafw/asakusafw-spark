@@ -28,6 +28,7 @@
 	<modules>
 		<module>compiler</module>
 		<module>runtime</module>
+		<module>backdoor</module>
 		<module>tools</module>
 	</modules>
 
