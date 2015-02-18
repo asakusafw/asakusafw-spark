@@ -23,11 +23,11 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Extract
 
 @RunWith(classOf[JUnitRunner])
-class ExtractFragmentClassBuilderSpecTest extends ExtractFragmentClassBuilderSpec
+class ExtractOperatorCompilerSpecTest extends ExtractOperatorCompilerSpec
 
-class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
+class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import ExtractFragmentClassBuilderSpec._
+  import ExtractOperatorCompilerSpec._
 
   behavior of classOf[ExtractOperatorCompiler].getSimpleName
 
@@ -58,7 +58,7 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
         jpContext = new MockJobflowProcessorContext(
           new CompilerOptions("buildid", "", Map.empty[String, String]),
           Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("ExtractFragmentClassBuilderSpec").toFile)))
+          Files.createTempDirectory("ExtractOperatorCompilerSpec").toFile)))
     val cls = loadClass(builder.thisType.getClassName, builder.build())
       .asSubclass(classOf[Fragment[InputModel]])
 
@@ -97,7 +97,7 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object ExtractFragmentClassBuilderSpec {
+object ExtractOperatorCompilerSpec {
 
   class InputModel extends DataModel[InputModel] {
 

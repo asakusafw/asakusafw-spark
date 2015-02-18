@@ -22,11 +22,11 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])
-class ProjectFragmentClassBuilderSpecTest extends ProjectFragmentClassBuilderSpec
+class ProjectOperatorCompilerSpecTest extends ProjectOperatorCompilerSpec
 
-class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
+class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import ProjectFragmentClassBuilderSpec._
+  import ProjectOperatorCompilerSpec._
 
   behavior of classOf[ProjectOperatorCompiler].getSimpleName
 
@@ -44,7 +44,7 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
         jpContext = new MockJobflowProcessorContext(
           new CompilerOptions("buildid", "", Map.empty[String, String]),
           Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("ProjectFragmentClassBuilderSpec").toFile)))
+          Files.createTempDirectory("ProjectOperatorCompilerSpec").toFile)))
     val cls = loadClass(builder.thisType.getClassName, builder.build())
       .asSubclass(classOf[Fragment[InputModel]])
 
@@ -72,7 +72,7 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object ProjectFragmentClassBuilderSpec {
+object ProjectOperatorCompilerSpec {
 
   class InputModel extends DataModel[InputModel] {
 
