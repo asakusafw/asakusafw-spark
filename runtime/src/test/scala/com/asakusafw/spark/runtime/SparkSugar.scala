@@ -15,6 +15,7 @@ trait SparkSugar extends BeforeAndAfterEach { self: Suite =>
       val conf = new SparkConf
       conf.setMaster("local[*]")
       conf.setAppName(getClass.getName)
+      conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       sc = new SparkContext(conf)
     } finally {
       super.beforeEach()
