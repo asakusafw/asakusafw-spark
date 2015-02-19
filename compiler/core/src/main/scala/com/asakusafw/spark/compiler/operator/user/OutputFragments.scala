@@ -1,5 +1,8 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user
+
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.OperatorOutput
 import com.asakusafw.spark.runtime.fragment.Fragment
@@ -12,7 +15,12 @@ trait OutputFragments extends ClassBuilder {
 
   def defOutputFields(fieldDef: FieldDef): Unit = {
     operatorOutputs.foreach { output =>
-      fieldDef.newFinalField(output.getName, classOf[Fragment[_]].asType)
+      fieldDef.newFinalField(output.getName, classOf[Fragment[_]].asType,
+        new TypeSignatureBuilder()
+          .newClassType(classOf[Fragment[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
+          }
+          .build())
     }
   }
 

@@ -6,6 +6,7 @@ import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.description.ValueDescription
 import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
@@ -55,12 +56,22 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
       }
 
       override def defConstructors(ctorDef: ConstructorDef): Unit = {
-        ctorDef.newInit((0 until outputs.size).map(_ => classOf[Fragment[_]].asType)) { mb =>
-          import mb._
-          thisVar.push().invokeInit(superType)
-          initOperatorField(mb)
-          initOutputFields(mb, thisVar.nextLocal)
-        }
+        ctorDef.newInit((0 until outputs.size).map(_ => classOf[Fragment[_]].asType),
+          ((new MethodSignatureBuilder() /: outputs) {
+            case (builder, output) =>
+              builder.newParameterType {
+                _.newClassType(classOf[Fragment[_]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
+                }
+              }
+          })
+            .newVoidReturnType()
+            .build()) { mb =>
+            import mb._
+            thisVar.push().invokeInit(superType)
+            initOperatorField(mb)
+            initOutputFields(mb, thisVar.nextLocal)
+          }
       }
 
       override def defMethods(methodDef: MethodDef): Unit = {
