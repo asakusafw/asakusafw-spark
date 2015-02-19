@@ -82,8 +82,8 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size == 10)
-    assert(out2.buffer.size == 100)
+    assert(out1.buffer.size === 10)
+    assert(out2.buffer.size === 100)
     out1.buffer.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)

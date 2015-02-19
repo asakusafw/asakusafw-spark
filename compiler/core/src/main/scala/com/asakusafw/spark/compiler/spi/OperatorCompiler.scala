@@ -9,7 +9,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
-import com.asakusafw.spark.compiler.operator.FragmentClassBuilder
+import com.asakusafw.spark.tools.asm.ClassBuilder
 
 trait CoreOperatorCompiler {
 
@@ -17,7 +17,7 @@ trait CoreOperatorCompiler {
 
   def of: CoreOperatorKind
 
-  def compile(operator: CoreOperator)(implicit context: Context): FragmentClassBuilder
+  def compile(operator: CoreOperator)(implicit context: Context): ClassBuilder
 }
 
 object CoreOperatorCompiler {
@@ -43,7 +43,7 @@ trait UserOperatorCompiler {
 
   def of: Class[_]
 
-  def compile(operator: UserOperator)(implicit context: Context): FragmentClassBuilder
+  def compile(operator: UserOperator)(implicit context: Context): ClassBuilder
 }
 
 object UserOperatorCompiler {

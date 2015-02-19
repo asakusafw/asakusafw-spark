@@ -62,7 +62,7 @@ class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out.buffer.size == 10)
+    assert(out.buffer.size === 10)
     out.buffer.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
