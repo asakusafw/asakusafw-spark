@@ -14,7 +14,7 @@ trait SubPlanDriver[B] extends Serializable {
 
   def orderings[K]: Map[B, Ordering[K]] = Map.empty
 
-  def shuffleKey[T <: DataModel[T], U <: DataModel[U]](branch: B, value: T): U = value.asInstanceOf[U]
+  def shuffleKey[T <: DataModel[T], U <: DataModel[U]](branch: B, value: T): U
 
   def execute(): Map[B, RDD[(_, _)]]
 }

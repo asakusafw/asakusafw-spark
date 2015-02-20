@@ -103,6 +103,10 @@ object CoGroupDriverSpec {
       val fragment = new TestCoGroupFragment(outputs)
       (fragment, outputs.asInstanceOf[Map[String, OutputFragment[T]]])
     }
+
+    override def shuffleKey[T <: DataModel[T], U <: DataModel[U]](branch: String, value: T): U = {
+      value.asInstanceOf[U]
+    }
   }
 
   class Hoge extends DataModel[Hoge] {
