@@ -52,7 +52,7 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val compiler = resolvers(classOf[Extract].asType)
+    val compiler = resolvers(classOf[Extract])
     val builder = compiler.compile(operator)(
       compiler.Context(
         jpContext = new MockJobflowProcessorContext(
