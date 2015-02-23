@@ -13,9 +13,9 @@ import com.asakusafw.spark.tools.asm._
 
 class ProjectOperatorCompiler extends CoreOperatorCompiler {
 
-  def of: CoreOperatorKind = CoreOperatorKind.PROJECT
+  override def of: CoreOperatorKind = CoreOperatorKind.PROJECT
 
-  def compile(operator: CoreOperator)(implicit context: Context): FragmentClassBuilder = {
+  override def compile(operator: CoreOperator)(implicit context: Context): FragmentClassBuilder = {
     assert(operator.getCoreOperatorKind == of)
 
     val inputs = operator.getInputs.toSeq

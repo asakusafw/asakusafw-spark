@@ -41,23 +41,23 @@ trait UserOperatorCompiler {
 
   case class Context(jpContext: JPContext)
 
-  def of: Type
+  def of: Class[_]
 
   def compile(operator: UserOperator)(implicit context: Context): FragmentClassBuilder
 }
 
 object UserOperatorCompiler {
 
-  private[this] var _operatorCompilers: Option[Map[Type, UserOperatorCompiler]] = None
+  private[this] var _operatorCompilers: Option[Map[Class[_], UserOperatorCompiler]] = None
 
-  def apply(classLoader: ClassLoader): Map[Type, UserOperatorCompiler] = {
+  def apply(classLoader: ClassLoader): Map[Class[_], UserOperatorCompiler] = {
     _operatorCompilers.getOrElse(reload(classLoader))
   }
 
-  def reload(classLoader: ClassLoader): Map[Type, UserOperatorCompiler] = {
+  def reload(classLoader: ClassLoader): Map[Class[_], UserOperatorCompiler] = {
     val ors = ServiceLoader.load(classOf[UserOperatorCompiler], classLoader).map {
       resolver => resolver.of -> resolver
-    }.toMap
+    }.toMap[Class[_], UserOperatorCompiler]
     _operatorCompilers = Some(ors)
     ors
   }
