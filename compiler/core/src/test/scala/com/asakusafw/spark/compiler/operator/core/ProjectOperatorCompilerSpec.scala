@@ -30,7 +30,7 @@ class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
   behavior of classOf[ProjectOperatorCompiler].getSimpleName
 
-  val resolvers = CoreOperatorCompiler(Thread.currentThread.getContextClassLoader)
+  def resolvers = CoreOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Project operator" in {
     val operator = CoreOperator.builder(CoreOperatorKind.PROJECT)

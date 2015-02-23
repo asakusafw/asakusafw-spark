@@ -31,7 +31,7 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
   behavior of classOf[ExtractOperatorCompiler].getSimpleName
 
-  val resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
+  def resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Extract operator" in {
     val opcls = classOf[ExtractOperator]

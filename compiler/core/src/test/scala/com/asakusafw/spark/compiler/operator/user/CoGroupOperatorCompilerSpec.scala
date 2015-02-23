@@ -33,7 +33,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
   behavior of classOf[CoGroupOperatorCompiler].getSimpleName
 
-  val resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
+  def resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile CoGroup operator" in {
     val opcls = classOf[CoGroupOperator]

@@ -2,6 +2,7 @@ package com.asakusafw.spark.compiler.spi
 
 import java.util.ServiceLoader
 
+import scala.collection.mutable
 import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
@@ -22,17 +23,18 @@ trait CoreOperatorCompiler {
 
 object CoreOperatorCompiler {
 
-  private[this] var _operatorCompilers: Option[Map[CoreOperatorKind, CoreOperatorCompiler]] = None
+  private[this] val _operatorCompilers: mutable.Map[ClassLoader, Map[CoreOperatorKind, CoreOperatorCompiler]] =
+    mutable.WeakHashMap.empty
 
   def apply(classLoader: ClassLoader): Map[CoreOperatorKind, CoreOperatorCompiler] = {
-    _operatorCompilers.getOrElse(reload(classLoader))
+    _operatorCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
   def reload(classLoader: ClassLoader): Map[CoreOperatorKind, CoreOperatorCompiler] = {
     val ors = ServiceLoader.load(classOf[CoreOperatorCompiler], classLoader).map {
       resolver => resolver.of -> resolver
     }.toMap
-    _operatorCompilers = Some(ors)
+    _operatorCompilers(classLoader) = ors
     ors
   }
 }
@@ -48,17 +50,18 @@ trait UserOperatorCompiler {
 
 object UserOperatorCompiler {
 
-  private[this] var _operatorCompilers: Option[Map[Class[_], UserOperatorCompiler]] = None
+  private[this] val _operatorCompilers: mutable.Map[ClassLoader, Map[Class[_], UserOperatorCompiler]] =
+    mutable.WeakHashMap.empty
 
   def apply(classLoader: ClassLoader): Map[Class[_], UserOperatorCompiler] = {
-    _operatorCompilers.getOrElse(reload(classLoader))
+    _operatorCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
   def reload(classLoader: ClassLoader): Map[Class[_], UserOperatorCompiler] = {
     val ors = ServiceLoader.load(classOf[UserOperatorCompiler], classLoader).map {
       resolver => resolver.of -> resolver
     }.toMap[Class[_], UserOperatorCompiler]
-    _operatorCompilers = Some(ors)
+    _operatorCompilers(classLoader) = ors
     ors
   }
 }
