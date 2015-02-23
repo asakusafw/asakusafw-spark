@@ -7,6 +7,8 @@ import org.scalatest.junit.JUnitRunner
 
 import java.nio.file.Files
 
+import scala.collection.JavaConversions._
+
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
@@ -40,7 +42,7 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
     val builder = compiler.compile(operator)(
       compiler.Context(
         jpContext = new MockJobflowProcessorContext(
-          new CompilerOptions(""),
+          new CompilerOptions("buildid", "", Map.empty[String, String]),
           Thread.currentThread.getContextClassLoader,
           Files.createTempDirectory("ProjectFragmentClassBuilderSpec").toFile)))
     val cls = loadClass(builder.thisType.getClassName, builder.build())
