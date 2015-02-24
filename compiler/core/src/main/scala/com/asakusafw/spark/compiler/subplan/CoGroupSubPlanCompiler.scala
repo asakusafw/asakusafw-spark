@@ -17,24 +17,21 @@ import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.CoGroup
 
 class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
   def of: SubPlanType = SubPlanType.CoGroupSubPlan
 
-  def compile(subplan: SubPlan)(implicit context: Context): ClassBuilder = {
+  def compile(subplan: SubPlan)(implicit context: Context): (Type, Array[Byte]) = {
     val inputs = subplan.getInputs.toSet[SubPlan.Input].map(_.getOperator)
     val heads = inputs.flatMap(_.getOutput.getOpposites.map(_.getOwner))
     assert(heads.size == 1)
     assert(heads.head.isInstanceOf[UserOperator])
-    assert(heads.head.asInstanceOf[UserOperator]
-      .getAnnotation.getDeclaringClass.resolve(context.jpContext.getClassLoader) == classOf[CoGroup])
     val cogroup = heads.head.asInstanceOf[UserOperator]
 
     val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq.sortBy(_.getOriginalSerialNumber)
 
-    new CoGroupDriverClassBuilder(Type.LONG_TYPE, classOf[String].asType) {
+    val builder = new CoGroupDriverClassBuilder(Type.LONG_TYPE, classOf[AnyRef].asType) {
 
       override def initBranchKeys(mb: MethodBuilder): Stack = {
         import mb._
@@ -73,13 +70,13 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
           val vars: mutable.Map[Long, Var] = mutable.Map.empty[Long, Var]
           def buildFragment(operator: Operator): Var = {
-            val builder = OperatorCompiler.compile(operator)(OperatorCompiler.Context(context.jpContext))
-            context.fragments += builder
+            val f @ (thisType, _) = OperatorCompiler.compile(operator)(OperatorCompiler.Context(context.jpContext))
+            context.fragments += f
 
             val outputs: Seq[Var] = operator.getOutputs.collect {
               case output if output.getOpposites.size > 1 =>
                 val builder = new EdgeFragmentClassBuilder(output.getDataType.asType)
-                context.fragments += builder
+                context.fragments += ((builder.thisType, builder.build()))
 
                 val opposites = output.getOpposites.toSeq.map(_.getOwner).map(op =>
                   vars.getOrElseUpdate(op.getOriginalSerialNumber, buildFragment(op)))
@@ -99,7 +96,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
                 val op = output.getOpposites.head.getOwner
                 vars.getOrElseUpdate(op.getOriginalSerialNumber, buildFragment(op))
             }
-            val fragment = pushNew(builder.thisType)
+            val fragment = pushNew(thisType)
             fragment.dup().invokeInit(outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
             fragment.store(nextLocal.getAndAdd(fragment.size))
           }
@@ -135,5 +132,6 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
           }
       }
     }
+    (builder.thisType, builder.build())
   }
 }

@@ -10,15 +10,14 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
+import com.asakusafw.spark.compiler.operator.OperatorCompiler
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
-trait CoreOperatorCompiler {
-
-  case class Context(jpContext: JPContext)
+trait CoreOperatorCompiler extends OperatorCompiler {
 
   def of: CoreOperatorKind
 
-  def compile(operator: CoreOperator)(implicit context: Context): ClassBuilder
+  def compile(operator: CoreOperator)(implicit context: Context): (Type, Array[Byte])
 }
 
 object CoreOperatorCompiler {
@@ -39,13 +38,11 @@ object CoreOperatorCompiler {
   }
 }
 
-trait UserOperatorCompiler {
-
-  case class Context(jpContext: JPContext)
+trait UserOperatorCompiler extends OperatorCompiler {
 
   def of: Class[_]
 
-  def compile(operator: UserOperator)(implicit context: Context): ClassBuilder
+  def compile(operator: UserOperator)(implicit context: Context): (Type, Array[Byte])
 }
 
 object UserOperatorCompiler {

@@ -20,7 +20,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
   override def of: Class[_] = classOf[Extract]
 
-  override def compile(operator: UserOperator)(implicit context: Context): FragmentClassBuilder = {
+  override def compile(operator: UserOperator)(implicit context: Context): (Type, Array[Byte]) = {
     val annotationDesc = operator.getAnnotation
     assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
     val methodDesc = operator.getMethod
@@ -45,7 +45,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
       +: outputDataModelTypes.map(_ => classOf[Result[_]].asType)
       ++: arguments.map(_.getValue.getValueType.asType))
 
-    new FragmentClassBuilder(inputDataModelType) with OperatorField with OutputFragments {
+    val builder = new FragmentClassBuilder(inputDataModelType) with OperatorField with OutputFragments {
 
       override val operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs
@@ -108,5 +108,6 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
         }
       }
     }
+    (builder.thisType, builder.build())
   }
 }
