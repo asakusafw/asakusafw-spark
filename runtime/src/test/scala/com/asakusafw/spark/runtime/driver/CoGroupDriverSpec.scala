@@ -46,7 +46,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
     }).asInstanceOf[RDD[(Product, Any)]]
 
     val part = new GroupingPartitioner(2)
-    implicit val groupingOrd = new GroupingOrdering
+    val groupingOrd = new GroupingOrdering
     val driver = new TestCoGroupDriver[Product](
       Seq((hoges, Some(hogeOrd)), (foos, Some(fooOrd))), part, groupingOrd)
 
