@@ -25,14 +25,35 @@
 	<dependencies>
 		<dependency>
 			<groupId>com.asakusafw</groupId>
+			<artifactId>asakusa-runtime</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw</groupId>
 			<artifactId>asakusa-dsl-vocabulary</artifactId>
 		</dependency>
 
 		<dependency>
 			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-model</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
 			<artifactId>asakusa-compiler-api</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-plan</artifactId>
+		</dependency>
 
+		<dependency>
+			<groupId>com.asakusafw.spark</groupId>
+			<artifactId>asakusafw-spark-backdoor</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
 			<artifactId>asakusafw-spark-runtime</artifactId>
@@ -41,6 +62,11 @@
 		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
 			<artifactId>asakusafw-spark-tools-asm</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.spark</groupId>
+			<artifactId>asakusafw-spark-tools-graph</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 
@@ -52,6 +78,11 @@
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.jsuereth</groupId>
+			<artifactId>scala-arm_${scala.binary.version}</artifactId>
 		</dependency>
 
 		<dependency>
@@ -89,6 +120,10 @@
 			<version>${project.version}</version>
 			<classifier>tests</classifier>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-repl_${scala.binary.version}</artifactId>
 		</dependency>
 	</dependencies>
 

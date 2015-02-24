@@ -22,15 +22,15 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])
-class ProjectFragmentClassBuilderSpecTest extends ProjectFragmentClassBuilderSpec
+class ProjectOperatorCompilerSpecTest extends ProjectOperatorCompilerSpec
 
-class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
+class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import ProjectFragmentClassBuilderSpec._
+  import ProjectOperatorCompilerSpec._
 
   behavior of classOf[ProjectOperatorCompiler].getSimpleName
 
-  val resolvers = CoreOperatorCompiler(Thread.currentThread.getContextClassLoader)
+  def resolvers = CoreOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Project operator" in {
     val operator = CoreOperator.builder(CoreOperatorKind.PROJECT)
@@ -39,13 +39,13 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       .build()
 
     val compiler = resolvers(CoreOperatorKind.PROJECT)
-    val builder = compiler.compile(operator)(
-      compiler.Context(
+    val (thisType, bytes) = compiler.compile(operator)(
+      OperatorCompiler.Context(
         jpContext = new MockJobflowProcessorContext(
           new CompilerOptions("buildid", "", Map.empty[String, String]),
           Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("ProjectFragmentClassBuilderSpec").toFile)))
-    val cls = loadClass(builder.thisType.getClassName, builder.build())
+          Files.createTempDirectory("ProjectOperatorCompilerSpec").toFile)))
+    val cls = loadClass(thisType.getClassName, bytes)
       .asSubclass(classOf[Fragment[InputModel]])
 
     val out = {
@@ -62,7 +62,7 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out.buffer.size == 10)
+    assert(out.buffer.size === 10)
     out.buffer.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
@@ -72,7 +72,7 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object ProjectFragmentClassBuilderSpec {
+object ProjectOperatorCompilerSpec {
 
   class InputModel extends DataModel[InputModel] {
 

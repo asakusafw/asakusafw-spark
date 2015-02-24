@@ -20,7 +20,7 @@ class OrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
 
   behavior of classOf[OrderingClassBuilder[_]].getSimpleName
 
-  val resolvers = OrderingCompiler(Thread.currentThread.getContextClassLoader)
+  def resolvers = OrderingCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "build data model ordering class" in {
     val dataModelType = classOf[TestModel].asType

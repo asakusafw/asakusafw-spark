@@ -14,7 +14,7 @@ class DecimalOptionOrderingCompiler extends OrderingCompiler {
     import mb._
     assert(x.`type` == of)
     assert(y.`type` == of)
-    getStatic(orderings.DecimalOption.getClass.asType, "MODULE$", orderings.DecimalOption.getClass.asType)
+    getStatic(orderings.DecimalOptionOrdering.getClass.asType, "MODULE$", orderings.DecimalOptionOrdering.getClass.asType)
       .invokeV("compare", Type.INT_TYPE, x.push(), y.push())
   }
 }

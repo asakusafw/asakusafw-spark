@@ -14,7 +14,7 @@ class ShortOptionOrderingCompiler extends OrderingCompiler {
     import mb._
     assert(x.`type` == of)
     assert(y.`type` == of)
-    getStatic(orderings.ShortOption.getClass.asType, "MODULE$", orderings.ShortOption.getClass.asType)
+    getStatic(orderings.ShortOptionOrdering.getClass.asType, "MODULE$", orderings.ShortOptionOrdering.getClass.asType)
       .invokeV("compare", Type.INT_TYPE, x.push(), y.push())
   }
 }

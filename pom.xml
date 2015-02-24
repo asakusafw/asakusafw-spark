@@ -28,6 +28,7 @@
 	<modules>
 		<module>compiler</module>
 		<module>runtime</module>
+		<module>backdoor</module>
 		<module>tools</module>
 	</modules>
 
@@ -172,6 +173,11 @@ encoding/<project>=UTF-8
 
 			<dependency>
 				<groupId>com.asakusafw.lang.compiler</groupId>
+				<artifactId>asakusa-compiler-common</artifactId>
+				<version>${asakusafw-lang.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.asakusafw.lang.compiler</groupId>
 				<artifactId>asakusa-compiler-model</artifactId>
 				<version>${asakusafw-lang.version}</version>
 			</dependency>
@@ -192,7 +198,7 @@ encoding/<project>=UTF-8
 			</dependency>
 			<dependency>
 				<groupId>com.asakusafw.lang.compiler</groupId>
-				<artifactId>asakusa-compiler-cli</artifactId>
+				<artifactId>asakusa-compiler-analyzer</artifactId>
 				<version>${asakusafw-lang.version}</version>
 			</dependency>
 
@@ -298,6 +304,34 @@ encoding/<project>=UTF-8
 				<artifactId>asakusa-compiler-mock</artifactId>
 				<version>${asakusafw-lang.version}</version>
 				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.spark</groupId>
+				<artifactId>spark-repl_${scala.binary.version}</artifactId>
+				<version>${spark.version}</version>
+				<scope>test</scope>
+				<exclusions>
+					<exclusion>
+						<groupId>org.apache.spark</groupId>
+						<artifactId>spark-bagel_${scala.binary.version}</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.apache.spark</groupId>
+						<artifactId>spark-mllib_${scala.binary.version}</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.apache.spark</groupId>
+						<artifactId>spark-sql_${scala.binary.version}</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.scala-lang</groupId>
+						<artifactId>jline</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.codehaus.groovy</groupId>
+						<artifactId>groovy-all</artifactId>
+					</exclusion>
+				</exclusions>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

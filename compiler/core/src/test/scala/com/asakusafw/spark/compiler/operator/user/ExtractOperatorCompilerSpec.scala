@@ -23,15 +23,15 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Extract
 
 @RunWith(classOf[JUnitRunner])
-class ExtractFragmentClassBuilderSpecTest extends ExtractFragmentClassBuilderSpec
+class ExtractOperatorCompilerSpecTest extends ExtractOperatorCompilerSpec
 
-class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
+class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import ExtractFragmentClassBuilderSpec._
+  import ExtractOperatorCompilerSpec._
 
   behavior of classOf[ExtractOperatorCompiler].getSimpleName
 
-  val resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
+  def resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Extract operator" in {
     val opcls = classOf[ExtractOperator]
@@ -53,13 +53,13 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       .build()
 
     val compiler = resolvers(classOf[Extract])
-    val builder = compiler.compile(operator)(
-      compiler.Context(
+    val (thisType, bytes) = compiler.compile(operator)(
+      OperatorCompiler.Context(
         jpContext = new MockJobflowProcessorContext(
           new CompilerOptions("buildid", "", Map.empty[String, String]),
           Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("ExtractFragmentClassBuilderSpec").toFile)))
-    val cls = loadClass(builder.thisType.getClassName, builder.build())
+          Files.createTempDirectory("ExtractOperatorCompilerSpec").toFile)))
+    val cls = loadClass(thisType.getClassName, bytes)
       .asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = {
@@ -82,8 +82,8 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size == 10)
-    assert(out2.buffer.size == 100)
+    assert(out1.buffer.size === 10)
+    assert(out2.buffer.size === 100)
     out1.buffer.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
@@ -97,7 +97,7 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object ExtractFragmentClassBuilderSpec {
+object ExtractOperatorCompilerSpec {
 
   class InputModel extends DataModel[InputModel] {
 
