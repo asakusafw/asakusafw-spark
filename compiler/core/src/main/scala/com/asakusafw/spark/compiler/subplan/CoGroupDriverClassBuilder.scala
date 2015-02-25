@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
-import org.apache.spark.Partitioner
+import org.apache.spark._
 
 import com.asakusafw.spark.runtime.driver.CoGroupDriver
 import com.asakusafw.spark.tools.asm._
@@ -34,12 +34,13 @@ abstract class CoGroupDriverClassBuilder(
       initOrderingsField(mb)
     }
 
-    ctorDef.newInit(Seq(classOf[Seq[_]].asType, classOf[Partitioner].asType, classOf[Ordering[_]].asType)) { mb =>
+    ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[Seq[_]].asType, classOf[Partitioner].asType, classOf[Ordering[_]].asType)) { mb =>
       import mb._
-      val inputsVar = `var`(classOf[Seq[_]].asType, thisVar.nextLocal)
+      val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+      val inputsVar = `var`(classOf[Seq[_]].asType, scVar.nextLocal)
       val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
       val groupingVar = `var`(classOf[Ordering[_]].asType, partVar.nextLocal)
-      thisVar.push().invokeInit(superType, inputsVar.push(), partVar.push(), groupingVar.push())
+      thisVar.push().invokeInit(superType, scVar.push(), inputsVar.push(), partVar.push(), groupingVar.push())
     }
   }
 

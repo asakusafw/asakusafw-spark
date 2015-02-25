@@ -48,7 +48,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
     val part = new GroupingPartitioner(2)
     val groupingOrd = new GroupingOrdering
     val driver = new TestCoGroupDriver[Product](
-      Seq((hoges, Some(hogeOrd)), (foos, Some(fooOrd))), part, groupingOrd)
+      sc, Seq((hoges, Some(hogeOrd)), (foos, Some(fooOrd))), part, groupingOrd)
 
     val outputs = driver.execute()
     outputs.mapValues(_.collect.toSeq).foreach {
@@ -85,10 +85,11 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
 object CoGroupDriverSpec {
 
   class TestCoGroupDriver[K <: Product](
+    @transient sc: SparkContext,
     @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
     @transient part: Partitioner,
     groupingOrdering: Ordering[K])
-      extends CoGroupDriver[String, K](inputs, part, groupingOrdering) {
+      extends CoGroupDriver[String, K](sc, inputs, part, groupingOrdering) {
 
     override def branchKeys: Set[String] = {
       Set("hogeResult", "fooResult", "hogeError", "fooError")
