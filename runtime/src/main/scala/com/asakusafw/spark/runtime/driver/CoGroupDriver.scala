@@ -12,11 +12,11 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver[B, K](
-  @transient val sc: SparkContext,
+  @transient sc: SparkContext,
   @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
   @transient part: Partitioner,
   @transient grouping: Ordering[K])
-    extends SubPlanDriver[B] {
+    extends SubPlanDriver[B] with Branch[B] {
   assert(inputs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {

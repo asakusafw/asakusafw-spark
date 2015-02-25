@@ -5,5 +5,6 @@ trait SubPlanType
 
 object SubPlanType {
 
+  case object InputSubPlan extends SubPlanType
   case object CoGroupSubPlan extends SubPlanType
 }
