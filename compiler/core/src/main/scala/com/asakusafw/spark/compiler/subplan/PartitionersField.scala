@@ -7,7 +7,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait PartitionersField extends SubPlanDriverClassBuilder {
+trait PartitionersField extends ClassBuilder {
+
+  def branchKeyType: Type
 
   def defPartitionersField(fieldDef: FieldDef): Unit = {
     fieldDef.newStaticFinalField("partitioners", classOf[Map[_, _]].asType,
@@ -24,7 +26,12 @@ trait PartitionersField extends SubPlanDriverClassBuilder {
     putStatic(thisType, "partitioners", classOf[Map[_, _]].asType, initPartitioners(mb))
   }
 
-  def initPartitioners(mb: MethodBuilder): Stack
+  def initPartitioners(mb: MethodBuilder): Stack = {
+    import mb._
+    // TODO
+    getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+      .invokeV("empty", classOf[Map[_, _]].asType)
+  }
 
   def getPartitionersField(mb: MethodBuilder): Stack = {
     import mb._

@@ -7,7 +7,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait OrderingsField extends SubPlanDriverClassBuilder {
+trait OrderingsField extends ClassBuilder {
+
+  def branchKeyType: Type
 
   def defOrderingsField(fieldDef: FieldDef): Unit = {
     fieldDef.newStaticFinalField("orderings", classOf[Map[_, _]].asType,
@@ -28,7 +30,12 @@ trait OrderingsField extends SubPlanDriverClassBuilder {
     putStatic(thisType, "orderings", classOf[Map[_, _]].asType, initOrderings(mb))
   }
 
-  def initOrderings(mb: MethodBuilder): Stack
+  def initOrderings(mb: MethodBuilder): Stack = {
+    import mb._
+    // TODO
+    getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+      .invokeV("empty", classOf[Map[_, _]].asType)
+  }
 
   def getOrderingsField(mb: MethodBuilder): Stack = {
     import mb._

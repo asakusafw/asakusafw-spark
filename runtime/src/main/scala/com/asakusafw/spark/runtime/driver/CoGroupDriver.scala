@@ -3,7 +3,6 @@ package com.asakusafw.spark.runtime.driver
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-import org.apache.hadoop.io.Writable
 import org.apache.spark._
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._

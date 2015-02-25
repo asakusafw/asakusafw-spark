@@ -29,37 +29,27 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     assert(heads.head.isInstanceOf[UserOperator])
     val cogroup = heads.head.asInstanceOf[UserOperator]
 
-    val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq.sortBy(_.getOriginalSerialNumber)
+    val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
+
+    implicit val compilerContext = OperatorCompiler.Context(context.jpContext)
+    val operators = subplan.getOperators.map { operator =>
+      operator -> OperatorCompiler.compile(operator)
+    }.toMap
+    context.fragments ++= operators.values
+
+    val edges = subplan.getOperators.flatMap {
+      _.getOutputs.collect {
+        case output if output.getOpposites.size > 1 => output.getDataType.asType
+      }
+    }.map { dataType =>
+      val builder = new EdgeFragmentClassBuilder(dataType)
+      dataType -> (builder.thisType, builder.build())
+    }.toMap
+    context.fragments ++= edges.values
 
     val builder = new CoGroupDriverClassBuilder(Type.LONG_TYPE, classOf[AnyRef].asType) {
 
-      override def initBranchKeys(mb: MethodBuilder): Stack = {
-        import mb._
-        getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
-          .invokeV("longArrayOps", classOf[mutable.ArrayOps[_]].asType, {
-            val arr = pushNewArray(Type.LONG_TYPE, outputs.size)
-            outputs.zipWithIndex.foreach {
-              case (op, i) =>
-                arr.dup().astore(ldc(i), ldc(op.getOriginalSerialNumber))
-            }
-            arr
-          })
-          .invokeI("toSet", classOf[Set[_]].asType)
-      }
-
-      override def initPartitioners(mb: MethodBuilder): Stack = {
-        import mb._
-        // TODO
-        getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-          .invokeV("empty", classOf[Map[_, _]].asType)
-      }
-
-      override def initOrderings(mb: MethodBuilder): Stack = {
-        import mb._
-        // TODO
-        getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-          .invokeV("empty", classOf[Map[_, _]].asType)
-      }
+      override def outputMarkers: Seq[MarkerOperator] = outputs
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
@@ -68,50 +58,27 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
           import mb._
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-          val vars: mutable.Map[Long, Var] = mutable.Map.empty[Long, Var]
-          def buildFragment(operator: Operator): Var = {
-            val f @ (thisType, _) = OperatorCompiler.compile(operator)(OperatorCompiler.Context(context.jpContext))
-            context.fragments += f
-
-            val outputs: Seq[Var] = operator.getOutputs.collect {
-              case output if output.getOpposites.size > 1 =>
-                val builder = new EdgeFragmentClassBuilder(output.getDataType.asType)
-                context.fragments += ((builder.thisType, builder.build()))
-
-                val opposites = output.getOpposites.toSeq.map(_.getOwner).map(op =>
-                  vars.getOrElseUpdate(op.getOriginalSerialNumber, buildFragment(op)))
-                val fragment = pushNew(builder.thisType)
-                fragment.dup().invokeInit({
-                  val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                    .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-                  opposites.foreach { opposite =>
-                    builder.invokeI(NameTransformer.encode("+="),
-                      classOf[mutable.Builder[_, _]].asType,
-                      opposite.push().asType(classOf[AnyRef].asType))
-                  }
-                  builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-                })
-                fragment.store(nextLocal.getAndAdd(fragment.size))
-              case output if output.getOpposites.size == 1 =>
-                val op = output.getOpposites.head.getOwner
-                vars.getOrElseUpdate(op.getOriginalSerialNumber, buildFragment(op))
-            }
-            val fragment = pushNew(thisType)
-            fragment.dup().invokeInit(outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
-            fragment.store(nextLocal.getAndAdd(fragment.size))
-          }
-          val fragmentVar = vars.getOrElseUpdate(cogroup.getOriginalSerialNumber, buildFragment(cogroup))
+          val fragmentBuilder = new FragmentTreeBuilder(
+            mb,
+            operators.map {
+              case (operator, (t, _)) => operator -> t
+            },
+            edges.map {
+              case (dataType, (t, _)) => dataType -> t
+            },
+            nextLocal)
+          val fragmentVar = fragmentBuilder.build(cogroup)
 
           val outputsVar = {
             val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
               .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-            outputs.foreach { op =>
+            outputs.sortBy(_.getOriginalSerialNumber).foreach { op =>
               builder.invokeI(NameTransformer.encode("+="),
                 classOf[mutable.Builder[_, _]].asType,
                 getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
                   invokeV("apply", classOf[(_, _)].asType,
                     ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-                    vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
+                    fragmentBuilder.vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
                   .asType(classOf[AnyRef].asType))
             }
             val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
@@ -123,13 +90,6 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
               invokeV("apply", classOf[(_, _)].asType,
                 fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
         }
-
-        methodDef.newMethod("shuffleKey", classOf[DataModel[_]].asType,
-          Seq(classOf[AnyRef].asType, classOf[DataModel[_]].asType)) { mb =>
-            import mb._
-            // TODO
-            `return`(pushNull(classOf[DataModel[_]].asType))
-          }
       }
     }
     (builder.thisType, builder.build())

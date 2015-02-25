@@ -6,6 +6,8 @@ import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 import org.apache.spark._
 
+import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.driver.CoGroupDriver
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -13,26 +15,14 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class CoGroupDriverClassBuilder(
   val branchKeyType: Type,
   val groupingKeyType: Type)
-    extends SubPlanDriverClassBuilder(
+    extends ClassBuilder(
       Type.getType(s"L${classOf[CoGroupDriver[_, _]].asType.getInternalName}$$${CoGroupDriverClassBuilder.nextId};"),
       Option(CoGroupDriverClassBuilder.signature(branchKeyType, groupingKeyType)),
       classOf[CoGroupDriver[_, _]].asType)
-    with BranchKeysField
-    with PartitionersField
-    with OrderingsField {
-
-  override def defFields(fieldDef: FieldDef): Unit = {
-    defBranchKeysField(fieldDef)
-    defPartitionersField(fieldDef)
-    defOrderingsField(fieldDef)
-  }
+    with Branching {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newStaticInit { mb =>
-      initBranchKeysField(mb)
-      initPartitionersField(mb)
-      initOrderingsField(mb)
-    }
+    super.defConstructors(ctorDef)
 
     ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[Seq[_]].asType, classOf[Partitioner].asType, classOf[Ordering[_]].asType)) { mb =>
       import mb._
@@ -42,12 +32,6 @@ abstract class CoGroupDriverClassBuilder(
       val groupingVar = `var`(classOf[Ordering[_]].asType, partVar.nextLocal)
       thisVar.push().invokeInit(superType, scVar.push(), inputsVar.push(), partVar.push(), groupingVar.push())
     }
-  }
-
-  override def defMethods(methodDef: MethodDef): Unit = {
-    defBranchKeys(methodDef)
-    defPartitioners(methodDef)
-    defOrderings(methodDef)
   }
 }
 
