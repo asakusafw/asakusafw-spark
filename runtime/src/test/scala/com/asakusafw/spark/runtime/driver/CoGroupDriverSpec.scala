@@ -95,9 +95,9 @@ object CoGroupDriverSpec {
       Set("hogeResult", "fooResult", "hogeError", "fooError")
     }
 
-    def partitioners: Map[String, Partitioner] = Map.empty
+    override def partitioners: Map[String, Partitioner] = Map.empty
 
-    def orderings[K]: Map[String, Ordering[K]] = Map.empty
+    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
     override def fragments[T <: DataModel[T]]: (CoGroupFragment, Map[String, OutputFragment[T]]) = {
       val outputs = Map(
