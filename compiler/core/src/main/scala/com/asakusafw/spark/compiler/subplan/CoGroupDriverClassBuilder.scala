@@ -4,8 +4,10 @@ import java.util.concurrent.atomic.AtomicLong
 
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
-import org.apache.spark.Partitioner
+import org.apache.spark._
 
+import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.driver.CoGroupDriver
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -13,40 +15,23 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class CoGroupDriverClassBuilder(
   val branchKeyType: Type,
   val groupingKeyType: Type)
-    extends SubPlanDriverClassBuilder(
+    extends ClassBuilder(
       Type.getType(s"L${classOf[CoGroupDriver[_, _]].asType.getInternalName}$$${CoGroupDriverClassBuilder.nextId};"),
       Option(CoGroupDriverClassBuilder.signature(branchKeyType, groupingKeyType)),
       classOf[CoGroupDriver[_, _]].asType)
-    with BranchKeysField
-    with PartitionersField
-    with OrderingsField {
-
-  override def defFields(fieldDef: FieldDef): Unit = {
-    defBranchKeysField(fieldDef)
-    defPartitionersField(fieldDef)
-    defOrderingsField(fieldDef)
-  }
+    with Branching {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newStaticInit { mb =>
-      initBranchKeysField(mb)
-      initPartitionersField(mb)
-      initOrderingsField(mb)
-    }
+    super.defConstructors(ctorDef)
 
-    ctorDef.newInit(Seq(classOf[Seq[_]].asType, classOf[Partitioner].asType, classOf[Ordering[_]].asType)) { mb =>
+    ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[Seq[_]].asType, classOf[Partitioner].asType, classOf[Ordering[_]].asType)) { mb =>
       import mb._
-      val inputsVar = `var`(classOf[Seq[_]].asType, thisVar.nextLocal)
+      val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+      val inputsVar = `var`(classOf[Seq[_]].asType, scVar.nextLocal)
       val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
       val groupingVar = `var`(classOf[Ordering[_]].asType, partVar.nextLocal)
-      thisVar.push().invokeInit(superType, inputsVar.push(), partVar.push(), groupingVar.push())
+      thisVar.push().invokeInit(superType, scVar.push(), inputsVar.push(), partVar.push(), groupingVar.push())
     }
-  }
-
-  override def defMethods(methodDef: MethodDef): Unit = {
-    defBranchKeys(methodDef)
-    defPartitioners(methodDef)
-    defOrderings(methodDef)
   }
 }
 

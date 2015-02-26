@@ -3,7 +3,6 @@ package com.asakusafw.spark.runtime.driver
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-import org.apache.hadoop.io.Writable
 import org.apache.spark._
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
@@ -13,10 +12,11 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver[B, K](
+  @transient sc: SparkContext,
   @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
   @transient part: Partitioner,
   @transient grouping: Ordering[K])
-    extends SubPlanDriver[B] {
+    extends SubPlanDriver[B] with Branch[B] {
   assert(inputs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {

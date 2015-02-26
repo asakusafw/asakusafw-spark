@@ -1,12 +1,19 @@
 package com.asakusafw.spark.compiler.subplan
 
+import scala.collection.mutable
+
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait BranchKeysField extends SubPlanDriverClassBuilder {
+trait BranchKeysField extends ClassBuilder {
+
+  def branchKeyType: Type
+
+  def outputMarkers: Seq[MarkerOperator]
 
   def defBranchKeysField(fieldDef: FieldDef): Unit = {
     fieldDef.newStaticFinalField("branchKeys", classOf[Set[_]].asType,
@@ -22,7 +29,19 @@ trait BranchKeysField extends SubPlanDriverClassBuilder {
     putStatic(thisType, "branchKeys", classOf[Set[_]].asType, initBranchKeys(mb))
   }
 
-  def initBranchKeys(mb: MethodBuilder): Stack
+  def initBranchKeys(mb: MethodBuilder): Stack = {
+    import mb._
+    getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
+      .invokeV("longArrayOps", classOf[mutable.ArrayOps[_]].asType, {
+        val arr = pushNewArray(Type.LONG_TYPE, outputMarkers.size)
+        outputMarkers.sortBy(_.getOriginalSerialNumber).zipWithIndex.foreach {
+          case (op, i) =>
+            arr.dup().astore(ldc(i), ldc(op.getOriginalSerialNumber))
+        }
+        arr
+      })
+      .invokeI("toSet", classOf[Set[_]].asType)
+  }
 
   def getBranchKeysField(mb: MethodBuilder): Stack = {
     import mb._

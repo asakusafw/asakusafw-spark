@@ -150,8 +150,8 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     })
     val part = new GroupingPartitioner(2)
     val groupingOrd = new GroupingOrdering
-    val driver = cls.getConstructor(classOf[Seq[_]], classOf[Partitioner], classOf[Ordering[_]])
-      .newInstance(Seq((hogeList, Some(hogeOrd)), (fooList, Some(fooOrd))), part, groupingOrd)
+    val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[_]], classOf[Partitioner], classOf[Ordering[_]])
+      .newInstance(sc, Seq((hogeList, Some(hogeOrd)), (fooList, Some(fooOrd))), part, groupingOrd)
     val results = driver.execute()
 
     val hogeResult = results(hogeResultMarker.getOriginalSerialNumber).collect.toSeq.map(_._2.asInstanceOf[Hoge])
