@@ -6,9 +6,8 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
-import org.apache.spark._
+import org.apache.spark.SparkContext
 
-import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.spark.runtime.driver.InputDriver
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -30,7 +29,7 @@ abstract class InputDriverClassBuilder(
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
       thisVar.push().invokeInit(superType, scVar.push(),
         getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-          .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType)))
+          .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
     }
   }
 }
