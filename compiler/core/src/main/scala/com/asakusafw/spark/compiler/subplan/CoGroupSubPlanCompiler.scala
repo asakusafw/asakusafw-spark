@@ -22,7 +22,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
   def of: SubPlanType = SubPlanType.CoGroupSubPlan
 
-  def compile(subplan: SubPlan)(implicit context: Context): (Type, Array[Byte]) = {
+  def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val inputs = subplan.getInputs.toSet[SubPlan.Input].map(_.getOperator)
     val heads = inputs.flatMap(_.getOutput.getOpposites.map(_.getOwner))
     assert(heads.size == 1)
@@ -34,7 +34,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     implicit val compilerContext = OperatorCompiler.Context(context.jpContext)
     val operators = subplan.getOperators.map { operator =>
       operator -> OperatorCompiler.compile(operator)
-    }.toMap
+    }.toMap[Operator, Type]
     context.fragments ++= operators.values
 
     val edges = subplan.getOperators.flatMap {
@@ -43,7 +43,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       }
     }.map { dataType =>
       val builder = new EdgeFragmentClassBuilder(dataType)
-      dataType -> (builder.thisType, builder.build())
+      dataType -> context.jpContext.addClass(builder)
     }.toMap
     context.fragments ++= edges.values
 
@@ -60,12 +60,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
           val fragmentBuilder = new FragmentTreeBuilder(
             mb,
-            operators.map {
-              case (operator, (t, _)) => operator -> t
-            },
-            edges.map {
-              case (dataType, (t, _)) => dataType -> t
-            },
+            operators,
+            edges,
             nextLocal)
           val fragmentVar = fragmentBuilder.build(cogroup)
 
@@ -92,6 +88,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
         }
       }
     }
-    (builder.thisType, builder.build())
+
+    context.jpContext.addClass(builder)
   }
 }

@@ -121,14 +121,9 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        Files.createTempDirectory("CoGroupOperatorCompilerSpec").toFile))
-    val (thisType, bytes) = compiler.compile(subplan.getElements.head)(context)
-    context.fragments.foreach {
-      case (thisType, bytes) =>
-        classServer.register(thisType, bytes)
-    }
-    val cls = classServer.loadClass(thisType, bytes)
-      .asSubclass(classOf[SubPlanDriver[Long]])
+        classServer.root.toFile))
+    val thisType = compiler.compile(subplan.getElements.head)(context)
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[SubPlanDriver[Long]])
     assert(cls.getField("branchKeys").get(null).asInstanceOf[Set[Long]] ===
       Set(hogeResultMarker, fooResultMarker,
         hogeErrorMarker, fooErrorMarker,

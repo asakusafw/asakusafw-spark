@@ -20,7 +20,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
   override def of: Class[_] = classOf[Extract]
 
-  override def compile(operator: UserOperator)(implicit context: Context): (Type, Array[Byte]) = {
+  override def compile(operator: UserOperator)(implicit context: Context): Type = {
     val annotationDesc = operator.getAnnotation
     assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
     val methodDesc = operator.getMethod
@@ -108,6 +108,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
         }
       }
     }
-    (builder.thisType, builder.build())
+
+    context.jpContext.addClass(builder)
   }
 }

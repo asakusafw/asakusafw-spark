@@ -67,14 +67,14 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .build()
 
     val compiler = resolvers(classOf[CoGroup])
-    val (thisType, bytes) = compiler.compile(operator)(
+    val classpath = Files.createTempDirectory("CoGroupOperatorCompilerSpec").toFile
+    val thisType = compiler.compile(operator)(
       OperatorCompiler.Context(
         jpContext = new MockJobflowProcessorContext(
           new CompilerOptions("buildid", "", Map.empty[String, String]),
           Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("CoGroupOperatorCompilerSpec").toFile)))
-    val cls = loadClass(thisType.getClassName, bytes)
-      .asSubclass(classOf[CoGroupFragment])
+          classpath)))
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[CoGroupFragment])
 
     val (hogeResult, hogeError) = {
       val builder = new OutputFragmentClassBuilder(classOf[Hoge].asType)

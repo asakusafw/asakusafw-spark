@@ -4,9 +4,12 @@ package operator
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.spark.compiler.spi._
 import com.asakusafw.spark.tools.asm.ClassBuilder
+
+import resource._
 
 trait OperatorCompiler {
 
@@ -17,7 +20,7 @@ object OperatorCompiler {
 
   case class Context(jpContext: JPContext)
 
-  def compile(operator: Operator)(implicit context: Context): (Type, Array[Byte]) = {
+  def compile(operator: Operator)(implicit context: Context): Type = {
     operator match {
       case op: CoreOperator =>
         CoreOperatorCompiler(context.jpContext.getClassLoader)(
@@ -28,7 +31,7 @@ object OperatorCompiler {
           .compile(op)
       case op: MarkerOperator =>
         val builder = new OutputFragmentClassBuilder(op.getInput.getDataType.asType)
-        (builder.thisType, builder.build())
+        context.jpContext.addClass(builder)
     }
   }
 }

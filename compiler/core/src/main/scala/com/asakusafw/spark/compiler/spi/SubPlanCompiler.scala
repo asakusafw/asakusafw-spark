@@ -17,11 +17,11 @@ trait SubPlanCompiler {
 
   case class Context(
     jpContext: JPContext,
-    fragments: mutable.ArrayBuffer[(Type, Array[Byte])] = mutable.ArrayBuffer.empty)
+    fragments: mutable.ArrayBuffer[Type] = mutable.ArrayBuffer.empty)
 
   def of: SubPlanType
 
-  def compile(subplan: SubPlan)(implicit context: Context): (Type, Array[Byte])
+  def compile(subplan: SubPlan)(implicit context: Context): Type
 }
 
 object SubPlanCompiler {

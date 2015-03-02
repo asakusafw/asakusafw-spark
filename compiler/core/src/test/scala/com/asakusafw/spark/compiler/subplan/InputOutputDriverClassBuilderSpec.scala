@@ -46,7 +46,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val jpContext = new MockJobflowProcessorContext(
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
-      Files.createTempDirectory("CoGroupOperatorCompilerSpec").toFile)
+      classServer.root.toFile)
 
     // output
     val outputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
@@ -68,13 +68,9 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
 
     val outputCompiler = resolvers(OutputSubPlan)
     val outputCompilerContext = outputCompiler.Context(jpContext = jpContext)
-    val (outputDriverType, outputDriverBytes) = outputCompiler.compile(outputSubPlan.getElements.head)(outputCompilerContext)
-    outputCompilerContext.fragments.foreach {
-      case (thisType, bytes) =>
-        classServer.register(thisType, bytes)
-    }
+    val outputDriverType = outputCompiler.compile(outputSubPlan.getElements.head)(outputCompilerContext)
 
-    val outputDriverCls = classServer.loadClass(outputDriverType, outputDriverBytes).asSubclass(classOf[OutputDriver[Hoge]])
+    val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
@@ -117,14 +113,9 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
 
     val inputCompiler = resolvers(InputSubPlan)
     val inputCompilerContext = inputCompiler.Context(jpContext = jpContext)
-    val (inputDriverType, inputDriverBytes) = inputCompiler.compile(inputSubPlan.getElements.head)(inputCompilerContext)
-    inputCompilerContext.fragments.foreach {
-      case (thisType, bytes) =>
-        classServer.register(thisType, bytes)
-    }
+    val inputDriverType = inputCompiler.compile(inputSubPlan.getElements.head)(inputCompilerContext)
 
-    val inputDriverCls = classServer.loadClass(inputDriverType, inputDriverBytes)
-      .asSubclass(classOf[InputDriver[Hoge, Long]])
+    val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge, Long]])
     assert(inputDriverCls.getField("branchKeys").get(null).asInstanceOf[Set[Long]] ===
       Set(inputMarker.getOriginalSerialNumber))
 

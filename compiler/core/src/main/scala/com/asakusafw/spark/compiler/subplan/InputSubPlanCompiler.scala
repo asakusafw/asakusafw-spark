@@ -9,7 +9,7 @@ import scala.reflect.NameTransformer
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
@@ -21,7 +21,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
   def of: SubPlanType = SubPlanType.InputSubPlan
 
-  def compile(subplan: SubPlan)(implicit context: Context): (Type, Array[Byte]) = {
+  def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val inputs = subplan.getInputs.toSet[SubPlan.Input].map(_.getOperator)
     val heads = inputs.flatMap(_.getOutput.getOpposites.map(_.getOwner))
     assert(heads.size == 1)
@@ -34,7 +34,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     implicit val compilerContext = OperatorCompiler.Context(context.jpContext)
     val operators = subplan.getOperators.filterNot(_ == input).map { operator =>
       operator -> OperatorCompiler.compile(operator)
-    }.toMap
+    }.toMap[Operator, Type]
     context.fragments ++= operators.values
 
     val edges = subplan.getOperators.flatMap {
@@ -43,7 +43,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       }
     }.map { dataType =>
       val builder = new EdgeFragmentClassBuilder(dataType)
-      dataType -> (builder.thisType, builder.build())
+      dataType -> context.jpContext.addClass(builder)
     }.toMap
     context.fragments ++= edges.values
 
@@ -71,12 +71,8 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
           val fragmentBuilder = new FragmentTreeBuilder(
             mb,
-            operators.map {
-              case (operator, (t, _)) => operator -> t
-            },
-            edges.map {
-              case (dataType, (t, _)) => dataType -> t
-            },
+            operators,
+            edges,
             nextLocal)
           val fragmentVar = fragmentBuilder.build(input.getOperatorPort)
 
@@ -103,6 +99,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
         }
       }
     }
-    (builder.thisType, builder.build())
+
+    context.jpContext.addClass(builder)
   }
 }

@@ -53,14 +53,14 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .build()
 
     val compiler = resolvers(classOf[Extract])
-    val (thisType, bytes) = compiler.compile(operator)(
+    val classpath = Files.createTempDirectory("ExtractOperatorCompilerSpec").toFile
+    val thisType = compiler.compile(operator)(
       OperatorCompiler.Context(
         jpContext = new MockJobflowProcessorContext(
           new CompilerOptions("buildid", "", Map.empty[String, String]),
           Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("ExtractOperatorCompilerSpec").toFile)))
-    val cls = loadClass(thisType.getClassName, bytes)
-      .asSubclass(classOf[Fragment[InputModel]])
+          classpath)))
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = {
       val builder = new OutputFragmentClassBuilder(classOf[IntOutputModel].asType)

@@ -17,7 +17,7 @@ trait CoreOperatorCompiler extends OperatorCompiler {
 
   def of: CoreOperatorKind
 
-  def compile(operator: CoreOperator)(implicit context: Context): (Type, Array[Byte])
+  def compile(operator: CoreOperator)(implicit context: Context): Type
 }
 
 object CoreOperatorCompiler {
@@ -42,7 +42,7 @@ trait UserOperatorCompiler extends OperatorCompiler {
 
   def of: Class[_]
 
-  def compile(operator: UserOperator)(implicit context: Context): (Type, Array[Byte])
+  def compile(operator: UserOperator)(implicit context: Context): Type
 }
 
 object UserOperatorCompiler {

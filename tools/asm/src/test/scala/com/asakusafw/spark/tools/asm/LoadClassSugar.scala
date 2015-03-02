@@ -1,7 +1,7 @@
 package com.asakusafw.spark.tools.asm
 
-import java.io.PrintWriter
-import java.io.StringWriter
+import java.io._
+import java.net.{ URL, URLClassLoader }
 
 import scala.collection.mutable
 
@@ -17,6 +17,11 @@ trait LoadClassSugar {
   def loadClass(classname: String, bytes: Array[Byte]): Class[_] = {
     val classLoader = new SimpleClassLoader(Thread.currentThread.getContextClassLoader)
     classLoader.put(classname, bytes)
+    classLoader.loadClass(classname)
+  }
+
+  def loadClass(classname: String, classpath: File): Class[_] = {
+    val classLoader = new URLClassLoader(Array(classpath.toURI.toURL), Thread.currentThread.getContextClassLoader)
     classLoader.loadClass(classname)
   }
 

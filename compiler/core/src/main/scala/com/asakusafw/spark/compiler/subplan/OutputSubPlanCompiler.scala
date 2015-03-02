@@ -14,7 +14,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
   def of: SubPlanType = SubPlanType.OutputSubPlan
 
-  def compile(subplan: SubPlan)(implicit context: Context): (Type, Array[Byte]) = {
+  def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val inputs = subplan.getInputs.toSet[SubPlan.Input].map(_.getOperator)
     val heads = inputs.flatMap(_.getOutput.getOpposites.map(_.getOwner))
     assert(heads.size == 1)
@@ -40,6 +40,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
         }
       }
     }
-    (builder.thisType, builder.build())
+
+    context.jpContext.addClass(builder)
   }
 }
