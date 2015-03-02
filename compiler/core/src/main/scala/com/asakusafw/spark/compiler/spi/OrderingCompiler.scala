@@ -2,6 +2,7 @@ package com.asakusafw.spark.compiler.spi
 
 import java.util.ServiceLoader
 
+import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.math.BigDecimal
 
@@ -20,17 +21,18 @@ trait OrderingCompiler {
 
 object OrderingCompiler {
 
-  private[this] var _orderingCompilers: Option[Map[Type, OrderingCompiler]] = None
+  private[this] val _orderingCompilers: mutable.Map[ClassLoader, Map[Type, OrderingCompiler]] =
+    mutable.WeakHashMap.empty
 
   def apply(classLoader: ClassLoader): Map[Type, OrderingCompiler] = {
-    _orderingCompilers.getOrElse(reload(classLoader))
+    _orderingCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
   def reload(classLoader: ClassLoader): Map[Type, OrderingCompiler] = {
     val ors = ServiceLoader.load(classOf[OrderingCompiler], classLoader).map {
       resolver => resolver.of -> resolver
     }.toMap
-    _orderingCompilers = Some(ors)
+    _orderingCompilers(classLoader) = ors
     ors
   }
 }

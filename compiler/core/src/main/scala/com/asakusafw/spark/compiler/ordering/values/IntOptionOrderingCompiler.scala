@@ -14,7 +14,7 @@ class IntOptionOrderingCompiler extends OrderingCompiler {
     import mb._
     assert(x.`type` == of)
     assert(y.`type` == of)
-    getStatic(orderings.IntOption.getClass.asType, "MODULE$", orderings.IntOption.getClass.asType)
+    getStatic(orderings.IntOptionOrdering.getClass.asType, "MODULE$", orderings.IntOptionOrdering.getClass.asType)
       .invokeV("compare", Type.INT_TYPE, x.push(), y.push())
   }
 }

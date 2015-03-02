@@ -1,0 +1,3 @@
+com.asakusafw.spark.compiler.subplan.InputSubPlanCompiler
+com.asakusafw.spark.compiler.subplan.OutputSubPlanCompiler
+com.asakusafw.spark.compiler.subplan.CoGroupSubPlanCompiler

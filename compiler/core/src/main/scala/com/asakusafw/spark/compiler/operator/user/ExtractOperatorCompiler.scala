@@ -6,9 +6,10 @@ import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.description.ValueDescription
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
 import com.asakusafw.spark.tools.asm._
@@ -19,7 +20,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
   override def of: Class[_] = classOf[Extract]
 
-  override def compile(operator: UserOperator)(implicit context: Context): FragmentClassBuilder = {
+  override def compile(operator: UserOperator)(implicit context: Context): (Type, Array[Byte]) = {
     val annotationDesc = operator.getAnnotation
     assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
     val methodDesc = operator.getMethod
@@ -39,32 +40,38 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
     val arguments = operator.getArguments.toSeq
 
-    assert(methodDesc.getParameterTypes.map(_.asType) ==
+    assert(methodType.getArgumentTypes.toSeq ==
       inputDataModelType
       +: outputDataModelTypes.map(_ => classOf[Result[_]].asType)
       ++: arguments.map(_.getValue.getValueType.asType))
 
-    new FragmentClassBuilder(inputDataModelType) {
+    val builder = new FragmentClassBuilder(inputDataModelType) with OperatorField with OutputFragments {
+
+      override val operatorType: Type = implementationClassType
+      override def operatorOutputs: Seq[OperatorOutput] = outputs
 
       override def defFields(fieldDef: FieldDef): Unit = {
-        fieldDef.newFinalField("operator", implementationClassType)
-        (0 until outputs.size).foreach { i =>
-          fieldDef.newFinalField(s"child$$${i}", classOf[Fragment[_]].asType)
-        }
+        defOperatorField(fieldDef)
+        defOutputFields(fieldDef)
       }
 
       override def defConstructors(ctorDef: ConstructorDef): Unit = {
-        ctorDef.newInit((0 until outputs.size).map(_ => classOf[Fragment[_]].asType)) { mb =>
-          import mb._
-          thisVar.push().invokeInit(superType)
-          thisVar.push().putField("operator", implementationClassType, pushNew0(implementationClassType))
-          (0 until outputs.size).foldLeft(thisVar.nextLocal) {
-            case (local, i) =>
-              val childVar = `var`(classOf[Fragment[_]].asType, local)
-              thisVar.push().putField(s"child$$${i}", classOf[Fragment[_]].asType, childVar.push())
-              childVar.nextLocal
+        ctorDef.newInit((0 until outputs.size).map(_ => classOf[Fragment[_]].asType),
+          ((new MethodSignatureBuilder() /: outputs) {
+            case (builder, output) =>
+              builder.newParameterType {
+                _.newClassType(classOf[Fragment[_]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
+                }
+              }
+          })
+            .newVoidReturnType()
+            .build()) { mb =>
+            import mb._
+            thisVar.push().invokeInit(superType)
+            initOperatorField(mb)
+            initOutputFields(mb, thisVar.nextLocal)
           }
-        }
       }
 
       override def defMethods(methodDef: MethodDef): Unit = {
@@ -73,13 +80,12 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
         methodDef.newMethod("add", Seq(dataModelType)) { mb =>
           import mb._
           val resultVar = `var`(dataModelType, thisVar.nextLocal)
-          thisVar.push().getField("operator", implementationClassType)
+          getOperatorField(mb)
             .invokeV(
               methodDesc.getName,
               resultVar.push()
-                +: (0 until outputs.size).map { i =>
-                  thisVar.push().getField(s"child$$${i}", classOf[Fragment[_]].asType)
-                    .asType(classOf[Result[_]].asType)
+                +: outputs.map { output =>
+                  getOutputField(mb, output).asType(classOf[Result[_]].asType)
                 }
                 ++: arguments.map { argument =>
                   ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
@@ -97,12 +103,11 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
         methodDef.newMethod("reset", Seq.empty) { mb =>
           import mb._
-          (0 until outputs.size).foreach { i =>
-            thisVar.push().getField(s"child$$${i}", classOf[Fragment[_]].asType).invokeV("reset")
-          }
+          resetOutputs(mb)
           `return`()
         }
       }
     }
+    (builder.thisType, builder.build())
   }
 }
