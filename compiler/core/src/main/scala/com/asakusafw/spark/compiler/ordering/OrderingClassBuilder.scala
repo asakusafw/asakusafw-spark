@@ -3,6 +3,7 @@ package ordering
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.reflect.{ classTag, ClassTag }
 
@@ -15,17 +16,15 @@ import com.asakusafw.spark.runtime.orderings.AbstractOrdering
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-class OrderingClassBuilder[T] private (
-  ownerType: Type,
+class OrderingClassBuilder private (
+  flowId: String,
   signature: String,
-  properties: Seq[MethodDesc],
+  properties: Seq[Type],
   compilers: Map[Type, OrderingCompiler])
     extends ClassBuilder(
-      Type.getType(s"L${ownerType.getInternalName}$$Ordering$$${OrderingClassBuilder.nextId};"),
+      Type.getType(s"Lcom/asakusafw/spark/runtime/ordering/Ordering$$${flowId}$$${OrderingClassBuilder.nextId};"),
       signature,
-      classOf[AbstractOrdering[T]].asType) {
-
-  assert(properties.forall(_._2.getSort == Type.METHOD))
+      classOf[AbstractOrdering[Seq[_]]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
     methodDef.newMethod("compare", Type.INT_TYPE, Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { implicit mb =>
@@ -34,34 +33,37 @@ class OrderingClassBuilder[T] private (
       val yVar = `var`(classOf[AnyRef].asType, xVar.nextLocal)
       `return`(
         thisVar.push().invokeV("compare", Type.INT_TYPE,
-          xVar.push().cast(ownerType), yVar.push().cast(ownerType)))
+          xVar.push().cast(classOf[Seq[_]].asType), yVar.push().cast(classOf[Seq[_]].asType)))
     }
 
-    methodDef.newMethod("compare", Type.INT_TYPE, Seq(ownerType, ownerType)) { implicit mb =>
+    methodDef.newMethod("compare", Type.INT_TYPE, Seq(classOf[Seq[_]].asType, classOf[Seq[_]].asType)) { implicit mb =>
       import mb._
-      val xVar = `var`(ownerType, thisVar.nextLocal)
-      val yVar = `var`(ownerType, xVar.nextLocal)
-
-      def compare(head: MethodDesc, tail: Seq[MethodDesc]): Stack = {
-        val (methodName, methodType) = head
-        val xPropVar = xVar.push().invokeV(methodName, methodType.getReturnType).store(yVar.nextLocal)
-        val yPropVar = yVar.push().invokeV(methodName, methodType.getReturnType).store(xPropVar.nextLocal)
-        val cmp = compilers(methodType.getReturnType).compare(xPropVar, yPropVar)
-        if (tail.isEmpty) {
-          cmp
-        } else {
-          cmp.dup().ifEq0(
-            {
-              cmp.pop()
-              compare(tail.head, tail.tail)
-            },
-            cmp)
-        }
-      }
+      val xVar = `var`(classOf[Seq[_]].asType, thisVar.nextLocal)
+      val yVar = `var`(classOf[Seq[_]].asType, xVar.nextLocal)
 
       if (properties.isEmpty) {
         `return`(ldc(0))
       } else {
+        val xIterVar = xVar.push().invokeI("iterator", classOf[Iterator[_]].asType).store(yVar.nextLocal)
+        val yIterVar = yVar.push().invokeI("iterator", classOf[Iterator[_]].asType).store(xIterVar.nextLocal)
+
+        def compare(head: Type, tail: Seq[Type]): Stack = {
+          val xProp = xIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(head.boxed)
+          val xPropVar = (if (head.isPrimitive) xProp.unbox() else xProp).store(yIterVar.nextLocal)
+          val yProp = yIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(head.boxed)
+          val yPropVar = (if (head.isPrimitive) yProp.unbox() else yProp).store(xPropVar.nextLocal)
+          val cmp = compilers(head).compare(xPropVar, yPropVar)
+          if (tail.isEmpty) {
+            cmp
+          } else {
+            cmp.dup().ifNe0(
+              cmp,
+              {
+                cmp.pop()
+                compare(tail.head, tail.tail)
+              })
+          }
+        }
         `return`(compare(properties.head, properties.tail))
       }
     }
@@ -74,21 +76,26 @@ object OrderingClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  def apply[T](
-    ownerType: Type,
-    properties: Seq[MethodDesc],
-    compilers: Map[Type, OrderingCompiler]): OrderingClassBuilder[_] = {
+  private[this] val cache: mutable.Map[(String, Seq[Type]), OrderingClassBuilder] =
+    mutable.Map.empty
 
-    assert(properties.forall(_._2.getSort == Type.METHOD))
-
-    val signature = new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[AbstractOrdering[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-            _.newClassType(ownerType)
+  def apply(
+    flowId: String,
+    properties: Seq[Type],
+    compilers: Map[Type, OrderingCompiler]): OrderingClassBuilder = {
+    cache.getOrElse(
+      (flowId, properties), {
+        val signature = new ClassSignatureBuilder()
+          .newSuperclass {
+            _.newClassType(classOf[AbstractOrdering[_]].asType) {
+              _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Seq[_]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Any].asType)
+                }
+              }
+            }
           }
-        }
-      }
-    new OrderingClassBuilder[T](ownerType, signature.build(), properties, compilers)
+        new OrderingClassBuilder(flowId, signature.build(), properties, compilers)
+      })
   }
 }

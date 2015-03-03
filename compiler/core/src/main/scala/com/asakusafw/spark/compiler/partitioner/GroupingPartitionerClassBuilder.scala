@@ -3,16 +3,18 @@ package partitioner
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.mutable
+
 import org.apache.spark.Partitioner
 import org.objectweb.asm.Type
 
 import com.asakusafw.spark.tools.asm._
 
 class GroupingPartitionerClassBuilder private (
-  keyType: Type,
-  properties: Seq[MethodDesc])
+  flowId: String,
+  properties: Seq[Type])
     extends ClassBuilder(
-      Type.getType(s"L${keyType.getInternalName}$$Grouping$$${GroupingPartitionerClassBuilder.nextId};"),
+      Type.getType(s"Lcom/asakusafw/spark/runtime/partitioner/Partitioner$$${flowId}$$${GroupingPartitionerClassBuilder.nextId};"),
       classOf[Partitioner].asType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
@@ -35,21 +37,15 @@ class GroupingPartitionerClassBuilder private (
 
     methodDef.newMethod("getPartition", Type.INT_TYPE, Seq(classOf[AnyRef].asType)) { mb =>
       import mb._
-      val kVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
-      val keyVar = kVar.push().cast(keyType).store(kVar.nextLocal)
-      val hash = keyVar.push().ifNull(
+      val keyVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
+      val seqVar = keyVar.push().cast(classOf[Seq[_]].asType).store(keyVar.nextLocal)
+      val hash = seqVar.push().ifNull(
         ldc(0),
-        (ldc(1) /: properties) {
-          case (result, (methodName, methodType)) =>
-            result.multiply(ldc(31))
-              .add {
-                val property = keyVar.push().invokeV(methodName, methodType.getReturnType)
-                (if (property.isPrimitive) {
-                  property.box()
-                } else {
-                  property
-                }).invokeV("hashCode", Type.INT_TYPE)
-              }
+        (ldc(1) /: properties.zipWithIndex) {
+          case (result, (t, i)) =>
+            result.multiply(ldc(31)).add(
+              seqVar.push().invokeI("apply", classOf[AnyRef].asType, ldc(i)).cast(t.boxed)
+                .invokeV("hashCode", Type.INT_TYPE))
         })
       val part = hash.remainder(thisVar.push().getField("numPartitions", Type.INT_TYPE))
       `return`(
@@ -66,9 +62,12 @@ object GroupingPartitionerClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  def apply(
-    ownerType: Type,
-    properties: Seq[MethodDesc]): GroupingPartitionerClassBuilder = {
-    new GroupingPartitionerClassBuilder(ownerType, properties)
+  private[this] val cache: mutable.Map[(String, Seq[Type]), GroupingPartitionerClassBuilder] =
+    mutable.Map.empty
+
+  def apply(flowId: String, properties: Seq[Type]): GroupingPartitionerClassBuilder = {
+    cache.getOrElseUpdate(
+      (flowId, properties),
+      new GroupingPartitionerClassBuilder(flowId, properties))
   }
 }
