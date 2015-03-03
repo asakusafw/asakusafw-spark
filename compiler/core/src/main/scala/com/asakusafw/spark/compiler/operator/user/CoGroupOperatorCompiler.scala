@@ -46,7 +46,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       ++ outputDataModelTypes.map(_ => classOf[Result[_]].asType)
       ++ arguments.map(_.getValue.getValueType.asType))
 
-    val builder = new CoGroupFragmentClassBuilder with OperatorField with OutputFragments {
+    val builder = new CoGroupFragmentClassBuilder(context.flowId) with OperatorField with OutputFragments {
 
       override def operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs

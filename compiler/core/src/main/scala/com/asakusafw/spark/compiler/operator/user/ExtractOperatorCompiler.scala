@@ -45,7 +45,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
       +: outputDataModelTypes.map(_ => classOf[Result[_]].asType)
       ++: arguments.map(_.getValue.getValueType.asType))
 
-    val builder = new FragmentClassBuilder(inputDataModelType) with OperatorField with OutputFragments {
+    val builder = new FragmentClassBuilder(context.flowId, inputDataModelType) with OperatorField with OutputFragments {
 
       override val operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs

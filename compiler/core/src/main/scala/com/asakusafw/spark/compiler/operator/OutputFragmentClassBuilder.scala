@@ -7,8 +7,9 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
 
-class OutputFragmentClassBuilder(dataModelType: Type)
+class OutputFragmentClassBuilder(flowId: String, dataModelType: Type)
     extends FragmentClassBuilder(
+      flowId,
       dataModelType,
       Some(OutputFragmentClassBuilder.signature(dataModelType)),
       classOf[OutputFragment[_]].asType) {

@@ -118,6 +118,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
 
     val compiler = resolvers(CoGroupSubPlan)
     val context = compiler.Context(
+      flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,

@@ -10,16 +10,17 @@ import com.asakusafw.spark.runtime.fragment.CoGroupFragment
 import com.asakusafw.spark.tools.asm._
 
 abstract class CoGroupFragmentClassBuilder(
+  flowId: String,
   signature: Option[String],
   superType: Type,
   interfaceTypes: Type*)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[CoGroupFragment].asType.getInternalName}$$${CoGroupFragmentClassBuilder.nextId};"),
+      Type.getType(s"L${classOf[CoGroupFragment].asType.getInternalName}$$${flowId}$$${CoGroupFragmentClassBuilder.nextId};"),
       signature,
       superType,
       interfaceTypes: _*) {
 
-  def this() = this(None, classOf[CoGroupFragment].asType)
+  def this(flowId: String) = this(flowId, None, classOf[CoGroupFragment].asType)
 }
 
 object CoGroupFragmentClassBuilder {

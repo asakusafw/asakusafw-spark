@@ -18,7 +18,7 @@ trait OperatorCompiler {
 
 object OperatorCompiler {
 
-  case class Context(jpContext: JPContext)
+  case class Context(flowId: String, jpContext: JPContext)
 
   def compile(operator: Operator)(implicit context: Context): Type = {
     operator match {
@@ -30,7 +30,7 @@ object OperatorCompiler {
           op.getAnnotation.getDeclaringClass.resolve(context.jpContext.getClassLoader))
           .compile(op)
       case op: MarkerOperator =>
-        val builder = new OutputFragmentClassBuilder(op.getInput.getDataType.asType)
+        val builder = new OutputFragmentClassBuilder(context.flowId, op.getInput.getDataType.asType)
         context.jpContext.addClass(builder)
     }
   }

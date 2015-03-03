@@ -13,10 +13,11 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class InputDriverClassBuilder(
+  flowId: String,
   val dataModelType: Type,
   val branchKeyType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[InputDriver[_, _]].asType.getInternalName}$$${InputDriverClassBuilder.nextId};"),
+      Type.getType(s"L${classOf[InputDriver[_, _]].asType.getInternalName}$$${flowId}$$${InputDriverClassBuilder.nextId};"),
       Option(InputDriverClassBuilder.signature(dataModelType, branchKeyType)),
       classOf[InputDriver[_, _]].asType)
     with Branching {

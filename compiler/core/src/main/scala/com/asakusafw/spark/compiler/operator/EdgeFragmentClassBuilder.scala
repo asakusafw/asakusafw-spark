@@ -7,8 +7,9 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 
-class EdgeFragmentClassBuilder(dataModelType: Type)
+class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
     extends FragmentClassBuilder(
+      flowId,
       dataModelType,
       Some(EdgeFragmentClassBuilder.signature(dataModelType)),
       classOf[EdgeFragment[_]].asType) {

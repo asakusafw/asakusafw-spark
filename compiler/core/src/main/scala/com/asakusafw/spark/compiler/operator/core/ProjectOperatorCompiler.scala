@@ -34,7 +34,7 @@ class ProjectOperatorCompiler extends CoreOperatorCompiler {
     val outputDataModelRef = context.jpContext.getDataModelLoader.load(output.getDataType)
     val outputDataModelType = outputDataModelRef.getDeclaration.asType
 
-    val builder = new CoreOperatorFragmentClassBuilder(inputDataModelType, outputDataModelType) {
+    val builder = new CoreOperatorFragmentClassBuilder(context.flowId, inputDataModelType, outputDataModelType) {
 
       override def defAddMethod(mb: MethodBuilder): Unit = {
         import mb._

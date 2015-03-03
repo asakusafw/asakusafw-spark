@@ -16,6 +16,7 @@ import com.asakusafw.spark.tools.asm.ClassBuilder
 trait SubPlanCompiler {
 
   case class Context(
+    flowId: String,
     jpContext: JPContext,
     fragments: mutable.ArrayBuffer[Type] = mutable.ArrayBuffer.empty)
 

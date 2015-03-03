@@ -67,7 +67,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     assert(outputSubPlan.getElements.size === 1)
 
     val outputCompiler = resolvers(OutputSubPlan)
-    val outputCompilerContext = outputCompiler.Context(jpContext = jpContext)
+    val outputCompilerContext = outputCompiler.Context(flowId = "flowId", jpContext = jpContext)
     val outputDriverType = outputCompiler.compile(outputSubPlan.getElements.head)(outputCompilerContext)
 
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
@@ -112,7 +112,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     assert(outputSubPlan.getElements.size === 1)
 
     val inputCompiler = resolvers(InputSubPlan)
-    val inputCompilerContext = inputCompiler.Context(jpContext = jpContext)
+    val inputCompilerContext = inputCompiler.Context(flowId = "flowId", jpContext = jpContext)
     val inputDriverType = inputCompiler.compile(inputSubPlan.getElements.head)(inputCompilerContext)
 
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge, Long]])

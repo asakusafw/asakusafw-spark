@@ -29,7 +29,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
     val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
 
-    val builder = new OutputDriverClassBuilder(output.getDataType.asType) {
+    val builder = new OutputDriverClassBuilder(context.flowId, output.getDataType.asType) {
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)

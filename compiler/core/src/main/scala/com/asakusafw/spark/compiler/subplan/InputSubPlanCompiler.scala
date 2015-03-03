@@ -31,7 +31,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
     val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
 
-    implicit val compilerContext = OperatorCompiler.Context(context.jpContext)
+    implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
     val operators = subplan.getOperators.filterNot(_ == input).map { operator =>
       operator -> OperatorCompiler.compile(operator)
     }.toMap[Operator, Type]
@@ -42,12 +42,12 @@ class InputSubPlanCompiler extends SubPlanCompiler {
         case output if output.getOpposites.size > 1 => output.getDataType.asType
       }
     }.map { dataType =>
-      val builder = new EdgeFragmentClassBuilder(dataType)
+      val builder = new EdgeFragmentClassBuilder(context.flowId, dataType)
       dataType -> context.jpContext.addClass(builder)
     }.toMap
     context.fragments ++= edges.values
 
-    val builder = new InputDriverClassBuilder(input.getDataType.asType, Type.LONG_TYPE) {
+    val builder = new InputDriverClassBuilder(context.flowId, input.getDataType.asType, Type.LONG_TYPE) {
 
       override def outputMarkers: Seq[MarkerOperator] = outputs
 

@@ -31,7 +31,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
     val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
 
-    implicit val compilerContext = OperatorCompiler.Context(context.jpContext)
+    implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
     val operators = subplan.getOperators.map { operator =>
       operator -> OperatorCompiler.compile(operator)
     }.toMap[Operator, Type]
@@ -42,12 +42,12 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
         case output if output.getOpposites.size > 1 => output.getDataType.asType
       }
     }.map { dataType =>
-      val builder = new EdgeFragmentClassBuilder(dataType)
+      val builder = new EdgeFragmentClassBuilder(context.flowId, dataType)
       dataType -> context.jpContext.addClass(builder)
     }.toMap
     context.fragments ++= edges.values
 
-    val builder = new CoGroupDriverClassBuilder(Type.LONG_TYPE, classOf[AnyRef].asType) {
+    val builder = new CoGroupDriverClassBuilder(context.flowId, Type.LONG_TYPE, classOf[AnyRef].asType) {
 
       override def outputMarkers: Seq[MarkerOperator] = outputs
 

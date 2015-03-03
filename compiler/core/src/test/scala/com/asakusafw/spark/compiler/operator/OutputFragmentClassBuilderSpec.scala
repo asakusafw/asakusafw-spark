@@ -19,7 +19,7 @@ class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   behavior of classOf[OutputFragmentClassBuilder].getSimpleName
 
   it should "compile OutputFragment" in {
-    val builder = new OutputFragmentClassBuilder(classOf[TestModel].asType)
+    val builder = new OutputFragmentClassBuilder("flowId", classOf[TestModel].asType)
     val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[TestModel]])
 
     val fragment = cls.newInstance

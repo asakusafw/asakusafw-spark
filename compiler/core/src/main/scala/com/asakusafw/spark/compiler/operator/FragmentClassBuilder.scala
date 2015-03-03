@@ -9,18 +9,20 @@ import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 
 abstract class FragmentClassBuilder(
+  flowId: String,
   val dataModelType: Type,
   signature: Option[String],
   superType: Type,
   interfaceTypes: Type*)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[Fragment[_]].asType.getInternalName}$$${FragmentClassBuilder.nextId};"),
+      Type.getType(s"L${classOf[Fragment[_]].asType.getInternalName}$$${flowId}$$${FragmentClassBuilder.nextId};"),
       signature,
       superType,
       interfaceTypes: _*) {
 
-  def this(dataModelType: Type) =
+  def this(flowId: String, dataModelType: Type) =
     this(
+      flowId,
       dataModelType,
       Option(FragmentClassBuilder.signature(dataModelType)),
       classOf[Fragment[_]].asType)
