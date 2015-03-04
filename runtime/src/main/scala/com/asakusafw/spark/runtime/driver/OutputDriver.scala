@@ -13,7 +13,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 
 abstract class OutputDriver[T <: DataModel[T]: ClassTag](
-  @transient sc: SparkContext,
+  @transient val sc: SparkContext,
   @transient input: RDD[T])
     extends SubPlanDriver[Nothing] {
 

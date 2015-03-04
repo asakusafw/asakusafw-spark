@@ -12,7 +12,7 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver[B, K](
-  @transient sc: SparkContext,
+  @transient val sc: SparkContext,
   @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
   @transient part: Partitioner,
   @transient grouping: Ordering[K])

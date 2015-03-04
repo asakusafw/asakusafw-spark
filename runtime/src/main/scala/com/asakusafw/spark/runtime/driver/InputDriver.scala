@@ -16,7 +16,7 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
-  @transient sc: SparkContext)
+  @transient val sc: SparkContext)
     extends SubPlanDriver[B] {
 
   def paths: Set[String]
