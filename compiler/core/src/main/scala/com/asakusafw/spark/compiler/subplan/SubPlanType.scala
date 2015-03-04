@@ -7,5 +7,6 @@ object SubPlanType {
 
   case object InputSubPlan extends SubPlanType
   case object OutputSubPlan extends SubPlanType
+  case object MapSubPlan extends SubPlanType
   case object CoGroupSubPlan extends SubPlanType
 }
