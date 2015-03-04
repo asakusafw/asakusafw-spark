@@ -22,8 +22,6 @@ abstract class CoGroupDriverClassBuilder(
     with Branching {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    super.defConstructors(ctorDef)
-
     ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[Seq[_]].asType, classOf[Partitioner].asType, classOf[Ordering[_]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
@@ -31,6 +29,8 @@ abstract class CoGroupDriverClassBuilder(
       val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
       val groupingVar = `var`(classOf[Ordering[_]].asType, partVar.nextLocal)
       thisVar.push().invokeInit(superType, scVar.push(), inputsVar.push(), partVar.push(), groupingVar.push())
+
+      initFields(mb)
     }
   }
 }

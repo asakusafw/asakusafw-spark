@@ -21,8 +21,6 @@ abstract class InputDriverClassBuilder(
       classOf[InputDriver[_, _]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    super.defConstructors(ctorDef)
-
     ctorDef.newInit(Seq(classOf[SparkContext].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)

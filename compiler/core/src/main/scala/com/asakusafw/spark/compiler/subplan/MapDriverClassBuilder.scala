@@ -23,8 +23,6 @@ abstract class MapDriverClassBuilder(
     with Branching {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    super.defConstructors(ctorDef)
-
     ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[RDD[_]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
@@ -32,6 +30,8 @@ abstract class MapDriverClassBuilder(
       thisVar.push().invokeInit(superType, scVar.push(), prevVar.push(),
         getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
           .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
+
+      initFields(mb)
     }
   }
 }

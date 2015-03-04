@@ -18,7 +18,7 @@ trait OrderingsField extends ClassBuilder {
   def outputMarkers: Seq[MarkerOperator]
 
   def defOrderingsField(fieldDef: FieldDef): Unit = {
-    fieldDef.newStaticFinalField("orderings", classOf[Map[_, _]].asType,
+    fieldDef.newFinalField("orderings", classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
@@ -29,7 +29,7 @@ trait OrderingsField extends ClassBuilder {
 
   def initOrderingsField(mb: MethodBuilder): Unit = {
     import mb._
-    putStatic(thisType, "orderings", classOf[Map[_, _]].asType, initOrderings(mb))
+    thisVar.push().putField("orderings", classOf[Map[_, _]].asType, initOrderings(mb))
   }
 
   def initOrderings(mb: MethodBuilder): Stack = {
@@ -62,7 +62,7 @@ trait OrderingsField extends ClassBuilder {
         }
         .build()) { mb =>
         import mb._
-        `return`(getStatic(thisType, "orderings", classOf[Map[_, _]].asType))
+        `return`(thisVar.push().getField("orderings", classOf[Map[_, _]].asType))
       }
   }
 }

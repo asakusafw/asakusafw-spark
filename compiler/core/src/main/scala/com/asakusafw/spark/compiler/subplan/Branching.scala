@@ -12,21 +12,19 @@ trait Branching
     with PartitionersField
     with OrderingsField {
 
-  abstract override def defFields(fieldDef: FieldDef): Unit = {
+  override def defFields(fieldDef: FieldDef): Unit = {
     defBranchKeysField(fieldDef)
     defPartitionersField(fieldDef)
     defOrderingsField(fieldDef)
   }
 
-  abstract override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newStaticInit { mb =>
-      initBranchKeysField(mb)
-      initPartitionersField(mb)
-      initOrderingsField(mb)
-    }
+  def initFields(mb: MethodBuilder): Unit = {
+    initBranchKeysField(mb)
+    initPartitionersField(mb)
+    initOrderingsField(mb)
   }
 
-  abstract override def defMethods(methodDef: MethodDef): Unit = {
+  override def defMethods(methodDef: MethodDef): Unit = {
     defBranchKeys(methodDef)
     defPartitioners(methodDef)
     defOrderings(methodDef)

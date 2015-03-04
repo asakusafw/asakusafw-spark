@@ -91,10 +91,7 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile))
     val thisType = compiler.compile(subplan.getElements.head)(context)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[SubPlanDriver[Long]])
-    assert(cls.getField("branchKeys").get(null).asInstanceOf[Set[Long]] ===
-      Set(hogeResultMarker, fooResultMarker,
-        nResultMarker).map(_.getOriginalSerialNumber))
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[MapDriver[_, Long]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
@@ -103,6 +100,10 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     }
     val driver = cls.getConstructor(classOf[SparkContext], classOf[RDD[_]]).newInstance(sc, hoges)
     val results = driver.execute()
+
+    assert(driver.branchKeys ===
+      Set(hogeResultMarker, fooResultMarker,
+        nResultMarker).map(_.getOriginalSerialNumber))
 
     val hogeResult = results(hogeResultMarker.getOriginalSerialNumber).collect.toSeq.map(_._2.asInstanceOf[Hoge])
     assert(hogeResult.size === 10)

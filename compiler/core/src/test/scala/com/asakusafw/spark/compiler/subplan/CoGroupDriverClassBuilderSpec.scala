@@ -124,12 +124,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile))
     val thisType = compiler.compile(subplan.getElements.head)(context)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[SubPlanDriver[Long]])
-    assert(cls.getField("branchKeys").get(null).asInstanceOf[Set[Long]] ===
-      Set(hogeResultMarker, fooResultMarker,
-        hogeErrorMarker, fooErrorMarker,
-        hogeAllMarker, fooAllMarker,
-        nResultMarker).map(_.getOriginalSerialNumber))
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver[Long, _]])
 
     val hogeOrd = implicitly[Ordering[(IntOption, Boolean)]]
     val hogeList = sc.parallelize(0 until 10).map { i =>
@@ -149,6 +144,12 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[_]], classOf[Partitioner], classOf[Ordering[_]])
       .newInstance(sc, Seq((hogeList, Some(hogeOrd)), (fooList, Some(fooOrd))), part, groupingOrd)
     val results = driver.execute()
+
+    assert(driver.branchKeys ===
+      Set(hogeResultMarker, fooResultMarker,
+        hogeErrorMarker, fooErrorMarker,
+        hogeAllMarker, fooAllMarker,
+        nResultMarker).map(_.getOriginalSerialNumber))
 
     val hogeResult = results(hogeResultMarker.getOriginalSerialNumber).collect.toSeq.map(_._2.asInstanceOf[Hoge])
     assert(hogeResult.size === 1)

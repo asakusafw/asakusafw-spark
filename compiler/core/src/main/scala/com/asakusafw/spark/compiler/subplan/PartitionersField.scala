@@ -18,7 +18,7 @@ trait PartitionersField extends ClassBuilder {
   def outputMarkers: Seq[MarkerOperator]
 
   def defPartitionersField(fieldDef: FieldDef): Unit = {
-    fieldDef.newStaticFinalField("partitioners", classOf[Map[_, _]].asType,
+    fieldDef.newFinalField("partitioners", classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
@@ -29,7 +29,7 @@ trait PartitionersField extends ClassBuilder {
 
   def initPartitionersField(mb: MethodBuilder): Unit = {
     import mb._
-    putStatic(thisType, "partitioners", classOf[Map[_, _]].asType, initPartitioners(mb))
+    thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners(mb))
   }
 
   def initPartitioners(mb: MethodBuilder): Stack = {
@@ -55,7 +55,7 @@ trait PartitionersField extends ClassBuilder {
         }
         build ()) { mb =>
         import mb._
-        `return`(getStatic(thisType, "partitioners", classOf[Map[_, _]].asType))
+        `return`(thisVar.push().getField("partitioners", classOf[Map[_, _]].asType))
       }
   }
 }
