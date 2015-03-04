@@ -13,14 +13,12 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class InputDriverClassBuilder(
-  flowId: String,
-  val dataModelType: Type,
-  val branchKeyType: Type)
+  val flowId: String,
+  val dataModelType: Type)
     extends ClassBuilder(
       Type.getType(s"L${classOf[InputDriver[_, _]].asType.getInternalName}$$${flowId}$$${InputDriverClassBuilder.nextId};"),
-      Option(InputDriverClassBuilder.signature(dataModelType, branchKeyType)),
-      classOf[InputDriver[_, _]].asType)
-    with Branching {
+      Option(InputDriverClassBuilder.signature(dataModelType)),
+      classOf[InputDriver[_, _]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     super.defConstructors(ctorDef)
@@ -41,13 +39,13 @@ object InputDriverClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  def signature(dataModelType: Type, branchKeyType: Type): String = {
+  def signature(dataModelType: Type): String = {
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[InputDriver[_, _]].asType) {
           _
             .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, branchKeyType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
         }
       }
       .build()

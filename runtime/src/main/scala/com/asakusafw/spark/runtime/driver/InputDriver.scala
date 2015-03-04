@@ -17,39 +17,20 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
   @transient sc: SparkContext)
-    extends SubPlanDriver[B] with Branch[B] {
+    extends SubPlanDriver[B] {
+
+  def paths: Set[String]
+
+  def branchKey: B
 
   override def execute(): Map[B, RDD[(_, _)]] = {
     val job = Job.getInstance(sc.hadoopConfiguration)
     TemporaryInputFormat.setInputPaths(job, paths.map(new Path(_)).toSeq)
-    sc.newAPIHadoopRDD(
+    val rdd = sc.newAPIHadoopRDD(
       job.getConfiguration,
       classOf[TemporaryInputFormat[T]],
       classOf[NullWritable],
       classTag[T].runtimeClass.asInstanceOf[Class[T]])
-      .branch[B, Any, Any](branchKeys, { iter =>
-        val (fragment, outputs) = fragments
-        assert(outputs.keys.toSet == branchKeys)
-        iter.flatMap {
-          case (_, dm) =>
-            fragment.reset()
-            fragment.add(dm)
-            outputs.iterator.flatMap {
-              case (key, output) =>
-                def prepare[T <: DataModel[T]](buffer: mutable.ArrayBuffer[_]) = {
-                  buffer.asInstanceOf[mutable.ArrayBuffer[T]]
-                    .map(out => ((key, shuffleKey(key, out)), out))
-                }
-                prepare(output.buffer)
-            }
-        }
-      },
-        partitioners = partitioners,
-        keyOrderings = orderings,
-        preservesPartitioning = true)
+    Map(branchKey -> rdd.asInstanceOf[RDD[(_, _)]])
   }
-
-  def paths: Set[String]
-
-  def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[U]])
 }

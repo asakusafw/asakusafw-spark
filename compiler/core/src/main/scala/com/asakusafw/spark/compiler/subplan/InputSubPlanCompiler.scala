@@ -23,33 +23,20 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
   def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val inputs = subplan.getInputs.toSet[SubPlan.Input].map(_.getOperator)
+    assert(inputs.size == 1)
     val heads = inputs.flatMap(_.getOutput.getOpposites.map(_.getOwner))
     assert(heads.size == 1)
     assert(heads.head.isInstanceOf[ExternalInput])
     val input = heads.head.asInstanceOf[ExternalInput]
     val inputRef = context.jpContext.addExternalInput(input.getName, input.getInfo)
 
-    val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
+    val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator)
+    assert(outputs.size == 1)
+    val lasts = outputs.flatMap(_.getInput.getOpposites.map(_.getOwner))
+    assert(lasts.size == 1)
+    assert(lasts.head == input)
 
-    implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
-    val operators = subplan.getOperators.filterNot(_ == input).map { operator =>
-      operator -> OperatorCompiler.compile(operator)
-    }.toMap[Operator, Type]
-    context.fragments ++= operators.values
-
-    val edges = subplan.getOperators.flatMap {
-      _.getOutputs.collect {
-        case output if output.getOpposites.size > 1 => output.getDataType.asType
-      }
-    }.map { dataType =>
-      val builder = new EdgeFragmentClassBuilder(context.flowId, dataType)
-      dataType -> context.jpContext.addClass(builder)
-    }.toMap
-    context.fragments ++= edges.values
-
-    val builder = new InputDriverClassBuilder(context.flowId, input.getDataType.asType, Type.LONG_TYPE) {
-
-      override def outputMarkers: Seq[MarkerOperator] = outputs
+    val builder = new InputDriverClassBuilder(context.flowId, input.getDataType.asType) {
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
@@ -65,37 +52,14 @@ class InputSubPlanCompiler extends SubPlanCompiler {
           `return`(builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType))
         }
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty) { mb =>
+        methodDef.newMethod("branchKey", classOf[AnyRef].asType, Seq.empty) { mb =>
           import mb._
-          val nextLocal = new AtomicInteger(thisVar.nextLocal)
+          `return`(thisVar.push().invokeV("branchKey", Type.LONG_TYPE).box().asType(classOf[AnyRef].asType))
+        }
 
-          val fragmentBuilder = new FragmentTreeBuilder(
-            mb,
-            operators,
-            edges,
-            nextLocal)
-          val fragmentVar = fragmentBuilder.build(input.getOperatorPort)
-
-          val outputsVar = {
-            val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-              .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-            outputs.sortBy(_.getOriginalSerialNumber).foreach { op =>
-              builder.invokeI(NameTransformer.encode("+="),
-                classOf[mutable.Builder[_, _]].asType,
-                getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-                  invokeV("apply", classOf[(_, _)].asType,
-                    ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-                    fragmentBuilder.vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
-                  .asType(classOf[AnyRef].asType))
-            }
-            val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-            map.store(nextLocal.getAndAdd(map.size))
-          }
-
-          `return`(
-            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-              invokeV("apply", classOf[(_, _)].asType,
-                fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
+        methodDef.newMethod("branchKey", Type.LONG_TYPE, Seq.empty) { mb =>
+          import mb._
+          `return`(ldc(outputs.head.getOriginalSerialNumber))
         }
       }
     }
