@@ -45,9 +45,17 @@ trait PartitionersField extends ClassBuilder {
   }
 
   def defPartitioners(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("partitioners", classOf[Map[_, _]].asType, Seq.empty) { mb =>
-      import mb._
-      `return`(getStatic(thisType, "partitioners", classOf[Map[_, _]].asType))
-    }
+    methodDef.newMethod("partitioners", classOf[Map[_, _]].asType, Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
+          }
+        }
+        build ()) { mb =>
+        import mb._
+        `return`(getStatic(thisType, "partitioners", classOf[Map[_, _]].asType))
+      }
   }
 }

@@ -22,11 +22,7 @@ trait OrderingsField extends ClassBuilder {
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(classOf[Ordering[_]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[AnyRef].asType)
-              }
-            }
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Ordering[_]].asType)
         }
         .build())
   }
@@ -51,12 +47,15 @@ trait OrderingsField extends ClassBuilder {
   def defOrderings(methodDef: MethodDef): Unit = {
     methodDef.newMethod("orderings", classOf[Map[_, _]].asType, Seq.empty,
       new MethodSignatureBuilder()
+        .newFormalTypeParameter("K", classOf[AnyRef].asType)
         .newReturnType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
               .newTypeArgument(SignatureVisitor.INSTANCEOF) {
                 _.newClassType(classOf[Ordering[_]].asType) {
-                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[AnyRef].asType)
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newTypeVariable("K")
+                  }
                 }
               }
           }

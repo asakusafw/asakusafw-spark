@@ -47,9 +47,16 @@ trait BranchKeysField extends ClassBuilder {
   }
 
   def defBranchKeys(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("branchKeys", classOf[Set[_]].asType, Seq.empty) { mb =>
-      import mb._
-      `return`(getStatic(thisType, "branchKeys", classOf[Set[_]].asType))
-    }
+    methodDef.newMethod("branchKeys", classOf[Set[_]].asType, Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[Set[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+          }
+        }
+        .build()) { mb =>
+        import mb._
+        `return`(getStatic(thisType, "branchKeys", classOf[Set[_]].asType))
+      }
   }
 }
