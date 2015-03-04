@@ -33,16 +33,7 @@ trait LoadClassSugar {
       if (this.bytes.contains(name)) {
         this.bytes.get(name)
       } else {
-        val bs = bytes
-        if (logger.isInfoEnabled) {
-          logger.info {
-            val writer = new StringWriter
-            val cr = new ClassReader(bs)
-            cr.accept(new TraceClassVisitor(new PrintWriter(writer)), 0)
-            writer.toString
-          }
-        }
-        this.bytes.put(name, bs)
+        this.bytes.put(name, bytes)
       }
     }
 
