@@ -50,6 +50,11 @@
 		</dependency>
 
 		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-plan-spark</artifactId>
+		</dependency>
+
+		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
 			<artifactId>asakusafw-spark-backdoor</artifactId>
 			<version>${project.version}</version>
