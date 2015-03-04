@@ -35,7 +35,6 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     val operators = subplan.getOperators.map { operator =>
       operator -> OperatorCompiler.compile(operator)
     }.toMap[Operator, Type]
-    context.fragments ++= operators.values
 
     val edges = subplan.getOperators.flatMap {
       _.getOutputs.collect {
@@ -45,7 +44,6 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       val builder = new EdgeFragmentClassBuilder(context.flowId, dataType)
       dataType -> context.jpContext.addClass(builder)
     }.toMap
-    context.fragments ++= edges.values
 
     val builder = new CoGroupDriverClassBuilder(context.flowId, Type.LONG_TYPE, classOf[AnyRef].asType) {
 

@@ -17,8 +17,7 @@ trait SubPlanCompiler {
 
   case class Context(
     flowId: String,
-    jpContext: JPContext,
-    fragments: mutable.ArrayBuffer[Type] = mutable.ArrayBuffer.empty)
+    jpContext: JPContext)
 
   def of: SubPlanType
 
