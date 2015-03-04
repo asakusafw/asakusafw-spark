@@ -45,7 +45,9 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       dataType -> context.jpContext.addClass(builder)
     }.toMap
 
-    val builder = new CoGroupDriverClassBuilder(context.flowId, Type.LONG_TYPE, classOf[AnyRef].asType) {
+    val builder = new CoGroupDriverClassBuilder(context.flowId, classOf[AnyRef].asType) {
+
+      override def jpContext = context.jpContext
 
       override def outputMarkers: Seq[MarkerOperator] = outputs
 

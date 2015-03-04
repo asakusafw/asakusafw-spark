@@ -14,7 +14,7 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class OutputDriverClassBuilder(
-  flowId: String,
+  val flowId: String,
   val dataModelType: Type)
     extends ClassBuilder(
       Type.getType(s"L${classOf[OutputDriver[_]].asType.getInternalName}$$${flowId}$$${OutputDriverClassBuilder.nextId};"),

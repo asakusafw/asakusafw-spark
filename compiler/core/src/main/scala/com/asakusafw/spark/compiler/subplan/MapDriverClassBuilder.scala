@@ -14,12 +14,11 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class MapDriverClassBuilder(
-  flowId: String,
-  val dataModelType: Type,
-  val branchKeyType: Type)
+  val flowId: String,
+  val dataModelType: Type)
     extends ClassBuilder(
       Type.getType(s"L${classOf[MapDriver[_, _]].asType.getInternalName}$$${flowId}$$${MapDriverClassBuilder.nextId};"),
-      Option(MapDriverClassBuilder.signature(dataModelType, branchKeyType)),
+      Option(MapDriverClassBuilder.signature(dataModelType)),
       classOf[MapDriver[_, _]].asType)
     with Branching {
 
@@ -43,13 +42,13 @@ object MapDriverClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  def signature(dataModelType: Type, branchKeyType: Type): String = {
+  def signature(dataModelType: Type): String = {
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[MapDriver[_, _]].asType) {
           _
             .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, branchKeyType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
         }
       }
       .build()

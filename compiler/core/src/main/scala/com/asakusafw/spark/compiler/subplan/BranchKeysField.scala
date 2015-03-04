@@ -11,15 +11,13 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait BranchKeysField extends ClassBuilder {
 
-  def branchKeyType: Type
-
   def outputMarkers: Seq[MarkerOperator]
 
   def defBranchKeysField(fieldDef: FieldDef): Unit = {
     fieldDef.newStaticFinalField("branchKeys", classOf[Set[_]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Set[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, branchKeyType)
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE)
         }
         .build())
   }

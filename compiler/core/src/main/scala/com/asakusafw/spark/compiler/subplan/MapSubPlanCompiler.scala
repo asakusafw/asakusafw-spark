@@ -44,7 +44,9 @@ class MapSubPlanCompiler extends SubPlanCompiler {
       dataType -> context.jpContext.addClass(builder)
     }.toMap
 
-    val builder = new MapDriverClassBuilder(context.flowId, input.getInputs.head.getDataType.asType, Type.LONG_TYPE) {
+    val builder = new MapDriverClassBuilder(context.flowId, input.getInputs.head.getDataType.asType) {
+
+      override def jpContext = context.jpContext
 
       override def outputMarkers: Seq[MarkerOperator] = outputs
 

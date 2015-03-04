@@ -13,12 +13,11 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class CoGroupDriverClassBuilder(
-  flowId: String,
-  val branchKeyType: Type,
+  val flowId: String,
   val groupingKeyType: Type)
     extends ClassBuilder(
       Type.getType(s"L${classOf[CoGroupDriver[_, _]].asType.getInternalName}$$${flowId}$$${CoGroupDriverClassBuilder.nextId};"),
-      Option(CoGroupDriverClassBuilder.signature(branchKeyType, groupingKeyType)),
+      Option(CoGroupDriverClassBuilder.signature(groupingKeyType)),
       classOf[CoGroupDriver[_, _]].asType)
     with Branching {
 
@@ -42,12 +41,12 @@ object CoGroupDriverClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  def signature(branchKeyType: Type, groupingKeyType: Type): String = {
+  def signature(groupingKeyType: Type): String = {
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[CoGroupDriver[_, _]].asType) {
           _
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, branchKeyType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, groupingKeyType)
         }
       }
