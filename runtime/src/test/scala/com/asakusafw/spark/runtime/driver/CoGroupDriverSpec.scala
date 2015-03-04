@@ -109,7 +109,7 @@ object CoGroupDriverSpec {
       (fragment, outputs.asInstanceOf[Map[String, OutputFragment[T]]])
     }
 
-    override def shuffleKey[T <: DataModel[T], U <: DataModel[U]](branch: String, value: T): U = {
+    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
       value.asInstanceOf[U]
     }
   }

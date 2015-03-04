@@ -12,5 +12,5 @@ trait Branch[B] {
 
   def orderings[K]: Map[B, Ordering[K]]
 
-  def shuffleKey[T <: DataModel[T], U <: DataModel[U]](branch: B, value: T): U
+  def shuffleKey[U](branch: B, value: DataModel[_]): U
 }

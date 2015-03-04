@@ -28,11 +28,11 @@ trait Branching
     defPartitioners(methodDef)
     defOrderings(methodDef)
 
-    methodDef.newMethod("shuffleKey", classOf[DataModel[_]].asType,
+    methodDef.newMethod("shuffleKey", classOf[AnyRef].asType,
       Seq(classOf[AnyRef].asType, classOf[DataModel[_]].asType)) { mb =>
         import mb._
         // TODO
-        `return`(pushNull(classOf[DataModel[_]].asType))
+        `return`(pushNull(classOf[AnyRef].asType))
       }
   }
 }
