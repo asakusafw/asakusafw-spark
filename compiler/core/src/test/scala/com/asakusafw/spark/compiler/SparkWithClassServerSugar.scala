@@ -24,6 +24,7 @@ trait SparkWithClassServerSugar extends BeforeAndAfterEach { self: Suite =>
       conf.setMaster("local[*]")
       conf.setAppName(getClass.getName)
       conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+      conf.set("spark.kryo.registrator", kryoRegistrator)
 
       classServer = new ClassServer(cl, conf)
       val uri = classServer.start()
@@ -33,6 +34,8 @@ trait SparkWithClassServerSugar extends BeforeAndAfterEach { self: Suite =>
       sc = new SparkContext(conf)
     }
   }
+
+  def kryoRegistrator: String = "com.asakusafw.spark.runtime.serializer.KryoRegistrator"
 
   override def afterEach() {
     try {
