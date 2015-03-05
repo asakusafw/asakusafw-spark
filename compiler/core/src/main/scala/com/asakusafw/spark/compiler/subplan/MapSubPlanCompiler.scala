@@ -11,29 +11,35 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.vocabulary.operator.Extract
 
 class MapSubPlanCompiler extends SubPlanCompiler {
 
-  def of: SubPlanType = SubPlanType.MapSubPlan
+  def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+    operator match {
+      case op: UserOperator =>
+        op.getAnnotation.resolve(classLoader).annotationType == classOf[Extract]
+      case _ => false
+    }
+  }
 
   def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val inputs = subplan.getInputs.toSet[SubPlan.Input].map(_.getOperator)
-    val heads = inputs.flatMap(_.getOutput.getOpposites.map(_.getOwner))
-    assert(heads.size == 1)
-    assert(heads.head.isInstanceOf[UserOperator])
-    val input = heads.head.asInstanceOf[UserOperator]
+    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
+    assert(dominant.isInstanceOf[UserOperator])
+    val operator = dominant.asInstanceOf[UserOperator]
 
     val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
 
     implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
     val operators = subplan.getOperators.map { operator =>
-      operator -> OperatorCompiler.compile(operator)
-    }.toMap[Operator, Type]
+      operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator)
+    }.toMap[Long, Type]
 
     val edges = subplan.getOperators.flatMap {
       _.getOutputs.collect {
@@ -43,7 +49,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
       dataType -> EdgeFragmentClassBuilder.getOrCompile(context.flowId, dataType, context.jpContext)
     }.toMap
 
-    val builder = new MapDriverClassBuilder(context.flowId, input.getInputs.head.getDataType.asType) {
+    val builder = new MapDriverClassBuilder(context.flowId, operator.getInputs.head.getDataType.asType) {
 
       override def jpContext = context.jpContext
 
@@ -61,7 +67,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
             operators,
             edges,
             nextLocal)
-          val fragmentVar = fragmentBuilder.build(input)
+          val fragmentVar = fragmentBuilder.build(operator)
 
           val outputsVar = {
             val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)

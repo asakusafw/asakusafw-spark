@@ -11,6 +11,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
@@ -19,24 +20,19 @@ import com.asakusafw.spark.tools.asm._
 
 class InputSubPlanCompiler extends SubPlanCompiler {
 
-  def of: SubPlanType = SubPlanType.InputSubPlan
+  def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+    operator.isInstanceOf[ExternalInput]
+  }
 
   def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val inputs = subplan.getInputs.toSet[SubPlan.Input].map(_.getOperator)
-    assert(inputs.size == 1)
-    val heads = inputs.flatMap(_.getOutput.getOpposites.map(_.getOwner))
-    assert(heads.size == 1)
-    assert(heads.head.isInstanceOf[ExternalInput])
-    val input = heads.head.asInstanceOf[ExternalInput]
-    val inputRef = context.jpContext.addExternalInput(input.getName, input.getInfo)
+    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
+    assert(dominant.isInstanceOf[ExternalInput])
+    val operator = dominant.asInstanceOf[ExternalInput]
+    val inputRef = context.jpContext.addExternalInput(operator.getName, operator.getInfo)
 
     val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator)
-    assert(outputs.size == 1)
-    val lasts = outputs.flatMap(_.getInput.getOpposites.map(_.getOwner))
-    assert(lasts.size == 1)
-    assert(lasts.head == input)
 
-    val builder = new InputDriverClassBuilder(context.flowId, input.getDataType.asType) {
+    val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)

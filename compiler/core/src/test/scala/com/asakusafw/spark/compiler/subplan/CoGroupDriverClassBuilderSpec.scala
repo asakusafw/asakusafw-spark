@@ -18,6 +18,7 @@ import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator, UserOperator }
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
+import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
@@ -107,23 +108,25 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
     operator.findOutput("nResult").connect(nResultMarker.getInput)
 
-    val subplan = PlanBuilder.from(Seq(operator))
+    val plan = PlanBuilder.from(Seq(operator))
       .add(
         Seq(hogeListMarker, fooListMarker),
         Seq(hogeResultMarker, fooResultMarker,
           hogeErrorMarker, fooErrorMarker,
           hogeAllMarker, fooAllMarker,
           nResultMarker)).build().getPlan()
-    assert(subplan.getElements.size === 1)
+    assert(plan.getElements.size === 1)
+    val subplan = plan.getElements.head
+    subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
 
-    val compiler = resolvers(CoGroupSubPlan)
+    val compiler = resolvers(operator)
     val context = compiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile))
-    val thisType = compiler.compile(subplan.getElements.head)(context)
+    val thisType = compiler.compile(subplan)(context)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver[Long, _]])
 
     val hogeOrd = implicitly[Ordering[(IntOption, Boolean)]]

@@ -19,24 +19,28 @@ trait SubPlanCompiler {
     flowId: String,
     jpContext: JPContext)
 
-  def of: SubPlanType
+  def of(operator: Operator, classLoader: ClassLoader): Boolean
 
   def compile(subplan: SubPlan)(implicit context: Context): Type
 }
 
 object SubPlanCompiler {
 
-  private[this] val _operatorCompilers: mutable.Map[ClassLoader, Map[SubPlanType, SubPlanCompiler]] =
+  private[this] val _operatorCompilers: mutable.Map[ClassLoader, (Operator => SubPlanCompiler)] =
     mutable.WeakHashMap.empty
 
-  def apply(classLoader: ClassLoader): Map[SubPlanType, SubPlanCompiler] = {
+  def apply(classLoader: ClassLoader): (Operator => SubPlanCompiler) = {
     _operatorCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
-  def reload(classLoader: ClassLoader): Map[SubPlanType, SubPlanCompiler] = {
-    val ors = ServiceLoader.load(classOf[SubPlanCompiler], classLoader).map {
-      resolver => resolver.of -> resolver
-    }.toMap
+  def reload(classLoader: ClassLoader): (Operator => SubPlanCompiler) = {
+    val compilers = ServiceLoader.load(classOf[SubPlanCompiler], classLoader)
+    val ors: PartialFunction[Operator, SubPlanCompiler] =
+      compilers.map { compiler =>
+        {
+          case operator: Operator if compiler.of(operator, classLoader) => compiler
+        }: PartialFunction[Operator, SubPlanCompiler]
+      }.reduce(_ orElse _)
     _operatorCompilers(classLoader) = ors
     ors
   }
