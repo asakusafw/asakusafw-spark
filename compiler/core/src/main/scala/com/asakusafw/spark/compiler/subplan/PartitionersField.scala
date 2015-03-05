@@ -1,11 +1,18 @@
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
-import org.apache.spark.Partitioner
+import scala.collection.mutable
+import scala.collection.JavaConversions._
+import scala.reflect.NameTransformer
+
+import org.apache.spark.{ Partitioner, SparkContext }
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.lang.compiler.planning.spark.PartinioningParameters
+import com.asakusafw.spark.compiler.partitioner.GroupingPartitionerClassBuilder
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -34,9 +41,34 @@ trait PartitionersField extends ClassBuilder {
 
   def initPartitioners(mb: MethodBuilder): Stack = {
     import mb._
-    // TODO
-    getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-      .invokeV("empty", classOf[Map[_, _]].asType)
+    val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+    outputMarkers.sortBy(_.getOriginalSerialNumber).foreach { op =>
+      Option(op.getAttribute(classOf[PartinioningParameters])).foreach { params =>
+        val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
+        val group = params.getGroup
+        val properties: Seq[Type] =
+          group.getGrouping.map { grouping =>
+            dataModelRef.findProperty(grouping).getType.asType
+          }
+        val partitionerType = GroupingPartitionerClassBuilder.getOrCompile(flowId, properties, jpContext)
+
+        builder.invokeI(
+          NameTransformer.encode("+="),
+          classOf[mutable.Builder[_, _]].asType,
+          getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+            invokeV("apply", classOf[(_, _)].asType,
+              ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType), {
+                val partitioner = pushNew(partitionerType)
+                partitioner.dup().invokeInit(
+                  thisVar.push().invokeV("sc", classOf[SparkContext].asType)
+                    .invokeV("defaultParallelism", Type.INT_TYPE))
+                partitioner.asType(classOf[AnyRef].asType)
+              })
+            .asType(classOf[AnyRef].asType))
+      }
+    }
+    builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
   }
 
   def getPartitionersField(mb: MethodBuilder): Stack = {

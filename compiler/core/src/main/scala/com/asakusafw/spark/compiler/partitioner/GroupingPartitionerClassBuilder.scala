@@ -8,9 +8,10 @@ import scala.collection.mutable
 import org.apache.spark.Partitioner
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.spark.tools.asm._
 
-class GroupingPartitionerClassBuilder private (
+class GroupingPartitionerClassBuilder(
   flowId: String,
   properties: Seq[Type])
     extends ClassBuilder(
@@ -40,12 +41,15 @@ class GroupingPartitionerClassBuilder private (
       val keyVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
       val seqVar = keyVar.push().cast(classOf[Seq[_]].asType).store(keyVar.nextLocal)
       val hash = seqVar.push().ifNull(
-        ldc(0),
-        (ldc(1) /: properties.zipWithIndex) {
-          case (result, (t, i)) =>
-            result.multiply(ldc(31)).add(
-              seqVar.push().invokeI("apply", classOf[AnyRef].asType, ldc(i)).cast(t.boxed)
-                .invokeV("hashCode", Type.INT_TYPE))
+        ldc(0), {
+          val iterVar = seqVar.push().invokeI("iterator", classOf[Iterator[_]].asType).store(seqVar.nextLocal)
+          (ldc(1) /: properties) {
+            case (hash, property) =>
+              hash.multiply(ldc(31)).add(
+                iterVar.push().invokeI("next", classOf[AnyRef].asType)
+                  .cast(property.boxed)
+                  .invokeV("hashCode", Type.INT_TYPE))
+          }
         })
       val part = hash.remainder(thisVar.push().getField("numPartitions", Type.INT_TYPE))
       `return`(
@@ -53,6 +57,8 @@ class GroupingPartitionerClassBuilder private (
           part.add(thisVar.push().getField("numPartitions", Type.INT_TYPE)),
           part))
     }
+
+    // TODO add equals method?
   }
 }
 
@@ -62,12 +68,12 @@ object GroupingPartitionerClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  private[this] val cache: mutable.Map[(String, Seq[Type]), GroupingPartitionerClassBuilder] =
-    mutable.Map.empty
+  private[this] val cache: mutable.Map[(String, Seq[Type]), Type] = mutable.Map.empty
 
-  def apply(flowId: String, properties: Seq[Type]): GroupingPartitionerClassBuilder = {
+  def getOrCompile(flowId: String, properties: Seq[Type], jpContext: JPContext): Type = {
     cache.getOrElseUpdate(
-      (flowId, properties),
-      new GroupingPartitionerClassBuilder(flowId, properties))
+      (flowId, properties), {
+        jpContext.addClass(new GroupingPartitionerClassBuilder(flowId, properties))
+      })
   }
 }

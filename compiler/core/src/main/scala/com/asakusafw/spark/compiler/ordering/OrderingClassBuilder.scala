@@ -10,20 +10,20 @@ import scala.reflect.{ classTag, ClassTag }
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference._
 import com.asakusafw.spark.compiler.spi.OrderingCompiler
 import com.asakusafw.spark.runtime.orderings.AbstractOrdering
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-class OrderingClassBuilder private (
+class OrderingClassBuilder(
   flowId: String,
-  signature: String,
-  properties: Seq[Type],
+  properties: Seq[(Type, Boolean)],
   compilers: Map[Type, OrderingCompiler])
     extends ClassBuilder(
       Type.getType(s"Lcom/asakusafw/spark/runtime/ordering/Ordering$$${flowId}$$${OrderingClassBuilder.nextId};"),
-      signature,
+      OrderingClassBuilder.signature,
       classOf[AbstractOrdering[Seq[_]]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
@@ -47,12 +47,17 @@ class OrderingClassBuilder private (
         val xIterVar = xVar.push().invokeI("iterator", classOf[Iterator[_]].asType).store(yVar.nextLocal)
         val yIterVar = yVar.push().invokeI("iterator", classOf[Iterator[_]].asType).store(xIterVar.nextLocal)
 
-        def compare(head: Type, tail: Seq[Type]): Stack = {
-          val xProp = xIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(head.boxed)
-          val xPropVar = (if (head.isPrimitive) xProp.unbox() else xProp).store(yIterVar.nextLocal)
-          val yProp = yIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(head.boxed)
-          val yPropVar = (if (head.isPrimitive) yProp.unbox() else yProp).store(xPropVar.nextLocal)
-          val cmp = compilers(head).compare(xPropVar, yPropVar)
+        def compare(head: (Type, Boolean), tail: Seq[(Type, Boolean)]): Stack = {
+          val (t, asc) = head
+          val xProp = xIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(t.boxed)
+          val xPropVar = (if (t.isPrimitive) xProp.unbox() else xProp).store(yIterVar.nextLocal)
+          val yProp = yIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(t.boxed)
+          val yPropVar = (if (t.isPrimitive) yProp.unbox() else yProp).store(xPropVar.nextLocal)
+          val cmp = if (asc) {
+            compilers(t).compare(xPropVar, yPropVar)
+          } else {
+            compilers(t).compare(yPropVar, xPropVar)
+          }
           if (tail.isEmpty) {
             cmp
           } else {
@@ -76,26 +81,30 @@ object OrderingClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  private[this] val cache: mutable.Map[(String, Seq[Type]), OrderingClassBuilder] =
-    mutable.Map.empty
-
-  def apply(
-    flowId: String,
-    properties: Seq[Type],
-    compilers: Map[Type, OrderingCompiler]): OrderingClassBuilder = {
-    cache.getOrElse(
-      (flowId, properties), {
-        val signature = new ClassSignatureBuilder()
-          .newSuperclass {
-            _.newClassType(classOf[AbstractOrdering[_]].asType) {
-              _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                _.newClassType(classOf[Seq[_]].asType) {
-                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Any].asType)
-                }
-              }
+  def signature: String = {
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[AbstractOrdering[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+            _.newClassType(classOf[Seq[_]].asType) {
+              _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Any].asType)
             }
           }
-        new OrderingClassBuilder(flowId, signature.build(), properties, compilers)
+        }
+      }
+      .build()
+  }
+
+  private[this] val cache: mutable.Map[(String, Seq[(Type, Boolean)]), Type] = mutable.Map.empty
+
+  def getOrCompile(
+    flowId: String,
+    properties: Seq[(Type, Boolean)],
+    jpContext: JPContext): Type = {
+    cache.getOrElseUpdate(
+      (flowId, properties), {
+        val compilers = OrderingCompiler(jpContext.getClassLoader)
+        jpContext.addClass(new OrderingClassBuilder(flowId, properties, compilers))
       })
   }
 }

@@ -23,7 +23,7 @@ class OrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
   def resolvers = OrderingCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "build data model ordering class" in {
-    val builder = OrderingClassBuilder(
+    val builder = new OrderingClassBuilder(
       "flowId", Seq(
         Type.BOOLEAN_TYPE,
         Type.BYTE_TYPE, Type.CHAR_TYPE, Type.SHORT_TYPE, Type.INT_TYPE,
@@ -35,7 +35,7 @@ class OrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
         classOf[FloatOption].asType, classOf[DoubleOption].asType, classOf[DecimalOption].asType,
         classOf[StringOption].asType,
         classOf[DateOption].asType,
-        classOf[DateTimeOption].asType),
+        classOf[DateTimeOption].asType).map((_, true)),
       resolvers)
     val ordering = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[Ordering[Seq[Any]]]).newInstance
     val x = Seq(

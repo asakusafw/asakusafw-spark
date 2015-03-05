@@ -19,6 +19,7 @@ import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator, UserOperator }
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
+import com.asakusafw.lang.compiler.planning.spark.PartinioningParameters
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
@@ -69,7 +70,12 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     operator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
 
     val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT)
+      .attribute(classOf[PartinioningParameters],
+        new PartinioningParameters(
+          new Group(
+            Seq(PropertyName.of("hogeId")),
+            Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.DESCENDANT))))).build()
     operator.findOutput("fooResult").connect(fooResultMarker.getInput)
 
     val nResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[N]))
@@ -105,19 +111,19 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
       Set(hogeResultMarker, fooResultMarker,
         nResultMarker).map(_.getOriginalSerialNumber))
 
-    val hogeResult = results(hogeResultMarker.getOriginalSerialNumber).collect.toSeq.map(_._2.asInstanceOf[Hoge])
+    val hogeResult = results(hogeResultMarker.getOriginalSerialNumber).map(_._2.asInstanceOf[Hoge]).collect.toSeq
     assert(hogeResult.size === 10)
     assert(hogeResult.map(_.id.get) === (0 until 10))
 
-    val fooResult = results(fooResultMarker.getOriginalSerialNumber).collect.toSeq.map(_._2.asInstanceOf[Foo])
+    val fooResult = results(fooResultMarker.getOriginalSerialNumber)
+      .mapPartitionsWithIndex({ case (part, iter) => iter.map(foo => (part, foo._2.asInstanceOf[Foo])) }).collect.toSeq
     assert(fooResult.size === 45)
-    assert(fooResult.map(foo => (foo.id.get, foo.hogeId.get)) ===
-      (for {
-        i <- (0 until 10)
-        j <- (0 until i)
-      } yield {
-        ((i * (i - 1)) / 2 + j, i)
-      }))
+    fooResult.groupBy(_._2.hogeId.get).foreach {
+      case (hogeId, foos) =>
+        val part = foos.head._1
+        assert(foos.tail.forall(_._1 == part))
+        assert(foos.map(_._2.id.get) === (0 until hogeId).map(j => (hogeId * (hogeId - 1)) / 2 + j).reverse)
+    }
 
     val nResult = results(nResultMarker.getOriginalSerialNumber).collect.toSeq.map(_._2.asInstanceOf[N])
     assert(nResult.size === 10)

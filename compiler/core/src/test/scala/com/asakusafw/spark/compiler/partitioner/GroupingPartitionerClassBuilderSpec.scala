@@ -19,7 +19,7 @@ class GroupingPartitionerClassBuilderSpec extends FlatSpec with LoadClassSugar {
   behavior of classOf[GroupingPartitionerClassBuilder].getSimpleName
 
   it should "build grouping partitioner class" in {
-    val builder = GroupingPartitionerClassBuilder(
+    val builder = new GroupingPartitionerClassBuilder(
       "flowId", Seq(Type.INT_TYPE, classOf[IntOption].asType))
 
     val partitioner = loadClass(builder.thisType.getClassName, builder.build())
