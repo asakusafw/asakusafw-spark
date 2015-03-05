@@ -40,8 +40,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
         case output if output.getOpposites.size > 1 => output.getDataType.asType
       }
     }.map { dataType =>
-      val builder = new EdgeFragmentClassBuilder(context.flowId, dataType)
-      dataType -> context.jpContext.addClass(builder)
+      dataType -> EdgeFragmentClassBuilder.getOrCompile(context.flowId, dataType, context.jpContext)
     }.toMap
 
     val builder = new MapDriverClassBuilder(context.flowId, input.getInputs.head.getDataType.asType) {

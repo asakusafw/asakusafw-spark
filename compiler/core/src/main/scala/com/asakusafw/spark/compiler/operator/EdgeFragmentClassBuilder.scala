@@ -1,8 +1,12 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
+
+import scala.collection.mutable
 
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
@@ -49,5 +53,17 @@ object EdgeFragmentClassBuilder {
         }
       }
       .build()
+  }
+
+  private[this] val cache: mutable.Map[(String, Type), Type] = mutable.Map.empty
+
+  def getOrCompile(
+    flowId: String,
+    dataModelType: Type,
+    jpContext: JPContext): Type = {
+    cache.getOrElseUpdate(
+      (flowId, dataModelType), {
+        jpContext.addClass(new EdgeFragmentClassBuilder(flowId, dataModelType))
+      })
   }
 }
