@@ -46,7 +46,7 @@ trait PartitionersField extends ClassBuilder {
     outputMarkers.sortBy(_.getOriginalSerialNumber).foreach { op =>
       Option(op.getAttribute(classOf[PartinioningParameters])).foreach { params =>
         val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
-        val group = params.getGroup
+        val group = params.getKey
         val properties: Seq[Type] =
           group.getGrouping.map { grouping =>
             dataModelRef.findProperty(grouping).getType.asType

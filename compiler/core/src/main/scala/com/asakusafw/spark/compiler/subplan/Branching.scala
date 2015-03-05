@@ -65,7 +65,7 @@ trait Branching
         outputMarkers.sortBy(_.getOriginalSerialNumber).foreach { op =>
           Option(op.getAttribute(classOf[PartinioningParameters])).foreach { params =>
             val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
-            val group = params.getGroup
+            val group = params.getKey
 
             branchVar.push().unlessNe(ldc(op.getOriginalSerialNumber)) {
               val dataModelVar = valueVar.push().cast(dataModelRef.getDeclaration.asType).store(valueVar.nextLocal)
