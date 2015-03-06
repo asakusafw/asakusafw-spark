@@ -20,11 +20,13 @@ import com.asakusafw.spark.tools.asm._
 
 class InputSubPlanCompiler extends SubPlanCompiler {
 
-  def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
     operator.isInstanceOf[ExternalInput]
   }
 
-  def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def instantiator: Instantiator = ???
+
+  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
     assert(dominant.isInstanceOf[ExternalInput])
     val operator = dominant.asInstanceOf[ExternalInput]

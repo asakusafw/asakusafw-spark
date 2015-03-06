@@ -22,7 +22,7 @@ import com.asakusafw.vocabulary.operator.CoGroup
 
 class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
-  def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
     operator match {
       case op: UserOperator =>
         op.getAnnotation.resolve(classLoader).annotationType == classOf[CoGroup]
@@ -30,7 +30,9 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     }
   }
 
-  def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def instantiator: Instantiator = ???
+
+  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
     assert(dominant.isInstanceOf[UserOperator])
     val operator = dominant.asInstanceOf[UserOperator]

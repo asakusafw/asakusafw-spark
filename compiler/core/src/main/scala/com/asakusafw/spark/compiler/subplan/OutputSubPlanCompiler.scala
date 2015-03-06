@@ -13,21 +13,21 @@ import com.asakusafw.spark.tools.asm._
 
 class OutputSubPlanCompiler extends SubPlanCompiler {
 
-  def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
     operator.isInstanceOf[ExternalOutput]
   }
 
-  def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def instantiator: Instantiator = ???
+
+  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
     assert(dominant.isInstanceOf[ExternalOutput])
     val operator = dominant.asInstanceOf[ExternalOutput]
     val outputPath = s"${operator.getName}/${operator.getSerialNumber}"
 
-    val outputRef = context.jpContext.addExternalOutput(
+    context.jpContext.addExternalOutput(
       operator.getName, operator.getInfo,
       Seq(context.jpContext.getOptions.getRuntimeWorkingPath(s"${outputPath}/part-*")))
-
-    val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
 
     val builder = new OutputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 

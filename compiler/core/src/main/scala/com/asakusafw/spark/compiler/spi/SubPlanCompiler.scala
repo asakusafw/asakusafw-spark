@@ -22,6 +22,8 @@ trait SubPlanCompiler {
   def of(operator: Operator, classLoader: ClassLoader): Boolean
 
   def compile(subplan: SubPlan)(implicit context: Context): Type
+
+  def instantiator: Instantiator
 }
 
 object SubPlanCompiler {
