@@ -3,6 +3,7 @@ package subplan
 
 import scala.collection.JavaConversions._
 
+import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
@@ -10,6 +11,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class OutputSubPlanCompiler extends SubPlanCompiler {
 
@@ -17,7 +19,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
     operator.isInstanceOf[ExternalOutput]
   }
 
-  override def instantiator: Instantiator = ???
+  override def instantiator: Instantiator = OutputSubPlanCompiler.OutputDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
@@ -42,5 +44,30 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
     }
 
     context.jpContext.addClass(builder)
+  }
+}
+
+object OutputSubPlanCompiler {
+
+  object OutputDriverInstantiator extends Instantiator {
+
+    override def newInstance(
+      subplanType: Type,
+      subplan: SubPlan)(implicit context: Context): Var = {
+      import context.mb._
+      val inputs = subplan.getInputs.toSet[SubPlan.Input]
+        .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
+        .map(_.getOperator.getSerialNumber)
+        .map(context.rddVars)
+      val outputSubplan = pushNew(subplanType)
+      outputSubplan.dup().invokeInit(
+        context.scVar.push(), {
+          (inputs.head.push() /: inputs.tail) {
+            case (left, right) =>
+              left.invokeV("union", classOf[RDD[_]].asType, right.push())
+          }
+        })
+      outputSubplan.store(context.nextLocal.getAndAdd(outputSubplan.size))
+    }
   }
 }
