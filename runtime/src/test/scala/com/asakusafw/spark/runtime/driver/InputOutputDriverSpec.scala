@@ -36,10 +36,10 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
       hoge.id.modify(i)
-      hoge
+      (hoge, hoge)
     }
 
-    new TestOutputDriver(sc, hoges, path).execute()
+    new TestOutputDriver(sc, hoges.asInstanceOf[RDD[(_, Hoge)]], path).execute()
 
     val inputs = new TestInputDriver(sc, path).execute()
     assert(inputs("hogeResult").map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
@@ -50,7 +50,7 @@ object InputOutputDriverSpec {
 
   class TestOutputDriver(
     @transient sc: SparkContext,
-    @transient input: RDD[Hoge],
+    @transient input: RDD[(_, Hoge)],
     val path: String)
       extends OutputDriver[Hoge](sc, input)
 
