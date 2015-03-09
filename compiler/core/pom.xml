@@ -120,6 +120,10 @@
 			<artifactId>asakusa-compiler-mock</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-model-testing</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
 			<artifactId>asakusafw-spark-tools-asm</artifactId>
 			<version>${project.version}</version>
