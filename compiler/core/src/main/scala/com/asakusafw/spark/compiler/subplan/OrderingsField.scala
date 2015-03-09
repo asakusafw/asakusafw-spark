@@ -55,7 +55,7 @@ trait OrderingsField extends ClassBuilder {
               (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                 ordering.getDirection == Group.Direction.ASCENDANT)
             }
-        val ordering = OrderingClassBuilder.getOrCompile(flowId, properties, jpContext)
+        val orderingType = OrderingClassBuilder.getOrCompile(flowId, properties, jpContext)
 
         builder.invokeI(
           NameTransformer.encode("+="),
@@ -63,7 +63,7 @@ trait OrderingsField extends ClassBuilder {
           getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
             invokeV("apply", classOf[(_, _)].asType,
               ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-              pushNew0(ordering).asType(classOf[AnyRef].asType))
+              pushNew0(orderingType).asType(classOf[AnyRef].asType))
             .asType(classOf[AnyRef].asType))
       }
     }

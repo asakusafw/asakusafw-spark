@@ -64,6 +64,9 @@ object InputOutputDriverSpec {
     override def branchKey: String = {
       "hogeResult"
     }
+
+    override def shuffleKey[U](branch: String, value: DataModel[_]): U =
+      value.asInstanceOf[Hoge].id.get.asInstanceOf[U]
   }
 
   class Hoge extends DataModel[Hoge] with Writable {

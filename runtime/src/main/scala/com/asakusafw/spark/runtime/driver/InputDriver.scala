@@ -17,7 +17,7 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
   @transient val sc: SparkContext)
-    extends SubPlanDriver[B] {
+    extends SubPlanDriver[B] with PrepareKey[B] {
 
   def paths: Set[String]
 
@@ -31,6 +31,9 @@ abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
       classOf[TemporaryInputFormat[T]],
       classOf[NullWritable],
       classTag[T].runtimeClass.asInstanceOf[Class[T]])
-    Map(branchKey -> rdd.asInstanceOf[RDD[(_, _)]])
+    Map(branchKey -> rdd.map {
+      case (_, dm) =>
+        (shuffleKey(branchKey, dm), dm)
+    })
   }
 }
