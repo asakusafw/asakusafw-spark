@@ -1,7 +1,7 @@
 package com.asakusafw.spark.tools.asm
 
-import java.io.PrintWriter
-import java.io.StringWriter
+import java.io._
+import java.net.{ URL, URLClassLoader }
 
 import scala.collection.mutable
 
@@ -20,6 +20,11 @@ trait LoadClassSugar {
     classLoader.loadClass(classname)
   }
 
+  def loadClass(classname: String, classpath: File): Class[_] = {
+    val classLoader = new URLClassLoader(Array(classpath.toURI.toURL), Thread.currentThread.getContextClassLoader)
+    classLoader.loadClass(classname)
+  }
+
   class SimpleClassLoader(parent: ClassLoader) extends ClassLoader(parent) {
 
     private val bytes = mutable.Map.empty[String, Array[Byte]]
@@ -28,16 +33,7 @@ trait LoadClassSugar {
       if (this.bytes.contains(name)) {
         this.bytes.get(name)
       } else {
-        val bs = bytes
-        if (logger.isInfoEnabled) {
-          logger.info {
-            val writer = new StringWriter
-            val cr = new ClassReader(bs)
-            cr.accept(new TraceClassVisitor(new PrintWriter(writer)), 0)
-            writer.toString
-          }
-        }
-        this.bytes.put(name, bs)
+        this.bytes.put(name, bytes)
       }
     }
 

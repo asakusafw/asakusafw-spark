@@ -17,7 +17,7 @@ class ProjectOperatorCompiler extends CoreOperatorCompiler {
 
   override def of: CoreOperatorKind = CoreOperatorKind.PROJECT
 
-  override def compile(operator: CoreOperator)(implicit context: Context): (Type, Array[Byte]) = {
+  override def compile(operator: CoreOperator)(implicit context: Context): Type = {
     assert(operator.getCoreOperatorKind == of)
 
     val inputs = operator.getInputs.toSeq
@@ -34,7 +34,7 @@ class ProjectOperatorCompiler extends CoreOperatorCompiler {
     val outputDataModelRef = context.jpContext.getDataModelLoader.load(output.getDataType)
     val outputDataModelType = outputDataModelRef.getDeclaration.asType
 
-    val builder = new CoreOperatorFragmentClassBuilder(inputDataModelType, outputDataModelType) {
+    val builder = new CoreOperatorFragmentClassBuilder(context.flowId, inputDataModelType, outputDataModelType) {
 
       override def defAddMethod(mb: MethodBuilder): Unit = {
         import mb._
@@ -55,6 +55,7 @@ class ProjectOperatorCompiler extends CoreOperatorCompiler {
         `return`()
       }
     }
-    (builder.thisType, builder.build())
+
+    context.jpContext.addClass(builder)
   }
 }

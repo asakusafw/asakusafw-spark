@@ -8,5 +8,7 @@ import com.asakusafw.runtime.model.DataModel
 
 trait SubPlanDriver[B] extends Serializable {
 
+  def sc: SparkContext
+
   def execute(): Map[B, RDD[(_, _)]]
 }

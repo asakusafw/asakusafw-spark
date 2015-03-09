@@ -11,22 +11,20 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait BranchKeysField extends ClassBuilder {
 
-  def branchKeyType: Type
-
   def outputMarkers: Seq[MarkerOperator]
 
   def defBranchKeysField(fieldDef: FieldDef): Unit = {
-    fieldDef.newStaticFinalField("branchKeys", classOf[Set[_]].asType,
+    fieldDef.newFinalField("branchKeys", classOf[Set[_]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Set[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, branchKeyType)
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE)
         }
         .build())
   }
 
   def initBranchKeysField(mb: MethodBuilder): Unit = {
     import mb._
-    putStatic(thisType, "branchKeys", classOf[Set[_]].asType, initBranchKeys(mb))
+    thisVar.push().putField("branchKeys", classOf[Set[_]].asType, initBranchKeys(mb))
   }
 
   def initBranchKeys(mb: MethodBuilder): Stack = {
@@ -49,9 +47,16 @@ trait BranchKeysField extends ClassBuilder {
   }
 
   def defBranchKeys(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("branchKeys", classOf[Set[_]].asType, Seq.empty) { mb =>
-      import mb._
-      `return`(getStatic(thisType, "branchKeys", classOf[Set[_]].asType))
-    }
+    methodDef.newMethod("branchKeys", classOf[Set[_]].asType, Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[Set[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+          }
+        }
+        .build()) { mb =>
+        import mb._
+        `return`(thisVar.push().getField("branchKeys", classOf[Set[_]].asType))
+      }
   }
 }

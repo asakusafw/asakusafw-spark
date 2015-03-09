@@ -22,7 +22,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
   override def of: Class[_] = classOf[CoGroup]
 
-  override def compile(operator: UserOperator)(implicit context: Context): (Type, Array[Byte]) = {
+  override def compile(operator: UserOperator)(implicit context: Context): Type = {
     val annotationDesc = operator.getAnnotation
     assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
     val methodDesc = operator.getMethod
@@ -46,7 +46,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       ++ outputDataModelTypes.map(_ => classOf[Result[_]].asType)
       ++ arguments.map(_.getValue.getValueType.asType))
 
-    val builder = new CoGroupFragmentClassBuilder with OperatorField with OutputFragments {
+    val builder = new CoGroupFragmentClassBuilder(context.flowId) with OperatorField with OutputFragments {
 
       override def operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs
@@ -121,6 +121,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
         }
       }
     }
-    (builder.thisType, builder.build())
+
+    context.jpContext.addClass(builder)
   }
 }

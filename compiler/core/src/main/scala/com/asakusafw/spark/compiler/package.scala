@@ -2,7 +2,11 @@ package com.asakusafw.spark
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.JobflowProcessor
 import com.asakusafw.lang.compiler.model.description._
+import com.asakusafw.spark.tools.asm._
+
+import resource._
 
 package object compiler {
 
@@ -44,5 +48,19 @@ package object compiler {
   implicit class AugmentedArrayTypeDescription(val desc: ArrayTypeDescription) extends AnyVal {
 
     def asType: Type = Type.getType(s"[${desc.getComponentType.asType.getDescriptor}")
+  }
+
+  implicit class AugmentedJobflowProcessorContext(val context: JobflowProcessor.Context) extends AnyVal {
+
+    def addClass(builder: ClassBuilder): Type = {
+      addClass(builder.thisType, builder.build())
+    }
+
+    def addClass(t: Type, bytes: Array[Byte]): Type = {
+      for (os <- managed(context.addClassFile(new ClassDescription(t.getClassName)))) {
+        os.write(bytes)
+      }
+      t
+    }
   }
 }

@@ -36,13 +36,13 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
       hoge.id.modify(i)
-      hoge
+      (hoge, hoge)
     }
 
-    new TestOutputDriver(sc, hoges, path).execute()
+    new TestOutputDriver(sc, hoges.asInstanceOf[RDD[(_, Hoge)]], path).execute()
 
     val inputs = new TestInputDriver(sc, path).execute()
-    assert(inputs("hogeResult").collect.toSeq.map(_._2.asInstanceOf[Hoge].id.get) === (0 until 10))
+    assert(inputs("hogeResult").map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
   }
 }
 
@@ -50,7 +50,7 @@ object InputOutputDriverSpec {
 
   class TestOutputDriver(
     @transient sc: SparkContext,
-    @transient input: RDD[Hoge],
+    @transient input: RDD[(_, Hoge)],
     val path: String)
       extends OutputDriver[Hoge](sc, input)
 
@@ -61,23 +61,12 @@ object InputOutputDriverSpec {
 
     override def paths: Set[String] = Set(basePath + "/part-*")
 
-    override def branchKeys: Set[String] = {
-      Set("hogeResult")
+    override def branchKey: String = {
+      "hogeResult"
     }
 
-    override def partitioners: Map[String, Partitioner] = Map.empty
-
-    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
-
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
-      val fragment = new HogeOutputFragment
-      val outputs = Map("hogeResult" -> fragment.asInstanceOf[OutputFragment[U]])
-      (fragment, outputs)
-    }
-
-    override def shuffleKey[T <: DataModel[T], U <: DataModel[U]](branch: String, value: T): U = {
-      value.asInstanceOf[U]
-    }
+    override def shuffleKey[U](branch: String, value: DataModel[_]): U =
+      value.asInstanceOf[Hoge].id.get.asInstanceOf[U]
   }
 
   class Hoge extends DataModel[Hoge] with Writable {
@@ -96,9 +85,5 @@ object InputOutputDriverSpec {
     override def write(out: DataOutput): Unit = {
       id.write(out)
     }
-  }
-
-  class HogeOutputFragment extends OutputFragment[Hoge] {
-    override def newDataModel: Hoge = new Hoge()
   }
 }

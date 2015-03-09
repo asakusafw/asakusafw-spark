@@ -1,14 +1,19 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
+
+import scala.collection.mutable
 
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 
-class EdgeFragmentClassBuilder(dataModelType: Type)
+class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
     extends FragmentClassBuilder(
+      flowId,
       dataModelType,
       Some(EdgeFragmentClassBuilder.signature(dataModelType)),
       classOf[EdgeFragment[_]].asType) {
@@ -48,5 +53,18 @@ object EdgeFragmentClassBuilder {
         }
       }
       .build()
+  }
+
+  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Type), Type]] =
+    mutable.WeakHashMap.empty
+
+  def getOrCompile(
+    flowId: String,
+    dataModelType: Type,
+    jpContext: JPContext): Type = {
+    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
+      (flowId, dataModelType), {
+        jpContext.addClass(new EdgeFragmentClassBuilder(flowId, dataModelType))
+      })
   }
 }
