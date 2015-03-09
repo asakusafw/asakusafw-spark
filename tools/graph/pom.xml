@@ -67,6 +67,10 @@
 			<groupId>org.scalatest</groupId>
 			<artifactId>scalatest_${scala.binary.version}</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-model-testing</artifactId>
+		</dependency>
 	</dependencies>
 
 </project>

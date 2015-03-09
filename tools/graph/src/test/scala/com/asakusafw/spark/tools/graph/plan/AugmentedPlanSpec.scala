@@ -6,7 +6,7 @@ import org.scalatest.junit.JUnitRunner
 
 import scala.collection.JavaConversions._
 
-import com.asakusafw.lang.compiler.model.graph.MockOperators
+import com.asakusafw.lang.compiler.model.testing.MockOperators
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.utils.graph.Graphs
 
