@@ -7,6 +7,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.NameTransformer
 
+import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
@@ -17,6 +18,7 @@ import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.Extract
 
 class MapSubPlanCompiler extends SubPlanCompiler {
@@ -29,7 +31,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
     }
   }
 
-  override def instantiator: Instantiator = ???
+  override def instantiator: Instantiator = MapSubPlanCompiler.MapDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
@@ -96,5 +98,30 @@ class MapSubPlanCompiler extends SubPlanCompiler {
     }
 
     context.jpContext.addClass(builder)
+  }
+}
+
+object MapSubPlanCompiler {
+
+  object MapDriverInstantiator extends Instantiator {
+
+    override def newInstance(
+      subplanType: Type,
+      subplan: SubPlan)(implicit context: Context): Var = {
+      import context.mb._
+      val inputs = subplan.getInputs.toSet[SubPlan.Input]
+        .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
+        .map(_.getOperator.getSerialNumber)
+        .map(context.rddVars)
+      val mapSubplan = pushNew(subplanType)
+      mapSubplan.dup().invokeInit(
+        context.scVar.push(), {
+          (inputs.head.push() /: inputs.tail) {
+            case (left, right) =>
+              left.invokeV("union", classOf[RDD[_]].asType, right.push())
+          }
+        })
+      mapSubplan.store(context.nextLocal.getAndAdd(mapSubplan.size))
+    }
   }
 }
