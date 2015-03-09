@@ -95,13 +95,14 @@ object OrderingClassBuilder {
       .build()
   }
 
-  private[this] val cache: mutable.Map[(String, Seq[(Type, Boolean)]), Type] = mutable.Map.empty
+  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Seq[(Type, Boolean)]), Type]] =
+    mutable.WeakHashMap.empty
 
   def getOrCompile(
     flowId: String,
     properties: Seq[(Type, Boolean)],
     jpContext: JPContext): Type = {
-    cache.getOrElseUpdate(
+    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
       (flowId, properties), {
         val compilers = OrderingCompiler(jpContext.getClassLoader)
         jpContext.addClass(new OrderingClassBuilder(flowId, properties, compilers))

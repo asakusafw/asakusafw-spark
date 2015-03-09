@@ -30,8 +30,8 @@ object OperatorCompiler {
           op.getAnnotation.getDeclaringClass.resolve(context.jpContext.getClassLoader))
           .compile(op)
       case op: MarkerOperator =>
-        val builder = new OutputFragmentClassBuilder(context.flowId, op.getInput.getDataType.asType)
-        context.jpContext.addClass(builder)
+        OutputFragmentClassBuilder.getOrCompile(
+          context.flowId, op.getInput.getDataType.asType, context.jpContext)
     }
   }
 }

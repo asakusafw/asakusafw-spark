@@ -68,10 +68,11 @@ object GroupingPartitionerClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  private[this] val cache: mutable.Map[(String, Seq[Type]), Type] = mutable.Map.empty
+  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Seq[Type]), Type]] =
+    mutable.WeakHashMap.empty
 
   def getOrCompile(flowId: String, properties: Seq[Type], jpContext: JPContext): Type = {
-    cache.getOrElseUpdate(
+    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
       (flowId, properties), {
         jpContext.addClass(new GroupingPartitionerClassBuilder(flowId, properties))
       })

@@ -55,13 +55,14 @@ object EdgeFragmentClassBuilder {
       .build()
   }
 
-  private[this] val cache: mutable.Map[(String, Type), Type] = mutable.Map.empty
+  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Type), Type]] =
+    mutable.WeakHashMap.empty
 
   def getOrCompile(
     flowId: String,
     dataModelType: Type,
     jpContext: JPContext): Type = {
-    cache.getOrElseUpdate(
+    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
       (flowId, dataModelType), {
         jpContext.addClass(new EdgeFragmentClassBuilder(flowId, dataModelType))
       })
