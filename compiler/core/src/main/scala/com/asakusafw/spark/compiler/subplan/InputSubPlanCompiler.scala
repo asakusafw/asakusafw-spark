@@ -17,6 +17,7 @@ import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class InputSubPlanCompiler extends SubPlanCompiler {
 
@@ -24,7 +25,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     operator.isInstanceOf[ExternalInput]
   }
 
-  override def instantiator: Instantiator = ???
+  override def instantiator: Instantiator = InputSubPlanCompiler.InputDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
@@ -67,5 +68,20 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     }
 
     context.jpContext.addClass(builder)
+  }
+}
+
+object InputSubPlanCompiler {
+
+  object InputDriverInstantiator extends Instantiator {
+
+    override def newInstance(
+      subplanType: Type,
+      subplan: SubPlan)(implicit context: Context): Var = {
+      import context.mb._
+      val inputSubplan = pushNew(subplanType)
+      inputSubplan.dup().invokeInit(context.scVar.push())
+      inputSubplan.store(context.nextLocal.getAndAdd(inputSubplan.size))
+    }
   }
 }
