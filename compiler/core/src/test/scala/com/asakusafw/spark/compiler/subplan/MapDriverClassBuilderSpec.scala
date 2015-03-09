@@ -20,7 +20,7 @@ import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator, UserOperator }
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
-import com.asakusafw.lang.compiler.planning.spark.PartinioningParameters
+import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
@@ -72,8 +72,8 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
 
     val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT)
-      .attribute(classOf[PartinioningParameters],
-        new PartinioningParameters(
+      .attribute(classOf[PartitioningParameters],
+        new PartitioningParameters(
           new Group(
             Seq(PropertyName.of("hogeId")),
             Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.DESCENDANT))))).build()

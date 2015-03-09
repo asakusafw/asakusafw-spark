@@ -11,7 +11,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
-import com.asakusafw.lang.compiler.planning.spark.PartinioningParameters
+import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -44,7 +44,7 @@ trait OrderingsField extends ClassBuilder {
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     outputMarkers.sortBy(_.getOriginalSerialNumber).foreach { op =>
-      Option(op.getAttribute(classOf[PartinioningParameters])).foreach { params =>
+      Option(op.getAttribute(classOf[PartitioningParameters])).foreach { params =>
         val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
         val group = params.getKey
         val properties: Seq[(Type, Boolean)] =

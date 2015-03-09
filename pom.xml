@@ -10,6 +10,7 @@
 	<properties>
 		<asakusafw.version>0.7.2-hadoop1</asakusafw.version>
 		<asakusafw-lang.version>0.1-SNAPSHOT</asakusafw-lang.version>
+		<asakusafw-planner-spark.version>0.1-SNAPSHOT</asakusafw-planner-spark.version>
 
 		<scala.binary.version>2.10</scala.binary.version>
 		<scala.version>${scala.binary.version}.4</scala.version>
@@ -205,9 +206,9 @@ encoding/<project>=UTF-8
 			</dependency>
 
 			<dependency>
-				<groupId>com.asakusafw.lang.compiler</groupId>
-				<artifactId>asakusa-compiler-plan-spark</artifactId>
-				<version>${asakusafw-lang.version}</version>
+				<groupId>com.asakusafw.planner.spark</groupId>
+				<artifactId>asakusafw-planner-spark</artifactId>
+				<version>${asakusafw-planner-spark.version}</version>
 			</dependency>
 
 			<dependency>

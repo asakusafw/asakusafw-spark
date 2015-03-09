@@ -9,7 +9,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
-import com.asakusafw.lang.compiler.planning.spark.PartinioningParameters
+import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.tools.asm._
 
@@ -63,7 +63,7 @@ trait Branching
         val branchVar = `var`(Type.LONG_TYPE, thisVar.nextLocal)
         val valueVar = `var`(classOf[DataModel[_]].asType, branchVar.nextLocal)
         outputMarkers.sortBy(_.getOriginalSerialNumber).foreach { op =>
-          Option(op.getAttribute(classOf[PartinioningParameters])).foreach { params =>
+          Option(op.getAttribute(classOf[PartitioningParameters])).foreach { params =>
             val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
             val group = params.getKey
 
