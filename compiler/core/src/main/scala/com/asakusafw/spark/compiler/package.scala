@@ -10,7 +10,7 @@ import resource._
 
 package object compiler {
 
-  type MethodDesc = (String, Type)
+  val GeneratedClassPackageInternalName = "com/asakusafw/generated/spark"
 
   implicit class AugmentedTypeDescription(val desc: TypeDescription) extends AnyVal {
 

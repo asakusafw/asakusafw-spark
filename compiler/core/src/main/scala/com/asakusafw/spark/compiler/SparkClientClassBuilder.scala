@@ -7,7 +7,7 @@ import com.asakusafw.spark.tools.asm._
 
 class SparkClientClassBuilder(flowId: String)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[SparkClient].asType.getInternalName}$$${flowId};"),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/SparkClient;"),
       classOf[SparkClient].asType) {
 
 }

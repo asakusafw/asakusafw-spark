@@ -14,7 +14,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
-import com.asakusafw.spark.runtime.fragment.Fragment
+import com.asakusafw.spark.runtime.fragment.{ CoGroupFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.CoGroup
 
