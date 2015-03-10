@@ -40,4 +40,41 @@ class GroupingPartitionerClassBuilderSpec extends FlatSpec with LoadClassSugar {
     assert(partitioner.getPartition(Seq[Any](10, new IntOption().modify(100), 1000L, new LongOption().modify(10000L)))
       === (((1 * 31) + 10) * 31 + ((1 * 31) + 100)) % 10)
   }
+
+  it should "equals or not to other partitioners" in {
+    val classLoader = new SimpleClassLoader(Thread.currentThread.getContextClassLoader)
+
+    val builder = new GroupingPartitionerClassBuilder(
+      "flowId", Seq(Type.INT_TYPE, classOf[IntOption].asType))
+    classLoader.put(builder.thisType.getClassName, builder.build())
+    val cls = classLoader.loadClass(builder.thisType.getClassName, true)
+      .asSubclass(classOf[Partitioner])
+    val ctor = cls.getConstructor(classOf[Int])
+
+    val partitioner = ctor.newInstance(Int.box(10))
+    assert(partitioner === partitioner)
+
+    {
+      val other = ctor.newInstance(Int.box(10))
+      assert(other === partitioner)
+    }
+
+    {
+      val other = ctor.newInstance(Int.box(20))
+      assert(other !== partitioner)
+    }
+
+    {
+      val other = {
+        val builder = new GroupingPartitionerClassBuilder(
+          "flowId", Seq(Type.INT_TYPE, classOf[IntOption].asType))
+        classLoader.put(builder.thisType.getClassName, builder.build())
+        classLoader.loadClass(builder.thisType.getClassName, true)
+          .asSubclass(classOf[Partitioner])
+          .getConstructor(classOf[Int])
+          .newInstance(Int.box(10))
+      }
+      assert(other !== partitioner)
+    }
+  }
 }

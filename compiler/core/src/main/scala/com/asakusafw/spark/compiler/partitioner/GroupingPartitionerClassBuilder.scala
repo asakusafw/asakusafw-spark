@@ -58,7 +58,7 @@ class GroupingPartitionerClassBuilder(
           part))
     }
 
-    // TODO add equals method?
+    defEquals()
   }
 }
 
