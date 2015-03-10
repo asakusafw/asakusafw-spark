@@ -300,7 +300,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     spark { sc =>
       {
-        val hoges = sc.parallelize(0 until 10).map { i =>
+        val hoges = sc.parallelize(0 until 5).map { i =>
           val hoge = new Hoge()
           hoge.id.modify(i)
           hoge
@@ -309,7 +309,20 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Hoge])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge1"))
+        hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+      }
+      {
+        val hoges = sc.parallelize(5 until 10).map { i =>
+          val hoge = new Hoge()
+          hoge.id.modify(i)
+          hoge
+        }
+        val job = Job.getInstance(sc.hadoopConfiguration)
+        job.setOutputKeyClass(classOf[NullWritable])
+        job.setOutputValueClass(classOf[Hoge])
+        job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge2"))
         hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
@@ -328,23 +341,41 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       }
     }
 
-    val hogeBeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+    val hoge1BeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
 
-    val hogeInputOperator = ExternalInput.builder("hoge/part-*",
+    val hoge1InputOperator = ExternalInput.builder("hoge1/part-*",
       new ExternalInputInfo.Basic(
         ClassDescription.of(classOf[Hoge]),
-        "hoges",
+        "hoges1",
         ClassDescription.of(classOf[Hoge]),
         ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin", ClassDescription.of(classOf[Hoge]), hogeBeginMarker.getOutput)
+      .input("begin1", ClassDescription.of(classOf[Hoge]), hoge1BeginMarker.getOutput)
       .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge])).build()
 
-    val hogeCpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+    val hoge1CpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT)
       .attribute(classOf[PartitioningParameters],
         new PartitioningParameters(new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))).build()
-    hogeInputOperator.findOutput(ExternalInput.PORT_NAME).connect(hogeCpMarker.getInput)
+    hoge1InputOperator.findOutput(ExternalInput.PORT_NAME).connect(hoge1CpMarker.getInput)
+
+    val hoge2BeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
+
+    val hoge2InputOperator = ExternalInput.builder("hoge2/part-*",
+      new ExternalInputInfo.Basic(
+        ClassDescription.of(classOf[Hoge]),
+        "hoges2",
+        ClassDescription.of(classOf[Hoge]),
+        ExternalInputInfo.DataSize.UNKNOWN))
+      .input("begin2", ClassDescription.of(classOf[Hoge]), hoge2BeginMarker.getOutput)
+      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge])).build()
+
+    val hoge2CpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT)
+      .attribute(classOf[PartitioningParameters],
+        new PartitioningParameters(new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))).build()
+    hoge2InputOperator.findOutput(ExternalInput.PORT_NAME).connect(hoge2CpMarker.getInput)
 
     val fooBeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
@@ -371,7 +402,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       classOf[CoGroup], classOf[Ops], "cogroup")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]),
-        hogeCpMarker.getOutput)
+        hoge1CpMarker.getOutput, hoge2CpMarker.getOutput)
       .input("foos", ClassDescription.of(classOf[Foo]),
         new Group(
           Seq(PropertyName.of("hogeId")),
@@ -432,7 +463,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     fooErrorOutputOperator.findOutput("end").connect(fooErrorEndMarker.getInput)
 
     val graph = new OperatorGraph(Seq(
-      hogeBeginMarker, hogeInputOperator, hogeCpMarker,
+      hoge1BeginMarker, hoge1InputOperator, hoge1CpMarker,
+      hoge2BeginMarker, hoge2InputOperator, hoge2CpMarker,
       fooBeginMarker, fooInputOperator, fooCpMarker,
       cogroupOperator,
       hogeResultMarker, hogeResultOutputOperator, hogeResultEndMarker,
@@ -445,14 +477,18 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       override def preparePlan(graph: OperatorGraph): Plan = {
         val plan = PlanBuilder.from(graph.getOperators)
           .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hogeBeginMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hogeCpMarker.getOriginalSerialNumber).get))
+            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge1BeginMarker.getOriginalSerialNumber).get),
+            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge1CpMarker.getOriginalSerialNumber).get))
+          .add(
+            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge2BeginMarker.getOriginalSerialNumber).get),
+            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge2CpMarker.getOriginalSerialNumber).get))
           .add(
             Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooBeginMarker.getOriginalSerialNumber).get),
             Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooCpMarker.getOriginalSerialNumber).get))
           .add(
             Seq(
-              graph.getOperators.find(_.getOriginalSerialNumber == hogeCpMarker.getOriginalSerialNumber).get,
+              graph.getOperators.find(_.getOriginalSerialNumber == hoge1CpMarker.getOriginalSerialNumber).get,
+              graph.getOperators.find(_.getOriginalSerialNumber == hoge2CpMarker.getOriginalSerialNumber).get,
               graph.getOperators.find(_.getOriginalSerialNumber == fooCpMarker.getOriginalSerialNumber).get),
             Seq(
               graph.getOperators.find(_.getOriginalSerialNumber == hogeResultMarker.getOriginalSerialNumber).get,
@@ -472,8 +508,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
             Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooErrorMarker.getOriginalSerialNumber).get),
             Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooErrorEndMarker.getOriginalSerialNumber).get))
           .build().getPlan
-        assert(plan.getElements.size === 7)
-        Seq(hogeInputOperator, fooInputOperator, cogroupOperator,
+        assert(plan.getElements.size === 8)
+        Seq(hoge1InputOperator, hoge2InputOperator, fooInputOperator, cogroupOperator,
           hogeResultOutputOperator, hogeErrorOutputOperator,
           fooResultOutputOperator, fooErrorOutputOperator).foreach { op =>
             plan.getElements.foreach { subplan =>
