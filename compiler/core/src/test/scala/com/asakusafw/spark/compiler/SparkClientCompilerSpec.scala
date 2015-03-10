@@ -32,7 +32,6 @@ import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.spark.runtime.SparkClient
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.graph.plan._
 import com.asakusafw.utils.graph.Graphs
 import com.asakusafw.vocabulary.operator._
 
@@ -104,7 +103,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
             Seq(graph.getOperators.find(_.getOriginalSerialNumber == endMarker.getOriginalSerialNumber).get))
           .build().getPlan
         assert(plan.getElements.size === 2)
-        val sorted = Graphs.sortPostOrder(plan.toDependencyGraph)
+        val sorted = Graphs.sortPostOrder(Planning.toDependencyGraph(plan))
         sorted(0).putAttribute(classOf[DominantOperator], new DominantOperator(inputOperator))
         sorted(1).putAttribute(classOf[DominantOperator], new DominantOperator(outputOperator))
         plan

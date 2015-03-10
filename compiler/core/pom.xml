@@ -69,11 +69,6 @@
 			<artifactId>asakusafw-spark-tools-asm</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>com.asakusafw.spark</groupId>
-			<artifactId>asakusafw-spark-tools-graph</artifactId>
-			<version>${project.version}</version>
-		</dependency>
 
 		<dependency>
 			<groupId>org.apache.spark</groupId>

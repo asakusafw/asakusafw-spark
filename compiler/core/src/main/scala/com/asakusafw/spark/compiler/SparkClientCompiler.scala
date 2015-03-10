@@ -21,7 +21,6 @@ import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSpa
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.spark.tools.graph.plan._
 import com.asakusafw.utils.graph.Graphs
 
 import resource._
@@ -32,7 +31,7 @@ class SparkClientCompiler extends JobflowProcessor {
 
   override def process(jpContext: JPContext, source: Jobflow): Unit = {
     val plan = preparePlan(source.getOperatorGraph.copy)
-    val subplans = Graphs.sortPostOrder(plan.toDependencyGraph).toSeq
+    val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
     val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
 
