@@ -67,29 +67,30 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .build()
 
     val compiler = resolvers(classOf[CoGroup])
-    val (thisType, bytes) = compiler.compile(operator)(
-      OperatorCompiler.Context(
-        jpContext = new MockJobflowProcessorContext(
-          new CompilerOptions("buildid", "", Map.empty[String, String]),
-          Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("CoGroupOperatorCompilerSpec").toFile)))
-    val cls = loadClass(thisType.getClassName, bytes)
-      .asSubclass(classOf[CoGroupFragment])
+    val classpath = Files.createTempDirectory("CoGroupOperatorCompilerSpec").toFile
+    val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+    val thisType = compiler.compile(operator)(context)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[CoGroupFragment])
 
     val (hogeResult, hogeError) = {
-      val builder = new OutputFragmentClassBuilder(classOf[Hoge].asType)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Hoge].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Hoge]])
       (cls.newInstance, cls.newInstance)
     }
 
     val (fooResult, fooError) = {
-      val builder = new OutputFragmentClassBuilder(classOf[Foo].asType)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
       (cls.newInstance, cls.newInstance)
     }
 
     val nResult = {
-      val builder = new OutputFragmentClassBuilder(classOf[N].asType)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[N].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[N]])
       cls.newInstance
     }

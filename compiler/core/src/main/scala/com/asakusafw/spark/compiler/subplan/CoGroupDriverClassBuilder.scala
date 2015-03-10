@@ -1,4 +1,5 @@
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
@@ -13,17 +14,15 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class CoGroupDriverClassBuilder(
-  val branchKeyType: Type,
+  val flowId: String,
   val groupingKeyType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[CoGroupDriver[_, _]].asType.getInternalName}$$${CoGroupDriverClassBuilder.nextId};"),
-      Option(CoGroupDriverClassBuilder.signature(branchKeyType, groupingKeyType)),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${CoGroupDriverClassBuilder.nextId};"),
+      Option(CoGroupDriverClassBuilder.signature(groupingKeyType)),
       classOf[CoGroupDriver[_, _]].asType)
     with Branching {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    super.defConstructors(ctorDef)
-
     ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[Seq[_]].asType, classOf[Partitioner].asType, classOf[Ordering[_]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
@@ -31,6 +30,8 @@ abstract class CoGroupDriverClassBuilder(
       val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
       val groupingVar = `var`(classOf[Ordering[_]].asType, partVar.nextLocal)
       thisVar.push().invokeInit(superType, scVar.push(), inputsVar.push(), partVar.push(), groupingVar.push())
+
+      initFields(mb)
     }
   }
 }
@@ -41,12 +42,12 @@ object CoGroupDriverClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  def signature(branchKeyType: Type, groupingKeyType: Type): String = {
+  def signature(groupingKeyType: Type): String = {
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[CoGroupDriver[_, _]].asType) {
           _
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, branchKeyType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, groupingKeyType)
         }
       }

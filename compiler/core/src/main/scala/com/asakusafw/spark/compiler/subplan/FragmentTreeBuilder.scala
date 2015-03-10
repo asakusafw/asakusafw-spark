@@ -17,7 +17,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class FragmentTreeBuilder(
     mb: MethodBuilder,
-    operatorFragmentTypes: Map[Operator, Type],
+    operatorFragmentTypes: Map[Long, Type],
     edgeFragmentTypes: Map[Type, Type],
     nextLocal: AtomicInteger) {
   import mb._
@@ -25,7 +25,7 @@ class FragmentTreeBuilder(
   val vars: mutable.Map[Long, Var] = mutable.Map.empty
 
   def build(operator: Operator): Var = {
-    val t = operatorFragmentTypes(operator)
+    val t = operatorFragmentTypes(operator.getOriginalSerialNumber)
     val fragment = operator match {
       case _: MarkerOperator =>
         pushNew0(t)

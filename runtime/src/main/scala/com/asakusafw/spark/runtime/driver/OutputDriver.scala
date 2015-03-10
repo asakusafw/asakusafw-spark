@@ -8,14 +8,17 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
+import org.slf4j.LoggerFactory
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 
 abstract class OutputDriver[T <: DataModel[T]: ClassTag](
-  @transient sc: SparkContext,
-  @transient input: RDD[T])
+  @transient val sc: SparkContext,
+  @transient input: RDD[(_, T)])
     extends SubPlanDriver[Nothing] {
+
+  val Logger = LoggerFactory.getLogger(getClass())
 
   override def execute(): Map[Nothing, RDD[(_, _)]] = {
     val job = Job.getInstance(sc.hadoopConfiguration)
@@ -23,7 +26,11 @@ abstract class OutputDriver[T <: DataModel[T]: ClassTag](
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
     TemporaryOutputFormat.setOutputPath(job, new Path(path))
-    input.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+    val output = input.map(in => (NullWritable.get, in._2))
+    if (Logger.isDebugEnabled()) {
+      Logger.debug(output.toDebugString)
+    }
+    output.saveAsNewAPIHadoopDataset(job.getConfiguration)
     Map.empty
   }
 

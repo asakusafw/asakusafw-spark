@@ -39,17 +39,18 @@ class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .build()
 
     val compiler = resolvers(CoreOperatorKind.PROJECT)
-    val (thisType, bytes) = compiler.compile(operator)(
-      OperatorCompiler.Context(
-        jpContext = new MockJobflowProcessorContext(
-          new CompilerOptions("buildid", "", Map.empty[String, String]),
-          Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("ProjectOperatorCompilerSpec").toFile)))
-    val cls = loadClass(thisType.getClassName, bytes)
-      .asSubclass(classOf[Fragment[InputModel]])
+    val classpath = Files.createTempDirectory("ProjectOperatorCompilerSpec").toFile
+    val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+    val thisType = compiler.compile(operator)(context)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out = {
-      val builder = new OutputFragmentClassBuilder(classOf[OutputModel].asType)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[OutputModel].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[OutputModel]])
       cls.newInstance
     }

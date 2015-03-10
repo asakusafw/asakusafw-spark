@@ -9,45 +9,35 @@ import scala.reflect.NameTransformer
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class InputSubPlanCompiler extends SubPlanCompiler {
 
-  def of: SubPlanType = SubPlanType.InputSubPlan
+  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+    operator.isInstanceOf[ExternalInput]
+  }
 
-  def compile(subplan: SubPlan)(implicit context: Context): (Type, Array[Byte]) = {
-    val inputs = subplan.getInputs.toSet[SubPlan.Input].map(_.getOperator)
-    val heads = inputs.flatMap(_.getOutput.getOpposites.map(_.getOwner))
-    assert(heads.size == 1)
-    assert(heads.head.isInstanceOf[ExternalInput])
-    val input = heads.head.asInstanceOf[ExternalInput]
-    val inputRef = context.jpContext.addExternalInput(input.getName, input.getInfo)
+  override def instantiator: Instantiator = InputSubPlanCompiler.InputDriverInstantiator
 
-    val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
+  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
+    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
+    assert(dominant.isInstanceOf[ExternalInput])
+    val operator = dominant.asInstanceOf[ExternalInput]
+    val inputRef = context.jpContext.addExternalInput(operator.getName, operator.getInfo)
 
-    implicit val compilerContext = OperatorCompiler.Context(context.jpContext)
-    val operators = subplan.getOperators.filterNot(_ == input).map { operator =>
-      operator -> OperatorCompiler.compile(operator)
-    }.toMap
-    context.fragments ++= operators.values
+    val outputs = subplan.getOutputs.toSeq.map(_.getOperator)
 
-    val edges = subplan.getOperators.flatMap {
-      _.getOutputs.collect {
-        case output if output.getOpposites.size > 1 => output.getDataType.asType
-      }
-    }.map { dataType =>
-      val builder = new EdgeFragmentClassBuilder(dataType)
-      dataType -> (builder.thisType, builder.build())
-    }.toMap
-    context.fragments ++= edges.values
+    val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
-    val builder = new InputDriverClassBuilder(input.getDataType.asType, Type.LONG_TYPE) {
+      override def jpContext = context.jpContext
 
       override def outputMarkers: Seq[MarkerOperator] = outputs
 
@@ -65,44 +55,33 @@ class InputSubPlanCompiler extends SubPlanCompiler {
           `return`(builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType))
         }
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty) { mb =>
+        methodDef.newMethod("branchKey", classOf[AnyRef].asType, Seq.empty) { mb =>
           import mb._
-          val nextLocal = new AtomicInteger(thisVar.nextLocal)
+          `return`(thisVar.push().invokeV("branchKey", Type.LONG_TYPE).box().asType(classOf[AnyRef].asType))
+        }
 
-          val fragmentBuilder = new FragmentTreeBuilder(
-            mb,
-            operators.map {
-              case (operator, (t, _)) => operator -> t
-            },
-            edges.map {
-              case (dataType, (t, _)) => dataType -> t
-            },
-            nextLocal)
-          val fragmentVar = fragmentBuilder.build(input.getOperatorPort)
-
-          val outputsVar = {
-            val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-              .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-            outputs.sortBy(_.getOriginalSerialNumber).foreach { op =>
-              builder.invokeI(NameTransformer.encode("+="),
-                classOf[mutable.Builder[_, _]].asType,
-                getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-                  invokeV("apply", classOf[(_, _)].asType,
-                    ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-                    fragmentBuilder.vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
-                  .asType(classOf[AnyRef].asType))
-            }
-            val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-            map.store(nextLocal.getAndAdd(map.size))
-          }
-
-          `return`(
-            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-              invokeV("apply", classOf[(_, _)].asType,
-                fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
+        methodDef.newMethod("branchKey", Type.LONG_TYPE, Seq.empty) { mb =>
+          import mb._
+          `return`(ldc(outputs.head.getOriginalSerialNumber))
         }
       }
     }
-    (builder.thisType, builder.build())
+
+    context.jpContext.addClass(builder)
+  }
+}
+
+object InputSubPlanCompiler {
+
+  object InputDriverInstantiator extends Instantiator {
+
+    override def newInstance(
+      subplanType: Type,
+      subplan: SubPlan)(implicit context: Context): Var = {
+      import context.mb._
+      val inputSubplan = pushNew(subplanType)
+      inputSubplan.dup().invokeInit(context.scVar.push())
+      inputSubplan.store(context.nextLocal.getAndAdd(inputSubplan.size))
+    }
   }
 }

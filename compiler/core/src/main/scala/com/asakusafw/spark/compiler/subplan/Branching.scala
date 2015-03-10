@@ -1,38 +1,44 @@
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
+import scala.collection.mutable
+import scala.collection.JavaConversions._
+import scala.reflect.NameTransformer
+
+import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
+
+import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.tools.asm._
 
 trait Branching
     extends ClassBuilder
+    with PreparingKey
     with BranchKeysField
     with PartitionersField
     with OrderingsField {
 
-  abstract override def defFields(fieldDef: FieldDef): Unit = {
+  def outputMarkers: Seq[MarkerOperator]
+
+  override def defFields(fieldDef: FieldDef): Unit = {
     defBranchKeysField(fieldDef)
     defPartitionersField(fieldDef)
     defOrderingsField(fieldDef)
   }
 
-  abstract override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newStaticInit { mb =>
-      initBranchKeysField(mb)
-      initPartitionersField(mb)
-      initOrderingsField(mb)
-    }
+  def initFields(mb: MethodBuilder): Unit = {
+    initBranchKeysField(mb)
+    initPartitionersField(mb)
+    initOrderingsField(mb)
   }
 
-  abstract override def defMethods(methodDef: MethodDef): Unit = {
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
     defBranchKeys(methodDef)
     defPartitioners(methodDef)
     defOrderings(methodDef)
-
-    methodDef.newMethod("shuffleKey", classOf[DataModel[_]].asType,
-      Seq(classOf[AnyRef].asType, classOf[DataModel[_]].asType)) { mb =>
-        import mb._
-        // TODO
-        `return`(pushNull(classOf[DataModel[_]].asType))
-      }
   }
 }

@@ -20,7 +20,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
   override def of: Class[_] = classOf[Extract]
 
-  override def compile(operator: UserOperator)(implicit context: Context): (Type, Array[Byte]) = {
+  override def compile(operator: UserOperator)(implicit context: Context): Type = {
     val annotationDesc = operator.getAnnotation
     assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
     val methodDesc = operator.getMethod
@@ -45,7 +45,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
       +: outputDataModelTypes.map(_ => classOf[Result[_]].asType)
       ++: arguments.map(_.getValue.getValueType.asType))
 
-    val builder = new FragmentClassBuilder(inputDataModelType) with OperatorField with OutputFragments {
+    val builder = new FragmentClassBuilder(context.flowId, inputDataModelType) with OperatorField with OutputFragments {
 
       override val operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs
@@ -77,9 +77,9 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("add", Seq(dataModelType)) { mb =>
+        methodDef.newMethod("add", Seq(inputDataModelType)) { mb =>
           import mb._
-          val resultVar = `var`(dataModelType, thisVar.nextLocal)
+          val resultVar = `var`(inputDataModelType, thisVar.nextLocal)
           getOperatorField(mb)
             .invokeV(
               methodDesc.getName,
@@ -97,7 +97,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
         methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
           import mb._
           val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
-          thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
+          thisVar.push().invokeV("add", resultVar.push().cast(inputDataModelType))
           `return`()
         }
 
@@ -108,6 +108,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
         }
       }
     }
-    (builder.thisType, builder.build())
+
+    context.jpContext.addClass(builder)
   }
 }

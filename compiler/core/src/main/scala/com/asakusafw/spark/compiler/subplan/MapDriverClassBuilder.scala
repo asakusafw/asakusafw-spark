@@ -5,35 +5,39 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.reflect.ClassTag
 
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
-import org.apache.spark.SparkContext
 
-import com.asakusafw.spark.runtime.driver.InputDriver
+import com.asakusafw.spark.runtime.driver.MapDriver
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-abstract class InputDriverClassBuilder(
+abstract class MapDriverClassBuilder(
   val flowId: String,
   val dataModelType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/InputDriver$$${InputDriverClassBuilder.nextId};"),
-      Option(InputDriverClassBuilder.signature(dataModelType)),
-      classOf[InputDriver[_, _]].asType)
-    with PreparingKey {
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/MapDriver$$${MapDriverClassBuilder.nextId};"),
+      Option(MapDriverClassBuilder.signature(dataModelType)),
+      classOf[MapDriver[_, _]].asType)
+    with Branching {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(classOf[SparkContext].asType)) { mb =>
+    ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[RDD[_]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-      thisVar.push().invokeInit(superType, scVar.push(),
+      val prevVar = `var`(classOf[RDD[_]].asType, scVar.nextLocal)
+      thisVar.push().invokeInit(superType, scVar.push(), prevVar.push(),
         getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
           .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
+
+      initFields(mb)
     }
   }
 }
 
-object InputDriverClassBuilder {
+object MapDriverClassBuilder {
 
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
@@ -42,7 +46,7 @@ object InputDriverClassBuilder {
   def signature(dataModelType: Type): String = {
     new ClassSignatureBuilder()
       .newSuperclass {
-        _.newClassType(classOf[InputDriver[_, _]].asType) {
+        _.newClassType(classOf[MapDriver[_, _]].asType) {
           _
             .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)

@@ -11,7 +11,7 @@ class ExtendOperatorCompiler extends CoreOperatorCompiler {
 
   override def of: CoreOperatorKind = CoreOperatorKind.EXTEND
 
-  override def compile(operator: CoreOperator)(implicit context: Context): (Type, Array[Byte]) = {
+  override def compile(operator: CoreOperator)(implicit context: Context): Type = {
     ???
   }
 }

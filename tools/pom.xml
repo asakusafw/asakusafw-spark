@@ -13,7 +13,6 @@
 
 	<modules>
 		<module>asm</module>
-		<module>graph</module>
 	</modules>
 
 </project>

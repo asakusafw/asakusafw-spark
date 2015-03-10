@@ -18,41 +18,80 @@ class OrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
 
   import OrderingClassBuilderSpec._
 
-  behavior of classOf[OrderingClassBuilder[_]].getSimpleName
+  behavior of classOf[OrderingClassBuilder].getSimpleName
 
   def resolvers = OrderingCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "build data model ordering class" in {
-    val dataModelType = classOf[TestModel].asType
-    val builder = OrderingClassBuilder[TestModel](
-      dataModelType, Seq(
-        ("z", Type.getMethodType(Type.BOOLEAN_TYPE)),
-        ("b", Type.getMethodType(Type.BYTE_TYPE)),
-        ("c", Type.getMethodType(Type.CHAR_TYPE)),
-        ("s", Type.getMethodType(Type.SHORT_TYPE)),
-        ("i", Type.getMethodType(Type.INT_TYPE)),
-        ("j", Type.getMethodType(Type.LONG_TYPE)),
-        ("f", Type.getMethodType(Type.FLOAT_TYPE)),
-        ("d", Type.getMethodType(Type.DOUBLE_TYPE)),
-        ("bi", Type.getMethodType(classOf[BigInt].asType)),
-        ("bd", Type.getMethodType(classOf[BigDecimal].asType)),
-        ("str", Type.getMethodType(classOf[String].asType)),
-        ("zOpt", Type.getMethodType(classOf[BooleanOption].asType)),
-        ("bOpt", Type.getMethodType(classOf[ByteOption].asType)),
-        ("sOpt", Type.getMethodType(classOf[ShortOption].asType)),
-        ("iOpt", Type.getMethodType(classOf[IntOption].asType)),
-        ("jOpt", Type.getMethodType(classOf[LongOption].asType)),
-        ("fOpt", Type.getMethodType(classOf[FloatOption].asType)),
-        ("dOpt", Type.getMethodType(classOf[DoubleOption].asType)),
-        ("decOpt", Type.getMethodType(classOf[DecimalOption].asType)),
-        ("strOpt", Type.getMethodType(classOf[StringOption].asType)),
-        ("dateOpt", Type.getMethodType(classOf[DateOption].asType)),
-        ("dtOpt", Type.getMethodType(classOf[DateTimeOption].asType))),
+    val builder = new OrderingClassBuilder(
+      "flowId", Seq(
+        Type.BOOLEAN_TYPE,
+        Type.BYTE_TYPE, Type.CHAR_TYPE, Type.SHORT_TYPE, Type.INT_TYPE,
+        Type.LONG_TYPE, Type.FLOAT_TYPE, Type.DOUBLE_TYPE,
+        classOf[BigInt].asType, classOf[BigDecimal].asType,
+        classOf[String].asType,
+        classOf[BooleanOption].asType,
+        classOf[ByteOption].asType, classOf[ShortOption].asType, classOf[IntOption].asType, classOf[LongOption].asType,
+        classOf[FloatOption].asType, classOf[DoubleOption].asType, classOf[DecimalOption].asType,
+        classOf[StringOption].asType,
+        classOf[DateOption].asType,
+        classOf[DateTimeOption].asType).map((_, true)),
       resolvers)
-    val ordering = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[Ordering[TestModel]]).newInstance
-    val x = new TestModel
-    val y = new TestModel
-    assert(ordering.compare(x, y) === 0)
+    val ordering = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[Ordering[Seq[Any]]]).newInstance
+    val x = Seq(
+      false,
+      0.toByte, 0.toChar, 0.toShort, 0, 0L,
+      0.0f, 0.0d, BigInt(0), BigDecimal(0),
+      "",
+      new BooleanOption(),
+      new ByteOption(),
+      new ShortOption(),
+      new IntOption(),
+      new LongOption(),
+      new FloatOption(),
+      new DoubleOption(),
+      new DecimalOption(),
+      new StringOption(),
+      new DateOption(),
+      new DateTimeOption())
+    assert(ordering.compare(x, x) === 0)
+
+    val y = Seq(
+      true,
+      0.toByte, 0.toChar, 0.toShort, 0, 0L,
+      0.0f, 0.0d, BigInt(0), BigDecimal(0),
+      "",
+      new BooleanOption(),
+      new ByteOption(),
+      new ShortOption(),
+      new IntOption(),
+      new LongOption(),
+      new FloatOption(),
+      new DoubleOption(),
+      new DecimalOption(),
+      new StringOption(),
+      new DateOption(),
+      new DateTimeOption())
+    assert(ordering.compare(x, y) < 0)
+
+    val z = Seq(
+      false,
+      0.toByte, 0.toChar, 0.toShort, 0, 0L,
+      0.0f, 0.0d, BigInt(0), BigDecimal(0),
+      "",
+      new BooleanOption(),
+      new ByteOption(),
+      new ShortOption(),
+      new IntOption(),
+      new LongOption(),
+      new FloatOption(),
+      new DoubleOption(),
+      new DecimalOption(),
+      new StringOption(),
+      new DateOption(),
+      new DateTimeOption(),
+      true)
+    assert(ordering.compare(x, z) === 0)
   }
 }
 

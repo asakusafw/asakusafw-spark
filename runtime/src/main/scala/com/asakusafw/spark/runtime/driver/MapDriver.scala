@@ -1,33 +1,33 @@
 package com.asakusafw.spark.runtime.driver
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.reflect.ClassTag
+import scala.reflect.{ classTag, ClassTag }
 
+import org.apache.hadoop.io.NullWritable
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
-import org.apache.spark.SparkContext._
-import org.apache.spark.rdd._
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
-abstract class CoGroupDriver[B, K](
+abstract class MapDriver[T <: DataModel[T]: ClassTag, B](
   @transient val sc: SparkContext,
-  @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
-  @transient part: Partitioner,
-  @transient grouping: Ordering[K])
+  @transient prev: RDD[(_, T)])
     extends SubPlanDriver[B] with Branch[B] {
-  assert(inputs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {
-    val cogroup = smcogroup[K](inputs, part, grouping)
-    cogroup.branch[B, Any, Any](branchKeys, { iter =>
+    prev.branch[B, Any, Any](branchKeys, { iter =>
       val (fragment, outputs) = fragments
       assert(outputs.keys.toSet == branchKeys)
       iter.flatMap {
-        case (_, iterables) =>
+        case (_, dm) =>
           fragment.reset()
-          fragment.add(iterables)
+          fragment.add(dm)
           outputs.iterator.flatMap {
             case (key, output) =>
               def prepare[T <: DataModel[T]](buffer: mutable.ArrayBuffer[_]) = {
@@ -43,5 +43,5 @@ abstract class CoGroupDriver[B, K](
       preservesPartitioning = true)
   }
 
-  def fragments[T <: DataModel[T]]: (CoGroupFragment, Map[B, OutputFragment[T]])
+  def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[U]])
 }

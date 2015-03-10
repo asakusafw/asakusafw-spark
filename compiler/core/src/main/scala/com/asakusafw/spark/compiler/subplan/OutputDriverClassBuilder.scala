@@ -1,4 +1,5 @@
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
@@ -14,9 +15,10 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class OutputDriverClassBuilder(
+  val flowId: String,
   val dataModelType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[OutputDriver[_]].asType.getInternalName}$$${OutputDriverClassBuilder.nextId};"),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/OutputDriver$$${OutputDriverClassBuilder.nextId};"),
       Option(OutputDriverClassBuilder.signature(dataModelType)),
       classOf[OutputDriver[_]].asType) {
 
