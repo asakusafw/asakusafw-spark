@@ -8,6 +8,7 @@ import scala.collection.mutable
 import scala.reflect.NameTransformer
 
 import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
@@ -19,6 +20,7 @@ import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
 import com.asakusafw.spark.compiler.partitioner.GroupingPartitionerClassBuilder
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.rdd
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.CoGroup
@@ -157,6 +159,8 @@ object CoGroupSubPlanCompiler {
                 }
             }.toSeq
             val orderingType = OrderingClassBuilder.getOrCompile(context.flowId, orderings, context.jpContext)
+            val ordering = pushNew0(orderingType)
+            val orderingVar = ordering.store(context.nextLocal.getAndAdd(ordering.size))
 
             builder.invokeI(NameTransformer.encode("+="),
               classOf[mutable.Builder[_, _]].asType, {
@@ -165,11 +169,25 @@ object CoGroupSubPlanCompiler {
                     (if (opposites.size == 1) {
                       opposites.head.push()
                     } else {
-                      ???
+                      getStatic(rdd.`package`.getClass.asType, "MODULE$", rdd.`package`.getClass.asType)
+                        .invokeV("confluent", classOf[RDD[_]].asType, {
+                          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                          opposites.foreach { opposite =>
+                            builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+                              opposite.push().asType(classOf[AnyRef].asType))
+                          }
+                          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                        },
+                          partitionerVar.push().asType(classOf[Partitioner].asType), {
+                            getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                              .invokeV("apply", classOf[Option[_]].asType,
+                                orderingVar.push().asType(classOf[AnyRef].asType))
+                          })
                     }).asType(classOf[AnyRef].asType), {
                       getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
                         .invokeV("apply", classOf[Option[_]].asType,
-                          pushNew0(orderingType).asType(classOf[AnyRef].asType))
+                          orderingVar.push().asType(classOf[AnyRef].asType))
                         .asType(classOf[AnyRef].asType)
                     }).asType(classOf[AnyRef].asType)
               })
