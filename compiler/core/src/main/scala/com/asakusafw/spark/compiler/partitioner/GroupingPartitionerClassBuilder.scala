@@ -15,7 +15,7 @@ class GroupingPartitionerClassBuilder(
   flowId: String,
   properties: Seq[Type])
     extends ClassBuilder(
-      Type.getType(s"Lcom/asakusafw/spark/runtime/partitioner/Partitioner$$${flowId}$$${GroupingPartitionerClassBuilder.nextId};"),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/partitioner/Partitioner$$${GroupingPartitionerClassBuilder.nextId};"),
       classOf[Partitioner].asType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {

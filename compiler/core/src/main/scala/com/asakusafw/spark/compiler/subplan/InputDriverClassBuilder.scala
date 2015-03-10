@@ -1,4 +1,5 @@
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
@@ -16,7 +17,7 @@ abstract class InputDriverClassBuilder(
   val flowId: String,
   val dataModelType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[InputDriver[_, _]].asType.getInternalName}$$${flowId}$$${InputDriverClassBuilder.nextId};"),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/InputDriver$$${InputDriverClassBuilder.nextId};"),
       Option(InputDriverClassBuilder.signature(dataModelType)),
       classOf[InputDriver[_, _]].asType)
     with PreparingKey {

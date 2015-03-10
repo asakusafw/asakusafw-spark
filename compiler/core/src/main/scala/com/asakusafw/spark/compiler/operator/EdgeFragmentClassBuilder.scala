@@ -1,6 +1,8 @@
 package com.asakusafw.spark.compiler
 package operator
 
+import java.util.concurrent.atomic.AtomicLong
+
 import scala.collection.mutable
 
 import org.objectweb.asm.Type
@@ -12,9 +14,8 @@ import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 
 class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
-    extends FragmentClassBuilder(
-      flowId,
-      dataModelType,
+    extends ClassBuilder(
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${EdgeFragmentClassBuilder.nextId};"),
       Some(EdgeFragmentClassBuilder.signature(dataModelType)),
       classOf[EdgeFragment[_]].asType) {
 
@@ -42,6 +43,10 @@ class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
 }
 
 object EdgeFragmentClassBuilder {
+
+  private[this] val curId: AtomicLong = new AtomicLong(0L)
+
+  def nextId: Long = curId.getAndIncrement
 
   def signature(dataModelType: Type): String = {
     new ClassSignatureBuilder()

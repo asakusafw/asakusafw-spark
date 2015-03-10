@@ -1,6 +1,8 @@
 package com.asakusafw.spark.compiler
 package operator
 
+import java.util.concurrent.atomic.AtomicLong
+
 import scala.collection.mutable
 
 import org.objectweb.asm.Type
@@ -12,9 +14,8 @@ import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
 
 class OutputFragmentClassBuilder(flowId: String, dataModelType: Type)
-    extends FragmentClassBuilder(
-      flowId,
-      dataModelType,
+    extends ClassBuilder(
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/OutputFragment$$${OutputFragmentClassBuilder.nextId};"),
       Some(OutputFragmentClassBuilder.signature(dataModelType)),
       classOf[OutputFragment[_]].asType) {
 
@@ -34,6 +35,10 @@ class OutputFragmentClassBuilder(flowId: String, dataModelType: Type)
 }
 
 object OutputFragmentClassBuilder {
+
+  private[this] val curId: AtomicLong = new AtomicLong(0L)
+
+  def nextId: Long = curId.getAndIncrement
 
   def signature(dataModelType: Type): String = {
     new ClassSignatureBuilder()

@@ -22,7 +22,7 @@ class OrderingClassBuilder(
   properties: Seq[(Type, Boolean)],
   compilers: Map[Type, OrderingCompiler])
     extends ClassBuilder(
-      Type.getType(s"Lcom/asakusafw/spark/runtime/ordering/Ordering$$${flowId}$$${OrderingClassBuilder.nextId};"),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/orderings/Ordering$$${OrderingClassBuilder.nextId};"),
       OrderingClassBuilder.signature,
       classOf[AbstractOrdering[Seq[_]]].asType) {
 

@@ -1,4 +1,5 @@
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
@@ -17,7 +18,7 @@ abstract class MapDriverClassBuilder(
   val flowId: String,
   val dataModelType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[MapDriver[_, _]].asType.getInternalName}$$${flowId}$$${MapDriverClassBuilder.nextId};"),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/MapDriver$$${MapDriverClassBuilder.nextId};"),
       Option(MapDriverClassBuilder.signature(dataModelType)),
       classOf[MapDriver[_, _]].asType)
     with Branching {

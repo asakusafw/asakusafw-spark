@@ -122,7 +122,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     try {
       val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
       Thread.currentThread.setContextClassLoader(classloader)
-      val cls = Class.forName("com.asakusafw.spark.runtime.SparkClient$flowId", true, classloader)
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
         .asSubclass(classOf[SparkClient])
       val instance = cls.newInstance
       instance.execute(new SparkConf().setAppName("AsakusaSparkClient").setMaster("local[*]"))
@@ -259,7 +259,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     try {
       val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
       Thread.currentThread.setContextClassLoader(classloader)
-      val cls = Class.forName("com.asakusafw.spark.runtime.SparkClient$flowId", true, classloader)
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
         .asSubclass(classOf[SparkClient])
       val instance = cls.newInstance
       instance.execute(new SparkConf().setAppName("AsakusaSparkClient").setMaster("local[*]"))
@@ -498,7 +498,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     try {
       val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
       Thread.currentThread.setContextClassLoader(classloader)
-      val cls = Class.forName("com.asakusafw.spark.runtime.SparkClient$flowId", true, classloader)
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
         .asSubclass(classOf[SparkClient])
       val instance = cls.newInstance
       instance.execute(new SparkConf().setAppName("AsakusaSparkClient").setMaster("local[*]"))

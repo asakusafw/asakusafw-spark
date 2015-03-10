@@ -1,4 +1,5 @@
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
@@ -16,7 +17,7 @@ abstract class CoGroupDriverClassBuilder(
   val flowId: String,
   val groupingKeyType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[CoGroupDriver[_, _]].asType.getInternalName}$$${flowId}$$${CoGroupDriverClassBuilder.nextId};"),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${CoGroupDriverClassBuilder.nextId};"),
       Option(CoGroupDriverClassBuilder.signature(groupingKeyType)),
       classOf[CoGroupDriver[_, _]].asType)
     with Branching {

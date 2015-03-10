@@ -77,9 +77,9 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("add", Seq(dataModelType)) { mb =>
+        methodDef.newMethod("add", Seq(inputDataModelType)) { mb =>
           import mb._
-          val resultVar = `var`(dataModelType, thisVar.nextLocal)
+          val resultVar = `var`(inputDataModelType, thisVar.nextLocal)
           getOperatorField(mb)
             .invokeV(
               methodDesc.getName,
@@ -97,7 +97,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
         methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
           import mb._
           val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
-          thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
+          thisVar.push().invokeV("add", resultVar.push().cast(inputDataModelType))
           `return`()
         }
 
