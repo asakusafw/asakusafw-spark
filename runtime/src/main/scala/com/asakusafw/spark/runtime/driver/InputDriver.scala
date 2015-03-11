@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
 
+import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.runtime.fragment._
@@ -24,7 +25,7 @@ abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
   def branchKey: B
 
   override def execute(): Map[B, RDD[(_, _)]] = {
-    val job = Job.getInstance(sc.hadoopConfiguration)
+    val job = JobCompatibility.newJob(sc.hadoopConfiguration)
     TemporaryInputFormat.setInputPaths(job, paths.map(new Path(_)).toSeq)
     val rdd = sc.newAPIHadoopRDD(
       job.getConfiguration,

@@ -10,6 +10,7 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
+import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 
@@ -21,7 +22,7 @@ abstract class OutputDriver[T <: DataModel[T]: ClassTag](
   val Logger = LoggerFactory.getLogger(getClass())
 
   override def execute(): Map[Nothing, RDD[(_, _)]] = {
-    val job = Job.getInstance(sc.hadoopConfiguration)
+    val job = JobCompatibility.newJob(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
