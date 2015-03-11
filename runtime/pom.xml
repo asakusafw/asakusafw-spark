@@ -29,12 +29,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.asakusafw.spark</groupId>
-			<artifactId>asakusafw-spark-backdoor</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-
-		<dependency>
 			<groupId>org.apache.spark</groupId>
 			<artifactId>spark-core_${scala.binary.version}</artifactId>
 		</dependency>

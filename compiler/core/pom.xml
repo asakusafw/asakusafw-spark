@@ -56,11 +56,6 @@
 
 		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
-			<artifactId>asakusafw-spark-backdoor</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.asakusafw.spark</groupId>
 			<artifactId>asakusafw-spark-runtime</artifactId>
 			<version>${project.version}</version>
 		</dependency>
