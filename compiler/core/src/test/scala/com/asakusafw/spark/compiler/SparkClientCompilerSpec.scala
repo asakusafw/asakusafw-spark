@@ -17,7 +17,7 @@ import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.SparkContext._
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
+import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._

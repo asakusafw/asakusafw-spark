@@ -14,7 +14,7 @@ import org.apache.spark._
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
+import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
