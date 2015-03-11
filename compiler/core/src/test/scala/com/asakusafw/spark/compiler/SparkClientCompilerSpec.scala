@@ -93,7 +93,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
+      override def preparePlan(graph: OperatorGraph, flowId: String): Plan = {
         val plan = PlanBuilder.from(graph.getOperators)
           .add(
             Seq(graph.getOperators.find(_.getOriginalSerialNumber == beginMarker.getOriginalSerialNumber).get),
@@ -217,7 +217,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
+      override def preparePlan(graph: OperatorGraph, flowId: String): Plan = {
         val plan = PlanBuilder.from(graph.getOperators)
           .add(
             Seq(graph.getOperators.find(_.getOriginalSerialNumber == beginMarker.getOriginalSerialNumber).get),
@@ -474,7 +474,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
+      override def preparePlan(graph: OperatorGraph, flowId: String): Plan = {
         val plan = PlanBuilder.from(graph.getOperators)
           .add(
             Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge1BeginMarker.getOriginalSerialNumber).get),

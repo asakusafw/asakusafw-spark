@@ -35,7 +35,7 @@ class SparkClientCompiler extends JobflowProcessor {
   import SparkClientCompiler._
 
   override def process(jpContext: JPContext, source: Jobflow): Unit = {
-    val plan = preparePlan(source.getOperatorGraph.copy)
+    val plan = preparePlan(source.getOperatorGraph.copy, source.getFlowId)
     val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
     val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
@@ -91,12 +91,12 @@ class SparkClientCompiler extends JobflowProcessor {
         CommandToken.of(client.getClassName)))
   }
 
-  def preparePlan(graph: OperatorGraph): Plan = {
+  def preparePlan(graph: OperatorGraph, flowId: String): Plan = {
     val plan = new LogicalSparkPlanner().createPlan(graph).getPlan
 
     if (Logger.isDebugEnabled) {
       val dotGenerator = new DotGenerator
-      val dot = dotGenerator.generate(plan, "simple")
+      val dot = dotGenerator.generate(plan, flowId)
       val str = new StringWriter()
       val writer = new PrintWriter(str)
       try {
