@@ -42,7 +42,7 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
 
   def resolvers = SubPlanCompiler(Thread.currentThread.getContextClassLoader)
 
-  it should "build cogroup driver class" in {
+  it should "build map driver class" in {
     val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -131,6 +131,67 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     val nResult = results(nResultMarker.getOriginalSerialNumber).collect.toSeq.map(_._2.asInstanceOf[N])
     assert(nResult.size === 10)
     nResult.foreach(n => assert(n.n.get === 10))
+  }
+
+  it should "build map driver class missing port connection" in {
+    val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+
+    val opcls = classOf[ExtractOperator]
+    val method = opcls.getMethod(
+      "extract",
+      classOf[Hoge],
+      classOf[Result[Hoge]],
+      classOf[Result[Foo]],
+      classOf[Result[Int]],
+      classOf[Int])
+    val annotation = method.getAnnotation(classOf[Extract])
+    val operator = UserOperator.builder(
+      AnnotationDescription.of(annotation),
+      MethodDescription.of(method),
+      ClassDescription.of(opcls))
+      .input("hogeList", ClassDescription.of(classOf[Hoge]), hogesMarker.getOutput)
+      .output("hogeResult", ClassDescription.of(classOf[Hoge]))
+      .output("fooResult", ClassDescription.of(classOf[Foo]))
+      .output("nResult", ClassDescription.of(classOf[N]))
+      .argument("n", ImmediateDescription.of(10))
+      .build()
+
+    val hogeResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+    operator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
+
+    val plan = PlanBuilder.from(Seq(operator))
+      .add(
+        Seq(hogesMarker),
+        Seq(hogeResultMarker)).build().getPlan()
+    assert(plan.getElements.size === 1)
+    val subplan = plan.getElements.head
+    subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
+
+    val compiler = resolvers(operator)
+    val context = compiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classServer.root.toFile))
+    val thisType = compiler.compile(subplan)(context)
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[MapDriver[_, Long]])
+
+    val hoges = sc.parallelize(0 until 10).map { i =>
+      val hoge = new Hoge()
+      hoge.id.modify(i)
+      ((), hoge)
+    }
+    val driver = cls.getConstructor(classOf[SparkContext], classOf[RDD[_]]).newInstance(sc, hoges)
+    val results = driver.execute()
+
+    assert(driver.branchKeys === Set(hogeResultMarker).map(_.getOriginalSerialNumber))
+
+    val hogeResult = results(hogeResultMarker.getOriginalSerialNumber).map(_._2.asInstanceOf[Hoge]).collect.toSeq
+    assert(hogeResult.size === 10)
+    assert(hogeResult.map(_.id.get) === (0 until 10))
   }
 }
 
