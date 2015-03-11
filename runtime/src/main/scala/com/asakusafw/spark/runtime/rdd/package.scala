@@ -29,7 +29,7 @@ package object rdd {
 
   def zipPartitions[V: ClassTag](
     rdds: Seq[RDD[_]], preservesPartitioning: Boolean = false)(f: (Seq[Iterator[_]] => Iterator[V])): RDD[V] = {
-    assert(rdds.size > 1)
+    assert(rdds.size > 0)
     val sc = rdds.head.sparkContext
     new ZippedPartitionsRDD(sc, sc.cleanF(f), rdds, preservesPartitioning)
   }
