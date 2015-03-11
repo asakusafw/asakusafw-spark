@@ -10,9 +10,8 @@ import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 
-import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.mapreduce.Job
+import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.SparkContext._
 
@@ -25,16 +24,15 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
-import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
+import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value._
 import com.asakusafw.runtime.stage.StageConstants
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
+import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.utils.graph.Graphs
 import com.asakusafw.vocabulary.operator._
 
 @RunWith(classOf[JUnitRunner])
@@ -59,7 +57,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         hoge.id.modify(i)
         hoge
       }
-      val job = Job.getInstance(sc.hadoopConfiguration)
+      val job = JobCompatibility.newJob(sc.hadoopConfiguration)
       job.setOutputKeyClass(classOf[NullWritable])
       job.setOutputValueClass(classOf[Hoge])
       job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
@@ -67,49 +65,24 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
     }
 
-    val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
+    val inputOperator = ExternalInput
+      .newInstance("hoge/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Hoge]),
+          "test",
+          ClassDescription.of(classOf[Hoge]),
+          ExternalInputInfo.DataSize.UNKNOWN))
 
-    val inputOperator = ExternalInput.builder("hoge/part-*",
-      new ExternalInputInfo.Basic(
-        ClassDescription.of(classOf[Hoge]),
-        "test",
-        ClassDescription.of(classOf[Hoge]),
-        ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin", ClassDescription.of(classOf[Hoge]), beginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.GENERATOR).build()
+    val outputOperator = ExternalOutput
+      .newInstance("output", inputOperator.getOperatorPort)
 
-    val checkpointMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    inputOperator.findOutput(ExternalInput.PORT_NAME).connect(checkpointMarker.getInput)
-
-    val outputOperator = ExternalOutput.builder("output")
-      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), checkpointMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
-
-    val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.END).build()
-    outputOperator.findOutput("end").connect(endMarker.getInput)
-
-    val graph = new OperatorGraph(Seq(beginMarker, inputOperator, checkpointMarker, outputOperator, endMarker))
+    val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
     val compiler = new SparkClientCompiler {
 
       override def preparePlan(graph: OperatorGraph, flowId: String): Plan = {
-        val plan = PlanBuilder.from(graph.getOperators)
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == beginMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == checkpointMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == checkpointMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == endMarker.getOriginalSerialNumber).get))
-          .build().getPlan
+        val plan = super.preparePlan(graph, flowId)
         assert(plan.getElements.size === 2)
-        val sorted = Graphs.sortPostOrder(Planning.toDependencyGraph(plan))
-        sorted(0).putAttribute(classOf[DominantOperator], new DominantOperator(inputOperator))
-        sorted(1).putAttribute(classOf[DominantOperator], new DominantOperator(outputOperator))
         plan
       }
     }
@@ -144,8 +117,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     spark { sc =>
-      val job = Job.getInstance(sc.hadoopConfiguration)
-      TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"output/${outputOperator.getSerialNumber}/part-*")))
+      val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+      TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"output/*/part-*")))
       val rdd = sc.newAPIHadoopRDD(
         job.getConfiguration,
         classOf[TemporaryInputFormat[Hoge]],
@@ -168,7 +141,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         hoge.id.modify(i)
         hoge
       }
-      val job = Job.getInstance(sc.hadoopConfiguration)
+      val job = JobCompatibility.newJob(sc.hadoopConfiguration)
       job.setOutputKeyClass(classOf[NullWritable])
       job.setOutputValueClass(classOf[Hoge])
       job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
@@ -176,89 +149,38 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
     }
 
-    val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
-
-    val inputOperator = ExternalInput.builder("hoge/part-*",
-      new ExternalInputInfo.Basic(
-        ClassDescription.of(classOf[Hoge]),
-        "test",
-        ClassDescription.of(classOf[Hoge]),
-        ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin", ClassDescription.of(classOf[Hoge]), beginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.GENERATOR).build()
-
-    val cpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    inputOperator.findOutput(ExternalInput.PORT_NAME).connect(cpMarker.getInput)
+    val inputOperator = ExternalInput
+      .newInstance("hoge/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Hoge]),
+          "test",
+          ClassDescription.of(classOf[Hoge]),
+          ExternalInputInfo.DataSize.UNKNOWN))
 
     val extractOperator = OperatorExtractor
       .extract(classOf[Extract], classOf[Ops], "extract")
-      .input("hoge", ClassDescription.of(classOf[Hoge]), cpMarker.getOutput)
+      .input("hoge", ClassDescription.of(classOf[Hoge]), inputOperator.getOperatorPort)
       .output("evenResult", ClassDescription.of(classOf[Hoge]))
       .output("oddResult", ClassDescription.of(classOf[Hoge]))
       .build()
 
-    val evenMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    extractOperator.findOutput("evenResult").connect(evenMarker.getInput)
+    val evenOutputOperator = ExternalOutput
+      .newInstance("even", extractOperator.findOutput("evenResult"))
 
-    val evenOutputOperator = ExternalOutput.builder("even")
-      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), evenMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
+    val oddOutputOperator = ExternalOutput
+      .newInstance("odd", extractOperator.findOutput("oddResult"))
 
-    val evenEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.END).build()
-    evenOutputOperator.findOutput("end").connect(evenEndMarker.getInput)
-
-    val oddMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    extractOperator.findOutput("oddResult").connect(oddMarker.getInput)
-
-    val oddOutputOperator = ExternalOutput.builder("odd")
-      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), oddMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
-
-    val oddEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.END).build()
-    oddOutputOperator.findOutput("end").connect(oddEndMarker.getInput)
-
-    val graph = new OperatorGraph(Seq(beginMarker, inputOperator,
-      cpMarker, extractOperator,
-      evenMarker, evenOutputOperator, evenEndMarker,
-      oddMarker, oddOutputOperator, oddEndMarker))
+    val graph = new OperatorGraph(Seq(
+      inputOperator,
+      extractOperator,
+      evenOutputOperator,
+      oddOutputOperator))
 
     val compiler = new SparkClientCompiler {
 
       override def preparePlan(graph: OperatorGraph, flowId: String): Plan = {
-        val plan = PlanBuilder.from(graph.getOperators)
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == beginMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == cpMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == cpMarker.getOriginalSerialNumber).get),
-            Seq(
-              graph.getOperators.find(_.getOriginalSerialNumber == evenMarker.getOriginalSerialNumber).get,
-              graph.getOperators.find(_.getOriginalSerialNumber == oddMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == evenMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == evenEndMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == oddMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == oddEndMarker.getOriginalSerialNumber).get))
-          .build().getPlan
+        val plan = super.preparePlan(graph, flowId)
         assert(plan.getElements.size === 4)
-        Seq(inputOperator, extractOperator,
-          oddOutputOperator, evenOutputOperator).foreach { op =>
-            plan.getElements.foreach { subplan =>
-              if (subplan.getOperators.find(_.getOriginalSerialNumber == op.getOriginalSerialNumber).isDefined) {
-                subplan.putAttribute(classOf[DominantOperator], new DominantOperator(op))
-              }
-            }
-          }
         plan
       }
     }
@@ -294,8 +216,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     spark { sc =>
       {
-        val job = Job.getInstance(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"even/${evenOutputOperator.getSerialNumber}/part-*")))
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"even/*/part-*")))
         val rdd = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Hoge]],
@@ -304,8 +226,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         assert(rdd.map(_._2.id.get).collect === (0 until 100).filter(_ % 2 == 0))
       }
       {
-        val job = Job.getInstance(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"odd/${oddOutputOperator.getSerialNumber}/part-*")))
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"odd/*/part-*")))
         val rdd = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Hoge]],
@@ -330,7 +252,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
           hoge.id.modify(i)
           hoge
         }
-        val job = Job.getInstance(sc.hadoopConfiguration)
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Hoge])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
@@ -343,7 +265,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
           hoge.id.modify(i)
           hoge
         }
-        val job = Job.getInstance(sc.hadoopConfiguration)
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Hoge])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
@@ -357,7 +279,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
           foo.hogeId.modify(i)
           foo
         })
-        val job = Job.getInstance(sc.hadoopConfiguration)
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Foo])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
@@ -366,204 +288,70 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       }
     }
 
-    val hoge1BeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
+    val hoge1InputOperator = ExternalInput
+      .newInstance("hoge1/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Hoge]),
+          "hoges1",
+          ClassDescription.of(classOf[Hoge]),
+          ExternalInputInfo.DataSize.UNKNOWN))
 
-    val hoge1InputOperator = ExternalInput.builder("hoge1/part-*",
-      new ExternalInputInfo.Basic(
-        ClassDescription.of(classOf[Hoge]),
-        "hoges1",
-        ClassDescription.of(classOf[Hoge]),
-        ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin1", ClassDescription.of(classOf[Hoge]), hoge1BeginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.GENERATOR).build()
+    val hoge2InputOperator = ExternalInput
+      .newInstance("hoge2/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Hoge]),
+          "hoges2",
+          ClassDescription.of(classOf[Hoge]),
+          ExternalInputInfo.DataSize.UNKNOWN))
 
-    val hoge1CpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    hoge1InputOperator.findOutput(ExternalInput.PORT_NAME).connect(hoge1CpMarker.getInput)
-
-    val hoge2BeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
-
-    val hoge2InputOperator = ExternalInput.builder("hoge2/part-*",
-      new ExternalInputInfo.Basic(
-        ClassDescription.of(classOf[Hoge]),
-        "hoges2",
-        ClassDescription.of(classOf[Hoge]),
-        ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin2", ClassDescription.of(classOf[Hoge]), hoge2BeginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.GENERATOR).build()
-
-    val hoge2CpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    hoge2InputOperator.findOutput(ExternalInput.PORT_NAME).connect(hoge2CpMarker.getInput)
-
-    val fooBeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
-
-    val fooInputOperator = ExternalInput.builder("foo/part-*",
-      new ExternalInputInfo.Basic(
-        ClassDescription.of(classOf[Foo]),
-        "foos",
-        ClassDescription.of(classOf[Foo]),
-        ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin", ClassDescription.of(classOf[Foo]), fooBeginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo]))
-      .constraint(OperatorConstraint.GENERATOR).build()
-
-    val fooCpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    fooInputOperator.findOutput(ExternalInput.PORT_NAME).connect(fooCpMarker.getInput)
+    val fooInputOperator = ExternalInput
+      .newInstance("foo/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "foos",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
 
     val cogroupOperator = OperatorExtractor
       .extract(classOf[CoGroup], classOf[Ops], "cogroup")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
-        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]),
-        hoge1CpMarker.getOutput, hoge2CpMarker.getOutput)
+        new Group(
+          Seq(PropertyName.of("id")),
+          Seq.empty[Group.Ordering]),
+        hoge1InputOperator.getOperatorPort, hoge2InputOperator.getOperatorPort)
       .input("foos", ClassDescription.of(classOf[Foo]),
         new Group(
           Seq(PropertyName.of("hogeId")),
           Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))),
-        fooCpMarker.getOutput)
+        fooInputOperator.getOperatorPort)
       .output("hogeResult", ClassDescription.of(classOf[Hoge]))
       .output("fooResult", ClassDescription.of(classOf[Foo]))
       .output("hogeError", ClassDescription.of(classOf[Hoge]))
       .output("fooError", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val hogeResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    cogroupOperator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
+    val hogeResultOutputOperator = ExternalOutput
+      .newInstance("hogeResult", cogroupOperator.findOutput("hogeResult"))
 
-    val hogeResultOutputOperator = ExternalOutput.builder("hogeResult")
-      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), hogeResultMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
+    val fooResultOutputOperator = ExternalOutput
+      .newInstance("fooResult", cogroupOperator.findOutput("fooResult"))
 
-    val hogeResultEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.END).build()
-    hogeResultOutputOperator.findOutput("end").connect(hogeResultEndMarker.getInput)
+    val hogeErrorOutputOperator = ExternalOutput
+      .newInstance("hogeError", cogroupOperator.findOutput("hogeError"))
 
-    val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    cogroupOperator.findOutput("fooResult").connect(fooResultMarker.getInput)
-
-    val fooResultOutputOperator = ExternalOutput.builder("fooResult")
-      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), fooResultMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Foo]))
-      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
-
-    val fooResultEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.END).build()
-    fooResultOutputOperator.findOutput("end").connect(fooResultEndMarker.getInput)
-
-    val hogeErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    cogroupOperator.findOutput("hogeError").connect(hogeErrorMarker.getInput)
-
-    val hogeErrorOutputOperator = ExternalOutput.builder("hogeError")
-      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), hogeErrorMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge]))
-      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
-
-    val hogeErrorEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.END).build()
-    hogeErrorOutputOperator.findOutput("end").connect(hogeErrorEndMarker.getInput)
-
-    val fooErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    cogroupOperator.findOutput("fooError").connect(fooErrorMarker.getInput)
-
-    val fooErrorOutputOperator = ExternalOutput.builder("fooError")
-      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), fooErrorMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Foo]))
-      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
-
-    val fooErrorEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.END).build()
-    fooErrorOutputOperator.findOutput("end").connect(fooErrorEndMarker.getInput)
+    val fooErrorOutputOperator = ExternalOutput
+      .newInstance("fooError", cogroupOperator.findOutput("fooError"))
 
     val graph = new OperatorGraph(Seq(
-      hoge1BeginMarker, hoge1InputOperator, hoge1CpMarker,
-      hoge2BeginMarker, hoge2InputOperator, hoge2CpMarker,
-      fooBeginMarker, fooInputOperator, fooCpMarker,
+      hoge1InputOperator, hoge2InputOperator, fooInputOperator,
       cogroupOperator,
-      hogeResultMarker, hogeResultOutputOperator, hogeResultEndMarker,
-      fooResultMarker, fooResultOutputOperator, fooResultEndMarker,
-      hogeErrorMarker, hogeErrorOutputOperator, hogeErrorEndMarker,
-      fooErrorMarker, fooErrorOutputOperator, fooErrorEndMarker))
+      hogeResultOutputOperator, fooResultOutputOperator, hogeErrorOutputOperator, fooErrorOutputOperator))
 
     val compiler = new SparkClientCompiler {
 
       override def preparePlan(graph: OperatorGraph, flowId: String): Plan = {
-        val plan = PlanBuilder.from(graph.getOperators)
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge1BeginMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge1CpMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge2BeginMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hoge2CpMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooBeginMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooCpMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(
-              graph.getOperators.find(_.getOriginalSerialNumber == hoge1CpMarker.getOriginalSerialNumber).get,
-              graph.getOperators.find(_.getOriginalSerialNumber == hoge2CpMarker.getOriginalSerialNumber).get,
-              graph.getOperators.find(_.getOriginalSerialNumber == fooCpMarker.getOriginalSerialNumber).get),
-            Seq(
-              graph.getOperators.find(_.getOriginalSerialNumber == hogeResultMarker.getOriginalSerialNumber).get,
-              graph.getOperators.find(_.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get,
-              graph.getOperators.find(_.getOriginalSerialNumber == hogeErrorMarker.getOriginalSerialNumber).get,
-              graph.getOperators.find(_.getOriginalSerialNumber == fooErrorMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hogeResultMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hogeResultEndMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooResultEndMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hogeErrorMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == hogeErrorEndMarker.getOriginalSerialNumber).get))
-          .add(
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooErrorMarker.getOriginalSerialNumber).get),
-            Seq(graph.getOperators.find(_.getOriginalSerialNumber == fooErrorEndMarker.getOriginalSerialNumber).get))
-          .build().getPlan
+        val plan = super.preparePlan(graph, flowId)
         assert(plan.getElements.size === 8)
-        Seq(hoge1InputOperator, hoge2InputOperator, fooInputOperator, cogroupOperator,
-          hogeResultOutputOperator, hogeErrorOutputOperator,
-          fooResultOutputOperator, fooErrorOutputOperator).foreach { op =>
-            plan.getElements.foreach { subplan =>
-              if (subplan.getOperators.find(_.getOriginalSerialNumber == op.getOriginalSerialNumber).isDefined) {
-                subplan.putAttribute(classOf[DominantOperator], new DominantOperator(op))
-              }
-            }
-          }
-
-        plan.getElements.toSeq.find(_.getOperators.exists(_.getOriginalSerialNumber == hoge1CpMarker.getOriginalSerialNumber))
-          .get
-          .getOutputs.foreach { output =>
-            output.putAttribute(classOf[PartitioningParameters],
-              new PartitioningParameters(new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering])))
-          }
-        plan.getElements.find(_.getOperators.exists(_.getOriginalSerialNumber == hoge2CpMarker.getOriginalSerialNumber))
-          .get
-          .getOutputs.foreach { output =>
-            output.putAttribute(classOf[PartitioningParameters],
-              new PartitioningParameters(new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering])))
-          }
-        plan.getElements.find(_.getOperators.exists(_.getOriginalSerialNumber == fooCpMarker.getOriginalSerialNumber))
-          .get
-          .getOutputs.foreach { output =>
-            output.putAttribute(classOf[PartitioningParameters],
-              new PartitioningParameters(
-                new Group(
-                  Seq(PropertyName.of("hogeId")),
-                  Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT)))))
-          }
-
         plan
       }
     }
@@ -599,8 +387,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     spark { sc =>
       {
-        val job = Job.getInstance(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"hogeResult/${hogeResultOutputOperator.getSerialNumber}/part-*")))
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"hogeResult/*/part-*")))
         val hogeResult = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Hoge]],
@@ -610,8 +398,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         assert(hogeResult(0) === 1)
       }
       {
-        val job = Job.getInstance(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"fooResult/${fooResultOutputOperator.getSerialNumber}/part-*")))
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"fooResult/*/part-*")))
         val fooResult = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Foo]],
@@ -621,8 +409,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         assert(fooResult(0) === (10, 1))
       }
       {
-        val job = Job.getInstance(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"hogeError/${hogeErrorOutputOperator.getSerialNumber}/part-*")))
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"hogeError/*/part-*")))
         val hogeError = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Hoge]],
@@ -635,8 +423,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         }
       }
       {
-        val job = Job.getInstance(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"fooError/${fooErrorOutputOperator.getSerialNumber}/part-*")))
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"fooError/*/part-*")))
         val fooError = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Foo]],
