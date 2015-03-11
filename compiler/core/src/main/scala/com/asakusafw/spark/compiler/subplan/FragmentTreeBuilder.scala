@@ -39,7 +39,12 @@ class FragmentTreeBuilder(
   }
 
   def build(output: OperatorOutput): Var = {
-    if (output.getOpposites.size > 1) {
+    if (output.getOpposites.size == 0) {
+      vars.getOrElseUpdate(-1L, {
+        val fragment = getStatic(StopFragment.getClass.asType, "MODULE$", StopFragment.getClass.asType)
+        fragment.store(nextLocal.getAndAdd(fragment.size))
+      })
+    } else if (output.getOpposites.size > 1) {
       val opposites = output.getOpposites.toSeq.map(_.getOwner).map { operator =>
         vars.getOrElseUpdate(operator.getOriginalSerialNumber, build(operator))
       }
