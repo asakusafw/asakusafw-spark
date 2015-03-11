@@ -75,7 +75,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         ClassDescription.of(classOf[Hoge]),
         ExternalInputInfo.DataSize.UNKNOWN))
       .input("begin", ClassDescription.of(classOf[Hoge]), beginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge])).build()
+      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.GENERATOR).build()
 
     val checkpointMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
@@ -83,7 +84,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val outputOperator = ExternalOutput.builder("output")
       .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), checkpointMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge])).build()
+      .output("end", ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
 
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
@@ -173,7 +175,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         ClassDescription.of(classOf[Hoge]),
         ExternalInputInfo.DataSize.UNKNOWN))
       .input("begin", ClassDescription.of(classOf[Hoge]), beginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge])).build()
+      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.GENERATOR).build()
 
     val cpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
@@ -192,7 +195,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val evenOutputOperator = ExternalOutput.builder("even")
       .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), evenMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge])).build()
+      .output("end", ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
 
     val evenEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
@@ -204,7 +208,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val oddOutputOperator = ExternalOutput.builder("odd")
       .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), oddMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge])).build()
+      .output("end", ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
 
     val oddEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
@@ -351,12 +356,11 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         ClassDescription.of(classOf[Hoge]),
         ExternalInputInfo.DataSize.UNKNOWN))
       .input("begin1", ClassDescription.of(classOf[Hoge]), hoge1BeginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge])).build()
+      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.GENERATOR).build()
 
     val hoge1CpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT)
-      .attribute(classOf[PartitioningParameters],
-        new PartitioningParameters(new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))).build()
+      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
     hoge1InputOperator.findOutput(ExternalInput.PORT_NAME).connect(hoge1CpMarker.getInput)
 
     val hoge2BeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
@@ -369,12 +373,11 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         ClassDescription.of(classOf[Hoge]),
         ExternalInputInfo.DataSize.UNKNOWN))
       .input("begin2", ClassDescription.of(classOf[Hoge]), hoge2BeginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge])).build()
+      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.GENERATOR).build()
 
     val hoge2CpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT)
-      .attribute(classOf[PartitioningParameters],
-        new PartitioningParameters(new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))).build()
+      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
     hoge2InputOperator.findOutput(ExternalInput.PORT_NAME).connect(hoge2CpMarker.getInput)
 
     val fooBeginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -387,15 +390,11 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         ClassDescription.of(classOf[Foo]),
         ExternalInputInfo.DataSize.UNKNOWN))
       .input("begin", ClassDescription.of(classOf[Foo]), fooBeginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo])).build()
+      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo]))
+      .constraint(OperatorConstraint.GENERATOR).build()
 
     val fooCpMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT)
-      .attribute(classOf[PartitioningParameters],
-        new PartitioningParameters(
-          new Group(
-            Seq(PropertyName.of("hogeId")),
-            Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))).build()
+      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
     fooInputOperator.findOutput(ExternalInput.PORT_NAME).connect(fooCpMarker.getInput)
 
     val cogroupOperator = OperatorExtractor
@@ -420,7 +419,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val hogeResultOutputOperator = ExternalOutput.builder("hogeResult")
       .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), hogeResultMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge])).build()
+      .output("end", ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
 
     val hogeResultEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
@@ -432,7 +432,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val fooResultOutputOperator = ExternalOutput.builder("fooResult")
       .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), fooResultMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Foo])).build()
+      .output("end", ClassDescription.of(classOf[Foo]))
+      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
 
     val fooResultEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
@@ -444,7 +445,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val hogeErrorOutputOperator = ExternalOutput.builder("hogeError")
       .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), hogeErrorMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge])).build()
+      .output("end", ClassDescription.of(classOf[Hoge]))
+      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
 
     val hogeErrorEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
@@ -456,7 +458,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val fooErrorOutputOperator = ExternalOutput.builder("fooError")
       .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), fooErrorMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Foo])).build()
+      .output("end", ClassDescription.of(classOf[Foo]))
+      .constraint(OperatorConstraint.AT_LEAST_ONCE).build()
 
     val fooErrorEndMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
@@ -518,6 +521,29 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
               }
             }
           }
+
+        plan.getElements.toSeq.find(_.getOperators.exists(_.getOriginalSerialNumber == hoge1CpMarker.getOriginalSerialNumber))
+          .get
+          .getOutputs.foreach { output =>
+            output.putAttribute(classOf[PartitioningParameters],
+              new PartitioningParameters(new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering])))
+          }
+        plan.getElements.find(_.getOperators.exists(_.getOriginalSerialNumber == hoge2CpMarker.getOriginalSerialNumber))
+          .get
+          .getOutputs.foreach { output =>
+            output.putAttribute(classOf[PartitioningParameters],
+              new PartitioningParameters(new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering])))
+          }
+        plan.getElements.find(_.getOperators.exists(_.getOriginalSerialNumber == fooCpMarker.getOriginalSerialNumber))
+          .get
+          .getOutputs.foreach { output =>
+            output.putAttribute(classOf[PartitioningParameters],
+              new PartitioningParameters(
+                new Group(
+                  Seq(PropertyName.of("hogeId")),
+                  Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT)))))
+          }
+
         plan
       }
     }

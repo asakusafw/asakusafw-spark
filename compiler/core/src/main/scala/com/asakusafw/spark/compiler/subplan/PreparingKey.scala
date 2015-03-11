@@ -8,7 +8,7 @@ import scala.reflect.NameTransformer
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.tools.asm._
@@ -20,7 +20,7 @@ trait PreparingKey
 
   def jpContext: JPContext
 
-  def outputMarkers: Seq[MarkerOperator]
+  def subplanOutputs: Seq[SubPlan.Output]
 
   override def defMethods(methodDef: MethodDef): Unit = {
 
@@ -48,8 +48,9 @@ trait PreparingKey
         import mb._
         val branchVar = `var`(Type.LONG_TYPE, thisVar.nextLocal)
         val valueVar = `var`(classOf[DataModel[_]].asType, branchVar.nextLocal)
-        outputMarkers.sortBy(_.getOriginalSerialNumber).foreach { op =>
-          Option(op.getAttribute(classOf[PartitioningParameters])).foreach { params =>
+        subplanOutputs.sortBy(_.getOperator.getOriginalSerialNumber).foreach { output =>
+          val op = output.getOperator
+          Option(output.getAttribute(classOf[PartitioningParameters])).foreach { params =>
             val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
             val group = params.getKey
 

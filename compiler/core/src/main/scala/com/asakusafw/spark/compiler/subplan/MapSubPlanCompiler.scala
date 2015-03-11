@@ -38,7 +38,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
     assert(dominant.isInstanceOf[UserOperator])
     val operator = dominant.asInstanceOf[UserOperator]
 
-    val outputs = subplan.getOutputs.toSet[SubPlan.Output].map(_.getOperator).toSeq
+    val outputs = subplan.getOutputs.toSeq
 
     implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
     val operators = subplan.getOperators.map { operator =>
@@ -57,7 +57,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
 
       override def jpContext = context.jpContext
 
-      override def outputMarkers: Seq[MarkerOperator] = outputs
+      override def subplanOutputs: Seq[SubPlan.Output] = outputs
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
@@ -76,7 +76,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
           val outputsVar = {
             val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
               .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-            outputs.sortBy(_.getOriginalSerialNumber).foreach { op =>
+            outputs.map(_.getOperator).sortBy(_.getOriginalSerialNumber).foreach { op =>
               builder.invokeI(NameTransformer.encode("+="),
                 classOf[mutable.Builder[_, _]].asType,
                 getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).

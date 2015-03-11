@@ -61,12 +61,7 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     operator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
 
     val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT)
-      .attribute(classOf[PartitioningParameters],
-        new PartitioningParameters(
-          new Group(
-            Seq(PropertyName.of("hogeId")),
-            Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.DESCENDANT))))).build()
+      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
     operator.findOutput("fooResult").connect(fooResultMarker.getInput)
 
     val nResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[N]))
@@ -81,6 +76,13 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     assert(plan.getElements.size === 1)
     val subplan = plan.getElements.head
     subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
+    subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber)
+      .get
+      .putAttribute(classOf[PartitioningParameters],
+        new PartitioningParameters(
+          new Group(
+            Seq(PropertyName.of("hogeId")),
+            Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.DESCENDANT)))))
 
     val compiler = resolvers(operator)
     val context = compiler.Context(

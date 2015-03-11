@@ -5,13 +5,13 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait BranchKeysField extends ClassBuilder {
 
-  def outputMarkers: Seq[MarkerOperator]
+  def subplanOutputs: Seq[SubPlan.Output]
 
   def defBranchKeysField(fieldDef: FieldDef): Unit = {
     fieldDef.newFinalField("branchKeys", classOf[Set[_]].asType,
@@ -31,8 +31,8 @@ trait BranchKeysField extends ClassBuilder {
     import mb._
     getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
       .invokeV("longArrayOps", classOf[mutable.ArrayOps[_]].asType, {
-        val arr = pushNewArray(Type.LONG_TYPE, outputMarkers.size)
-        outputMarkers.sortBy(_.getOriginalSerialNumber).zipWithIndex.foreach {
+        val arr = pushNewArray(Type.LONG_TYPE, subplanOutputs.size)
+        subplanOutputs.map(_.getOperator).sortBy(_.getOriginalSerialNumber).zipWithIndex.foreach {
           case (op, i) =>
             arr.dup().astore(ldc(i), ldc(op.getOriginalSerialNumber))
         }
