@@ -1,5 +1,6 @@
 package com.asakusafw.spark.compiler
 
+import java.io.{ PrintWriter, StringWriter }
 import java.util.{ List => JList }
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -9,6 +10,7 @@ import scala.collection.JavaConversions._
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
+import org.slf4j.LoggerFactory
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
@@ -18,6 +20,7 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSparkPlanner }
+import com.asakusafw.lang.compiler.planning.util.DotGenerator
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -26,6 +29,8 @@ import com.asakusafw.utils.graph.Graphs
 import resource._
 
 class SparkClientCompiler extends JobflowProcessor {
+
+  private val Logger = LoggerFactory.getLogger(getClass)
 
   import SparkClientCompiler._
 
@@ -87,7 +92,22 @@ class SparkClientCompiler extends JobflowProcessor {
   }
 
   def preparePlan(graph: OperatorGraph): Plan = {
-    new LogicalSparkPlanner().createPlan(graph).getPlan
+    val plan = new LogicalSparkPlanner().createPlan(graph).getPlan
+
+    if (Logger.isDebugEnabled) {
+      val dotGenerator = new DotGenerator
+      val dot = dotGenerator.generate(plan, "simple")
+      val str = new StringWriter()
+      val writer = new PrintWriter(str)
+      try {
+        dotGenerator.save(writer, dot)
+      } finally {
+        writer.close()
+      }
+      Logger.debug(str.toString)
+    }
+
+    plan
   }
 }
 
