@@ -17,7 +17,8 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator, UserOperator }
+import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
+import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
@@ -46,19 +47,8 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
-    val opcls = classOf[ExtractOperator]
-    val method = opcls.getMethod(
-      "extract",
-      classOf[Hoge],
-      classOf[Result[Hoge]],
-      classOf[Result[Foo]],
-      classOf[Result[Int]],
-      classOf[Int])
-    val annotation = method.getAnnotation(classOf[Extract])
-    val operator = UserOperator.builder(
-      AnnotationDescription.of(annotation),
-      MethodDescription.of(method),
-      ClassDescription.of(opcls))
+    val operator = OperatorExtractor
+      .extract(classOf[Extract], classOf[ExtractOperator], "extract")
       .input("hogeList", ClassDescription.of(classOf[Hoge]), hogesMarker.getOutput)
       .output("hogeResult", ClassDescription.of(classOf[Hoge]))
       .output("fooResult", ClassDescription.of(classOf[Foo]))
@@ -137,19 +127,8 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
-    val opcls = classOf[ExtractOperator]
-    val method = opcls.getMethod(
-      "extract",
-      classOf[Hoge],
-      classOf[Result[Hoge]],
-      classOf[Result[Foo]],
-      classOf[Result[Int]],
-      classOf[Int])
-    val annotation = method.getAnnotation(classOf[Extract])
-    val operator = UserOperator.builder(
-      AnnotationDescription.of(annotation),
-      MethodDescription.of(method),
-      ClassDescription.of(opcls))
+    val operator = OperatorExtractor
+      .extract(classOf[Extract], classOf[ExtractOperator], "extract")
       .input("hogeList", ClassDescription.of(classOf[Hoge]), hogesMarker.getOutput)
       .output("hogeResult", ClassDescription.of(classOf[Hoge]))
       .output("fooResult", ClassDescription.of(classOf[Foo]))

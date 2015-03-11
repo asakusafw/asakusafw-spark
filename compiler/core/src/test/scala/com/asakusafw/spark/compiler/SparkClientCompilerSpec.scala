@@ -179,8 +179,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
     inputOperator.findOutput(ExternalInput.PORT_NAME).connect(cpMarker.getInput)
 
-    val extractOperator = OperatorExtractor.extract(
-      classOf[Extract], classOf[Ops], "extract")
+    val extractOperator = OperatorExtractor
+      .extract(classOf[Extract], classOf[Ops], "extract")
       .input("hoge", ClassDescription.of(classOf[Hoge]), cpMarker.getOutput)
       .output("evenResult", ClassDescription.of(classOf[Hoge]))
       .output("oddResult", ClassDescription.of(classOf[Hoge]))
@@ -398,8 +398,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
             Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))).build()
     fooInputOperator.findOutput(ExternalInput.PORT_NAME).connect(fooCpMarker.getInput)
 
-    val cogroupOperator = OperatorExtractor.extract(
-      classOf[CoGroup], classOf[Ops], "cogroup")
+    val cogroupOperator = OperatorExtractor
+      .extract(classOf[CoGroup], classOf[Ops], "cogroup")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]),
         hoge1CpMarker.getOutput, hoge2CpMarker.getOutput)
