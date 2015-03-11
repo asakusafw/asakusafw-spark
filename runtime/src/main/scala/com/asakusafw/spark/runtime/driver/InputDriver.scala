@@ -1,4 +1,5 @@
-package com.asakusafw.spark.runtime.driver
+package com.asakusafw.spark.runtime
+package driver
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -12,7 +13,9 @@ import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.runtime.stage.StageConstants._
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
+import com.asakusafw.runtime.util.VariableTable
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
@@ -26,7 +29,16 @@ abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
 
   override def execute(): Map[B, RDD[(_, _)]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-    TemporaryInputFormat.setInputPaths(job, paths.map(new Path(_)).toSeq)
+
+    val conf = sc.getConf
+    TemporaryInputFormat.setInputPaths(job, paths.map { path =>
+      val table = new VariableTable(VariableTable.RedefineStrategy.ERROR)
+      for (prop <- Seq(PROP_BATCH_ID, PROP_FLOW_ID, PROP_EXECUTION_ID, PROP_ASAKUSA_BATCH_ARGS)) {
+        table.defineVariable(prop, conf.getHadoopConf(prop))
+      }
+      new Path(table.parse(path, true))
+    }.toSeq)
+
     val rdd = sc.newAPIHadoopRDD(
       job.getConfiguration,
       classOf[TemporaryInputFormat[T]],

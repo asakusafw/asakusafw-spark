@@ -28,9 +28,10 @@ import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, Partitioni
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.runtime.stage.StageConstants
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
-import com.asakusafw.spark.runtime.SparkClient
+import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.utils.graph.Graphs
 import com.asakusafw.vocabulary.operator._
@@ -127,7 +128,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
         .asSubclass(classOf[SparkClient])
       val instance = cls.newInstance
-      instance.execute(new SparkConf().setAppName("AsakusaSparkClient").setMaster("local[*]"))
+
+      val conf = new SparkConf()
+      conf.setAppName("AsakusaSparkClient")
+      conf.setMaster("local[*]")
+      conf.setHadoopConf(StageConstants.PROP_BATCH_ID, "batchId")
+      conf.setHadoopConf(StageConstants.PROP_FLOW_ID, "flowId")
+      conf.setHadoopConf(StageConstants.PROP_EXECUTION_ID, "executionId")
+      conf.setHadoopConf(StageConstants.PROP_ASAKUSA_BATCH_ARGS, "batchArgs")
+      instance.execute(conf)
     } finally {
       Thread.currentThread.setContextClassLoader(cl)
     }
@@ -267,7 +276,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
         .asSubclass(classOf[SparkClient])
       val instance = cls.newInstance
-      instance.execute(new SparkConf().setAppName("AsakusaSparkClient").setMaster("local[*]"))
+
+      val conf = new SparkConf()
+      conf.setAppName("AsakusaSparkClient")
+      conf.setMaster("local[*]")
+      conf.setHadoopConf(StageConstants.PROP_BATCH_ID, "batchId")
+      conf.setHadoopConf(StageConstants.PROP_FLOW_ID, "flowId")
+      conf.setHadoopConf(StageConstants.PROP_EXECUTION_ID, "executionId")
+      conf.setHadoopConf(StageConstants.PROP_ASAKUSA_BATCH_ARGS, "batchArgs")
+      instance.execute(conf)
     } finally {
       Thread.currentThread.setContextClassLoader(cl)
     }
@@ -563,7 +580,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
         .asSubclass(classOf[SparkClient])
       val instance = cls.newInstance
-      instance.execute(new SparkConf().setAppName("AsakusaSparkClient").setMaster("local[*]"))
+
+      val conf = new SparkConf()
+      conf.setAppName("AsakusaSparkClient")
+      conf.setMaster("local[*]")
+      conf.setHadoopConf(StageConstants.PROP_BATCH_ID, "batchId")
+      conf.setHadoopConf(StageConstants.PROP_FLOW_ID, "flowId")
+      conf.setHadoopConf(StageConstants.PROP_EXECUTION_ID, "executionId")
+      conf.setHadoopConf(StageConstants.PROP_ASAKUSA_BATCH_ARGS, "batchArgs")
+      instance.execute(conf)
     } finally {
       Thread.currentThread.setContextClassLoader(cl)
     }
