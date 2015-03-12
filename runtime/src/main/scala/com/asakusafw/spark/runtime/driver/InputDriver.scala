@@ -11,9 +11,9 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
 
+import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.stage.StageConstants._
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.util.VariableTable
 import com.asakusafw.spark.runtime.fragment._
@@ -31,12 +31,9 @@ abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
 
     val conf = sc.getConf
+    val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
     TemporaryInputFormat.setInputPaths(job, paths.map { path =>
-      val table = new VariableTable(VariableTable.RedefineStrategy.ERROR)
-      for (prop <- Seq(PROP_BATCH_ID, PROP_FLOW_ID, PROP_EXECUTION_ID, PROP_ASAKUSA_BATCH_ARGS)) {
-        table.defineVariable(prop, conf.getHadoopConf(prop))
-      }
-      new Path(table.parse(path, true))
+      new Path(stageInfo.resolveVariables(path))
     }.toSeq)
 
     val rdd = sc.newAPIHadoopRDD(

@@ -15,8 +15,7 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.stage.StageConstants._
-import com.asakusafw.runtime.util.VariableTable._
+import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.orderings._
@@ -31,9 +30,7 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
   behavior of "Input/OutputDriver"
 
   it should "output and input" in {
-    val tmpDir = File.createTempFile(
-      s"test-${toVariable(PROP_BATCH_ID)}-${toVariable(PROP_FLOW_ID)}-${toVariable(PROP_EXECUTION_ID)}-${toVariable(PROP_ASAKUSA_BATCH_ARGS)}",
-      null)
+    val tmpDir = File.createTempFile(s"test-${EXPR_EXECUTION_ID}-", null)
     tmpDir.delete
     val path = tmpDir.getAbsolutePath
 

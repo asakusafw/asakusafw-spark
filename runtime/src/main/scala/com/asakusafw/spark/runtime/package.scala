@@ -4,6 +4,12 @@ import org.apache.spark.SparkConf
 
 package object runtime {
 
+  val AsakusafwConfPrefix = "com.asakusafw.spark."
+
+  object Props {
+    val StageInfo = AsakusafwConfPrefix + "stageInfo"
+  }
+
   val HadoopConfPrefix = "spark.hadoop."
 
   implicit class AugmentedSparkConf(val conf: SparkConf) extends AnyVal {

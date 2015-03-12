@@ -31,6 +31,10 @@
 			<groupId>com.asakusafw</groupId>
 			<artifactId>asakusa-dsl-vocabulary</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.bridge</groupId>
+			<artifactId>asakusa-bridge-runtime</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>com.asakusafw.lang.compiler</groupId>

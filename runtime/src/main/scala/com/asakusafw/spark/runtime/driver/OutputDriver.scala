@@ -11,9 +11,9 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
+import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.stage.StageConstants._
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.util.VariableTable
 
@@ -31,11 +31,8 @@ abstract class OutputDriver[T <: DataModel[T]: ClassTag](
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
 
     val conf = sc.getConf
-    val table = new VariableTable(VariableTable.RedefineStrategy.ERROR)
-    for (prop <- Seq(PROP_BATCH_ID, PROP_FLOW_ID, PROP_EXECUTION_ID, PROP_ASAKUSA_BATCH_ARGS)) {
-      table.defineVariable(prop, conf.getHadoopConf(prop))
-    }
-    TemporaryOutputFormat.setOutputPath(job, new Path(table.parse(path, true)))
+    val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
+    TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveVariables(path)))
 
     val output = input.map(in => (NullWritable.get, in._2))
     if (Logger.isDebugEnabled()) {

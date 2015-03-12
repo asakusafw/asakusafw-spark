@@ -3,7 +3,7 @@ package com.asakusafw.spark.runtime
 import org.apache.spark.SparkConf
 import org.slf4j.LoggerFactory
 
-import com.asakusafw.runtime.stage.StageConstants
+import com.asakusafw.bridge.stage.StageInfo
 
 object Launcher {
 
@@ -24,10 +24,11 @@ object Launcher {
     val sparkClient = Class.forName(client).asSubclass(classOf[SparkClient]).newInstance()
 
     val sparkConf = new SparkConf
-    sparkConf.setHadoopConf(StageConstants.PROP_BATCH_ID, batchId)
-    sparkConf.setHadoopConf(StageConstants.PROP_FLOW_ID, flowId)
-    sparkConf.setHadoopConf(StageConstants.PROP_EXECUTION_ID, executionId)
-    sparkConf.setHadoopConf(StageConstants.PROP_ASAKUSA_BATCH_ARGS, batchArgs)
+
+    val stageInfo = new StageInfo(
+      sys.props("user.name"), batchId, flowId, null, executionId, batchArgs)
+    sparkConf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
     sparkClient.execute(sparkConf)
   }
 }

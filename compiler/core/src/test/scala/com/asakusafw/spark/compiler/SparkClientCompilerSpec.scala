@@ -16,6 +16,7 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.SparkContext._
 
+import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
@@ -132,10 +133,11 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       val conf = new SparkConf()
       conf.setAppName("AsakusaSparkClient")
       conf.setMaster("local[*]")
-      conf.setHadoopConf(StageConstants.PROP_BATCH_ID, "batchId")
-      conf.setHadoopConf(StageConstants.PROP_FLOW_ID, "flowId")
-      conf.setHadoopConf(StageConstants.PROP_EXECUTION_ID, "executionId")
-      conf.setHadoopConf(StageConstants.PROP_ASAKUSA_BATCH_ARGS, "batchArgs")
+
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+      conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
       instance.execute(conf)
     } finally {
       Thread.currentThread.setContextClassLoader(cl)
@@ -280,10 +282,11 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       val conf = new SparkConf()
       conf.setAppName("AsakusaSparkClient")
       conf.setMaster("local[*]")
-      conf.setHadoopConf(StageConstants.PROP_BATCH_ID, "batchId")
-      conf.setHadoopConf(StageConstants.PROP_FLOW_ID, "flowId")
-      conf.setHadoopConf(StageConstants.PROP_EXECUTION_ID, "executionId")
-      conf.setHadoopConf(StageConstants.PROP_ASAKUSA_BATCH_ARGS, "batchArgs")
+
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+      conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
       instance.execute(conf)
     } finally {
       Thread.currentThread.setContextClassLoader(cl)
@@ -584,10 +587,11 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       val conf = new SparkConf()
       conf.setAppName("AsakusaSparkClient")
       conf.setMaster("local[*]")
-      conf.setHadoopConf(StageConstants.PROP_BATCH_ID, "batchId")
-      conf.setHadoopConf(StageConstants.PROP_FLOW_ID, "flowId")
-      conf.setHadoopConf(StageConstants.PROP_EXECUTION_ID, "executionId")
-      conf.setHadoopConf(StageConstants.PROP_ASAKUSA_BATCH_ARGS, "batchArgs")
+
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+      conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
       instance.execute(conf)
     } finally {
       Thread.currentThread.setContextClassLoader(cl)
