@@ -1,6 +1,7 @@
 package com.asakusafw.spark.compiler
 
 import java.io.PrintStream
+import java.lang.{ Boolean => JBoolean }
 import java.util.{ List => JList }
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -47,59 +48,62 @@ class SparkClientCompiler extends JobflowProcessor {
       dotOutputStream.close()
     }
 
-    val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
+    if (JBoolean.parseBoolean(jpContext.getOptions.get(SparkPlanVerifyOption, false.toString)) == false) {
 
-    val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
+      val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
-    val builder = new SparkClientClassBuilder(source.getFlowId) {
+      val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
 
-      override def defMethods(methodDef: MethodDef): Unit = {
-        methodDef.newMethod("execute", Type.INT_TYPE, Seq(classOf[SparkContext].asType)) { mb =>
-          import mb._
-          val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-          val nextLocal = new AtomicInteger(scVar.nextLocal)
-          val rddVars = mutable.Map.empty[Long, Var] // MarkerOperator.serialNumber
+      val builder = new SparkClientClassBuilder(source.getFlowId) {
 
-          subplans.foreach { subplan =>
-            val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-            val compiler = subplanCompilers(dominant)
-            val instantiator = compiler.instantiator
-            val context = compiler.Context(source.getFlowId, jpContext)
+        override def defMethods(methodDef: MethodDef): Unit = {
+          methodDef.newMethod("execute", Type.INT_TYPE, Seq(classOf[SparkContext].asType)) { mb =>
+            import mb._
+            val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+            val nextLocal = new AtomicInteger(scVar.nextLocal)
+            val rddVars = mutable.Map.empty[Long, Var] // MarkerOperator.serialNumber
 
-            val subplanType = compiler.compile(subplan)(context)
-            val driverVar = instantiator.newInstance(subplanType, subplan)(
-              instantiator.Context(mb, scVar, rddVars, nextLocal, source.getFlowId, jpContext))
-            val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)
-            val rddsVar = rdds.store(nextLocal.getAndAdd(rdds.size))
+            subplans.foreach { subplan =>
+              val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
+              val compiler = subplanCompilers(dominant)
+              val instantiator = compiler.instantiator
+              val context = compiler.Context(source.getFlowId, jpContext)
 
-            subplan.getOutputs.collect {
-              case output if output.getOpposites.size > 0 => output.getOperator
-            }.foreach { marker =>
-              rddVars += (marker.getSerialNumber -> {
-                val rdd = rddsVar.push()
-                  .invokeI("apply", classOf[AnyRef].asType,
-                    ldc(marker.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType))
-                  .cast(classOf[RDD[_]].asType)
-                rdd.store(nextLocal.getAndAdd(rdd.size))
-              })
+              val subplanType = compiler.compile(subplan)(context)
+              val driverVar = instantiator.newInstance(subplanType, subplan)(
+                instantiator.Context(mb, scVar, rddVars, nextLocal, source.getFlowId, jpContext))
+              val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)
+              val rddsVar = rdds.store(nextLocal.getAndAdd(rdds.size))
+
+              subplan.getOutputs.collect {
+                case output if output.getOpposites.size > 0 => output.getOperator
+              }.foreach { marker =>
+                rddVars += (marker.getSerialNumber -> {
+                  val rdd = rddsVar.push()
+                    .invokeI("apply", classOf[AnyRef].asType,
+                      ldc(marker.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType))
+                    .cast(classOf[RDD[_]].asType)
+                  rdd.store(nextLocal.getAndAdd(rdd.size))
+                })
+              }
             }
+            `return`(ldc(0))
           }
-          `return`(ldc(0))
-        }
 
-        methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
-          import mb._
-          // TODO Generate KryoRegistrator
-          `return`(ldc("com.asakusafw.spark.runtime.serializer.KryoRegistrator"))
+          methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
+            import mb._
+            // TODO Generate KryoRegistrator
+            `return`(ldc("com.asakusafw.spark.runtime.serializer.KryoRegistrator"))
+          }
         }
       }
+
+      val client = jpContext.addClass(builder)
+
+      jpContext.addTask(ModuleName, ProfileName, Command,
+        Seq(CommandToken.BATCH_ID, CommandToken.FLOW_ID, CommandToken.EXECUTION_ID, CommandToken.BATCH_ARGUMENTS,
+          CommandToken.of(client.getClassName)))
     }
-
-    val client = jpContext.addClass(builder)
-
-    jpContext.addTask(ModuleName, ProfileName, Command,
-      Seq(CommandToken.BATCH_ID, CommandToken.FLOW_ID, CommandToken.EXECUTION_ID, CommandToken.BATCH_ARGUMENTS,
-        CommandToken.of(client.getClassName)))
   }
 
   def preparePlan(graph: OperatorGraph): Plan = {
@@ -114,4 +118,6 @@ object SparkClientCompiler {
   val ProfileName: String = "spark"
 
   val Command: Location = Location.of("spark/bin/spark-execute.sh")
+
+  val SparkPlanVerifyOption = "spark.plan.verify"
 }
