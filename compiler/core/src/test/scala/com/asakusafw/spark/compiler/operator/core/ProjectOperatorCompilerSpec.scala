@@ -10,7 +10,7 @@ import java.nio.file.Files
 import scala.collection.JavaConversions._
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
+import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.CoreOperator

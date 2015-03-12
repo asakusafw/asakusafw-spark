@@ -15,7 +15,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
+import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo

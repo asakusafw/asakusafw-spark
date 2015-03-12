@@ -10,6 +10,7 @@
 	<properties>
 		<asakusafw.version>0.7.2-hadoop1</asakusafw.version>
 		<asakusafw-lang.version>0.1-SNAPSHOT</asakusafw-lang.version>
+		<asakusafw-bridge.version>0.1-SNAPSHOT</asakusafw-bridge.version>
 		<asakusafw-planner-spark.version>0.1-SNAPSHOT</asakusafw-planner-spark.version>
 
 		<scala.binary.version>2.10</scala.binary.version>
@@ -31,7 +32,6 @@
 	<modules>
 		<module>compiler</module>
 		<module>runtime</module>
-		<module>backdoor</module>
 		<module>tools</module>
 	</modules>
 
@@ -206,6 +206,12 @@ encoding/<project>=UTF-8
 			</dependency>
 
 			<dependency>
+				<groupId>com.asakusafw.bridge</groupId>
+				<artifactId>asakusa-bridge-runtime</artifactId>
+				<version>${asakusafw-bridge.version}</version>
+			</dependency>
+
+			<dependency>
 				<groupId>com.asakusafw.planner.spark</groupId>
 				<artifactId>asakusafw-planner-spark</artifactId>
 				<version>${asakusafw-planner-spark.version}</version>
@@ -340,7 +346,7 @@ encoding/<project>=UTF-8
 			</dependency>
 			<dependency>
 				<groupId>com.asakusafw.lang.compiler</groupId>
-				<artifactId>asakusa-compiler-mock</artifactId>
+				<artifactId>asakusa-compiler-api-testing</artifactId>
 				<version>${asakusafw-lang.version}</version>
 				<scope>test</scope>
 			</dependency>

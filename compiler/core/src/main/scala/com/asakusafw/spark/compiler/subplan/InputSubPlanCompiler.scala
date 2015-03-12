@@ -33,13 +33,13 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val operator = dominant.asInstanceOf[ExternalInput]
     val inputRef = context.jpContext.addExternalInput(operator.getName, operator.getInfo)
 
-    val outputs = subplan.getOutputs.toSeq.map(_.getOperator)
+    val outputs = subplan.getOutputs.toSeq
 
     val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
       override def jpContext = context.jpContext
 
-      override def outputMarkers: Seq[MarkerOperator] = outputs
+      override def subplanOutputs: Seq[SubPlan.Output] = outputs
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
@@ -62,7 +62,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
         methodDef.newMethod("branchKey", Type.LONG_TYPE, Seq.empty) { mb =>
           import mb._
-          `return`(ldc(outputs.head.getOriginalSerialNumber))
+          `return`(ldc(outputs.head.getOperator.getOriginalSerialNumber))
         }
       }
     }

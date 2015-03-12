@@ -18,7 +18,7 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkSugar {
 
   behavior of "SortMergeCoGroup"
 
-  it should "cogroup rdds" in {
+  it should "smcogroup rdds" in {
     val rdd1 = sc.parallelize(0 until 100).map(i =>
       ((i.toString, 10), i.toString))
     val rdd2 = sc.parallelize(0 until 100).flatMap(i => Seq(
@@ -54,6 +54,28 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkSugar {
         assert(actualValues(0) === Seq(k))
         assert(actualValues(1) === Seq(k.toInt, k.toInt * 10))
         assert(actualValues(2) === Seq(k.toLong * 10, k.toLong))
+    }
+  }
+
+  it should "smcogroup 1 rdd" in {
+    val rdd = sc.parallelize(0 until 100).map(i =>
+      ((i.toString, 10), i.toString))
+
+    val part = new GroupingPartitioner(2)
+    val grouping = new GroupingOrdering
+    val cogrouped = smcogroup(
+      Seq((rdd.asInstanceOf[RDD[((String, Int), Any)]], None)),
+      part,
+      grouping)
+    val (part0, part1) = (0 until 100).map(_.toString).sorted.partition { k =>
+      val part = k.hashCode % 2
+      (if (part < 0) part + 2 else part) == 0
+    }
+    cogrouped.collect.zip((part0 ++ part1).map(k => (k, 0))).foreach {
+      case ((actualKey, actualValues), key @ (k, _)) =>
+        assert(grouping.compare(actualKey, key) === 0)
+        assert(actualValues.size === 1)
+        assert(actualValues(0) === Seq(k))
     }
   }
 }

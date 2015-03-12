@@ -13,10 +13,11 @@ import scala.collection.JavaConversions._
 import org.apache.spark._
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
+import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator, UserOperator }
+import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
+import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.core.Result
@@ -46,22 +47,8 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     val fooListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
 
-    val opcls = classOf[CoGroupOperator]
-    val method = opcls.getMethod(
-      "cogroup",
-      classOf[JList[Hoge]],
-      classOf[JList[Foo]],
-      classOf[Result[Hoge]],
-      classOf[Result[Foo]],
-      classOf[Result[Hoge]],
-      classOf[Result[Foo]],
-      classOf[Result[Int]],
-      classOf[Int])
-    val annotation = method.getAnnotation(classOf[CoGroup])
-    val operator = UserOperator.builder(
-      AnnotationDescription.of(annotation),
-      MethodDescription.of(method),
-      ClassDescription.of(opcls))
+    val operator = OperatorExtractor
+      .extract(classOf[CoGroup], classOf[CoGroupOperator], "cogroup")
       .input("hogeList", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]),
         hogeListMarker.getOutput)

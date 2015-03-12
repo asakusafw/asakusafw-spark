@@ -10,10 +10,9 @@ import java.nio.file.Files
 import scala.collection.JavaConversions._
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
-import com.asakusafw.lang.compiler.api.reference.DataModelReference
+import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
@@ -34,18 +33,8 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
   def resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Extract operator" in {
-    val opcls = classOf[ExtractOperator]
-    val method = opcls.getMethod(
-      "extract",
-      classOf[InputModel],
-      classOf[Result[IntOutputModel]],
-      classOf[Result[LongOutputModel]],
-      classOf[Int])
-    val annotation = method.getAnnotation(classOf[Extract])
-    val operator = UserOperator.builder(
-      AnnotationDescription.of(annotation),
-      MethodDescription.of(method),
-      ClassDescription.of(opcls))
+    val operator = OperatorExtractor
+      .extract(classOf[Extract], classOf[ExtractOperator], "extract")
       .input("input", ClassDescription.of(classOf[InputModel]))
       .output("output1", ClassDescription.of(classOf[IntOutputModel]))
       .output("output2", ClassDescription.of(classOf[LongOutputModel]))

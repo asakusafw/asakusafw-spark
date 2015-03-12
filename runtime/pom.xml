@@ -27,11 +27,9 @@
 			<groupId>com.asakusafw</groupId>
 			<artifactId>asakusa-runtime</artifactId>
 		</dependency>
-
 		<dependency>
-			<groupId>com.asakusafw.spark</groupId>
-			<artifactId>asakusafw-spark-backdoor</artifactId>
-			<version>${project.version}</version>
+			<groupId>com.asakusafw.bridge</groupId>
+			<artifactId>asakusa-bridge-runtime</artifactId>
 		</dependency>
 
 		<dependency>
