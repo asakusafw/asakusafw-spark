@@ -38,14 +38,13 @@ class SparkClientCompiler extends JobflowProcessor {
   override def process(jpContext: JPContext, source: Jobflow): Unit = {
     val plan = preparePlan(source.getOperatorGraph.copy)
 
-    val dotOutputStream = new PrintStream(
-      jpContext.addResourceFile(Location.of(s"META-INF/asakusa-spark/${source.getFlowId}.dot", '/')))
-    try {
+    for {
+      dotOutputStream <- managed(new PrintStream(
+        jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/plan.dot", '/'))))
+    } {
       val dotGenerator = new DotGenerator
       val dot = dotGenerator.generate(plan, source.getFlowId)
       dotGenerator.save(dotOutputStream, dot)
-    } finally {
-      dotOutputStream.close()
     }
 
     if (JBoolean.parseBoolean(jpContext.getOptions.get(SparkPlanVerifyOption, false.toString)) == false) {
