@@ -23,14 +23,16 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.CoGroup
+import com.asakusafw.vocabulary.operator._
 
 class CoGroupSubPlanCompiler extends SubPlanCompiler {
+
+  import CoGroupSubPlanCompiler._
 
   override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
     operator match {
       case op: UserOperator =>
-        op.getAnnotation.resolve(classLoader).annotationType == classOf[CoGroup]
+        CompilableOperators(op.getAnnotation.resolve(classLoader).annotationType)
       case _ => false
     }
   }
@@ -106,6 +108,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 }
 
 object CoGroupSubPlanCompiler {
+
+  val CompilableOperators: Set[Class[_]] = Set(classOf[CoGroup], classOf[Fold])
 
   object CoGroupDriverInstantiator extends Instantiator {
 
