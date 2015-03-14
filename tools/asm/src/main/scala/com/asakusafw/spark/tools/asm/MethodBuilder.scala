@@ -487,15 +487,15 @@ object MethodBuilder {
 
     def unbox(): Stack = {
       `type`.getClassName() match {
-        case "java.lang.Boolean" => invokeV("booleanValue", Type.BOOLEAN_TYPE)
-        case "java.lang.Char"    => invokeV("charValue", Type.CHAR_TYPE)
-        case "java.lang.Byte"    => invokeV("byteValue", Type.BYTE_TYPE)
-        case "java.lang.Short"   => invokeV("shortValue", Type.SHORT_TYPE)
-        case "java.lang.Integer" => invokeV("intValue", Type.INT_TYPE)
-        case "java.lang.Long"    => invokeV("longValue", Type.LONG_TYPE)
-        case "java.lang.Float"   => invokeV("floatValue", Type.FLOAT_TYPE)
-        case "java.lang.Double"  => invokeV("doubleValue", Type.DOUBLE_TYPE)
-        case _                   => this
+        case "java.lang.Boolean"   => invokeV("booleanValue", Type.BOOLEAN_TYPE)
+        case "java.lang.Character" => invokeV("charValue", Type.CHAR_TYPE)
+        case "java.lang.Byte"      => invokeV("byteValue", Type.BYTE_TYPE)
+        case "java.lang.Short"     => invokeV("shortValue", Type.SHORT_TYPE)
+        case "java.lang.Integer"   => invokeV("intValue", Type.INT_TYPE)
+        case "java.lang.Long"      => invokeV("longValue", Type.LONG_TYPE)
+        case "java.lang.Float"     => invokeV("floatValue", Type.FLOAT_TYPE)
+        case "java.lang.Double"    => invokeV("doubleValue", Type.DOUBLE_TYPE)
+        case _                     => this
       }
     }
 
@@ -664,7 +664,12 @@ object MethodBuilder {
     }
 
     def ifNe0(`then`: => Stack, `else`: => Stack): Stack = {
-      ifEq0(`else`, `then`)
+      assert(isPrimitive)
+      if (isBoolean || isChar || isInteger) {
+        ifelse(IFNE)(`then`, `else`)
+      } else {
+        ifNe(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
+      }
     }
 
     def isNe0(): Stack = {

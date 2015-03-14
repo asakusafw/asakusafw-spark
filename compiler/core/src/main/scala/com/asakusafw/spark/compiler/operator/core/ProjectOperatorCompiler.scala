@@ -4,6 +4,8 @@ package core
 
 import scala.collection.JavaConversions._
 
+import org.objectweb.asm.Type
+
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.runtime.model.DataModel
@@ -15,7 +17,7 @@ class ProjectOperatorCompiler extends CoreOperatorCompiler {
 
   override def of: CoreOperatorKind = CoreOperatorKind.PROJECT
 
-  override def compile(operator: CoreOperator)(implicit context: Context): FragmentClassBuilder = {
+  override def compile(operator: CoreOperator)(implicit context: Context): Type = {
     assert(operator.getCoreOperatorKind == of)
 
     val inputs = operator.getInputs.toSeq
@@ -32,7 +34,7 @@ class ProjectOperatorCompiler extends CoreOperatorCompiler {
     val outputDataModelRef = context.jpContext.getDataModelLoader.load(output.getDataType)
     val outputDataModelType = outputDataModelRef.getDeclaration.asType
 
-    new CoreOperatorFragmentClassBuilder(inputDataModelType, outputDataModelType) {
+    val builder = new CoreOperatorFragmentClassBuilder(context.flowId, inputDataModelType, outputDataModelType) {
 
       override def defAddMethod(mb: MethodBuilder): Unit = {
         import mb._
@@ -53,5 +55,7 @@ class ProjectOperatorCompiler extends CoreOperatorCompiler {
         `return`()
       }
     }
+
+    context.jpContext.addClass(builder)
   }
 }

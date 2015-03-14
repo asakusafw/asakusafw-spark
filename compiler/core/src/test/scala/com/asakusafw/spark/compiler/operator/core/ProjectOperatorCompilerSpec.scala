@@ -10,7 +10,7 @@ import java.nio.file.Files
 import scala.collection.JavaConversions._
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
+import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
@@ -22,15 +22,15 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])
-class ProjectFragmentClassBuilderSpecTest extends ProjectFragmentClassBuilderSpec
+class ProjectOperatorCompilerSpecTest extends ProjectOperatorCompilerSpec
 
-class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
+class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import ProjectFragmentClassBuilderSpec._
+  import ProjectOperatorCompilerSpec._
 
   behavior of classOf[ProjectOperatorCompiler].getSimpleName
 
-  val resolvers = CoreOperatorCompiler(Thread.currentThread.getContextClassLoader)
+  def resolvers = CoreOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Project operator" in {
     val operator = CoreOperator.builder(CoreOperatorKind.PROJECT)
@@ -39,17 +39,18 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       .build()
 
     val compiler = resolvers(CoreOperatorKind.PROJECT)
-    val builder = compiler.compile(operator)(
-      compiler.Context(
-        jpContext = new MockJobflowProcessorContext(
-          new CompilerOptions("buildid", "", Map.empty[String, String]),
-          Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("ProjectFragmentClassBuilderSpec").toFile)))
-    val cls = loadClass(builder.thisType.getClassName, builder.build())
-      .asSubclass(classOf[Fragment[InputModel]])
+    val classpath = Files.createTempDirectory("ProjectOperatorCompilerSpec").toFile
+    val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+    val thisType = compiler.compile(operator)(context)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out = {
-      val builder = new OutputFragmentClassBuilder(classOf[OutputModel].asType)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[OutputModel].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[OutputModel]])
       cls.newInstance
     }
@@ -62,7 +63,7 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out.buffer.size == 10)
+    assert(out.buffer.size === 10)
     out.buffer.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
@@ -72,7 +73,7 @@ class ProjectFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object ProjectFragmentClassBuilderSpec {
+object ProjectOperatorCompilerSpec {
 
   class InputModel extends DataModel[InputModel] {
 

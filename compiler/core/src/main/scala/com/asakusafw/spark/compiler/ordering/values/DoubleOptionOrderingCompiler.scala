@@ -14,7 +14,7 @@ class DoubleOptionOrderingCompiler extends OrderingCompiler {
     import mb._
     assert(x.`type` == of)
     assert(y.`type` == of)
-    getStatic(orderings.DoubleOption.getClass.asType, "MODULE$", orderings.DoubleOption.getClass.asType)
+    getStatic(orderings.DoubleOptionOrdering.getClass.asType, "MODULE$", orderings.DoubleOptionOrdering.getClass.asType)
       .invokeV("compare", Type.INT_TYPE, x.push(), y.push())
   }
 }

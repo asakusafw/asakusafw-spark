@@ -9,7 +9,7 @@ import com.asakusafw.spark.runtime.orderings.NoOrdering
 
 class BranchRDDFunctions[T: ClassTag](self: RDD[T]) extends Serializable {
 
-  def branch[B: ClassTag, K: ClassTag, U: ClassTag](
+  def branch[B, K, U](
     branchKeys: Set[B],
     f: Iterator[T] => Iterator[((B, K), U)],
     partitioners: Map[B, Partitioner] = Map.empty[B, Partitioner],

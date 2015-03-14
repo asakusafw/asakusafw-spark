@@ -10,10 +10,9 @@ import java.nio.file.Files
 import scala.collection.JavaConversions._
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.mock.MockJobflowProcessorContext
-import com.asakusafw.lang.compiler.api.reference.DataModelReference
+import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
@@ -23,29 +22,19 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Extract
 
 @RunWith(classOf[JUnitRunner])
-class ExtractFragmentClassBuilderSpecTest extends ExtractFragmentClassBuilderSpec
+class ExtractOperatorCompilerSpecTest extends ExtractOperatorCompilerSpec
 
-class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
+class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import ExtractFragmentClassBuilderSpec._
+  import ExtractOperatorCompilerSpec._
 
   behavior of classOf[ExtractOperatorCompiler].getSimpleName
 
-  val resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
+  def resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Extract operator" in {
-    val opcls = classOf[ExtractOperator]
-    val method = opcls.getMethod(
-      "extract",
-      classOf[InputModel],
-      classOf[Result[IntOutputModel]],
-      classOf[Result[LongOutputModel]],
-      classOf[Int])
-    val annotation = method.getAnnotation(classOf[Extract])
-    val operator = UserOperator.builder(
-      AnnotationDescription.of(annotation),
-      MethodDescription.of(method),
-      ClassDescription.of(opcls))
+    val operator = OperatorExtractor
+      .extract(classOf[Extract], classOf[ExtractOperator], "extract")
       .input("input", ClassDescription.of(classOf[InputModel]))
       .output("output1", ClassDescription.of(classOf[IntOutputModel]))
       .output("output2", ClassDescription.of(classOf[LongOutputModel]))
@@ -53,23 +42,24 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       .build()
 
     val compiler = resolvers(classOf[Extract])
-    val builder = compiler.compile(operator)(
-      compiler.Context(
-        jpContext = new MockJobflowProcessorContext(
-          new CompilerOptions("buildid", "", Map.empty[String, String]),
-          Thread.currentThread.getContextClassLoader,
-          Files.createTempDirectory("ExtractFragmentClassBuilderSpec").toFile)))
-    val cls = loadClass(builder.thisType.getClassName, builder.build())
-      .asSubclass(classOf[Fragment[InputModel]])
+    val classpath = Files.createTempDirectory("ExtractOperatorCompilerSpec").toFile
+    val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+    val thisType = compiler.compile(operator)(context)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = {
-      val builder = new OutputFragmentClassBuilder(classOf[IntOutputModel].asType)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[IntOutputModel].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[IntOutputModel]])
       cls.newInstance
     }
 
     val out2 = {
-      val builder = new OutputFragmentClassBuilder(classOf[LongOutputModel].asType)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[LongOutputModel].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[LongOutputModel]])
       cls.newInstance
     }
@@ -82,8 +72,8 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size == 10)
-    assert(out2.buffer.size == 100)
+    assert(out1.buffer.size === 10)
+    assert(out2.buffer.size === 100)
     out1.buffer.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
@@ -97,7 +87,7 @@ class ExtractFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object ExtractFragmentClassBuilderSpec {
+object ExtractOperatorCompilerSpec {
 
   class InputModel extends DataModel[InputModel] {
 

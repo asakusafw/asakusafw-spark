@@ -1,4 +1,5 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 
 import java.util.concurrent.atomic.AtomicLong
 
@@ -9,19 +10,19 @@ import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 
 abstract class FragmentClassBuilder(
-  val dataModelType: Type,
+  flowId: String,
   signature: Option[String],
   superType: Type,
   interfaceTypes: Type*)
     extends ClassBuilder(
-      Type.getType(s"L${classOf[Fragment[_]].asType.getInternalName}$$${FragmentClassBuilder.nextId};"),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/Fragment$$${FragmentClassBuilder.nextId};"),
       signature,
       superType,
       interfaceTypes: _*) {
 
-  def this(dataModelType: Type) =
+  def this(flowId: String, dataModelType: Type) =
     this(
-      dataModelType,
+      flowId,
       Option(FragmentClassBuilder.signature(dataModelType)),
       classOf[Fragment[_]].asType)
 }

@@ -7,55 +7,55 @@ package object orderings {
   trait BooleanOptionOrdering extends Ordering[BooleanOption] {
     def compare(x: BooleanOption, y: BooleanOption): Int = x.compareTo(y)
   }
-  implicit object BooleanOption extends BooleanOptionOrdering
+  implicit object BooleanOptionOrdering extends BooleanOptionOrdering
 
   trait ByteOptionOrdering extends Ordering[ByteOption] {
     def compare(x: ByteOption, y: ByteOption): Int = x.compareTo(y)
   }
-  implicit object ByteOption extends ByteOptionOrdering
+  implicit object ByteOptionOrdering extends ByteOptionOrdering
 
   trait ShortOptionOrdering extends Ordering[ShortOption] {
     def compare(x: ShortOption, y: ShortOption): Int = x.compareTo(y)
   }
-  implicit object ShortOption extends ShortOptionOrdering
+  implicit object ShortOptionOrdering extends ShortOptionOrdering
 
   trait IntOptionOrdering extends Ordering[IntOption] {
     def compare(x: IntOption, y: IntOption): Int = x.compareTo(y)
   }
-  implicit object IntOption extends IntOptionOrdering
+  implicit object IntOptionOrdering extends IntOptionOrdering
 
   trait LongOptionOrdering extends Ordering[LongOption] {
     def compare(x: LongOption, y: LongOption): Int = x.compareTo(y)
   }
-  implicit object LongOption extends LongOptionOrdering
+  implicit object LongOptionOrdering extends LongOptionOrdering
 
   trait FloatOptionOrdering extends Ordering[FloatOption] {
     def compare(x: FloatOption, y: FloatOption): Int = x.compareTo(y)
   }
-  implicit object FloatOption extends FloatOptionOrdering
+  implicit object FloatOptionOrdering extends FloatOptionOrdering
 
   trait DoubleOptionOrdering extends Ordering[DoubleOption] {
     def compare(x: DoubleOption, y: DoubleOption): Int = x.compareTo(y)
   }
-  implicit object DoubleOption extends DoubleOptionOrdering
+  implicit object DoubleOptionOrdering extends DoubleOptionOrdering
 
   trait DecimalOptionOrdering extends Ordering[DecimalOption] {
     def compare(x: DecimalOption, y: DecimalOption): Int = x.compareTo(y)
   }
-  implicit object DecimalOption extends DecimalOptionOrdering
+  implicit object DecimalOptionOrdering extends DecimalOptionOrdering
 
   trait StringOptionOrdering extends Ordering[StringOption] {
     def compare(x: StringOption, y: StringOption): Int = x.compareTo(y)
   }
-  implicit object StringOption extends StringOptionOrdering
+  implicit object StringOptionOrdering extends StringOptionOrdering
 
   trait DateOptionOrdering extends Ordering[DateOption] {
     def compare(x: DateOption, y: DateOption): Int = x.compareTo(y)
   }
-  implicit object DateOption extends DateOptionOrdering
+  implicit object DateOptionOrdering extends DateOptionOrdering
 
   trait DateTimeOptionOrdering extends Ordering[DateTimeOption] {
     def compare(x: DateTimeOption, y: DateTimeOption): Int = x.compareTo(y)
   }
-  implicit object DateTimeOption extends DateTimeOptionOrdering
+  implicit object DateTimeOptionOrdering extends DateTimeOptionOrdering
 }
