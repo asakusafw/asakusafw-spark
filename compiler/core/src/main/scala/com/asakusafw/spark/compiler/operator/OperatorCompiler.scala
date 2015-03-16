@@ -7,7 +7,7 @@ import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.spark.compiler.spi._
-import com.asakusafw.spark.tools.asm.ClassBuilder
+import com.asakusafw.spark.tools.asm._
 
 import resource._
 
@@ -30,8 +30,8 @@ object OperatorCompiler {
           op.getAnnotation.getDeclaringClass.resolve(context.jpContext.getClassLoader))
           .compile(op)
       case op: MarkerOperator =>
-        OutputFragmentClassBuilder.getOrCompile(
-          context.flowId, op.getInput.getDataType.asType, context.jpContext)
+        OneToOneOutputFragmentClassBuilder.getOrCompile(
+          context.flowId, Type.LONG_TYPE.boxed, op.getInput.getDataType.asType, classOf[Seq[_]].asType, context.jpContext)
     }
   }
 }

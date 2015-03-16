@@ -24,24 +24,22 @@ abstract class CoGroupDriver[B, K](
     cogroup.branch[B, Any, Any](branchKeys, { iter =>
       val (fragment, outputs) = fragments
       assert(outputs.keys.toSet == branchKeys)
+
+      def cast[K, V <: DataModel[V]](iterable: Iterable[((B, K), V)]) = {
+        iterable.asInstanceOf[Iterable[((B, K), V)]]
+      }
+
       iter.flatMap {
         case (_, iterables) =>
           fragment.reset()
           fragment.add(iterables)
-          outputs.iterator.flatMap {
-            case (key, output) =>
-              def prepare[T <: DataModel[T]](buffer: mutable.ArrayBuffer[_]) = {
-                buffer.asInstanceOf[mutable.ArrayBuffer[T]]
-                  .map(out => ((key, shuffleKey(key, out)), out))
-              }
-              prepare(output.buffer)
-          }
-      }
+          outputs.values.iterator.flatMap(output => cast(output.buffer))
+      } ++ outputs.values.iterator.flatMap(output => cast(output.flush))
     },
       partitioners = partitioners,
       keyOrderings = orderings,
       preservesPartitioning = true)
   }
 
-  def fragments[T <: DataModel[T]]: (CoGroupFragment, Map[B, OutputFragment[T]])
+  def fragments[U <: DataModel[U]]: (CoGroupFragment, Map[B, OutputFragment[B, U, _]])
 }

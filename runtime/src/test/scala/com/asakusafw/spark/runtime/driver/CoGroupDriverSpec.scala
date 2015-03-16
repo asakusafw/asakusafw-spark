@@ -99,14 +99,14 @@ object CoGroupDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
-    override def fragments[T <: DataModel[T]]: (CoGroupFragment, Map[String, OutputFragment[T]]) = {
+    override def fragments[T <: DataModel[T]]: (CoGroupFragment, Map[String, OutputFragment[String, T, _]]) = {
       val outputs = Map(
-        "hogeResult" -> new HogeOutputFragment,
-        "fooResult" -> new FooOutputFragment,
-        "hogeError" -> new HogeOutputFragment,
-        "fooError" -> new FooOutputFragment)
+        "hogeResult" -> new HogeOutputFragment("hogeResult", this),
+        "fooResult" -> new FooOutputFragment("fooResult", this),
+        "hogeError" -> new HogeOutputFragment("hogeError", this),
+        "fooError" -> new FooOutputFragment("fooError", this))
       val fragment = new TestCoGroupFragment(outputs)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[T]]])
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[String, T, _]]])
     }
 
     override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
@@ -141,11 +141,17 @@ object CoGroupDriverSpec {
     }
   }
 
-  class HogeOutputFragment extends OutputFragment[Hoge] {
+  class HogeOutputFragment(
+    branch: String,
+    prepareKey: PrepareKey[String])
+      extends OneToOneOutputFragment[String, Hoge, Hoge](branch, prepareKey) {
     override def newDataModel: Hoge = new Hoge()
   }
 
-  class FooOutputFragment extends OutputFragment[Foo] {
+  class FooOutputFragment(
+    branch: String,
+    prepareKey: PrepareKey[String])
+      extends OneToOneOutputFragment[String, Foo, Foo](branch, prepareKey) {
     override def newDataModel: Foo = new Foo()
   }
 
@@ -167,7 +173,7 @@ object CoGroupDriverSpec {
     }
   }
 
-  class TestCoGroupFragment(outputs: Map[String, OutputFragment[_]]) extends CoGroupFragment {
+  class TestCoGroupFragment(outputs: Map[String, Fragment[_]]) extends CoGroupFragment {
 
     override def add(groups: Seq[Iterable[_]]): Unit = {
       assert(groups.size == 2)

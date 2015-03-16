@@ -24,24 +24,22 @@ abstract class MapDriver[T <: DataModel[T]: ClassTag, B](
     prev.branch[B, Any, Any](branchKeys, { iter =>
       val (fragment, outputs) = fragments
       assert(outputs.keys.toSet == branchKeys)
+
+      def cast[K, V <: DataModel[V]](iterable: Iterable[((B, K), V)]) = {
+        iterable.asInstanceOf[Iterable[((B, K), V)]]
+      }
+
       iter.flatMap {
         case (_, dm) =>
           fragment.reset()
           fragment.add(dm)
-          outputs.iterator.flatMap {
-            case (key, output) =>
-              def prepare[T <: DataModel[T]](buffer: mutable.ArrayBuffer[_]) = {
-                buffer.asInstanceOf[mutable.ArrayBuffer[T]]
-                  .map(out => ((key, shuffleKey(key, out)), out))
-              }
-              prepare(output.buffer)
-          }
-      }
+          outputs.values.iterator.flatMap(output => cast(output.buffer))
+      } ++ outputs.values.iterator.flatMap(output => cast(output.flush))
     },
       partitioners = partitioners,
       keyOrderings = orderings,
       preservesPartitioning = true)
   }
 
-  def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[U]])
+  def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[B, U, _]])
 }

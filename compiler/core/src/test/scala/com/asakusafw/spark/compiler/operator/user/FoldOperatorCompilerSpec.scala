@@ -20,6 +20,7 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
+import com.asakusafw.spark.runtime.driver.PrepareKey
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Fold
@@ -55,10 +56,15 @@ class FoldOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = compiler.compile(operator)(context)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[CoGroupFragment])
 
+    val prepareKey = new PrepareIntOption()
+
     val result = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Hoge].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Hoge]])
-      cls.newInstance
+      val builder = new OneToOneOutputFragmentClassBuilder(
+        context.flowId, classOf[String].asType, classOf[Hoge].asType, classOf[IntOption].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build())
+        .asSubclass(classOf[OneToOneOutputFragment[String, Hoge, IntOption]])
+      cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
+        .newInstance("branch", prepareKey)
     }
 
     val fragment = cls.getConstructor(classOf[Fragment[_]]).newInstance(result)
@@ -70,8 +76,10 @@ class FoldOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       val hoges = Seq(hoge)
       fragment.add(Seq(hoges))
       assert(result.buffer.size === 1)
-      assert(result.buffer(0).id.get === 1)
-      assert(result.buffer(0).price.get === 100)
+      assert(result.buffer(0)._1._1 === "branch")
+      assert(result.buffer(0)._1._2.get === 1)
+      assert(result.buffer(0)._2.id.get === 1)
+      assert(result.buffer(0)._2.price.get === 100)
     }
 
     fragment.reset()
@@ -80,13 +88,16 @@ class FoldOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     {
       val hoges = (0 until 10).map { i =>
         val hoge = new Hoge()
-        hoge.id.modify(0)
+        hoge.id.modify(1)
         hoge.price.modify(10 * i)
         hoge
       }
       fragment.add(Seq(hoges))
       assert(result.buffer.size === 1)
-      assert(result.buffer(0).price.get === (0 until 10).map(_ * 10).sum + 10 * 9)
+      assert(result.buffer(0)._1._1 === "branch")
+      assert(result.buffer(0)._1._2.get === 1)
+      assert(result.buffer(0)._2.id.get === 1)
+      assert(result.buffer(0)._2.price.get === (0 until 10).map(_ * 10).sum + 10 * 9)
     }
 
     fragment.reset()
@@ -120,6 +131,13 @@ object FoldOperatorCompilerSpec {
     def fold(acc: Hoge, each: Hoge, n: Int): Unit = {
       acc.price.add(each.price)
       acc.price.add(n)
+    }
+  }
+
+  class PrepareIntOption extends PrepareKey[String] {
+
+    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
+      value.asInstanceOf[Hoge].id.asInstanceOf[U]
     }
   }
 }
