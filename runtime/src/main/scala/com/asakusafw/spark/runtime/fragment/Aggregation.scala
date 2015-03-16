@@ -3,9 +3,11 @@ package com.asakusafw.spark.runtime.fragment
 import org.apache.spark.{ Aggregator, SparkEnv, TaskContext }
 import org.apache.spark.util.collection.{ AppendOnlyMap, ExternalAppendOnlyMap }
 
-abstract class Aggregation[K, V, C] {
+abstract class Aggregation[K, V, C] extends Serializable {
 
   import Aggregation._
+
+  def mapSideCombine: Boolean
 
   def createCombiner(value: V): C
 

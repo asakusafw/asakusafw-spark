@@ -11,17 +11,28 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
-abstract class CoGroupDriver[B, K](
+abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
   @transient val sc: SparkContext,
-  @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
-  @transient part: Partitioner,
-  @transient grouping: Ordering[K])
+  @transient prev: RDD[(K, V)],
+  @transient part: Partitioner)
     extends SubPlanDriver[B] with Branch[B] {
-  assert(inputs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {
-    val cogroup = smcogroup[K](inputs, part, grouping)
-    cogroup.branch[B, Any, Any](branchKeys, { iter =>
+    val aggregate = if (prev.partitioner == Some(part)) {
+      prev.asInstanceOf[RDD[(K, C)]].mapPartitions({ iter =>
+        val combiner = aggregation.combinerCombiner
+        combiner.insertAll(iter)
+        val context = TaskContext.get
+        new InterruptibleIterator(context, combiner.iterator)
+      }, preservesPartitioning = true)
+    } else {
+      prev.combineByKey(
+        aggregation.createCombiner _,
+        aggregation.mergeValue _,
+        aggregation.mergeCombiners _,
+        part)
+    }
+    aggregate.branch[B, Any, Any](branchKeys, { iter =>
       val (fragment, outputs) = fragments
       assert(outputs.keys.toSet == branchKeys)
 
@@ -30,9 +41,9 @@ abstract class CoGroupDriver[B, K](
       }
 
       iter.flatMap {
-        case (_, iterables) =>
+        case (_, dm) =>
           fragment.reset()
-          fragment.add(iterables)
+          fragment.add(dm)
           outputs.values.iterator.flatMap(output => cast(output.buffer))
       } ++ outputs.values.iterator.flatMap(output => cast(output.flush))
     },
@@ -41,5 +52,7 @@ abstract class CoGroupDriver[B, K](
       preservesPartitioning = true)
   }
 
-  def fragments[U <: DataModel[U]]: (CoGroupFragment, Map[B, OutputFragment[B, _, _, U]])
+  def aggregation: Aggregation[K, V, C]
+
+  def fragments[U <: DataModel[U]]: (Fragment[C], Map[B, OutputFragment[B, _, _, U]])
 }

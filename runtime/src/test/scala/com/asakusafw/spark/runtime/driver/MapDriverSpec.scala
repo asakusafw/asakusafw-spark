@@ -71,12 +71,12 @@ object MapDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[String, U, _]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[String, _, _, U]]) = {
       val outputs = Map(
         "hogeResult" -> new HogeOutputFragment("hogeResult", this),
         "fooResult" -> new FooOutputFragment("fooResult", this))
       val fragment = new TestFragment(outputs)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[String, U, _]]])
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[String, _, _, U]]])
     }
 
     override def shuffleKey[U](branch: String, value: DataModel[_]): U = {

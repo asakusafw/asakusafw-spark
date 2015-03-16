@@ -99,14 +99,14 @@ object CoGroupDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
-    override def fragments[T <: DataModel[T]]: (CoGroupFragment, Map[String, OutputFragment[String, T, _]]) = {
+    override def fragments[U <: DataModel[U]]: (CoGroupFragment, Map[String, OutputFragment[String, _, _, U]]) = {
       val outputs = Map(
         "hogeResult" -> new HogeOutputFragment("hogeResult", this),
         "fooResult" -> new FooOutputFragment("fooResult", this),
         "hogeError" -> new HogeOutputFragment("hogeError", this),
         "fooError" -> new FooOutputFragment("fooError", this))
       val fragment = new TestCoGroupFragment(outputs)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[String, T, _]]])
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[String, _, _, U]]])
     }
 
     override def shuffleKey[U](branch: String, value: DataModel[_]): U = {

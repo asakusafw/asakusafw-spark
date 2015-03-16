@@ -41,5 +41,5 @@ abstract class MapDriver[T <: DataModel[T]: ClassTag, B](
       preservesPartitioning = true)
   }
 
-  def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[B, U, _]])
+  def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[B, _, _, U]])
 }

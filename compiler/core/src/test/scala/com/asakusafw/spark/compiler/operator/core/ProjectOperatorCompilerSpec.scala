@@ -55,7 +55,7 @@ class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       val builder = new OneToOneOutputFragmentClassBuilder(
         context.flowId, classOf[String].asType, classOf[OutputModel].asType, classOf[IntOption].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OutputFragment[String, OutputModel, IntOption]])
+        .asSubclass(classOf[OutputFragment[String, OutputModel, IntOption, OutputModel]])
       cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
         .newInstance("branch", new PrepareIntOption())
     }

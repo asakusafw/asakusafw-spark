@@ -47,6 +47,8 @@ object AggregationSpec {
 
   class TestAggregation extends Aggregation[Boolean, Int, Seq[Int]] {
 
+    override def mapSideCombine: Boolean = true
+
     override lazy val isSpillEnabled = false
 
     override def createCombiner(value: Int): Seq[Int] = {
