@@ -1,5 +1,4 @@
 package com.asakusafw.spark.compiler.operator
-package user
 
 import org.objectweb.asm.Type
 

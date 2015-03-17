@@ -16,7 +16,7 @@ abstract class Aggregation[K, V, C] extends Serializable {
   def mergeCombiners(comb1: C, comb2: C): C
 
   lazy val isSpillEnabled =
-    Option(SparkEnv.get).map(_.conf.getBoolean("spark.shuffle.spill", true)).getOrElse(true)
+    Option(SparkEnv.get).map(_.conf.getBoolean("spark.shuffle.spill", true)).getOrElse(false)
 
   def aggregator(): Aggregator[K, V, C] = Aggregator(createCombiner _, mergeValue _, mergeCombiners _)
 
