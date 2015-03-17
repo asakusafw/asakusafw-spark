@@ -13,8 +13,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.runtime.core.Result
+import com.asakusafw.spark.compiler.operator.FragmentClassBuilder
 import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
-import com.asakusafw.spark.runtime.fragment.{ CoGroupFragment, Fragment }
+import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.CoGroup
 
@@ -46,7 +47,9 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       ++ outputDataModelTypes.map(_ => classOf[Result[_]].asType)
       ++ arguments.map(_.getValue.getValueType.asType))
 
-    val builder = new CoGroupFragmentClassBuilder(context.flowId) with OperatorField with OutputFragments {
+    val builder = new FragmentClassBuilder(
+      context.flowId,
+      classOf[Seq[Iterable[_]]].asType) with OperatorField with OutputFragments {
 
       override def operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs

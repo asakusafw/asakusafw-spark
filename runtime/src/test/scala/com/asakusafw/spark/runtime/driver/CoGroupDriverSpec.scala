@@ -84,7 +84,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
 
 object CoGroupDriverSpec {
 
-  class TestCoGroupDriver[K <: Product](
+  class TestCoGroupDriver[K <: Product: ClassTag](
     @transient sc: SparkContext,
     @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
     @transient part: Partitioner,
@@ -99,7 +99,7 @@ object CoGroupDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (CoGroupFragment, Map[String, OutputFragment[String, _, _, U]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Seq[Iterable[_]]], Map[String, OutputFragment[String, _, _, U]]) = {
       val outputs = Map(
         "hogeResult" -> new HogeOutputFragment("hogeResult", this),
         "fooResult" -> new FooOutputFragment("fooResult", this),
@@ -173,7 +173,7 @@ object CoGroupDriverSpec {
     }
   }
 
-  class TestCoGroupFragment(outputs: Map[String, Fragment[_]]) extends CoGroupFragment {
+  class TestCoGroupFragment(outputs: Map[String, Fragment[_]]) extends Fragment[Seq[Iterable[_]]] {
 
     override def add(groups: Seq[Iterable[_]]): Unit = {
       assert(groups.size == 2)

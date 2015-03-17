@@ -45,7 +45,9 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
       +: outputDataModelTypes.map(_ => classOf[Result[_]].asType)
       ++: arguments.map(_.getValue.getValueType.asType))
 
-    val builder = new FragmentClassBuilder(context.flowId, inputDataModelType) with OperatorField with OutputFragments {
+    val builder = new FragmentClassBuilder(
+      context.flowId,
+      inputDataModelType) with OperatorField with OutputFragments {
 
       override val operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs
@@ -91,13 +93,6 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
                   ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
                     ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
                 }: _*)
-          `return`()
-        }
-
-        methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
-          import mb._
-          val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
-          thisVar.push().invokeV("add", resultVar.push().cast(inputDataModelType))
           `return`()
         }
 

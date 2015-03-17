@@ -54,7 +54,7 @@ class FoldOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath))
     val thisType = compiler.compile(operator)(context)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[CoGroupFragment])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
     val prepareKey = new PrepareIntOption()
 

@@ -44,13 +44,6 @@ abstract class CoreOperatorFragmentClassBuilder(flowId: String, dataModelType: T
 
     methodDef.newMethod("add", Seq(dataModelType))(defAddMethod)
 
-    methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
-      import mb._
-      val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
-      thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
-      `return`()
-    }
-
     methodDef.newMethod("reset", Seq.empty) { mb =>
       import mb._
       thisVar.push().getField("child", classOf[Fragment[_]].asType).invokeV("reset")
