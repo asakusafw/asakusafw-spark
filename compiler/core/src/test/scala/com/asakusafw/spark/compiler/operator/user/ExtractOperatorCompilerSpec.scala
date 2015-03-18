@@ -17,7 +17,6 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
-import com.asakusafw.spark.runtime.driver.PrepareKey
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Extract
@@ -53,24 +52,17 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = compiler.compile(operator)(context)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
-    val prepareKey = new PrepareIntLongOption()
-
     val out1 = {
-      val builder = new OneToOneOutputFragmentClassBuilder(
-        context.flowId, classOf[String].asType, classOf[IntOutputModel].asType, classOf[IntOption].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OneToOneOutputFragment[AnyRef, IntOutputModel, IntOption]])
-      cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
-        .newInstance("out1", prepareKey)
+      val builder = new OutputFragmentClassBuilder(
+        context.flowId, classOf[IntOutputModel].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[IntOutputModel]])
+      cls.newInstance()
     }
 
     val out2 = {
-      val builder = new OneToOneOutputFragmentClassBuilder(
-        context.flowId, classOf[String].asType, classOf[LongOutputModel].asType, classOf[LongOption].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OneToOneOutputFragment[String, LongOutputModel, LongOption]])
-      cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
-        .newInstance("out2", prepareKey)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[LongOutputModel].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[LongOutputModel]])
+      cls.newInstance()
     }
 
     val fragment = cls.getConstructor(classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(out1, out2)
@@ -84,15 +76,11 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     assert(out1.buffer.size === 10)
     assert(out2.buffer.size === 100)
     out1.buffer.zipWithIndex.foreach {
-      case (((b, k), dm), i) =>
-        assert(b === "out1")
-        assert(k.get === i)
+      case (dm, i) =>
         assert(dm.i.get === i)
     }
     out2.buffer.zipWithIndex.foreach {
-      case (((b, k), dm), i) =>
-        assert(b === "out2")
-        assert(k.get === i / 10)
+      case (dm, i) =>
         assert(dm.l.get === i / 10)
     }
     fragment.reset()
@@ -164,16 +152,6 @@ object ExtractOperatorCompilerSpec {
         l.getLOption.copyFrom(in.getLOption)
         out2.add(l)
       }
-    }
-  }
-
-  class PrepareIntLongOption extends PrepareKey[String] {
-
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
-      (branch match {
-        case "out1" => value.asInstanceOf[IntOutputModel].i
-        case "out2" => value.asInstanceOf[LongOutputModel].l
-      }).asInstanceOf[U]
     }
   }
 }

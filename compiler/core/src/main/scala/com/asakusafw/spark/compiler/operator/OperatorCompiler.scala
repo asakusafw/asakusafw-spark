@@ -4,10 +4,8 @@ package operator
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.spark.compiler.spi._
-import com.asakusafw.spark.tools.asm._
 
 import resource._
 
@@ -30,8 +28,8 @@ object OperatorCompiler {
           op.getAnnotation.getDeclaringClass.resolve(context.jpContext.getClassLoader))
           .compile(op)
       case op: MarkerOperator =>
-        OneToOneOutputFragmentClassBuilder.getOrCompile(
-          context.flowId, Type.LONG_TYPE.boxed, op.getInput.getDataType.asType, classOf[Seq[_]].asType, context.jpContext)
+        OutputFragmentClassBuilder.getOrCompile(
+          context.flowId, op.getInput.getDataType.asType, context.jpContext)
     }
   }
 }

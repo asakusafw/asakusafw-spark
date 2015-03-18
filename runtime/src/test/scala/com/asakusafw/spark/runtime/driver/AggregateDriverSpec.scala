@@ -81,10 +81,10 @@ object AggregateDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[String, _, _, U]]) = {
-      val fragment = new HogeOutputFragment("result", this)
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+      val fragment = new HogeOutputFragment
       val outputs = Map("result" -> fragment)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[String, _, _, U]]])
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
     override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
@@ -107,10 +107,7 @@ object AggregateDriverSpec {
     }
   }
 
-  class HogeOutputFragment(
-    branch: String,
-    prepareKey: PrepareKey[String])
-      extends OneToOneOutputFragment[String, Hoge, Hoge](branch, prepareKey) {
+  class HogeOutputFragment extends OutputFragment[Hoge] {
     override def newDataModel: Hoge = new Hoge()
   }
 

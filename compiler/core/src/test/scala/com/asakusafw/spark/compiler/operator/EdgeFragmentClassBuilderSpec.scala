@@ -6,7 +6,6 @@ import org.scalatest.junit.JUnitRunner
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.runtime.driver.PrepareKey
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 
@@ -20,22 +19,11 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   behavior of classOf[EdgeFragmentClassBuilder].getSimpleName
 
   it should "compile EdgeFragment" in {
-    val prepareKey = new PrepareIntOption()
-
-    val out1 = {
-      val builder = new OneToOneOutputFragmentClassBuilder(
-        "flowId", classOf[String].asType, classOf[TestModel].asType, classOf[IntOption].asType)
+    val (out1, out2) = {
+      val builder = new OutputFragmentClassBuilder("flowId", classOf[TestModel].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OneToOneOutputFragment[String, TestModel, IntOption]])
-      cls.getConstructor(classOf[String], classOf[PrepareKey[_]]).newInstance("out1", prepareKey)
-    }
-
-    val out2 = {
-      val builder = new OneToOneOutputFragmentClassBuilder(
-        "flowId", classOf[String].asType, classOf[TestModel].asType, classOf[IntOption].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OneToOneOutputFragment[String, TestModel, IntOption]])
-      cls.getConstructor(classOf[String], classOf[PrepareKey[_]]).newInstance("out2", prepareKey)
+        .asSubclass(classOf[OutputFragment[TestModel]])
+      (cls.newInstance(), cls.newInstance())
     }
 
     val builder = new EdgeFragmentClassBuilder("flowId", classOf[TestModel].asType)
@@ -52,15 +40,11 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
     assert(out1.buffer.size === 10)
     assert(out2.buffer.size === 10)
     out1.buffer.zipWithIndex.foreach {
-      case (((b, k), dm), i) =>
-        assert(b === "out1")
-        assert(k.get === i)
+      case (dm, i) =>
         assert(dm.i.get === i)
     }
     out2.buffer.zipWithIndex.foreach {
-      case (((b, k), dm), i) =>
-        assert(b === "out2")
-        assert(k.get === i)
+      case (dm, i) =>
         assert(dm.i.get === i)
     }
     fragment.reset()
@@ -81,13 +65,6 @@ object EdgeFragmentClassBuilderSpec {
 
     override def copyFrom(other: TestModel): Unit = {
       i.copyFrom(other.i)
-    }
-  }
-
-  class PrepareIntOption extends PrepareKey[String] {
-
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
-      value.asInstanceOf[TestModel].i.asInstanceOf[U]
     }
   }
 }
