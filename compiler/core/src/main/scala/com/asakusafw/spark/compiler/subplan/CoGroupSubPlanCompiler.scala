@@ -114,7 +114,7 @@ object CoGroupSubPlanCompiler {
   object CoGroupDriverInstantiator extends Instantiator {
 
     override def newInstance(
-      subplanType: Type,
+      driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
 
@@ -138,8 +138,8 @@ object CoGroupSubPlanCompiler {
           .invokeV("defaultParallelism", Type.INT_TYPE))
       val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
 
-      val cogroupSubplan = pushNew(subplanType)
-      cogroupSubplan.dup().invokeInit(
+      val cogroupDriver = pushNew(driverType)
+      cogroupDriver.dup().invokeInit(
         context.scVar.push(), {
           // Seq[(RDD[(K, _)], Option[Ordering[K]])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
@@ -204,7 +204,7 @@ object CoGroupSubPlanCompiler {
           // Ordering
           pushNew0(orderingType).asType(classOf[Ordering[_]].asType)
         })
-      cogroupSubplan.store(context.nextLocal.getAndAdd(cogroupSubplan.size))
+      cogroupDriver.store(context.nextLocal.getAndAdd(cogroupDriver.size))
     }
   }
 }

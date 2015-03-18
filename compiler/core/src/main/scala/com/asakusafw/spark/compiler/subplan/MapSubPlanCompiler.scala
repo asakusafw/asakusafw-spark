@@ -106,22 +106,22 @@ object MapSubPlanCompiler {
   object MapDriverInstantiator extends Instantiator {
 
     override def newInstance(
-      subplanType: Type,
+      driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
       val inputs = subplan.getInputs.toSet[SubPlan.Input]
         .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
         .map(_.getOperator.getSerialNumber)
         .map(context.rddVars)
-      val mapSubplan = pushNew(subplanType)
-      mapSubplan.dup().invokeInit(
+      val mapDriver = pushNew(driverType)
+      mapDriver.dup().invokeInit(
         context.scVar.push(), {
           (inputs.head.push() /: inputs.tail) {
             case (left, right) =>
               left.invokeV("union", classOf[RDD[_]].asType, right.push())
           }
         })
-      mapSubplan.store(context.nextLocal.getAndAdd(mapSubplan.size))
+      mapDriver.store(context.nextLocal.getAndAdd(mapDriver.size))
     }
   }
 }

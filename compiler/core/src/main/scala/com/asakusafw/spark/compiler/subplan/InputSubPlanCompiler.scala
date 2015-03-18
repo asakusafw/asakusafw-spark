@@ -76,12 +76,12 @@ object InputSubPlanCompiler {
   object InputDriverInstantiator extends Instantiator {
 
     override def newInstance(
-      subplanType: Type,
+      driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
-      val inputSubplan = pushNew(subplanType)
-      inputSubplan.dup().invokeInit(context.scVar.push())
-      inputSubplan.store(context.nextLocal.getAndAdd(inputSubplan.size))
+      val inputDriver = pushNew(driverType)
+      inputDriver.dup().invokeInit(context.scVar.push())
+      inputDriver.store(context.nextLocal.getAndAdd(inputDriver.size))
     }
   }
 }
