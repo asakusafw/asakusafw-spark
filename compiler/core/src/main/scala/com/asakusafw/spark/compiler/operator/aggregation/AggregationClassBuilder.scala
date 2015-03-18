@@ -100,7 +100,7 @@ object AggregationClassBuilder {
       .build()
   }
 
-  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, UserOperator), Type]] =
+  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Long), Type]] =
     mutable.WeakHashMap.empty
 
   def getOrCompile(
@@ -108,7 +108,7 @@ object AggregationClassBuilder {
     operator: UserOperator,
     jpContext: JPContext): Type = {
     cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
-      (flowId, operator), {
+      (flowId, operator.getOriginalSerialNumber), {
         val compiler = AggregationCompiler(jpContext.getClassLoader)(
           operator.getAnnotation.getDeclaringClass.resolve(jpContext.getClassLoader))
         compiler.compile(operator)(compiler.Context(flowId, jpContext))

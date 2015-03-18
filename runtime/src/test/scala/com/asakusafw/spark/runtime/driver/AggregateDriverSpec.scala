@@ -73,7 +73,7 @@ object AggregateDriverSpec {
     @transient prev: RDD[(IntOption, Hoge)],
     @transient part: Partitioner,
     val aggregation: Aggregation[IntOption, Hoge, Hoge])
-      extends AggregateDriver[IntOption, Hoge, Hoge, String](sc, prev, part) {
+      extends AggregateDriver[IntOption, Hoge, Hoge, String](sc, Seq(prev), part) {
 
     override def branchKeys: Set[String] = Set("result")
 
