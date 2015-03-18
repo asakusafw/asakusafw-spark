@@ -18,7 +18,7 @@ trait Branch[B, T] extends PrepareKey[B] {
   def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[B, _, _, U]])
 
   def branch(rdd: RDD[(_, T)]): Map[B, RDD[(_, _)]] = {
-    rdd.branch[B, Any, Any](branchKeys, { iter =>
+    val f: (Iterator[(_, T)] => Iterator[((B, _), _)]) = { iter =>
       val (fragment, outputs) = fragments
       assert(outputs.keys.toSet == branchKeys)
 
@@ -32,9 +32,20 @@ trait Branch[B, T] extends PrepareKey[B] {
           fragment.add(value)
           outputs.values.iterator.flatMap(output => cast(output.buffer))
       } ++ outputs.values.iterator.flatMap(output => cast(output.flush))
-    },
-      partitioners = partitioners,
-      keyOrderings = orderings,
-      preservesPartitioning = true)
+    }
+    if (branchKeys.size == 1 && partitioners.size == 0) {
+      Map(branchKeys.head -> rdd.mapPartitions({ iter =>
+        f(iter).map {
+          case ((_, k), v) => (k, v)
+        }
+      }, preservesPartitioning = true))
+    } else {
+      rdd.branch[B, Any, Any](
+        branchKeys,
+        f,
+        partitioners = partitioners,
+        keyOrderings = orderings,
+        preservesPartitioning = true)
+    }
   }
 }
