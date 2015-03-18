@@ -62,8 +62,17 @@ object InputOutputDriverSpec {
 
     override def paths: Set[String] = Set(basePath + "/part-*")
 
-    override def branchKey: String = {
-      "hogeResult"
+    override def branchKeys: Set[String] = Set("hogeResult")
+
+    override def partitioners: Map[String, Partitioner] = Map.empty
+
+    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[String, _, _, U]]) = {
+      val outputs = Map(
+        "hogeResult" -> new HogeOutputFragment("hogeResult", this))
+      val fragment = outputs("hogeResult")
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[String, _, _, U]]])
     }
 
     override def shuffleKey[U](branch: String, value: DataModel[_]): U =
@@ -86,5 +95,12 @@ object InputOutputDriverSpec {
     override def write(out: DataOutput): Unit = {
       id.write(out)
     }
+  }
+
+  class HogeOutputFragment(
+    branch: String,
+    prepareKey: PrepareKey[String])
+      extends OneToOneOutputFragment[String, Hoge, Hoge](branch, prepareKey) {
+    override def newDataModel: Hoge = new Hoge()
   }
 }
