@@ -19,14 +19,16 @@ import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.Extract
+import com.asakusafw.vocabulary.operator._
 
 class MapSubPlanCompiler extends SubPlanCompiler {
+
+  import MapSubPlanCompiler._
 
   override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
     operator match {
       case op: UserOperator =>
-        op.getAnnotation.resolve(classLoader).annotationType == classOf[Extract]
+        CompilableOperators(op.getAnnotation.resolve(classLoader).annotationType)
       case _ => false
     }
   }
@@ -102,6 +104,8 @@ class MapSubPlanCompiler extends SubPlanCompiler {
 }
 
 object MapSubPlanCompiler {
+
+  val CompilableOperators: Set[Class[_]] = Set(classOf[Project], classOf[Extend], classOf[Extract])
 
   object MapDriverInstantiator extends Instantiator {
 
