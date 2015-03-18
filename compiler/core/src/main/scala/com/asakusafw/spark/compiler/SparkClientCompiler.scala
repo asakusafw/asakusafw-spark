@@ -36,6 +36,11 @@ class SparkClientCompiler extends JobflowProcessor {
   import SparkClientCompiler._
 
   override def process(jpContext: JPContext, source: Jobflow): Unit = {
+
+    if (Logger.isDebugEnabled) {
+      Logger.debug("Start Asakusafw Spark compiler.")
+    }
+
     val plan = preparePlan(source.getOperatorGraph.copy)
 
     for {
