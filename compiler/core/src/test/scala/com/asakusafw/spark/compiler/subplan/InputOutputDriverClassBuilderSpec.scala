@@ -80,8 +80,8 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       hoge.id.modify(i)
       (hoge, hoge)
     }
-    val outputDriver = outputDriverCls.getConstructor(classOf[SparkContext], classOf[RDD[_]])
-      .newInstance(sc, hoges)
+    val outputDriver = outputDriverCls.getConstructor(classOf[SparkContext], classOf[Seq[RDD[_]]])
+      .newInstance(sc, Seq(hoges))
     outputDriver.execute()
 
     // prepare for input

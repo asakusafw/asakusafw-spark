@@ -53,7 +53,7 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient input: RDD[(_, Hoge)],
     val path: String)
-      extends OutputDriver[Hoge](sc, input)
+      extends OutputDriver[Hoge](sc, Seq(input))
 
   class TestInputDriver(
     @transient sc: SparkContext,

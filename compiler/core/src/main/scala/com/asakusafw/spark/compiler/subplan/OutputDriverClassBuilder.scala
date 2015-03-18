@@ -25,13 +25,13 @@ abstract class OutputDriverClassBuilder(
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     super.defConstructors(ctorDef)
 
-    ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[RDD[_]].asType)) { mb =>
+    ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[Seq[RDD[_]]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-      val inputVar = `var`(classOf[RDD[_]].asType, scVar.nextLocal)
+      val prevsVar = `var`(classOf[Seq[RDD[_]]].asType, scVar.nextLocal)
       thisVar.push().invokeInit(superType,
         scVar.push(),
-        inputVar.push(),
+        prevsVar.push(),
         getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
           .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
     }

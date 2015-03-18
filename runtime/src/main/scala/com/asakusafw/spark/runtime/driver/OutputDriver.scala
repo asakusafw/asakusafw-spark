@@ -19,8 +19,9 @@ import com.asakusafw.runtime.util.VariableTable
 
 abstract class OutputDriver[T <: DataModel[T]: ClassTag](
   @transient val sc: SparkContext,
-  @transient input: RDD[(_, T)])
+  @transient prevs: Seq[RDD[(_, T)]])
     extends SubPlanDriver[Nothing] {
+  assert(prevs.size > 0)
 
   val Logger = LoggerFactory.getLogger(getClass())
 
@@ -34,7 +35,9 @@ abstract class OutputDriver[T <: DataModel[T]: ClassTag](
     val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
     TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveVariables(path)))
 
-    val output = input.map(in => (NullWritable.get, in._2))
+    val output = ((prevs.head /: prevs.tail) {
+      case (union, rdd) => union.union(rdd)
+    }).map(in => (NullWritable.get, in._2))
     if (Logger.isDebugEnabled()) {
       Logger.debug(output.toDebugString)
     }
