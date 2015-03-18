@@ -63,7 +63,7 @@ object MapDriverSpec {
   class TestMapDriver(
     @transient sc: SparkContext,
     @transient prev: RDD[(_, Hoge)])
-      extends MapDriver[Hoge, String](sc, prev) {
+      extends MapDriver[Hoge, String](sc, Seq(prev)) {
 
     override def branchKeys: Set[String] = Set("hogeResult", "fooResult")
 

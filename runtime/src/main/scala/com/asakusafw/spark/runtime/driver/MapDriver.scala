@@ -9,10 +9,14 @@ import com.asakusafw.runtime.model.DataModel
 
 abstract class MapDriver[T <: DataModel[T]: ClassTag, B](
   @transient val sc: SparkContext,
-  @transient prev: RDD[(_, T)])
+  @transient prevs: Seq[RDD[(_, T)]])
     extends SubPlanDriver[B] with Branch[B, T] {
+  assert(prevs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {
-    branch(prev)
+    val union = (prevs.head /: prevs.tail) {
+      case (union, rdd) => union.union(rdd)
+    }
+    branch(union)
   }
 }
