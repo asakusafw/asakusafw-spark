@@ -74,7 +74,6 @@ class FoldOperatorCompiler extends UserOperatorCompiler {
             .build()) { mb =>
             import mb._
             thisVar.push().invokeInit(superType)
-            initOperatorField(mb)
             initOutputFields(mb, thisVar.nextLocal)
           }
       }
@@ -127,6 +126,8 @@ class FoldOperatorCompiler extends UserOperatorCompiler {
           resetOutputs(mb)
           `return`()
         }
+
+        defGetOperator(methodDef)
       }
     }
 
