@@ -36,32 +36,36 @@ package object rdd {
 
   def confluent[K, V](
     rdds: Seq[RDD[(K, V)]], part: Partitioner, ordering: Option[Ordering[K]]): RDD[(K, V)] = {
-    assert(rdds.size > 1)
-    ordering match {
-      case Some(ord) =>
-        zipPartitions(rdds.map(_.shuffle(part, ordering)), preservesPartitioning = true) { iters =>
-          val buffs = iters.map(_.asInstanceOf[Iterator[(K, V)]].buffered)
-          Iterator.continually {
-            ((None: Option[K]) /: buffs) {
-              case (opt, iter) if iter.hasNext =>
-                opt.map { key =>
-                  ord.min(key, iter.head._1)
-                }.orElse(Some(iter.head._1))
-              case (opt, _) => opt
-            }
-          }.takeWhile(_.isDefined).map(_.get).flatMap { key =>
-            buffs.flatMap { iter =>
-              Iterator.continually {
-                if (iter.hasNext && ord.equiv(iter.head._1, key)) {
-                  Some(iter.next)
-                } else None
-              }.takeWhile(_.isDefined).map(_.get)
+    assert(rdds.size > 0)
+    if (rdds.size > 1) {
+      ordering match {
+        case Some(ord) =>
+          zipPartitions(rdds.map(_.shuffle(part, ordering)), preservesPartitioning = true) { iters =>
+            val buffs = iters.map(_.asInstanceOf[Iterator[(K, V)]].buffered)
+            Iterator.continually {
+              ((None: Option[K]) /: buffs) {
+                case (opt, iter) if iter.hasNext =>
+                  opt.map { key =>
+                    ord.min(key, iter.head._1)
+                  }.orElse(Some(iter.head._1))
+                case (opt, _) => opt
+              }
+            }.takeWhile(_.isDefined).map(_.get).flatMap { key =>
+              buffs.flatMap { iter =>
+                Iterator.continually {
+                  if (iter.hasNext && ord.equiv(iter.head._1, key)) {
+                    Some(iter.next)
+                  } else None
+                }.takeWhile(_.isDefined).map(_.get)
+              }
             }
           }
-        }
-      case None =>
-        zipPartitions(rdds.map(_.shuffle(part, ordering)), preservesPartitioning = true)(
-          _.iterator.flatMap(_.asInstanceOf[Iterator[(K, V)]]))
+        case None =>
+          zipPartitions(rdds.map(_.shuffle(part, ordering)), preservesPartitioning = true)(
+            _.iterator.flatMap(_.asInstanceOf[Iterator[(K, V)]]))
+      }
+    } else {
+      rdds.head.shuffle(part, ordering)
     }
   }
 
