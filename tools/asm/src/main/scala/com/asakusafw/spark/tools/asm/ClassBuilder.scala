@@ -49,8 +49,8 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
     }
     cw.visitEnd()
     val bytes = cw.toByteArray()
-    if (logger.isDebugEnabled) {
-      logger.debug {
+    if (logger.isTraceEnabled) {
+      logger.trace {
         val writer = new StringWriter
         val cr = new ClassReader(bytes)
         cr.accept(new TraceClassVisitor(new PrintWriter(writer)), 0)
