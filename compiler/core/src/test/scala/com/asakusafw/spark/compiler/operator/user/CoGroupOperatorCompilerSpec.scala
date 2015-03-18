@@ -20,6 +20,7 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
+import com.asakusafw.spark.runtime.driver.PrepareKey
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.CoGroup
@@ -61,24 +62,35 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath))
     val thisType = compiler.compile(operator)(context)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[CoGroupFragment])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+
+    val prepareKey = new PrepareIntOption()
 
     val (hogeResult, hogeError) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Hoge].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Hoge]])
-      (cls.newInstance, cls.newInstance)
+      val builder = new OneToOneOutputFragmentClassBuilder(
+        context.flowId, classOf[String].asType, classOf[Hoge].asType, classOf[IntOption].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build())
+        .asSubclass(classOf[OneToOneOutputFragment[String, Hoge, IntOption]])
+      val ctor = cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
+      (ctor.newInstance("hogeResult", prepareKey), ctor.newInstance("hogeError", prepareKey))
     }
 
     val (fooResult, fooError) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance, cls.newInstance)
+      val builder = new OneToOneOutputFragmentClassBuilder(
+        context.flowId, classOf[String].asType, classOf[Foo].asType, classOf[IntOption].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build())
+        .asSubclass(classOf[OneToOneOutputFragment[String, Foo, IntOption]])
+      val ctor = cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
+      (ctor.newInstance("fooResult", prepareKey), ctor.newInstance("fooError", prepareKey))
     }
 
     val nResult = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[N].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[N]])
-      cls.newInstance
+      val builder = new OneToOneOutputFragmentClassBuilder(
+        context.flowId, classOf[String].asType, classOf[N].asType, classOf[IntOption].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build())
+        .asSubclass(classOf[OneToOneOutputFragment[String, N, IntOption]])
+      cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
+        .newInstance("nResult", prepareKey)
     }
 
     val fragment = cls.getConstructor(
@@ -96,7 +108,9 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       assert(hogeError.buffer.size === 0)
       assert(fooError.buffer.size === 0)
       assert(nResult.buffer.size === 1)
-      assert(nResult.buffer(0).n.get === 10)
+      assert(nResult.buffer(0)._1._1 === "nResult")
+      assert(nResult.buffer(0)._1._2.get === 10)
+      assert(nResult.buffer(0)._2.n.get === 10)
     }
 
     fragment.reset()
@@ -116,14 +130,20 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
       assert(hogeResult.buffer.size === 1)
-      assert(hogeResult.buffer(0).id === hoge.id)
+      assert(hogeResult.buffer(0)._1._1 === "hogeResult")
+      assert(hogeResult.buffer(0)._1._2.get === hoge.id.get)
+      assert(hogeResult.buffer(0)._2.id.get === hoge.id.get)
       assert(fooResult.buffer.size === 1)
-      assert(fooResult.buffer(0).id === foo.id)
-      assert(fooResult.buffer(0).hogeId === foo.hogeId)
+      assert(fooResult.buffer(0)._1._1 === "fooResult")
+      assert(fooResult.buffer(0)._1._2.get === foo.hogeId.get)
+      assert(fooResult.buffer(0)._2.id.get === foo.id.get)
+      assert(fooResult.buffer(0)._2.hogeId.get === foo.hogeId.get)
       assert(hogeError.buffer.size === 0)
       assert(fooError.buffer.size === 0)
       assert(nResult.buffer.size === 1)
-      assert(nResult.buffer(0).n.get === 10)
+      assert(nResult.buffer(0)._1._1 === "nResult")
+      assert(nResult.buffer(0)._1._2.get === 10)
+      assert(nResult.buffer(0)._2.n.get === 10)
     }
 
     fragment.reset()
@@ -147,15 +167,21 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       assert(hogeResult.buffer.size === 0)
       assert(fooResult.buffer.size === 0)
       assert(hogeError.buffer.size === 1)
-      assert(hogeError.buffer(0).id === hoge.id)
+      assert(hogeError.buffer(0)._1._1 === "hogeError")
+      assert(hogeError.buffer(0)._1._2.get === hoge.id.get)
+      assert(hogeError.buffer(0)._2.id.get === hoge.id.get)
       assert(fooError.buffer.size === 10)
       fooError.buffer.zip(foos).foreach {
-        case (actual, expected) =>
-          assert(actual.id === expected.id)
-          assert(actual.hogeId === expected.hogeId)
+        case (((b, k), actual), expected) =>
+          assert(b === "fooError")
+          assert(k.get === expected.hogeId.get)
+          assert(actual.id.get === expected.id.get)
+          assert(actual.hogeId.get === expected.hogeId.get)
       }
       assert(nResult.buffer.size === 1)
-      assert(nResult.buffer(0).n.get === 10)
+      assert(nResult.buffer(0)._1._1 === "nResult")
+      assert(nResult.buffer(0)._1._2.get === 10)
+      assert(nResult.buffer(0)._2.n.get === 10)
     }
 
     fragment.reset()
@@ -234,6 +260,20 @@ object CoGroupOperatorCompilerSpec {
       }
       this.n.n.modify(n)
       nResult.add(this.n)
+    }
+  }
+
+  class PrepareIntOption extends PrepareKey[String] {
+
+    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
+      (branch match {
+        case "hogeResult" | "hogeError" =>
+          value.asInstanceOf[Hoge].id
+        case "fooResult" | "fooError" =>
+          value.asInstanceOf[Foo].hogeId
+        case "nResult" =>
+          value.asInstanceOf[N].n
+      }).asInstanceOf[U]
     }
   }
 }

@@ -71,12 +71,12 @@ object MapDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[String, _, _, U]]) = {
       val outputs = Map(
-        "hogeResult" -> new HogeOutputFragment,
-        "fooResult" -> new FooOutputFragment)
+        "hogeResult" -> new HogeOutputFragment("hogeResult", this),
+        "fooResult" -> new FooOutputFragment("fooResult", this))
       val fragment = new TestFragment(outputs)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[String, _, _, U]]])
     }
 
     override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
@@ -111,15 +111,21 @@ object MapDriverSpec {
     }
   }
 
-  class HogeOutputFragment extends OutputFragment[Hoge] {
+  class HogeOutputFragment(
+    branch: String,
+    prepareKey: PrepareKey[String])
+      extends OneToOneOutputFragment[String, Hoge, Hoge](branch, prepareKey) {
     override def newDataModel: Hoge = new Hoge()
   }
 
-  class FooOutputFragment extends OutputFragment[Foo] {
+  class FooOutputFragment(
+    branch: String,
+    prepareKey: PrepareKey[String])
+      extends OneToOneOutputFragment[String, Foo, Foo](branch, prepareKey) {
     override def newDataModel: Foo = new Foo()
   }
 
-  class TestFragment(outputs: Map[String, OutputFragment[_]]) extends Fragment[Hoge] {
+  class TestFragment(outputs: Map[String, Fragment[_]]) extends Fragment[Hoge] {
 
     private val foo = new Foo()
 

@@ -442,6 +442,134 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     }
   }
 
+  it should "compile Spark client with Fold" in {
+    val tmpDir = File.createTempFile("test-", null)
+    tmpDir.delete
+    val classpath = new File(tmpDir, "classes").getAbsoluteFile
+    classpath.mkdirs()
+    val path = new File(tmpDir, "tmp").getAbsolutePath
+
+    spark { sc =>
+      {
+        val baa1 = sc.parallelize(0 until 5).map { i =>
+          val baa = new Baa()
+          baa.id.modify(i % 2)
+          baa.price.modify(100 * i)
+          baa
+        }
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        job.setOutputKeyClass(classOf[NullWritable])
+        job.setOutputValueClass(classOf[Baa])
+        job.setOutputFormatClass(classOf[TemporaryOutputFormat[Baa]])
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/baa1"))
+        baa1.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+      }
+      {
+        val baa2 = sc.parallelize(5 until 10).map { i =>
+          val baa = new Baa()
+          baa.id.modify(i % 2)
+          baa.price.modify(100 * i)
+          baa
+        }
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        job.setOutputKeyClass(classOf[NullWritable])
+        job.setOutputValueClass(classOf[Baa])
+        job.setOutputFormatClass(classOf[TemporaryOutputFormat[Baa]])
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/baa2"))
+        baa2.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+      }
+    }
+
+    val baa1InputOperator = ExternalInput
+      .newInstance("baa1/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Baa]),
+          "baa1",
+          ClassDescription.of(classOf[Baa]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val baa2InputOperator = ExternalInput
+      .newInstance("baa2/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Baa]),
+          "baa2",
+          ClassDescription.of(classOf[Baa]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val foldOperator = OperatorExtractor
+      .extract(classOf[Fold], classOf[Ops], "fold")
+      .input("baas", ClassDescription.of(classOf[Baa]),
+        new Group(
+          Seq(PropertyName.of("id")),
+          Seq.empty[Group.Ordering]),
+        baa1InputOperator.getOperatorPort, baa2InputOperator.getOperatorPort)
+      .output("result", ClassDescription.of(classOf[Baa]))
+      .build()
+
+    val resultOutputOperator = ExternalOutput
+      .newInstance("result", foldOperator.findOutput("result"))
+
+    val graph = new OperatorGraph(Seq(
+      baa1InputOperator, baa2InputOperator,
+      foldOperator,
+      resultOutputOperator))
+
+    val compiler = new SparkClientCompiler {
+
+      override def preparePlan(graph: OperatorGraph): Plan = {
+        val plan = super.preparePlan(graph)
+        assert(plan.getElements.size === 4)
+        plan
+      }
+    }
+
+    val jpContext = new MockJobflowProcessorContext(
+      new CompilerOptions("buildid", path, Map.empty[String, String]),
+      Thread.currentThread.getContextClassLoader,
+      classpath)
+    val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
+
+    compiler.process(jpContext, jobflow)
+
+    val cl = Thread.currentThread.getContextClassLoader
+    try {
+      val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
+      Thread.currentThread.setContextClassLoader(classloader)
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
+        .asSubclass(classOf[SparkClient])
+      val instance = cls.newInstance
+
+      val conf = new SparkConf()
+      conf.setAppName("AsakusaSparkClient")
+      conf.setMaster("local[*]")
+
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+      conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
+      instance.execute(conf)
+    } finally {
+      Thread.currentThread.setContextClassLoader(cl)
+    }
+
+    spark { sc =>
+      {
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"result/*/part-*")))
+        val result = sc.newAPIHadoopRDD(
+          job.getConfiguration,
+          classOf[TemporaryInputFormat[Baa]],
+          classOf[NullWritable],
+          classOf[Baa]).map { case (_, baa) => (baa.id.get, baa.price.get) }.collect.toSeq.sortBy(_._1)
+        assert(result.size === 2)
+        assert(result(0)._1 === 0)
+        assert(result(0)._2 === (0 until 10 by 2).map(_ * 100).sum)
+        assert(result(1)._1 === 1)
+        assert(result(1)._2 === (1 until 10 by 2).map(_ * 100).sum)
+      }
+    }
+  }
+
   def spark[A](block: SparkContext => A): A = {
     val sc = new SparkContext(new SparkConf().setAppName("").setMaster("local[*]"))
     try {
@@ -500,6 +628,32 @@ object SparkClientCompilerSpec {
     def getHogeIdOption: IntOption = hogeId
   }
 
+  class Baa extends DataModel[Baa] with Writable {
+
+    val id = new IntOption()
+    val price = new IntOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+      price.setNull()
+    }
+    override def copyFrom(other: Baa): Unit = {
+      id.copyFrom(other.id)
+      price.copyFrom(other.price)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      price.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      price.write(out)
+    }
+
+    def getIdOption: IntOption = id
+    def getPriceIdOption: IntOption = price
+  }
+
   class Ops {
 
     @Extract
@@ -523,6 +677,11 @@ object SparkClientCompilerSpec {
         hogeList.foreach(hogeError.add)
         fooList.foreach(fooError.add)
       }
+    }
+
+    @Fold
+    def fold(acc: Baa, each: Baa): Unit = {
+      acc.price.add(each.price)
     }
   }
 }

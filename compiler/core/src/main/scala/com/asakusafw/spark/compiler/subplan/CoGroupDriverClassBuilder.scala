@@ -3,6 +3,8 @@ package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.reflect.ClassTag
+
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 import org.apache.spark._
@@ -29,7 +31,9 @@ abstract class CoGroupDriverClassBuilder(
       val inputsVar = `var`(classOf[Seq[_]].asType, scVar.nextLocal)
       val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
       val groupingVar = `var`(classOf[Ordering[_]].asType, partVar.nextLocal)
-      thisVar.push().invokeInit(superType, scVar.push(), inputsVar.push(), partVar.push(), groupingVar.push())
+      thisVar.push().invokeInit(superType, scVar.push(), inputsVar.push(), partVar.push(), groupingVar.push(),
+        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+          .invokeV("apply", classOf[ClassTag[_]].asType, ldc(groupingKeyType).asType(classOf[Class[_]].asType)))
 
       initFields(mb)
     }

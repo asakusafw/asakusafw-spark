@@ -4,20 +4,15 @@ import scala.collection.mutable
 
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.runtime.driver.PrepareKey
 
-abstract class OutputFragment[T <: DataModel[T]] extends Fragment[T] {
+trait OutputFragment[B, T <: DataModel[T], K, V <: DataModel[V]] extends Fragment[T] {
 
-  val buffer: mutable.ArrayBuffer[T] = mutable.ArrayBuffer.empty[T]
+  def branch: B
 
-  def newDataModel(): T
+  def prepareKey: PrepareKey[B]
 
-  override def add(result: T): Unit = {
-    val dataModel = newDataModel()
-    dataModel.copyFrom(result)
-    buffer += dataModel
-  }
+  def buffer(): Iterable[((B, K), V)]
 
-  override def reset(): Unit = {
-    buffer.clear()
-  }
+  def flush(): Iterable[((B, K), V)]
 }

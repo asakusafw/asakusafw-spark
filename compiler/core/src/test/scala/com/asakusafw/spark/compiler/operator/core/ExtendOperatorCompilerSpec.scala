@@ -18,6 +18,7 @@ import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
+import com.asakusafw.spark.runtime.driver.PrepareKey
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 
@@ -49,10 +50,15 @@ class ExtendOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = compiler.compile(operator)(context)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
+    val prepareKey = new PrepareIntOption()
+
     val out = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[OutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[OutputModel]])
-      cls.newInstance
+      val builder = new OneToOneOutputFragmentClassBuilder(
+        context.flowId, classOf[String].asType, classOf[OutputModel].asType, classOf[IntOption].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build())
+        .asSubclass(classOf[OutputFragment[String, OutputModel, IntOption, OutputModel]])
+      cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
+        .newInstance("branch", prepareKey)
     }
 
     val fragment = cls.getConstructor(classOf[Fragment[_]]).newInstance(out)
@@ -64,7 +70,9 @@ class ExtendOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
     assert(out.buffer.size === 10)
     out.buffer.zipWithIndex.foreach {
-      case (dm, i) =>
+      case (((b, k), dm), i) =>
+        assert(b === "branch")
+        assert(k.get === i)
         assert(dm.i.get === i)
         assert(dm.l.isNull)
     }
@@ -107,5 +115,12 @@ object ExtendOperatorCompilerSpec {
 
     def getIOption: IntOption = i
     def getLOption: LongOption = l
+  }
+
+  class PrepareIntOption extends PrepareKey[String] {
+
+    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
+      value.asInstanceOf[OutputModel].i.asInstanceOf[U]
+    }
   }
 }

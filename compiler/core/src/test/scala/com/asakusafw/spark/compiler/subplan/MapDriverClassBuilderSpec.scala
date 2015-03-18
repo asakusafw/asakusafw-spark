@@ -5,9 +5,6 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import java.nio.file.Files
-import java.util.{ List => JList }
-
 import scala.collection.JavaConversions._
 
 import org.apache.spark._
@@ -26,10 +23,7 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.compiler.subplan.SubPlanType.MapSubPlan
 import com.asakusafw.spark.runtime.driver._
-import com.asakusafw.spark.runtime.orderings._
-import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Extract
 
 @RunWith(classOf[JUnitRunner])

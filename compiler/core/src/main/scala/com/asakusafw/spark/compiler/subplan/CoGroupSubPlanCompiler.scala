@@ -23,14 +23,16 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.CoGroup
+import com.asakusafw.vocabulary.operator._
 
 class CoGroupSubPlanCompiler extends SubPlanCompiler {
+
+  import CoGroupSubPlanCompiler._
 
   override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
     operator match {
       case op: UserOperator =>
-        op.getAnnotation.resolve(classLoader).annotationType == classOf[CoGroup]
+        CompilableOperators(op.getAnnotation.resolve(classLoader).annotationType)
       case _ => false
     }
   }
@@ -107,10 +109,12 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
 object CoGroupSubPlanCompiler {
 
+  val CompilableOperators: Set[Class[_]] = Set(classOf[CoGroup])
+
   object CoGroupDriverInstantiator extends Instantiator {
 
     override def newInstance(
-      subplanType: Type,
+      driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
 
@@ -134,8 +138,8 @@ object CoGroupSubPlanCompiler {
           .invokeV("defaultParallelism", Type.INT_TYPE))
       val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
 
-      val cogroupSubplan = pushNew(subplanType)
-      cogroupSubplan.dup().invokeInit(
+      val cogroupDriver = pushNew(driverType)
+      cogroupDriver.dup().invokeInit(
         context.scVar.push(), {
           // Seq[(RDD[(K, _)], Option[Ordering[K]])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
@@ -200,7 +204,7 @@ object CoGroupSubPlanCompiler {
           // Ordering
           pushNew0(orderingType).asType(classOf[Ordering[_]].asType)
         })
-      cogroupSubplan.store(context.nextLocal.getAndAdd(cogroupSubplan.size))
+      cogroupDriver.store(context.nextLocal.getAndAdd(cogroupDriver.size))
     }
   }
 }

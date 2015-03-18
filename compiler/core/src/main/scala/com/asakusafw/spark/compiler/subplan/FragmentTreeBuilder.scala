@@ -11,6 +11,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.spark.compiler.operator.OperatorCompiler
+import com.asakusafw.spark.runtime.driver.PrepareKey
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -27,8 +28,12 @@ class FragmentTreeBuilder(
   def build(operator: Operator): Var = {
     val t = operatorFragmentTypes(operator.getOriginalSerialNumber)
     val fragment = operator match {
-      case _: MarkerOperator =>
-        pushNew0(t)
+      case marker: MarkerOperator =>
+        val fragment = pushNew(t)
+        fragment.dup().invokeInit(
+          ldc(marker.getOriginalSerialNumber).box(),
+          thisVar.push().asType(classOf[PrepareKey[_]].asType))
+        fragment
       case _ =>
         val outputs = operator.getOutputs.map(build)
         val fragment = pushNew(t)
