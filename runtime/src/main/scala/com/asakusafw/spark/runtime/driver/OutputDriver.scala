@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd._
 import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -35,12 +35,13 @@ abstract class OutputDriver[T <: DataModel[T]: ClassTag](
     val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
     TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveVariables(path)))
 
-    val output = ((prevs.head /: prevs.tail) {
-      case (union, rdd) => union.union(rdd)
-    }).map(in => (NullWritable.get, in._2))
+    val output = (if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs))
+      .map(in => (NullWritable.get, in._2))
+
     if (Logger.isDebugEnabled()) {
       Logger.debug(output.toDebugString)
     }
+
     output.saveAsNewAPIHadoopDataset(job.getConfiguration)
     Map.empty
   }

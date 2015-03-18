@@ -3,7 +3,7 @@ package com.asakusafw.spark.runtime.driver
 import scala.reflect.ClassTag
 
 import org.apache.spark._
-import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
 
@@ -14,9 +14,6 @@ abstract class MapDriver[T <: DataModel[T]: ClassTag, B](
   assert(prevs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {
-    val union = (prevs.head /: prevs.tail) {
-      case (union, rdd) => union.union(rdd)
-    }
-    branch(union)
+    branch(if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs))
   }
 }
