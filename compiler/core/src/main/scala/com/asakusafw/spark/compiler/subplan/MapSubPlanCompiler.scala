@@ -29,6 +29,13 @@ class MapSubPlanCompiler extends SubPlanCompiler {
     operator match {
       case op: UserOperator =>
         CompilableOperators(op.getAnnotation.resolve(classLoader).annotationType)
+      case op: CoreOperator =>
+        op.getCoreOperatorKind match {
+          case CoreOperator.CoreOperatorKind.CHECKPOINT  => false
+          case CoreOperator.CoreOperatorKind.PROJECT     => true
+          case CoreOperator.CoreOperatorKind.EXTEND      => true
+          case CoreOperator.CoreOperatorKind.RESTRUCTURE => false
+        }
       case _ => false
     }
   }
@@ -105,7 +112,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
 
 object MapSubPlanCompiler {
 
-  val CompilableOperators: Set[Class[_]] = Set(classOf[Project], classOf[Extend], classOf[Extract])
+  val CompilableOperators: Set[Class[_]] = Set(classOf[Extract])
 
   object MapDriverInstantiator extends Instantiator {
 
