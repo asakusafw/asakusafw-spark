@@ -4,10 +4,8 @@ package user
 
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
-
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
-
 import com.asakusafw.lang.compiler.model.description.ValueDescription
 import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.runtime.core.Result
@@ -28,7 +26,7 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
     val implementationClassType = operator.getImplementationClass.asType
 
     val inputs = operator.getInputs.toSeq
-    assert(inputs.size == 1) // FIXME to take multiple inputs for side data?
+    assert(inputs.size == 1)
     val input = inputs.head
     val inputDataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
     val inputDataModelType = inputDataModelRef.getDeclaration.asType
@@ -39,12 +37,12 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
     val outputDataModelRef = context.jpContext.getDataModelLoader.load(output.getDataType)
     val outputDataModelType = outputDataModelRef.getDeclaration.asType
 
-    val arguments = operator.getArguments.toSeq
+    assert(inputDataModelType == outputDataModelType)
 
+    val arguments = operator.getArguments.toSeq
     assert(methodType.getArgumentTypes.toSeq ==
-      inputDataModelType
-      +: outputDataModelType
-      +: arguments.map(_.getValue.getValueType.asType))
+      Seq(inputDataModelType)
+      ++: arguments.map(_.getValue.getValueType.asType))
 
     val builder = new FragmentClassBuilder(context.flowId, inputDataModelType) //
     with OperatorField with OutputFragments {
@@ -58,6 +56,7 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
       }
 
       override def defConstructors(ctorDef: ConstructorDef): Unit = {
+        assert(outputs.size == 1) // so that, below code is too much.
         ctorDef.newInit((0 until outputs.size).map(_ => classOf[Fragment[_]].asType),
           ((new MethodSignatureBuilder() /: outputs) {
             case (builder, output) =>
@@ -71,7 +70,6 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
             .build()) { mb =>
             import mb._
             thisVar.push().invokeInit(superType)
-            initOperatorField(mb)
             initOutputFields(mb, thisVar.nextLocal)
           }
       }
@@ -85,21 +83,14 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
           getOperatorField(mb)
             .invokeV(
               methodDesc.getName,
-              resultVar.push()
-                +: outputs.map { output =>
-                  getOutputField(mb, output).asType(classOf[Result[_]].asType)
-                }
-                ++: arguments.map { argument =>
-                  ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
-                    ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
-                }: _*)
-          `return`()
-        }
+              resultVar.push() +: arguments.map { argument =>
+                ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
+                  ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
+              }: _*)
 
-        methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
-          import mb._
-          val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
-          thisVar.push().invokeV("add", resultVar.push().cast(inputDataModelType))
+          // outputPort << modified_input
+          //          getOutputField(mb, output).invokeI("add", inputDataModelType, )
+
           `return`()
         }
 
@@ -108,6 +99,8 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
           resetOutputs(mb)
           `return`()
         }
+
+        defGetOperator(methodDef)
       }
     }
 
