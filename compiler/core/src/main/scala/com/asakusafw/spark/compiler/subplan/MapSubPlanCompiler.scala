@@ -43,9 +43,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = MapSubPlanCompiler.MapDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[UserOperator])
-    val operator = dominant.asInstanceOf[UserOperator]
+    val operator = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
 
     val outputs = subplan.getOutputs.toSeq
 
