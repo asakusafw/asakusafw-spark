@@ -99,6 +99,8 @@ object CoGroupDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
+    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+
     override def fragments[U <: DataModel[U]]: (Fragment[Seq[Iterable[_]]], Map[String, OutputFragment[U]]) = {
       val outputs = Map(
         "hogeResult" -> new HogeOutputFragment,

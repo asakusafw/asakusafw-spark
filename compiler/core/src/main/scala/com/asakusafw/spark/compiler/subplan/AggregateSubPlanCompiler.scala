@@ -61,7 +61,8 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     val outputs = subplan.getOutputs.toSeq
 
     implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
-    val operators = subplan.getOperators.filterNot(_.getOriginalSerialNumber == dominant.getOriginalSerialNumber)
+    val operators = subplan.getOperators
+      .filterNot(_.getOriginalSerialNumber == dominant.getOriginalSerialNumber)
       .map { operator =>
         operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator)
       }.toMap[Long, Type]

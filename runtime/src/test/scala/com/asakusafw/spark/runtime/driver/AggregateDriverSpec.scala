@@ -47,6 +47,27 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     }.collect.toSeq.sortBy(_._1) ===
       Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
   }
+
+  it should "aggregate partially" in {
+    val hoges = sc.parallelize(0 until 10, 2).map { i =>
+      val hoge = new Hoge()
+      hoge.id.modify(i % 2)
+      hoge.price.modify(i * 100)
+      (hoge.id, hoge)
+    }
+
+    val driver = new TestPartialAggregationMapDriver(sc, hoges)
+
+    val outputs = driver.execute()
+    assert(outputs("result").map {
+      case (id: IntOption, hoge: Hoge) => (id.get, hoge.price.get)
+    }.collect.toSeq.sortBy(_._1) ===
+      Seq(
+        (0, (0 until 10).filter(_ % 2 == 0).filter(_ < 5).map(_ * 100).sum),
+        (0, (0 until 10).filter(_ % 2 == 0).filterNot(_ < 5).map(_ * 100).sum),
+        (1, (0 until 10).filter(_ % 2 == 1).filter(_ < 5).map(_ * 100).sum),
+        (1, (0 until 10).filter(_ % 2 == 1).filterNot(_ < 5).map(_ * 100).sum)))
+  }
 }
 
 object AggregateDriverSpec {
@@ -80,6 +101,36 @@ object AggregateDriverSpec {
     override def partitioners: Map[String, Partitioner] = Map.empty
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+
+    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+      val fragment = new HogeOutputFragment
+      val outputs = Map("result" -> fragment)
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
+    }
+
+    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
+      value.asInstanceOf[Hoge].id.asInstanceOf[U]
+    }
+  }
+
+  class TestPartialAggregationMapDriver(
+    @transient sc: SparkContext,
+    @transient prev: RDD[(IntOption, Hoge)])
+      extends MapDriver[Hoge, String](sc, Seq(prev.asInstanceOf[RDD[(_, Hoge)]])) {
+
+    override def branchKeys: Set[String] = Set("result")
+
+    override def partitioners: Map[String, Partitioner] = {
+      Map("result" -> new GroupingPartitioner(2))
+    }
+
+    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+
+    override def aggregations: Map[String, Aggregation[_, _, _]] = {
+      Map("result" -> new TestAggregation)
+    }
 
     override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
       val fragment = new HogeOutputFragment

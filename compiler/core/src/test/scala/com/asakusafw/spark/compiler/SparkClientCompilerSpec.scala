@@ -33,6 +33,7 @@ import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator._
 
 @RunWith(classOf[JUnitRunner])
@@ -679,7 +680,7 @@ object SparkClientCompilerSpec {
       }
     }
 
-    @Fold
+    @Fold(partialAggregation = PartialAggregation.PARTIAL)
     def fold(acc: Baa, each: Baa): Unit = {
       acc.price.add(each.price)
     }

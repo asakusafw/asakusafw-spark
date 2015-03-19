@@ -68,6 +68,8 @@ object InputOutputDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
+    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+
     override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
       val fragment = new HogeOutputFragment
       val outputs = Map("hogeResult" -> fragment)

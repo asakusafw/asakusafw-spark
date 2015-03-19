@@ -1,8 +1,10 @@
 package com.asakusafw.spark.runtime.driver
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 import org.apache.spark.Partitioner
+import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
@@ -16,6 +18,8 @@ trait Branch[B, T] {
   def partitioners: Map[B, Partitioner]
 
   def orderings[K]: Map[B, Ordering[K]]
+
+  def aggregations: Map[B, Aggregation[_, _, _]]
 
   def shuffleKey[U](branch: B, value: DataModel[_]): U
 
@@ -41,15 +45,32 @@ trait Branch[B, T] {
       }
     }
     if (branchKeys.size == 1 && partitioners.size == 0) {
-      Map(branchKeys.head -> rdd.mapPartitions({ iter =>
-        f(iter).map {
-          case ((_, k), v) => (k, v)
-        }
-      }, preservesPartitioning = true))
+      Map(branchKeys.head ->
+        rdd.mapPartitions({ iter =>
+          f(iter).map {
+            case ((_, k), v) => (k, v)
+          }
+        }, preservesPartitioning = true))
     } else {
       rdd.branch[B, Any, Any](
         branchKeys,
-        f,
+        { iter =>
+          val combiners = aggregations.collect {
+            case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
+          }.toMap[B, Aggregation.Combiner[_, _, _]]
+
+          f(iter).flatMap {
+            case ((b, k), v) if combiners.contains(b) =>
+              combiners(b).asInstanceOf[Aggregation.Combiner[Any, Any, Any]].insert(k, v)
+              Iterator.empty
+            case otherwise => Iterator(otherwise)
+          } ++ combiners.iterator.flatMap {
+            case (b, combiner) =>
+              combiner.iterator.map {
+                case (k, v) => ((b, k), v)
+              }
+          }
+        },
         partitioners = partitioners,
         keyOrderings = orderings,
         preservesPartitioning = true)
