@@ -21,12 +21,14 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
   it should "compile EdgeFragment" in {
     val (out1, out2) = {
       val builder = new OutputFragmentClassBuilder("flowId", classOf[TestModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[TestModel]])
-      (cls.newInstance, cls.newInstance)
+      val cls = loadClass(builder.thisType.getClassName, builder.build())
+        .asSubclass(classOf[OutputFragment[TestModel]])
+      (cls.newInstance(), cls.newInstance())
     }
 
     val builder = new EdgeFragmentClassBuilder("flowId", classOf[TestModel].asType)
-    val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[EdgeFragment[TestModel]])
+    val cls = loadClass(builder.thisType.getClassName, builder.build())
+      .asSubclass(classOf[EdgeFragment[TestModel]])
 
     val fragment = cls.getConstructor(classOf[Seq[Fragment[_]]]).newInstance(Seq(out1, out2))
 

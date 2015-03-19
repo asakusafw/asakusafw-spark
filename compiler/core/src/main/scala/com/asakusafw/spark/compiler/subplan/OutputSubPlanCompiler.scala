@@ -2,6 +2,8 @@ package com.asakusafw.spark.compiler
 package subplan
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.reflect.NameTransformer
 
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
@@ -52,22 +54,27 @@ object OutputSubPlanCompiler {
   object OutputDriverInstantiator extends Instantiator {
 
     override def newInstance(
-      subplanType: Type,
+      driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
-      val inputs = subplan.getInputs.toSet[SubPlan.Input]
+      val prevRddVars = subplan.getInputs.toSet[SubPlan.Input]
         .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
         .map(_.getOperator.getSerialNumber)
         .map(context.rddVars)
-      val outputSubplan = pushNew(subplanType)
-      outputSubplan.dup().invokeInit(
+      val outputDriver = pushNew(driverType)
+      outputDriver.dup().invokeInit(
         context.scVar.push(), {
-          (inputs.head.push() /: inputs.tail) {
-            case (left, right) =>
-              left.invokeV("union", classOf[RDD[_]].asType, right.push())
+          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+          prevRddVars.foreach { rddVar =>
+            builder.invokeI(
+              NameTransformer.encode("+="),
+              classOf[mutable.Builder[_, _]].asType,
+              rddVar.push().asType(classOf[AnyRef].asType))
           }
+          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         })
-      outputSubplan.store(context.nextLocal.getAndAdd(outputSubplan.size))
+      outputDriver.store(context.nextLocal.getAndAdd(outputDriver.size))
     }
   }
 }

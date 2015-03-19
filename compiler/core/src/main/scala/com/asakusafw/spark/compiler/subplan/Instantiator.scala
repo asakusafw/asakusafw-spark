@@ -23,6 +23,6 @@ trait Instantiator {
     jpContext: JPContext)
 
   def newInstance(
-    subplanType: Type,
+    driverType: Type,
     subplan: SubPlan)(implicit context: Context): Var
 }

@@ -53,15 +53,16 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[IntOutputModel].asType)
+      val builder = new OutputFragmentClassBuilder(
+        context.flowId, classOf[IntOutputModel].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[IntOutputModel]])
-      cls.newInstance
+      cls.newInstance()
     }
 
     val out2 = {
       val builder = new OutputFragmentClassBuilder(context.flowId, classOf[LongOutputModel].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[LongOutputModel]])
-      cls.newInstance
+      cls.newInstance()
     }
 
     val fragment = cls.getConstructor(classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(out1, out2)

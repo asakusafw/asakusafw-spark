@@ -51,8 +51,9 @@ class ExtendOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val out = {
       val builder = new OutputFragmentClassBuilder(context.flowId, classOf[OutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[OutputModel]])
-      cls.newInstance
+      val cls = loadClass(builder.thisType.getClassName, builder.build())
+        .asSubclass(classOf[OutputFragment[OutputModel]])
+      cls.newInstance()
     }
 
     val fragment = cls.getConstructor(classOf[Fragment[_]]).newInstance(out)

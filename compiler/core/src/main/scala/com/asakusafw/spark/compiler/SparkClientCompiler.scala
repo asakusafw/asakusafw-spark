@@ -36,6 +36,11 @@ class SparkClientCompiler extends JobflowProcessor {
   import SparkClientCompiler._
 
   override def process(jpContext: JPContext, source: Jobflow): Unit = {
+
+    if (Logger.isDebugEnabled) {
+      Logger.debug("Start Asakusafw Spark compiler.")
+    }
+
     val plan = preparePlan(source.getOperatorGraph.copy)
 
     for {
@@ -68,8 +73,8 @@ class SparkClientCompiler extends JobflowProcessor {
               val instantiator = compiler.instantiator
               val context = compiler.Context(source.getFlowId, jpContext)
 
-              val subplanType = compiler.compile(subplan)(context)
-              val driverVar = instantiator.newInstance(subplanType, subplan)(
+              val driverType = compiler.compile(subplan)(context)
+              val driverVar = instantiator.newInstance(driverType, subplan)(
                 instantiator.Context(mb, scVar, rddVars, nextLocal, source.getFlowId, jpContext))
               val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)
               val rddsVar = rdds.store(nextLocal.getAndAdd(rdds.size))

@@ -21,11 +21,9 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
   @transient val sc: SparkContext)
-    extends SubPlanDriver[B] with PrepareKey[B] {
+    extends SubPlanDriver[B] with Branch[B, T] {
 
   def paths: Set[String]
-
-  def branchKey: B
 
   override def execute(): Map[B, RDD[(_, _)]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
@@ -41,9 +39,6 @@ abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
       classOf[TemporaryInputFormat[T]],
       classOf[NullWritable],
       classTag[T].runtimeClass.asInstanceOf[Class[T]])
-    Map(branchKey -> rdd.map {
-      case (_, dm) =>
-        (shuffleKey(branchKey, dm), dm)
-    })
+    branch(rdd.asInstanceOf[RDD[(_, T)]])
   }
 }
