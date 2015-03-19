@@ -34,6 +34,7 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
+import com.asakusafw.vocabulary.model.{ Key, Summarized }
 import com.asakusafw.vocabulary.operator._
 
 @RunWith(classOf[JUnitRunner])
@@ -571,6 +572,143 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     }
   }
 
+  it should "compile Spark client with Summarize" in {
+    val tmpDir = File.createTempFile("test-", null)
+    tmpDir.delete
+    val classpath = new File(tmpDir, "classes").getAbsoluteFile
+    classpath.mkdirs()
+    val path = new File(tmpDir, "tmp").getAbsolutePath
+
+    spark { sc =>
+      {
+        val baa1 = sc.parallelize(0 until 500).map { i =>
+          val baa = new Baa()
+          baa.id.modify(i % 2)
+          baa.price.modify(100 * i)
+          baa
+        }
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        job.setOutputKeyClass(classOf[NullWritable])
+        job.setOutputValueClass(classOf[Baa])
+        job.setOutputFormatClass(classOf[TemporaryOutputFormat[Baa]])
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/baa1"))
+        baa1.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+      }
+      {
+        val baa2 = sc.parallelize(500 until 1000).map { i =>
+          val baa = new Baa()
+          baa.id.modify(i % 2)
+          baa.price.modify(100 * i)
+          baa
+        }
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        job.setOutputKeyClass(classOf[NullWritable])
+        job.setOutputValueClass(classOf[Baa])
+        job.setOutputFormatClass(classOf[TemporaryOutputFormat[Baa]])
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/baa2"))
+        baa2.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+      }
+    }
+
+    val baa1InputOperator = ExternalInput
+      .newInstance("baa1/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Baa]),
+          "baa1",
+          ClassDescription.of(classOf[Baa]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val baa2InputOperator = ExternalInput
+      .newInstance("baa2/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Baa]),
+          "baa2",
+          ClassDescription.of(classOf[Baa]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val summarizeOperator = OperatorExtractor
+      .extract(classOf[Summarize], classOf[Ops], "summarize")
+      .input("baas", ClassDescription.of(classOf[Baa]),
+        new Group(
+          Seq(PropertyName.of("id")),
+          Seq.empty[Group.Ordering]),
+        baa1InputOperator.getOperatorPort, baa2InputOperator.getOperatorPort)
+      .output("result", ClassDescription.of(classOf[SummarizedBaa]))
+      .build()
+
+    val resultOutputOperator = ExternalOutput
+      .newInstance("result", summarizeOperator.findOutput("result"))
+
+    val graph = new OperatorGraph(Seq(
+      baa1InputOperator, baa2InputOperator,
+      summarizeOperator,
+      resultOutputOperator))
+
+    val compiler = new SparkClientCompiler {
+
+      override def preparePlan(graph: OperatorGraph): Plan = {
+        val plan = super.preparePlan(graph)
+        assert(plan.getElements.size === 4)
+        plan
+      }
+    }
+
+    val jpContext = new MockJobflowProcessorContext(
+      new CompilerOptions("buildid", path, Map.empty[String, String]),
+      Thread.currentThread.getContextClassLoader,
+      classpath)
+    val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
+
+    compiler.process(jpContext, jobflow)
+
+    val cl = Thread.currentThread.getContextClassLoader
+    try {
+      val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
+      Thread.currentThread.setContextClassLoader(classloader)
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
+        .asSubclass(classOf[SparkClient])
+      val instance = cls.newInstance
+
+      val conf = new SparkConf()
+      conf.setAppName("AsakusaSparkClient")
+      conf.setMaster("local[*]")
+
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+      conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
+      instance.execute(conf)
+    } finally {
+      Thread.currentThread.setContextClassLoader(cl)
+    }
+
+    spark { sc =>
+      {
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"result/*/part-*")))
+        val result = sc.newAPIHadoopRDD(
+          job.getConfiguration,
+          classOf[TemporaryInputFormat[SummarizedBaa]],
+          classOf[NullWritable],
+          classOf[SummarizedBaa]).map {
+            case (_, baa) =>
+              (baa.id.get, baa.priceSum.get, baa.priceMax.get, baa.priceMin.get, baa.count.get)
+          }.collect.toSeq.sortBy(_._1)
+        assert(result.size === 2)
+        assert(result(0)._1 === 0)
+        assert(result(0)._2 === (0 until 1000 by 2).map(_ * 100).sum)
+        assert(result(0)._3 === 99800)
+        assert(result(0)._4 === 0)
+        assert(result(0)._5 === 500)
+        assert(result(1)._1 === 1)
+        assert(result(1)._2 === (1 until 1000 by 2).map(_ * 100).sum)
+        assert(result(1)._3 === 99900)
+        assert(result(1)._4 === 100)
+        assert(result(1)._5 === 500)
+      }
+    }
+  }
+
   def spark[A](block: SparkContext => A): A = {
     val sc = new SparkContext(new SparkConf().setAppName("").setMaster("local[*]"))
     try {
@@ -652,7 +790,60 @@ object SparkClientCompilerSpec {
     }
 
     def getIdOption: IntOption = id
-    def getPriceIdOption: IntOption = price
+    def getPriceOption: IntOption = price
+  }
+
+  @Summarized(term = new Summarized.Term(
+    source = classOf[Baa],
+    shuffle = new Key(group = Array("id")),
+    foldings = Array(
+      new Summarized.Folding(source = "id", destination = "id", aggregator = Summarized.Aggregator.ANY),
+      new Summarized.Folding(source = "price", destination = "priceSum", aggregator = Summarized.Aggregator.SUM),
+      new Summarized.Folding(source = "price", destination = "priceMax", aggregator = Summarized.Aggregator.MAX),
+      new Summarized.Folding(source = "price", destination = "priceMin", aggregator = Summarized.Aggregator.MIN),
+      new Summarized.Folding(source = "id", destination = "count", aggregator = Summarized.Aggregator.COUNT))))
+  class SummarizedBaa extends DataModel[SummarizedBaa] with Writable {
+
+    val id = new IntOption()
+    val priceSum = new LongOption()
+    val priceMax = new IntOption()
+    val priceMin = new IntOption()
+    val count = new LongOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+      priceSum.setNull()
+      priceMax.setNull()
+      priceMin.setNull()
+      count.setNull()
+    }
+    override def copyFrom(other: SummarizedBaa): Unit = {
+      id.copyFrom(other.id)
+      priceSum.copyFrom(other.priceSum)
+      priceMax.copyFrom(other.priceMax)
+      priceMin.copyFrom(other.priceMin)
+      count.copyFrom(other.count)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      priceSum.readFields(in)
+      priceMax.readFields(in)
+      priceMin.readFields(in)
+      count.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      priceSum.write(out)
+      priceMax.write(out)
+      priceMin.write(out)
+      count.write(out)
+    }
+
+    def getIdOption: IntOption = id
+    def getPriceSumOption: LongOption = priceSum
+    def getPriceMaxOption: IntOption = priceMax
+    def getPriceMinOption: IntOption = priceMin
+    def getCountOption: LongOption = count
   }
 
   class Ops {
@@ -684,5 +875,8 @@ object SparkClientCompilerSpec {
     def fold(acc: Baa, each: Baa): Unit = {
       acc.price.add(each.price)
     }
+
+    @Summarize
+    def summarize(value: Baa): SummarizedBaa = ???
   }
 }

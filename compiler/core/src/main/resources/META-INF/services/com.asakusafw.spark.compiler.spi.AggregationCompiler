@@ -1,1 +1,2 @@
 com.asakusafw.spark.compiler.operator.aggregation.FoldAggregationCompiler
+com.asakusafw.spark.compiler.operator.aggregation.SummarizeAggregationCompiler

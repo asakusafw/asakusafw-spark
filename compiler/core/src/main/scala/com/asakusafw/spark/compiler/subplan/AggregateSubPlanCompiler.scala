@@ -56,8 +56,6 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     val outputDataModelRef = context.jpContext.getDataModelLoader.load(output.getDataType)
     val outputDataModelType = outputDataModelRef.getDeclaration.asType
 
-    assert(inputDataModelType == outputDataModelType)
-
     val outputs = subplan.getOutputs.toSeq
 
     implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
