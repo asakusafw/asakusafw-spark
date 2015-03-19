@@ -4,6 +4,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor
 import com.asakusafw.lang.compiler.model.description._
+import com.asakusafw.runtime.value._
 import com.asakusafw.spark.tools.asm._
 
 import resource._
