@@ -63,13 +63,15 @@ object MapDriverSpec {
   class TestMapDriver(
     @transient sc: SparkContext,
     @transient prev: RDD[(_, Hoge)])
-      extends MapDriver[Hoge, String](sc, prev) {
+      extends MapDriver[Hoge, String](sc, Seq(prev)) {
 
     override def branchKeys: Set[String] = Set("hogeResult", "fooResult")
 
     override def partitioners: Map[String, Partitioner] = Map.empty
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+
+    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
 
     override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
       val outputs = Map(
@@ -119,7 +121,7 @@ object MapDriverSpec {
     override def newDataModel: Foo = new Foo()
   }
 
-  class TestFragment(outputs: Map[String, OutputFragment[_]]) extends Fragment[Hoge] {
+  class TestFragment(outputs: Map[String, Fragment[_]]) extends Fragment[Hoge] {
 
     private val foo = new Foo()
 

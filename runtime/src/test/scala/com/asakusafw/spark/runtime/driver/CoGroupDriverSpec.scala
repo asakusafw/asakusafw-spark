@@ -48,7 +48,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
     val part = new GroupingPartitioner(2)
     val groupingOrd = new GroupingOrdering
     val driver = new TestCoGroupDriver[Product](
-      sc, Seq((hoges, Some(hogeOrd)), (foos, Some(fooOrd))), part, groupingOrd)
+      sc, Seq((Seq(hoges), Some(hogeOrd)), (Seq(foos), Some(fooOrd))), part, groupingOrd)
 
     val outputs = driver.execute()
     outputs.mapValues(_.collect.toSeq).foreach {
@@ -84,9 +84,9 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
 
 object CoGroupDriverSpec {
 
-  class TestCoGroupDriver[K <: Product](
+  class TestCoGroupDriver[K <: Product: ClassTag](
     @transient sc: SparkContext,
-    @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
+    @transient inputs: Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])],
     @transient part: Partitioner,
     groupingOrdering: Ordering[K])
       extends CoGroupDriver[String, K](sc, inputs, part, groupingOrdering) {
@@ -99,14 +99,16 @@ object CoGroupDriverSpec {
 
     override def orderings[K]: Map[String, Ordering[K]] = Map.empty
 
-    override def fragments[T <: DataModel[T]]: (CoGroupFragment, Map[String, OutputFragment[T]]) = {
+    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+
+    override def fragments[U <: DataModel[U]]: (Fragment[Seq[Iterable[_]]], Map[String, OutputFragment[U]]) = {
       val outputs = Map(
         "hogeResult" -> new HogeOutputFragment,
         "fooResult" -> new FooOutputFragment,
         "hogeError" -> new HogeOutputFragment,
         "fooError" -> new FooOutputFragment)
       val fragment = new TestCoGroupFragment(outputs)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[T]]])
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
     override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
@@ -167,7 +169,7 @@ object CoGroupDriverSpec {
     }
   }
 
-  class TestCoGroupFragment(outputs: Map[String, OutputFragment[_]]) extends CoGroupFragment {
+  class TestCoGroupFragment(outputs: Map[String, Fragment[_]]) extends Fragment[Seq[Iterable[_]]] {
 
     override def add(groups: Seq[Iterable[_]]): Unit = {
       assert(groups.size == 2)

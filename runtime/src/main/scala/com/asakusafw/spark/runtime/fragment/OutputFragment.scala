@@ -7,9 +7,9 @@ import com.asakusafw.runtime.model.DataModel
 
 abstract class OutputFragment[T <: DataModel[T]] extends Fragment[T] {
 
-  val buffer: mutable.ArrayBuffer[T] = mutable.ArrayBuffer.empty[T]
-
   def newDataModel(): T
+
+  val buffer: mutable.ArrayBuffer[T] = mutable.ArrayBuffer.empty[T]
 
   override def add(result: T): Unit = {
     val dataModel = newDataModel()

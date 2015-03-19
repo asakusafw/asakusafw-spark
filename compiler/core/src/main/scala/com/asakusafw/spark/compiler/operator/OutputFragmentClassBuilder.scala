@@ -13,7 +13,9 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
 
-class OutputFragmentClassBuilder(flowId: String, dataModelType: Type)
+class OutputFragmentClassBuilder(
+  flowId: String,
+  dataModelType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/OutputFragment$$${OutputFragmentClassBuilder.nextId};"),
       Some(OutputFragmentClassBuilder.signature(dataModelType)),
@@ -44,9 +46,7 @@ object OutputFragmentClassBuilder {
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[OutputFragment[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-            _.newClassType(dataModelType)
-          }
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
         }
       }
       .build()

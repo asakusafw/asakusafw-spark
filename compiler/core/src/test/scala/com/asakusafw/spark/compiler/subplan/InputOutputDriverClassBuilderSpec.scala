@@ -80,8 +80,8 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       hoge.id.modify(i)
       (hoge, hoge)
     }
-    val outputDriver = outputDriverCls.getConstructor(classOf[SparkContext], classOf[RDD[_]])
-      .newInstance(sc, hoges)
+    val outputDriver = outputDriverCls.getConstructor(classOf[SparkContext], classOf[Seq[RDD[_]]])
+      .newInstance(sc, Seq(hoges))
     outputDriver.execute()
 
     // prepare for input
@@ -122,7 +122,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge, Long]])
     val inputDriver = inputDriverCls.getConstructor(classOf[SparkContext]).newInstance(sc)
     val inputs = inputDriver.execute()
-    assert(inputDriver.branchKey === inputMarker.getOriginalSerialNumber)
+    assert(inputDriver.branchKeys === Set(inputMarker.getOriginalSerialNumber))
     assert(inputs(inputMarker.getOriginalSerialNumber).map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
   }
 }

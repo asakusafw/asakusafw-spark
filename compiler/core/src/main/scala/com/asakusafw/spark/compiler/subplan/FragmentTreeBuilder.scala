@@ -27,7 +27,7 @@ class FragmentTreeBuilder(
   def build(operator: Operator): Var = {
     val t = operatorFragmentTypes(operator.getOriginalSerialNumber)
     val fragment = operator match {
-      case _: MarkerOperator =>
+      case marker: MarkerOperator =>
         pushNew0(t)
       case _ =>
         val outputs = operator.getOutputs.map(build)

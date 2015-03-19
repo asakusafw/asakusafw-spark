@@ -4,6 +4,8 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.lang.{ Long => JLong }
+
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime.fragment.OutputFragment
@@ -20,9 +22,11 @@ class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
 
   it should "compile OutputFragment" in {
     val builder = new OutputFragmentClassBuilder("flowId", classOf[TestModel].asType)
-    val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[TestModel]])
+    val cls = loadClass(builder.thisType.getClassName, builder.build())
+      .asSubclass(classOf[OutputFragment[TestModel]])
 
-    val fragment = cls.newInstance
+    val fragment = cls.newInstance()
+
     assert(fragment.buffer.size === 0)
 
     val dm = new TestModel()

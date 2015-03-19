@@ -4,10 +4,8 @@ package operator
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.spark.compiler.spi._
-import com.asakusafw.spark.tools.asm.ClassBuilder
 
 import resource._
 

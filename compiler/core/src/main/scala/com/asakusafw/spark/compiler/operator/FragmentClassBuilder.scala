@@ -11,6 +11,7 @@ import com.asakusafw.spark.tools.asm._
 
 abstract class FragmentClassBuilder(
   flowId: String,
+  dataModelType: Type,
   signature: Option[String],
   superType: Type,
   interfaceTypes: Type*)
@@ -23,8 +24,20 @@ abstract class FragmentClassBuilder(
   def this(flowId: String, dataModelType: Type) =
     this(
       flowId,
+      dataModelType,
       Option(FragmentClassBuilder.signature(dataModelType)),
       classOf[Fragment[_]].asType)
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
+      import mb._
+      val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
+      thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
+      `return`()
+    }
+  }
 }
 
 object FragmentClassBuilder {
