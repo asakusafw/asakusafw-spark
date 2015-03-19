@@ -10,14 +10,20 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver[B, K: ClassTag](
   @transient val sc: SparkContext,
-  @transient inputs: Seq[(RDD[(K, _)], Option[Ordering[K]])],
+  @transient inputs: Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])],
   @transient part: Partitioner,
   @transient grouping: Ordering[K])
     extends SubPlanDriver[B] with Branch[B, Seq[Iterable[_]]] {
   assert(inputs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {
-    val cogrouped = smcogroup[K](inputs, part, grouping)
+    val cogrouped = smcogroup[K](
+      inputs.map {
+        case (rdds, ordering) =>
+          (confluent[K, Any](rdds, part, ordering), ordering)
+      },
+      part,
+      grouping)
       .mapValues(_.toSeq).asInstanceOf[RDD[(_, Seq[Iterable[_]])]]
     branch(cogrouped)
   }

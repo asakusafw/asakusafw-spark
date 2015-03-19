@@ -113,17 +113,22 @@ object MapSubPlanCompiler {
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
-      val inputs = subplan.getInputs.toSet[SubPlan.Input]
+      val prevRddVars = subplan.getInputs.toSet[SubPlan.Input]
         .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
         .map(_.getOperator.getSerialNumber)
         .map(context.rddVars)
       val mapDriver = pushNew(driverType)
       mapDriver.dup().invokeInit(
         context.scVar.push(), {
-          (inputs.head.push() /: inputs.tail) {
-            case (left, right) =>
-              left.invokeV("union", classOf[RDD[_]].asType, right.push())
+          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+          prevRddVars.foreach { rddVar =>
+            builder.invokeI(
+              NameTransformer.encode("+="),
+              classOf[mutable.Builder[_, _]].asType,
+              rddVar.push().asType(classOf[AnyRef].asType))
           }
+          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         })
       mapDriver.store(context.nextLocal.getAndAdd(mapDriver.size))
     }

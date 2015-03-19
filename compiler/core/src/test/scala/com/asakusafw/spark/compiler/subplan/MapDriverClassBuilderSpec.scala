@@ -93,7 +93,7 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
       hoge.id.modify(i)
       ((), hoge)
     }
-    val driver = cls.getConstructor(classOf[SparkContext], classOf[RDD[_]]).newInstance(sc, hoges)
+    val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[RDD[_]]]).newInstance(sc, Seq(hoges))
     val results = driver.execute()
 
     assert(driver.branchKeys ===
@@ -159,7 +159,7 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
       hoge.id.modify(i)
       ((), hoge)
     }
-    val driver = cls.getConstructor(classOf[SparkContext], classOf[RDD[_]]).newInstance(sc, hoges)
+    val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[RDD[_]]]).newInstance(sc, Seq(hoges))
     val results = driver.execute()
 
     assert(driver.branchKeys === Set(hogeResultMarker).map(_.getOriginalSerialNumber))

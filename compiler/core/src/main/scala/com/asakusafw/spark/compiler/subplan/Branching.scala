@@ -11,7 +11,8 @@ trait Branching
     with PreparingKey
     with BranchKeysField
     with PartitionersField
-    with OrderingsField {
+    with OrderingsField
+    with AggregationsField {
 
   override def subplanOutputs: Seq[SubPlan.Output]
 
@@ -19,12 +20,14 @@ trait Branching
     defBranchKeysField(fieldDef)
     defPartitionersField(fieldDef)
     defOrderingsField(fieldDef)
+    defAggregationsField(fieldDef)
   }
 
   def initFields(mb: MethodBuilder): Unit = {
     initBranchKeysField(mb)
     initPartitionersField(mb)
     initOrderingsField(mb)
+    initAggregationsField(mb)
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
@@ -33,5 +36,6 @@ trait Branching
     defBranchKeys(methodDef)
     defPartitioners(methodDef)
     defOrderings(methodDef)
+    defAggregations(methodDef)
   }
 }

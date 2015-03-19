@@ -132,7 +132,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     val part = new GroupingPartitioner(2)
     val groupingOrd = new GroupingOrdering
     val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[_]], classOf[Partitioner], classOf[Ordering[_]])
-      .newInstance(sc, Seq((hogeList, Some(hogeOrd)), (fooList, Some(fooOrd))), part, groupingOrd)
+      .newInstance(sc, Seq((Seq(hogeList), Some(hogeOrd)), (Seq(fooList), Some(fooOrd))), part, groupingOrd)
     val results = driver.execute()
 
     assert(driver.branchKeys ===

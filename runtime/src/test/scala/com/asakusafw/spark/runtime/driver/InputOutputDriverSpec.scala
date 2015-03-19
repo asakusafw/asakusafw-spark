@@ -53,7 +53,7 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient input: RDD[(_, Hoge)],
     val path: String)
-      extends OutputDriver[Hoge](sc, input)
+      extends OutputDriver[Hoge](sc, Seq(input))
 
   class TestInputDriver(
     @transient sc: SparkContext,
@@ -62,8 +62,18 @@ object InputOutputDriverSpec {
 
     override def paths: Set[String] = Set(basePath + "/part-*")
 
-    override def branchKey: String = {
-      "hogeResult"
+    override def branchKeys: Set[String] = Set("hogeResult")
+
+    override def partitioners: Map[String, Partitioner] = Map.empty
+
+    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+
+    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+      val fragment = new HogeOutputFragment
+      val outputs = Map("hogeResult" -> fragment)
+      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
     override def shuffleKey[U](branch: String, value: DataModel[_]): U =
@@ -86,5 +96,9 @@ object InputOutputDriverSpec {
     override def write(out: DataOutput): Unit = {
       id.write(out)
     }
+  }
+
+  class HogeOutputFragment extends OutputFragment[Hoge] {
+    override def newDataModel: Hoge = new Hoge()
   }
 }

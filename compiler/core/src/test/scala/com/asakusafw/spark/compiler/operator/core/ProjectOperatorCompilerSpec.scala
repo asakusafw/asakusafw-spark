@@ -18,7 +18,6 @@ import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
-import com.asakusafw.spark.runtime.driver.PrepareKey
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 
@@ -48,16 +47,13 @@ class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath))
     val thisType = compiler.compile(operator)(context)
-    val cls = loadClass(thisType.getClassName, classpath)
-      .asSubclass(classOf[Fragment[InputModel]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out = {
-      val builder = new OneToOneOutputFragmentClassBuilder(
-        context.flowId, classOf[String].asType, classOf[OutputModel].asType, classOf[IntOption].asType)
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[OutputModel].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OutputFragment[String, OutputModel, IntOption, OutputModel]])
-      cls.getConstructor(classOf[String], classOf[PrepareKey[_]])
-        .newInstance("branch", new PrepareIntOption())
+        .asSubclass(classOf[OutputFragment[OutputModel]])
+      cls.newInstance()
     }
 
     val fragment = cls.getConstructor(classOf[Fragment[_]]).newInstance(out)
@@ -70,9 +66,7 @@ class ProjectOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
     assert(out.buffer.size === 10)
     out.buffer.zipWithIndex.foreach {
-      case (((b, k), dm), i) =>
-        assert(b === "branch")
-        assert(k.get === i)
+      case (dm, i) =>
         assert(dm.i.get === i)
     }
     fragment.reset()
@@ -114,12 +108,5 @@ object ProjectOperatorCompilerSpec {
     }
 
     def getIOption: IntOption = i
-  }
-
-  class PrepareIntOption extends PrepareKey[String] {
-
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
-      value.asInstanceOf[OutputModel].i.asInstanceOf[U]
-    }
   }
 }

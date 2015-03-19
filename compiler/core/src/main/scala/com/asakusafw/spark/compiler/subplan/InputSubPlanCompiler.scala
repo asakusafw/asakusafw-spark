@@ -35,6 +35,21 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
     val outputs = subplan.getOutputs.toSeq
 
+    implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
+    val operators = subplan.getOperators
+      .filterNot(_.getOriginalSerialNumber == operator.getOriginalSerialNumber)
+      .map { operator =>
+        operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator)
+      }.toMap[Long, Type]
+
+    val edges = subplan.getOperators.flatMap {
+      _.getOutputs.collect {
+        case output if output.getOpposites.size > 1 => output.getDataType.asType
+      }
+    }.map { dataType =>
+      dataType -> EdgeFragmentClassBuilder.getOrCompile(context.flowId, dataType, context.jpContext)
+    }.toMap
+
     val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
       override def jpContext = context.jpContext
@@ -55,14 +70,37 @@ class InputSubPlanCompiler extends SubPlanCompiler {
           `return`(builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType))
         }
 
-        methodDef.newMethod("branchKey", classOf[AnyRef].asType, Seq.empty) { mb =>
+        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty) { mb =>
           import mb._
-          `return`(thisVar.push().invokeV("branchKey", Type.LONG_TYPE).box().asType(classOf[AnyRef].asType))
-        }
+          val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-        methodDef.newMethod("branchKey", Type.LONG_TYPE, Seq.empty) { mb =>
-          import mb._
-          `return`(ldc(outputs.head.getOperator.getOriginalSerialNumber))
+          val fragmentBuilder = new FragmentTreeBuilder(
+            mb,
+            operators,
+            edges,
+            nextLocal)
+          val fragmentVar = fragmentBuilder.build(operator.getOperatorPort)
+
+          val outputsVar = {
+            val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+              .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+            outputs.map(_.getOperator).sortBy(_.getOriginalSerialNumber).foreach { op =>
+              builder.invokeI(NameTransformer.encode("+="),
+                classOf[mutable.Builder[_, _]].asType,
+                getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+                  invokeV("apply", classOf[(_, _)].asType,
+                    ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
+                    fragmentBuilder.vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
+                  .asType(classOf[AnyRef].asType))
+            }
+            val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
+            map.store(nextLocal.getAndAdd(map.size))
+          }
+
+          `return`(
+            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+              invokeV("apply", classOf[(_, _)].asType,
+                fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
         }
       }
     }

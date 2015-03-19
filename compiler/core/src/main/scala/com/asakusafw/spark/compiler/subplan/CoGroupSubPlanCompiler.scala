@@ -141,57 +141,47 @@ object CoGroupSubPlanCompiler {
       val cogroupDriver = pushNew(driverType)
       cogroupDriver.dup().invokeInit(
         context.scVar.push(), {
-          // Seq[(RDD[(K, _)], Option[Ordering[K]])]
+          // Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
           dominant.getInputs.foreach { input =>
-            val opposites = input.getOpposites.toSet[OperatorOutput]
-              .flatMap(opposite => subplan.getInputs.find(
-                _.getOperator.getOriginalSerialNumber == opposite.getOwner.getOriginalSerialNumber)
-                .get.getOpposites.toSeq)
-              .map(_.getOperator.getSerialNumber)
-              .map(context.rddVars)
-            val orderings = {
-              val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
-              val group = input.getGroup
-              group.getGrouping.map { grouping =>
-                (dataModelRef.findProperty(grouping).getType.asType, true)
-              } ++
-                group.getOrdering.map { ordering =>
-                  (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                    ordering.getDirection == Group.Direction.ASCENDANT)
-                }
-            }.toSeq
-            val orderingType = OrderingClassBuilder.getOrCompile(context.flowId, orderings, context.jpContext)
-            val ordering = pushNew0(orderingType)
-            val orderingVar = ordering.store(context.nextLocal.getAndAdd(ordering.size))
-
             builder.invokeI(NameTransformer.encode("+="),
               classOf[mutable.Builder[_, _]].asType, {
                 getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
                   .invokeV("apply", classOf[(_, _)].asType,
-                    (if (opposites.size == 1) {
-                      opposites.head.push()
-                    } else {
-                      getStatic(rdd.`package`.getClass.asType, "MODULE$", rdd.`package`.getClass.asType)
-                        .invokeV("confluent", classOf[RDD[_]].asType, {
-                          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-                          opposites.foreach { opposite =>
-                            builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                              opposite.push().asType(classOf[AnyRef].asType))
+                    {
+                      val oppositeRddVars = input.getOpposites.toSet[OperatorOutput]
+                        .flatMap(opposite => subplan.getInputs.find(
+                          _.getOperator.getOriginalSerialNumber == opposite.getOwner.getOriginalSerialNumber)
+                          .get.getOpposites.toSeq)
+                        .map(_.getOperator.getSerialNumber)
+                        .map(context.rddVars)
+
+                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                      oppositeRddVars.foreach { rddVar =>
+                        builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+                          rddVar.push().asType(classOf[AnyRef].asType))
+                      }
+                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                    }.asType(classOf[AnyRef].asType),
+                    {
+                      val orderings = {
+                        val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
+                        val group = input.getGroup
+                        group.getGrouping.map { grouping =>
+                          (dataModelRef.findProperty(grouping).getType.asType, true)
+                        } ++
+                          group.getOrdering.map { ordering =>
+                            (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                              ordering.getDirection == Group.Direction.ASCENDANT)
                           }
-                          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-                        },
-                          partitionerVar.push().asType(classOf[Partitioner].asType), {
-                            getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
-                              .invokeV("apply", classOf[Option[_]].asType,
-                                orderingVar.push().asType(classOf[AnyRef].asType))
-                          })
-                    }).asType(classOf[AnyRef].asType), {
+                      }.toSeq
+                      val orderingType = OrderingClassBuilder.getOrCompile(context.flowId, orderings, context.jpContext)
+
                       getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
                         .invokeV("apply", classOf[Option[_]].asType,
-                          orderingVar.push().asType(classOf[AnyRef].asType))
+                          pushNew0(orderingType).asType(classOf[AnyRef].asType))
                         .asType(classOf[AnyRef].asType)
                     }).asType(classOf[AnyRef].asType)
               })

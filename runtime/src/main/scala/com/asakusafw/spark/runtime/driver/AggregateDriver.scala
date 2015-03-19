@@ -26,12 +26,13 @@ abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
           prevs.map {
             case prev if prev.partitions == part =>
               prev.asInstanceOf[RDD[(K, C)]]
-            case prev => prev.mapPartitions({ iter =>
-              val combiner = agg.valueCombiner
-              combiner.insertAll(iter)
-              val context = TaskContext.get
-              new InterruptibleIterator(context, combiner.iterator)
-            }, preservesPartitioning = true).shuffle(partitioner, None)
+            case prev =>
+              prev.mapPartitions({ iter =>
+                val combiner = agg.valueCombiner
+                combiner.insertAll(iter)
+                val context = TaskContext.get
+                new InterruptibleIterator(context, combiner.iterator)
+              }, preservesPartitioning = true).shuffle(partitioner, None)
           }, partitioner, None)
           .mapPartitions({ iter =>
             val combiner = agg.combinerCombiner
@@ -40,9 +41,9 @@ abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
             new InterruptibleIterator(context, combiner.iterator)
           }, preservesPartitioning = true)
       } else {
-        new ShuffledRDD(((prevs.head /: prevs.tail) {
-          case (union, rdd) => union.union(rdd)
-        }), partitioner)
+        new ShuffledRDD(
+          if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs),
+          partitioner)
           .setAggregator(agg.aggregator)
           .setMapSideCombine(agg.mapSideCombine)
       }
