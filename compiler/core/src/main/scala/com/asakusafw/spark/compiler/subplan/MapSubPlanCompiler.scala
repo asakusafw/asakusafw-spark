@@ -29,6 +29,13 @@ class MapSubPlanCompiler extends SubPlanCompiler {
     operator match {
       case op: UserOperator =>
         CompilableOperators(op.getAnnotation.resolve(classLoader).annotationType)
+      case op: CoreOperator =>
+        op.getCoreOperatorKind match {
+          case CoreOperator.CoreOperatorKind.CHECKPOINT  => false
+          case CoreOperator.CoreOperatorKind.PROJECT     => true
+          case CoreOperator.CoreOperatorKind.EXTEND      => true
+          case CoreOperator.CoreOperatorKind.RESTRUCTURE => false
+        }
       case _ => false
     }
   }
@@ -36,9 +43,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = MapSubPlanCompiler.MapDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[UserOperator])
-    val operator = dominant.asInstanceOf[UserOperator]
+    val operator = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
 
     val outputs = subplan.getOutputs.toSeq
 
@@ -105,7 +110,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
 
 object MapSubPlanCompiler {
 
-  val CompilableOperators: Set[Class[_]] = Set(classOf[Project], classOf[Extend], classOf[Extract])
+  val CompilableOperators: Set[Class[_]] = Set(classOf[Extract])
 
   object MapDriverInstantiator extends Instantiator {
 
