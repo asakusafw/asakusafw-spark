@@ -10,5 +10,7 @@ trait SubPlanDriver[B] extends Serializable {
 
   def sc: SparkContext
 
+  def name: String
+
   def execute(): Map[B, RDD[(_, _)]]
 }

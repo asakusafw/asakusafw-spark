@@ -156,15 +156,4 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
 
     context.jpContext.addClass(builder)
   }
-
-  private def copy(mb: MethodBuilder, fromVar: Var, toVar: Var): Unit = {
-    (fromVar.`type`, toVar.`type`) match {
-      case (fromType, toType) if fromType == toType =>
-        toVar.push().invokeV("copyFrom", fromVar.push())
-    }
-  }
-
-  private def modify(mb: MethodBuilder, of: Var, to: Any): Unit = {
-    ???
-  }
 }

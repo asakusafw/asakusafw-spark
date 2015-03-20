@@ -35,6 +35,8 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
     val builder = new OutputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
+      override def dominantOperator = operator
+
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
@@ -42,6 +44,8 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
           import mb._
           `return`(ldc(context.jpContext.getOptions.getRuntimeWorkingPath(outputPath)))
         }
+
+        defName(methodDef)
       }
     }
 

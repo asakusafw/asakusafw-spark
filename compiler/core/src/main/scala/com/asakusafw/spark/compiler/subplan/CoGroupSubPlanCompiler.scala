@@ -63,6 +63,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
       override def jpContext = context.jpContext
 
+      override def dominantOperator = operator
+
       override def subplanOutputs: Seq[SubPlan.Output] = outputs
 
       override def defMethods(methodDef: MethodDef): Unit = {
@@ -100,6 +102,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
               invokeV("apply", classOf[(_, _)].asType,
                 fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
         }
+
+        defName(methodDef)
       }
     }
 

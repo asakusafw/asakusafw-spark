@@ -22,7 +22,7 @@ abstract class CoGroupDriverClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${CoGroupDriverClassBuilder.nextId};"),
       Option(CoGroupDriverClassBuilder.signature(groupingKeyType)),
       classOf[CoGroupDriver[_, _]].asType)
-    with Branching {
+    with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[Seq[_]].asType, classOf[Partitioner].asType, classOf[Ordering[_]].asType)) { mb =>
