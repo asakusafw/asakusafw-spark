@@ -52,6 +52,10 @@
 			<groupId>com.asakusafw.lang.compiler</groupId>
 			<artifactId>asakusa-compiler-plan</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-analyzer</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>com.asakusafw.planner.spark</groupId>
