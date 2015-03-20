@@ -96,6 +96,8 @@ object AggregateDriverSpec {
     val aggregation: Aggregation[IntOption, Hoge, Hoge])
       extends AggregateDriver[IntOption, Hoge, Hoge, String](sc, Seq(prev), part) {
 
+    override def name = "TestAggregation"
+
     override def branchKeys: Set[String] = Set("result")
 
     override def partitioners: Map[String, Partitioner] = Map.empty
@@ -119,6 +121,8 @@ object AggregateDriverSpec {
     @transient sc: SparkContext,
     @transient prev: RDD[(IntOption, Hoge)])
       extends MapDriver[Hoge, String](sc, Seq(prev.asInstanceOf[RDD[(_, Hoge)]])) {
+
+    override def name = "TestPartialAggregation"
 
     override def branchKeys: Set[String] = Set("result")
 

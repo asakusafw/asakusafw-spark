@@ -20,7 +20,7 @@ abstract class OutputDriverClassBuilder(
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/OutputDriver$$${OutputDriverClassBuilder.nextId};"),
       Option(OutputDriverClassBuilder.signature(dataModelType)),
-      classOf[OutputDriver[_]].asType) {
+      classOf[OutputDriver[_]].asType) with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     super.defConstructors(ctorDef)

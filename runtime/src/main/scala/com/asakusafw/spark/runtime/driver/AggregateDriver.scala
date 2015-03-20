@@ -6,6 +6,8 @@ import org.apache.spark._
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor.CallSite
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
@@ -20,6 +22,10 @@ abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
   override def execute(): Map[B, RDD[(_, _)]] = {
     val agg = aggregation
     val part = Some(partitioner)
+
+    sc.clearCallSite()
+    sc.setCallSite(name)
+
     val aggregated =
       if (agg.mapSideCombine && prevs.exists(_.partitioner == part)) {
         confluent(
@@ -47,6 +53,8 @@ abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
           .setAggregator(agg.aggregator)
           .setMapSideCombine(agg.mapSideCombine)
       }
+
+    sc.setCallSite(CallSite(name, aggregated.toDebugString))
     branch(aggregated.asInstanceOf[RDD[(_, C)]])
   }
 
