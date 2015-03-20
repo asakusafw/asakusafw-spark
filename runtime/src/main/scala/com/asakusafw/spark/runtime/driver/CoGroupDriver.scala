@@ -6,6 +6,8 @@ import org.apache.spark._
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver[B, K: ClassTag](
@@ -17,7 +19,9 @@ abstract class CoGroupDriver[B, K: ClassTag](
   assert(inputs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {
+    sc.clearCallSite()
     sc.setCallSite(name)
+
     val cogrouped =
       smcogroup[K](
         inputs.map {
@@ -27,6 +31,8 @@ abstract class CoGroupDriver[B, K: ClassTag](
         part,
         grouping)
         .mapValues(_.toSeq).asInstanceOf[RDD[(_, Seq[Iterable[_]])]]
+
+    sc.setCallSite(CallSite(name, cogrouped.toDebugString))
     branch(cogrouped)
   }
 }

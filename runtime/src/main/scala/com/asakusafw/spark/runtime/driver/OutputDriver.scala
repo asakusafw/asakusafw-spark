@@ -11,6 +11,8 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
 import org.slf4j.LoggerFactory
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor.CallSite
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
@@ -35,13 +37,17 @@ abstract class OutputDriver[T <: DataModel[T]: ClassTag](
     val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
     TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveVariables(path)))
 
+    sc.clearCallSite()
     sc.setCallSite(name)
-    val output = new UnionRDD(sc, prevs).map(in => (NullWritable.get, in._2))
+
+    val output = (if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs))
+      .map(in => (NullWritable.get, in._2))
 
     if (Logger.isDebugEnabled()) {
       Logger.debug(output.toDebugString)
     }
 
+    sc.setCallSite(CallSite(name, output.toDebugString))
     output.saveAsNewAPIHadoopDataset(job.getConfiguration)
     Map.empty
   }

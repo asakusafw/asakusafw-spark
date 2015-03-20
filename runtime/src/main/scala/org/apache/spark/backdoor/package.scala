@@ -1,5 +1,7 @@
 package org.apache.spark
 
+import org.apache.spark.util.backdoor.CallSite
+
 package object backdoor {
 
   type HttpServer = org.apache.spark.HttpServer
@@ -7,8 +9,10 @@ package object backdoor {
 
   implicit class SparkContextBackdoor(val sc: SparkContext) extends AnyVal {
 
-    def cleanF[F <: AnyRef](f: F, checkSerializable: Boolean = true): F = {
+    def clean[F <: AnyRef](f: F, checkSerializable: Boolean = true): F = {
       sc.clean(f, checkSerializable)
     }
+
+    def setCallSite(callSite: CallSite) = sc.setCallSite(callSite)
   }
 }
