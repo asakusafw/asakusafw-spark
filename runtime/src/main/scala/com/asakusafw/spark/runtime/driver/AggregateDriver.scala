@@ -24,7 +24,7 @@ abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
       if (agg.mapSideCombine && prevs.exists(_.partitioner == part)) {
         confluent(
           prevs.map {
-            case prev if prev.partitions == part =>
+            case prev if prev.partitioner == part =>
               prev.asInstanceOf[RDD[(K, C)]]
             case prev =>
               prev.mapPartitions({ iter =>
