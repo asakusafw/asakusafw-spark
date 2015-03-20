@@ -42,7 +42,7 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
     val arguments = operator.getArguments.toSeq
     assert(methodType.getArgumentTypes.toSeq ==
       Seq(inputDataModelType)
-      ++: arguments.map(_.getValue.getValueType.asType))
+      ++ arguments.map(_.getValue.getValueType.asType))
 
     val builder = new FragmentClassBuilder(context.flowId, inputDataModelType) //
     with OperatorField with OutputFragments {
@@ -57,7 +57,8 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
 
       override def defConstructors(ctorDef: ConstructorDef): Unit = {
         assert(outputs.size == 1) // so that, below code is too much.
-        ctorDef.newInit((0 until outputs.size).map(_ => classOf[Fragment[_]].asType),
+        ctorDef.newInit(
+          (0 until outputs.size).map(_ => classOf[Fragment[_]].asType),
           ((new MethodSignatureBuilder() /: outputs) {
             case (builder, output) =>
               builder.newParameterType {
@@ -65,9 +66,7 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
                   _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
                 }
               }
-          })
-            .newVoidReturnType()
-            .build()) { mb =>
+          }).newVoidReturnType().build()) { mb =>
             import mb._
             thisVar.push().invokeInit(superType)
             initOutputFields(mb, thisVar.nextLocal)
@@ -77,8 +76,12 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
+        // void add(InputDataModel argument)
         methodDef.newMethod("add", Seq(inputDataModelType)) { mb =>
           import mb._
+
+          // ${operator}.${method}(input, arguments)
+          // => input will be modified in the method.
           val resultVar = `var`(inputDataModelType, thisVar.nextLocal)
           getOperatorField(mb)
             .invokeV(
@@ -88,12 +91,17 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
                   ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
               }: _*)
 
-          // outputPort << modified_input
-          //          getOutputField(mb, output).invokeI("add", inputDataModelType, )
+          // output.add(input)
+          // ==> NOTE: NoSuchMethodError:
+          //  com.asakusafw.spark.runtime.fragment.Fragment
+          //      .add(UpdateOperatorCompilerSpec$InputOutputModel;)V
+          getOutputField(mb, output)
+            .invokeV("add", resultVar.push().cast(inputDataModelType))
 
           `return`()
         }
 
+        // void reset()
         methodDef.newMethod("reset", Seq.empty) { mb =>
           import mb._
           resetOutputs(mb)

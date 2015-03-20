@@ -61,8 +61,13 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val dm = new InputOutputModel()
     for (i <- 0 until 10) {
-      dm.i.modify(i)
-      dm.l.modify(i * 10L)
+      dm.reset()
+      if (i % 5 != 0) {
+        dm.i.modify(i)
+      }
+      if (i % 3 != 0) {
+        dm.l.modify(i * 10L)
+      }
       fragment.add(dm)
     }
     assert(out.buffer.size === 10)
