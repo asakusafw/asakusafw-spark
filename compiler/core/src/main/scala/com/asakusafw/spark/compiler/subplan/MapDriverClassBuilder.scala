@@ -21,7 +21,7 @@ abstract class MapDriverClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/MapDriver$$${MapDriverClassBuilder.nextId};"),
       Option(MapDriverClassBuilder.signature(dataModelType)),
       classOf[MapDriver[_, _]].asType)
-    with Branching {
+    with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(classOf[SparkContext].asType, classOf[Seq[RDD[_]]].asType)) { mb =>

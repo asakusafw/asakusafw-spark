@@ -20,7 +20,7 @@ abstract class InputDriverClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/InputDriver$$${InputDriverClassBuilder.nextId};"),
       Option(InputDriverClassBuilder.signature(dataModelType)),
       classOf[InputDriver[_, _]].asType)
-    with Branching {
+    with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(classOf[SparkContext].asType)) { mb =>

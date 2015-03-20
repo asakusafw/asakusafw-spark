@@ -91,6 +91,8 @@ object CoGroupDriverSpec {
     groupingOrdering: Ordering[K])
       extends CoGroupDriver[String, K](sc, inputs, part, groupingOrdering) {
 
+    override def name = "TestCoGroup"
+
     override def branchKeys: Set[String] = {
       Set("hogeResult", "fooResult", "hogeError", "fooError")
     }

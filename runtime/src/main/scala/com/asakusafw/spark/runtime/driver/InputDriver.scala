@@ -11,6 +11,8 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor._
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
@@ -34,11 +36,17 @@ abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
       new Path(stageInfo.resolveVariables(path))
     }.toSeq)
 
-    val rdd = sc.newAPIHadoopRDD(
-      job.getConfiguration,
-      classOf[TemporaryInputFormat[T]],
-      classOf[NullWritable],
-      classTag[T].runtimeClass.asInstanceOf[Class[T]])
+    sc.clearCallSite()
+    sc.setCallSite(name)
+
+    val rdd =
+      sc.newAPIHadoopRDD(
+        job.getConfiguration,
+        classOf[TemporaryInputFormat[T]],
+        classOf[NullWritable],
+        classTag[T].runtimeClass.asInstanceOf[Class[T]])
+
+    sc.setCallSite(CallSite(name, rdd.toDebugString))
     branch(rdd.asInstanceOf[RDD[(_, T)]])
   }
 }

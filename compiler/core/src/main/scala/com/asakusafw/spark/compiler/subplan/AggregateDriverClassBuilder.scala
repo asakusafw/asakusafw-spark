@@ -23,7 +23,7 @@ abstract class AggregateDriverClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/AggregateDriver$$${AggregateDriverClassBuilder.nextId};"),
       Option(AggregateDriverClassBuilder.signature(valueType, combinerType)),
       classOf[AggregateDriver[_, _, _, _]].asType)
-    with Branching {
+    with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

@@ -4,6 +4,7 @@ import scala.reflect.ClassTag
 
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
+
 import org.apache.spark.rdd.backdoor._
 
 class ZippedPartitionsRDD[V: ClassTag](
