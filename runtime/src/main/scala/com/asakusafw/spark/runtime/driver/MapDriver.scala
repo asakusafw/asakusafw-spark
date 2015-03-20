@@ -14,6 +14,7 @@ abstract class MapDriver[T <: DataModel[T]: ClassTag, B](
   assert(prevs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {
-    branch(if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs))
+    sc.setCallSite(name)
+    branch(new UnionRDD(sc, prevs))
   }
 }

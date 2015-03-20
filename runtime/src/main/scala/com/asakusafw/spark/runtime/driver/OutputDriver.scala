@@ -35,8 +35,8 @@ abstract class OutputDriver[T <: DataModel[T]: ClassTag](
     val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
     TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveVariables(path)))
 
-    val output = (if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs))
-      .map(in => (NullWritable.get, in._2))
+    sc.setCallSite(name)
+    val output = new UnionRDD(sc, prevs).map(in => (NullWritable.get, in._2))
 
     if (Logger.isDebugEnabled()) {
       Logger.debug(output.toDebugString)

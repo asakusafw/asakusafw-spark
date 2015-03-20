@@ -65,6 +65,8 @@ object MapDriverSpec {
     @transient prev: RDD[(_, Hoge)])
       extends MapDriver[Hoge, String](sc, Seq(prev)) {
 
+    override def name = "TestMap"
+
     override def branchKeys: Set[String] = Set("hogeResult", "fooResult")
 
     override def partitioners: Map[String, Partitioner] = Map.empty

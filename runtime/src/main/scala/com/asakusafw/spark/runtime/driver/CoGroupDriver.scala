@@ -17,14 +17,16 @@ abstract class CoGroupDriver[B, K: ClassTag](
   assert(inputs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {
-    val cogrouped = smcogroup[K](
-      inputs.map {
-        case (rdds, ordering) =>
-          (confluent[K, Any](rdds, part, ordering), ordering)
-      },
-      part,
-      grouping)
-      .mapValues(_.toSeq).asInstanceOf[RDD[(_, Seq[Iterable[_]])]]
+    sc.setCallSite(name)
+    val cogrouped =
+      smcogroup[K](
+        inputs.map {
+          case (rdds, ordering) =>
+            (confluent[K, Any](rdds, part, ordering), ordering)
+        },
+        part,
+        grouping)
+        .mapValues(_.toSeq).asInstanceOf[RDD[(_, Seq[Iterable[_]])]]
     branch(cogrouped)
   }
 }

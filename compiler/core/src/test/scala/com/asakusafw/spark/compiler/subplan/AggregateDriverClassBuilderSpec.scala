@@ -39,7 +39,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
   def resolvers = SubPlanCompiler(Thread.currentThread.getContextClassLoader)
 
-  it should "build map driver class" in {
+  it should "build aggregate driver class" in {
     val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 

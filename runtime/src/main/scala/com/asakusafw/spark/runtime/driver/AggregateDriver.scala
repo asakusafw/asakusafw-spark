@@ -20,6 +20,8 @@ abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
   override def execute(): Map[B, RDD[(_, _)]] = {
     val agg = aggregation
     val part = Some(partitioner)
+
+    sc.setCallSite(name)
     val aggregated =
       if (agg.mapSideCombine && prevs.exists(_.partitioner == part)) {
         confluent(
@@ -42,7 +44,7 @@ abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
           }, preservesPartitioning = true)
       } else {
         new ShuffledRDD(
-          if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs),
+          new UnionRDD(sc, prevs),
           partitioner)
           .setAggregator(agg.aggregator)
           .setMapSideCombine(agg.mapSideCombine)

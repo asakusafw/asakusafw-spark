@@ -53,12 +53,17 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient input: RDD[(_, Hoge)],
     val path: String)
-      extends OutputDriver[Hoge](sc, Seq(input))
+      extends OutputDriver[Hoge](sc, Seq(input)) {
+
+    override def name = "TestOutput"
+  }
 
   class TestInputDriver(
     @transient sc: SparkContext,
     basePath: String)
       extends InputDriver[Hoge, String](sc) {
+
+    override def name = "TestInput"
 
     override def paths: Set[String] = Set(basePath + "/part-*")
 

@@ -34,11 +34,13 @@ abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
       new Path(stageInfo.resolveVariables(path))
     }.toSeq)
 
-    val rdd = sc.newAPIHadoopRDD(
-      job.getConfiguration,
-      classOf[TemporaryInputFormat[T]],
-      classOf[NullWritable],
-      classTag[T].runtimeClass.asInstanceOf[Class[T]])
+    sc.setCallSite(name)
+    val rdd =
+      sc.newAPIHadoopRDD(
+        job.getConfiguration,
+        classOf[TemporaryInputFormat[T]],
+        classOf[NullWritable],
+        classTag[T].runtimeClass.asInstanceOf[Class[T]])
     branch(rdd.asInstanceOf[RDD[(_, T)]])
   }
 }
