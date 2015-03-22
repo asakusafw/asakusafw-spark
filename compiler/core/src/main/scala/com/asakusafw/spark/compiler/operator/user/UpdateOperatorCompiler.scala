@@ -4,8 +4,10 @@ package user
 
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
+
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
+
 import com.asakusafw.lang.compiler.model.description.ValueDescription
 import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.runtime.core.Result
@@ -26,7 +28,7 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
     val implementationClassType = operator.getImplementationClass.asType
 
     val inputs = operator.getInputs.toSeq
-    assert(inputs.size == 1)
+    assert(inputs.size == 1) // FIXME to take multiple inputs for side data?
     val input = inputs.head
     val inputDataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
     val inputDataModelType = inputDataModelRef.getDeclaration.asType
@@ -44,8 +46,9 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
       Seq(inputDataModelType)
       ++ arguments.map(_.getValue.getValueType.asType))
 
-    val builder = new FragmentClassBuilder(context.flowId, inputDataModelType) //
-    with OperatorField with OutputFragments {
+    val builder = new FragmentClassBuilder(
+      context.flowId,
+      inputDataModelType) with OperatorField with OutputFragments {
 
       override val operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs
@@ -56,7 +59,6 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
       }
 
       override def defConstructors(ctorDef: ConstructorDef): Unit = {
-        assert(outputs.size == 1) // so that, below code is too much.
         ctorDef.newInit(
           (0 until outputs.size).map(_ => classOf[Fragment[_]].asType),
           ((new MethodSignatureBuilder() /: outputs) {
@@ -66,7 +68,9 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
                   _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
                 }
               }
-          }).newVoidReturnType().build()) { mb =>
+          })
+            .newVoidReturnType()
+            .build()) { mb =>
             import mb._
             thisVar.push().invokeInit(superType)
             initOutputFields(mb, thisVar.nextLocal)
@@ -76,12 +80,9 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        // void add(InputDataModel argument)
         methodDef.newMethod("add", Seq(inputDataModelType)) { mb =>
           import mb._
 
-          // ${operator}.${method}(input, arguments)
-          // => input will be modified in the method.
           val resultVar = `var`(inputDataModelType, thisVar.nextLocal)
           getOperatorField(mb)
             .invokeV(
@@ -91,17 +92,12 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
                   ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
               }: _*)
 
-          // output.add(input)
-          // ==> NOTE: NoSuchMethodError:
-          //  com.asakusafw.spark.runtime.fragment.Fragment
-          //      .add(UpdateOperatorCompilerSpec$InputOutputModel;)V
           getOutputField(mb, output)
-            .invokeV("add", resultVar.push().cast(inputDataModelType))
+            .invokeV("add", resultVar.push().asType(classOf[AnyRef].asType))
 
           `return`()
         }
 
-        // void reset()
         methodDef.newMethod("reset", Seq.empty) { mb =>
           import mb._
           resetOutputs(mb)
