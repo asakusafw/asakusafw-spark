@@ -114,7 +114,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
 
 object MapSubPlanCompiler {
 
-  val CompilableOperators: Set[Class[_]] = Set(classOf[Extract])
+  val CompilableOperators: Set[Class[_]] = Set(classOf[Extract], classOf[Update], classOf[Convert])
 
   object MapDriverInstantiator extends Instantiator {
 
