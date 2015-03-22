@@ -1,3 +1,5 @@
 com.asakusafw.spark.compiler.operator.user.ExtractOperatorCompiler
 
 com.asakusafw.spark.compiler.operator.user.CoGroupOperatorCompiler
+
+com.asakusafw.spark.compiler.operator.user.join.MasterCheckOperatorCompiler

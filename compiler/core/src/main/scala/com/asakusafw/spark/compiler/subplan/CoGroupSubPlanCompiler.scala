@@ -113,7 +113,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
 object CoGroupSubPlanCompiler {
 
-  val CompilableOperators: Set[Class[_]] = Set(classOf[CoGroup])
+  val CompilableOperators: Set[Class[_]] = Set(classOf[CoGroup], classOf[MasterCheck])
 
   object CoGroupDriverInstantiator extends Instantiator {
 
