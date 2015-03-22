@@ -1,4 +1,7 @@
+com.asakusafw.spark.compiler.operator.user.BranchOperatorCompiler
+com.asakusafw.spark.compiler.operator.user.ConvertOperatorCompiler
 com.asakusafw.spark.compiler.operator.user.ExtractOperatorCompiler
+com.asakusafw.spark.compiler.operator.user.UpdateOperatorCompiler
 
 com.asakusafw.spark.compiler.operator.user.CoGroupOperatorCompiler
 
