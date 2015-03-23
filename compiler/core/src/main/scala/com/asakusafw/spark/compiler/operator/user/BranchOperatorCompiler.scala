@@ -34,6 +34,7 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
 
     val outputs = operator.getOutputs.toSeq
     assert(outputs.size > 0)
+
     val outputMap = BranchOperatorUtil.getOutputMap(context.jpContext.getClassLoader, operator)
 
     val arguments = operator.getArguments.toSeq
