@@ -21,15 +21,17 @@ import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.MasterCheck
+import com.asakusafw.vocabulary.operator.MasterJoinUpdate
 
-class MasterCheckOperatorCompiler extends UserOperatorCompiler {
+class MasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
 
-  override def of: Class[_] = classOf[MasterCheck]
+  override def of: Class[_] = classOf[MasterJoinUpdate]
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
     val annotationDesc = operator.getAnnotation
     assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
+    val methodDesc = operator.getMethod
+    val methodType = Type.getType(methodDesc.resolve(context.jpContext.getClassLoader))
     val implementationClassType = operator.getImplementationClass.asType
 
     val selectionMethod =
@@ -41,8 +43,8 @@ class MasterCheckOperatorCompiler extends UserOperatorCompiler {
     val inputDataModelRefs = inputs.map(input => context.jpContext.getDataModelLoader.load(input.getDataType))
     val inputDataModelTypes = inputDataModelRefs.map(_.getDeclaration.asType)
 
-    val masterDataModelType = inputDataModelTypes(MasterCheck.ID_INPUT_MASTER)
-    val txDataModelType = inputDataModelTypes(MasterCheck.ID_INPUT_TRANSACTION)
+    val masterDataModelType = inputDataModelTypes(MasterJoinUpdate.ID_INPUT_MASTER)
+    val txDataModelType = inputDataModelTypes(MasterJoinUpdate.ID_INPUT_TRANSACTION)
 
     val outputs = operator.getOutputs.toSeq
     assert(outputs.size == 2)
@@ -51,10 +53,13 @@ class MasterCheckOperatorCompiler extends UserOperatorCompiler {
 
     outputDataModelTypes.foreach(t => assert(t == txDataModelType))
 
-    val foundOutput = outputs(MasterCheck.ID_OUTPUT_FOUND)
-    val missedOutput = outputs(MasterCheck.ID_OUTPUT_MISSED)
+    val updatedOutput = outputs(MasterJoinUpdate.ID_OUTPUT_UPDATED)
+    val missedOutput = outputs(MasterJoinUpdate.ID_OUTPUT_MISSED)
 
     val arguments = operator.getArguments.toSeq
+    assert(methodType.getArgumentTypes.toSeq ==
+      Seq(masterDataModelType, txDataModelType)
+      ++ arguments.map(_.getValue.getValueType.asType))
 
     val builder = new FragmentClassBuilder(
       context.flowId,
@@ -126,11 +131,22 @@ class MasterCheckOperatorCompiler extends UserOperatorCompiler {
                 case None =>
                   getStatic(DefaultMasterSelection.getClass.asType, "MODULE$", DefaultMasterSelection.getClass.asType)
                     .invokeV("select", classOf[AnyRef].asType, mastersVar.push(), txVar.push().asType(classOf[AnyRef].asType))
+                    .cast(masterDataModelType)
               }
-              selected.ifNull({
+              selected.dup().ifNull({
+                selected.pop()
                 getOutputField(mb, missedOutput)
               }, {
-                getOutputField(mb, foundOutput)
+                val selectedVar = selected.store(txVar.nextLocal)
+                getOperatorField(mb)
+                  .invokeV(methodDesc.getName,
+                    selectedVar.push()
+                      +: txVar.push()
+                      +: arguments.map { argument =>
+                        ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
+                          ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
+                      }: _*)
+                getOutputField(mb, updatedOutput)
               }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
             }
             `return`()
