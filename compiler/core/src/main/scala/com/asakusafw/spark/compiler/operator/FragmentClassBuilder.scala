@@ -8,6 +8,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class FragmentClassBuilder(
   flowId: String,
@@ -37,7 +38,14 @@ abstract class FragmentClassBuilder(
       thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
       `return`()
     }
+
+    methodDef.newMethod("add", Seq(dataModelType)) { mb =>
+      import mb._
+      defAddMethod(mb, `var`(dataModelType, thisVar.nextLocal))
+    }
   }
+
+  def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit
 }
 
 object FragmentClassBuilder {

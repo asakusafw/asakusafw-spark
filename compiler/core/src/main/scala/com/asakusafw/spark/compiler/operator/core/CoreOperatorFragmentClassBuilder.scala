@@ -4,9 +4,9 @@ package core
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class CoreOperatorFragmentClassBuilder(flowId: String, dataModelType: Type, childDataModelType: Type)
     extends FragmentClassBuilder(flowId, dataModelType) {
@@ -42,14 +42,10 @@ abstract class CoreOperatorFragmentClassBuilder(flowId: String, dataModelType: T
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("add", Seq(dataModelType))(defAddMethod)
-
     methodDef.newMethod("reset", Seq.empty) { mb =>
       import mb._
       thisVar.push().getField("child", classOf[Fragment[_]].asType).invokeV("reset")
       `return`()
     }
   }
-
-  def defAddMethod(mb: MethodBuilder): Unit
 }
