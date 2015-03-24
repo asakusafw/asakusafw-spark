@@ -56,7 +56,7 @@ trait PreparingKey
 
             branchVar.push().unlessNe(ldc(op.getOriginalSerialNumber)) {
               val dataModelVar = valueVar.push().cast(dataModelRef.getDeclaration.asType).store(valueVar.nextLocal)
-              val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+              val builder = getStatic(Vector.getClass.asType, "MODULE$", Vector.getClass.asType)
                 .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
               (group.getGrouping ++ group.getOrdering.map(_.getPropertyName)).foreach { grouping =>
@@ -68,7 +68,7 @@ trait PreparingKey
                     .asType(classOf[AnyRef].asType))
               }
 
-              `return`(builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType))
+              `return`(builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Vector[_]].asType))
             }
           }
         }
