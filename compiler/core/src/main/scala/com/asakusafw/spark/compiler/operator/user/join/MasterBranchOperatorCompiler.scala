@@ -61,115 +61,42 @@ class MasterBranchOperatorCompiler extends UserOperatorCompiler {
       Seq(masterDataModelType, txDataModelType)
       ++ arguments.map(_.getValue.getValueType.asType))
 
-    val builder = new FragmentClassBuilder(
-      context.flowId,
-      classOf[Seq[Iterable[_]]].asType) with OperatorField with OutputFragments {
+    val builder = new JoinOperatorClassBuilder(context.flowId) {
 
       override def operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs
 
-      override def defFields(fieldDef: FieldDef): Unit = {
-        defOperatorField(fieldDef)
-        defOutputFields(fieldDef)
-      }
+      override def masterType: Type = masterDataModelType
+      override def txType: Type = txDataModelType
+      override def masterSelection: Option[(String, Type)] = selectionMethod
 
-      override def defConstructors(ctorDef: ConstructorDef): Unit = {
-        ctorDef.newInit((0 until outputs.size).map(_ => classOf[Fragment[_]].asType),
-          ((new MethodSignatureBuilder() /: outputs) {
-            case (builder, output) =>
-              builder.newParameterType {
-                _.newClassType(classOf[Fragment[_]].asType) {
-                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
-                }
-              }
-          })
-            .newVoidReturnType()
-            .build()) { mb =>
-            import mb._
-            thisVar.push().invokeInit(superType)
-            initOutputFields(mb, thisVar.nextLocal)
-          }
-      }
-
-      override def defMethods(methodDef: MethodDef): Unit = {
-        super.defMethods(methodDef)
-
-        methodDef.newMethod("add", Seq(classOf[Seq[Iterable[_]]].asType),
-          new MethodSignatureBuilder()
-            .newParameterType {
-              _.newClassType(classOf[Seq[_]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                  _.newClassType(classOf[Iterable[_]].asType) {
-                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[AnyRef].asType)
-                  }
-                }
-              }
-            }
-            .newVoidReturnType()
-            .build()) { mb =>
-            import mb._
-            val groupsVar = `var`(classOf[Seq[Iterable[_]]].asType, thisVar.nextLocal)
-            val mastersVar = getStatic(JavaConversions.getClass.asType, "MODULE$", JavaConversions.getClass.asType)
-              .invokeV("seqAsJavaList", classOf[JList[_]].asType,
-                groupsVar.push().invokeI(
-                  "apply", classOf[AnyRef].asType, ldc(0).box().asType(classOf[AnyRef].asType))
-                  .cast(classOf[Iterable[_]].asType)
-                  .invokeI("toSeq", classOf[Seq[_]].asType))
-              .store(groupsVar.nextLocal)
-            val txIterVar = groupsVar.push().invokeI(
-              "apply", classOf[AnyRef].asType, ldc(1).box().asType(classOf[AnyRef].asType))
-              .cast(classOf[Iterable[_]].asType)
-              .invokeI("iterator", classOf[Iterator[_]].asType)
-              .store(mastersVar.nextLocal)
-            loop { ctrl =>
-              txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE).unlessTrue(ctrl.break())
-              val txVar = txIterVar.push().invokeI("next", classOf[AnyRef].asType)
-                .cast(txDataModelType).store(txIterVar.nextLocal)
-              val selected = selectionMethod match {
-                case Some((name, t)) =>
-                  getOperatorField(mb).invokeV(name, t.getReturnType(), mastersVar.push(), txVar.push())
-                case None =>
-                  getStatic(DefaultMasterSelection.getClass.asType, "MODULE$", DefaultMasterSelection.getClass.asType)
-                    .invokeV("select", classOf[AnyRef].asType, mastersVar.push(), txVar.push().asType(classOf[AnyRef].asType))
-                    .cast(masterDataModelType)
-              }
-              val selectedVar = selected.store(txVar.nextLocal)
-              val branch = getOperatorField(mb)
-                .invokeV(methodDesc.getName,
-                  methodType.getReturnType,
-                  selectedVar.push()
-                    +: txVar.push()
-                    +: arguments.map { argument =>
-                      ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
-                        ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
-                    }: _*)
-              branch.dup().unlessNotNull {
-                branch.pop()
-                `throw`(pushNew0(classOf[NullPointerException].asType))
-              }
-              outputMap.foreach {
-                case (output, enum) =>
-                  branch.dup().unlessNe(
-                    getStatic(methodType.getReturnType, enum.name, methodType.getReturnType)) {
-                      getOutputField(mb, output)
-                        .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
-                      branch.pop()
-                      ctrl.continue()
-                    }
-              }
-              branch.pop()
-              `throw`(pushNew0(classOf[AssertionError].asType))
-            }
-            `return`()
-          }
-
-        methodDef.newMethod("reset", Seq.empty) { mb =>
-          import mb._
-          resetOutputs(mb)
-          `return`()
+      override def join(mb: MethodBuilder, ctrl: LoopControl, masterVar: Var, txVar: Var): Unit = {
+        import mb._
+        val branch = getOperatorField(mb)
+          .invokeV(methodDesc.getName,
+            methodType.getReturnType,
+            masterVar.push()
+              +: txVar.push()
+              +: arguments.map { argument =>
+                ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
+                  ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
+              }: _*)
+        branch.dup().unlessNotNull {
+          branch.pop()
+          `throw`(pushNew0(classOf[NullPointerException].asType))
         }
-
-        defGetOperator(methodDef)
+        outputMap.foreach {
+          case (output, enum) =>
+            branch.dup().unlessNe(
+              getStatic(methodType.getReturnType, enum.name, methodType.getReturnType)) {
+                getOutputField(mb, output)
+                  .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
+                branch.pop()
+                ctrl.continue()
+              }
+        }
+        branch.pop()
+        `throw`(pushNew0(classOf[AssertionError].asType))
       }
     }
 

@@ -21,6 +21,7 @@ import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.MasterJoin
 
 class MasterJoinOperatorCompiler extends UserOperatorCompiler {
@@ -61,18 +62,18 @@ class MasterJoinOperatorCompiler extends UserOperatorCompiler {
 
     val mappings = JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
 
-    val builder = new FragmentClassBuilder(
-      context.flowId,
-      classOf[Seq[Iterable[_]]].asType) with OperatorField with OutputFragments {
+    val builder = new JoinOperatorClassBuilder(context.flowId) {
 
       override def operatorType: Type = implementationClassType
       override def operatorOutputs: Seq[OperatorOutput] = outputs
 
-      override def defFields(fieldDef: FieldDef): Unit = {
-        fieldDef.newField("joinedDataModel", joinedOutputDataModelType)
+      override def masterType: Type = masterDataModelType
+      override def txType: Type = txDataModelType
+      override def masterSelection: Option[(String, Type)] = selectionMethod
 
-        defOperatorField(fieldDef)
-        defOutputFields(fieldDef)
+      override def defFields(fieldDef: FieldDef): Unit = {
+        super.defFields(fieldDef)
+        fieldDef.newField("joinedDataModel", joinedOutputDataModelType)
       }
 
       override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -94,89 +95,35 @@ class MasterJoinOperatorCompiler extends UserOperatorCompiler {
           }
       }
 
-      override def defMethods(methodDef: MethodDef): Unit = {
-        super.defMethods(methodDef)
-
-        methodDef.newMethod("add", Seq(classOf[Seq[Iterable[_]]].asType),
-          new MethodSignatureBuilder()
-            .newParameterType {
-              _.newClassType(classOf[Seq[_]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                  _.newClassType(classOf[Iterable[_]].asType) {
-                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[AnyRef].asType)
-                  }
-                }
-              }
-            }
-            .newVoidReturnType()
-            .build()) { mb =>
-            import mb._
-            val groupsVar = `var`(classOf[Seq[Iterable[_]]].asType, thisVar.nextLocal)
-            val mastersVar = getStatic(JavaConversions.getClass.asType, "MODULE$", JavaConversions.getClass.asType)
-              .invokeV("seqAsJavaList", classOf[JList[_]].asType,
-                groupsVar.push().invokeI(
-                  "apply", classOf[AnyRef].asType, ldc(0).box().asType(classOf[AnyRef].asType))
-                  .cast(classOf[Iterable[_]].asType)
-                  .invokeI("toSeq", classOf[Seq[_]].asType))
-              .store(groupsVar.nextLocal)
-            val txIterVar = groupsVar.push().invokeI(
-              "apply", classOf[AnyRef].asType, ldc(1).box().asType(classOf[AnyRef].asType))
-              .cast(classOf[Iterable[_]].asType)
-              .invokeI("iterator", classOf[Iterator[_]].asType)
-              .store(mastersVar.nextLocal)
-            loop { ctrl =>
-              txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE).unlessTrue(ctrl.break())
-              val txVar = txIterVar.push().invokeI("next", classOf[AnyRef].asType)
-                .cast(txDataModelType).store(txIterVar.nextLocal)
-              val selected = selectionMethod match {
-                case Some((name, t)) =>
-                  getOperatorField(mb).invokeV(name, t.getReturnType(), mastersVar.push(), txVar.push())
-                case None =>
-                  getStatic(DefaultMasterSelection.getClass.asType, "MODULE$", DefaultMasterSelection.getClass.asType)
-                    .invokeV("select", classOf[AnyRef].asType, mastersVar.push(), txVar.push().asType(classOf[AnyRef].asType))
-                    .cast(masterDataModelType)
-              }
-              selected.dup().unlessNotNull {
-                selected.pop()
-                getOutputField(mb, missedOutput)
-                  .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
-                ctrl.continue()
-              }
-              val selectedVar = selected.store(txVar.nextLocal)
-
-              val vars = Seq(selectedVar, txVar)
-
-              thisVar.push().getField("joinedDataModel", joinedOutputDataModelType).invokeV("reset")
-
-              mappings.foreach { mapping =>
-                val srcVar = vars(inputs.indexOf(mapping.getSourcePort))
-                val srcProperty = inputDataModelRefs(inputs.indexOf(mapping.getSourcePort))
-                  .findProperty(mapping.getSourceProperty)
-                val destProperty = joinedOutputDataModelRef.findProperty(mapping.getDestinationProperty)
-                assert(srcProperty.getType.asType == destProperty.getType.asType)
-
-                getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
-                  .invokeV(
-                    "copy",
-                    srcVar.push()
-                      .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
-                    thisVar.push().getField("joinedDataModel", joinedOutputDataModelType)
-                      .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
-              }
-
-              getOutputField(mb, joinedOutput)
-                .invokeV("add", thisVar.push().getField("joinedDataModel", joinedOutputDataModelType).asType(classOf[AnyRef].asType))
-            }
-            `return`()
-          }
-
-        methodDef.newMethod("reset", Seq.empty) { mb =>
-          import mb._
-          resetOutputs(mb)
-          `return`()
+      override def join(mb: MethodBuilder, ctrl: LoopControl, masterVar: Var, txVar: Var): Unit = {
+        import mb._
+        masterVar.push().unlessNotNull {
+          getOutputField(mb, missedOutput).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
+          ctrl.continue()
         }
 
-        defGetOperator(methodDef)
+        val vars = Seq(masterVar, txVar)
+
+        thisVar.push().getField("joinedDataModel", joinedOutputDataModelType).invokeV("reset")
+
+        mappings.foreach { mapping =>
+          val src = inputs.indexOf(mapping.getSourcePort)
+          val srcVar = vars(src)
+          val srcProperty = inputDataModelRefs(src).findProperty(mapping.getSourceProperty)
+          val destProperty = joinedOutputDataModelRef.findProperty(mapping.getDestinationProperty)
+          assert(srcProperty.getType.asType == destProperty.getType.asType)
+
+          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+            .invokeV(
+              "copy",
+              srcVar.push()
+                .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
+              thisVar.push().getField("joinedDataModel", joinedOutputDataModelType)
+                .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
+        }
+
+        getOutputField(mb, joinedOutput)
+          .invokeV("add", thisVar.push().getField("joinedDataModel", joinedOutputDataModelType).asType(classOf[AnyRef].asType))
       }
     }
 
