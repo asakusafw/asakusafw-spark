@@ -16,12 +16,14 @@ import org.slf4j.LoggerFactory
 import com.asakusafw.lang.compiler.api.JobflowProcessor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.CommandToken
+import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
 import com.asakusafw.lang.compiler.common.Location
-import com.asakusafw.lang.compiler.model.description.ClassDescription
+import com.asakusafw.lang.compiler.model.description.{ ClassDescription, TypeDescription }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSparkPlanner }
 import com.asakusafw.lang.compiler.planning.util.DotGenerator
+import com.asakusafw.spark.compiler.serializer.KryoRegistratorCompiler
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -53,6 +55,11 @@ class SparkClientCompiler extends JobflowProcessor {
     }
 
     if (JBoolean.parseBoolean(jpContext.getOptions.get(SparkPlanVerifyOption, false.toString)) == false) {
+
+      val registrator = KryoRegistratorCompiler.compile(
+        OperatorUtil.collectDataTypes(plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
+          .toSet[TypeDescription].map(_.asType))(
+          KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
 
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
@@ -96,8 +103,7 @@ class SparkClientCompiler extends JobflowProcessor {
 
           methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
             import mb._
-            // TODO Generate KryoRegistrator
-            `return`(ldc("com.asakusafw.spark.runtime.serializer.KryoRegistrator"))
+            `return`(ldc(registrator.getClassName))
           }
         }
       }
