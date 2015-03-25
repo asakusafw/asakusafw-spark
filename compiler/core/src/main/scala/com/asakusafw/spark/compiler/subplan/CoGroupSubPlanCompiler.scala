@@ -45,27 +45,6 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
     val outputs = subplan.getOutputs.toSeq
 
-    implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
-    val operators = subplan.getOperators
-      .filterNot(_.getOriginalSerialNumber == dominant.getOriginalSerialNumber)
-      .map {
-        case marker: MarkerOperator =>
-          marker.getOriginalSerialNumber ->
-            OutputFragmentClassBuilder.getOrCompile(context.flowId, marker.getInput.getDataType.asType, context.jpContext)
-        case operator =>
-          operator.getOriginalSerialNumber ->
-            OperatorCompiler.compile(operator, OperatorType.MapType)
-      }.toMap[Long, Type] +
-      (operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.CoGroupType))
-
-    val edges = subplan.getOperators.flatMap {
-      _.getOutputs.collect {
-        case output if output.getOpposites.size > 1 => output.getDataType.asType
-      }
-    }.map { dataType =>
-      dataType -> EdgeFragmentClassBuilder.getOrCompile(context.flowId, dataType, context.jpContext)
-    }.toMap
-
     val builder = new CoGroupDriverClassBuilder(context.flowId, classOf[AnyRef].asType) {
 
       override def jpContext = context.jpContext
@@ -81,28 +60,16 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
           import mb._
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-          val fragmentBuilder = new FragmentTreeBuilder(
-            mb,
-            operators,
-            edges,
-            nextLocal)
-          val fragmentVar = fragmentBuilder.build(operator)
-
-          val outputsVar = {
-            val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-              .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-            outputs.map(_.getOperator).sortBy(_.getOriginalSerialNumber).foreach { op =>
-              builder.invokeI(NameTransformer.encode("+="),
-                classOf[mutable.Builder[_, _]].asType,
-                getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-                  invokeV("apply", classOf[(_, _)].asType,
-                    ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-                    fragmentBuilder.vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
-                  .asType(classOf[AnyRef].asType))
-            }
-            val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-            map.store(nextLocal.getAndAdd(map.size))
+          implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
+          val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)
+          val fragmentVar = {
+            val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+            val outputs = operator.getOutputs.map(fragmentBuilder.build)
+            val fragment = pushNew(t)
+            fragment.dup().invokeInit(outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
+            fragment.store(nextLocal.getAndAdd(fragment.size))
           }
+          val outputsVar = fragmentBuilder.buildOutputsVar()
 
           `return`(
             getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
