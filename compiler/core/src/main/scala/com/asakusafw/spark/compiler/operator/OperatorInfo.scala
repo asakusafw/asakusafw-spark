@@ -16,6 +16,8 @@ class OperatorInfo(operator: Operator)(implicit jpContext: JPContext) {
     case op: UserOperator => op.getAnnotation
   }
 
+  lazy val annotationClass = annotationDesc.getDeclaringClass.resolve(jpContext.getClassLoader)
+
   lazy val implementationClassType = operator match {
     case op: UserOperator => op.getImplementationClass.asType
   }

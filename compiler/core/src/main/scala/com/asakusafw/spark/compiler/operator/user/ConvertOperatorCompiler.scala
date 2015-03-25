@@ -20,7 +20,7 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    assert(operatorInfo.annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
+    assert(operatorInfo.annotationClass == of)
     assert(operatorInfo.inputs.size == 1) // FIXME to take multiple inputs for side data?
     assert(operatorInfo.outputs.size == 2)
 

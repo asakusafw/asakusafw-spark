@@ -22,7 +22,7 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    assert(operatorInfo.annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
+    assert(operatorInfo.annotationClass == of)
     assert(operatorInfo.inputs.size == 1)
     assert(operatorInfo.outputs.size == 1)
     assert(operatorInfo.inputDataModelTypes(Fold.ID_INPUT) == operatorInfo.outputDataModelTypes(Fold.ID_OUTPUT))

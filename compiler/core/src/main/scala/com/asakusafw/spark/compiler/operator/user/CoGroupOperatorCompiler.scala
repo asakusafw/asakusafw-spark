@@ -24,9 +24,9 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
+    assert(operatorInfo.annotationClass == of)
     assert(operatorInfo.inputs.size > 0)
 
-    assert(operatorInfo.annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
     assert(operatorInfo.methodType.getArgumentTypes.toSeq ==
       operatorInfo.inputDataModelTypes.map(_ => classOf[JList[_]].asType)
       ++ operatorInfo.outputDataModelTypes.map(_ => classOf[Result[_]].asType)

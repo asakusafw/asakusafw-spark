@@ -21,7 +21,7 @@ class MasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    assert(operatorInfo.annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
+    assert(operatorInfo.annotationClass == of)
     assert(operatorInfo.inputs.size >= 2)
     assert(operatorInfo.outputs.size == 2)
 
