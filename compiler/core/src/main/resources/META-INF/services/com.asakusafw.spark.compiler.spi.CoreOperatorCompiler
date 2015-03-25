@@ -1,3 +1,0 @@
-com.asakusafw.spark.compiler.operator.core.ProjectOperatorCompiler
-com.asakusafw.spark.compiler.operator.core.ExtendOperatorCompiler
-com.asakusafw.spark.compiler.operator.core.RestructureOperatorCompiler

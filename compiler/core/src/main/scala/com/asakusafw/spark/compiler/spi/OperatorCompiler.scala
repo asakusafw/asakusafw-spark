@@ -9,77 +9,60 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
-import com.asakusafw.spark.compiler.operator.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
-trait CoreOperatorCompiler extends OperatorCompiler {
+sealed trait OperatorType
 
-  override def support(operator: Operator)(implicit context: Context): Boolean = {
-    operator match {
-      case op: CoreOperator => support(op)
-      case _                => false
-    }
-  }
+object OperatorType {
 
-  def support(operator: CoreOperator)(implicit context: Context): Boolean
-
-  override def compile(operator: Operator)(implicit context: Context): Type = {
-    operator match {
-      case op: CoreOperator => compile(op)
-    }
-  }
-
-  def compile(operator: CoreOperator)(implicit context: Context): Type
+  case object MapType extends OperatorType
+  case object CoGroupType extends OperatorType
+  case object AggregationType extends OperatorType
 }
 
-object CoreOperatorCompiler {
+trait OperatorCompiler {
 
-  private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[CoreOperatorCompiler]] =
+  type Context = OperatorCompiler.Context
+
+  def support(operator: Operator)(implicit context: Context): Boolean
+
+  def operatorType: OperatorType
+
+  def compile(operator: Operator)(implicit context: Context): Type
+}
+
+object OperatorCompiler {
+
+  case class Context(
+    flowId: String,
+    jpContext: JPContext)
+
+  private def getCompiler(operator: Operator)(implicit context: Context): Option[OperatorCompiler] = {
+    apply(context.jpContext.getClassLoader).find(_.support(operator))
+  }
+
+  def support(operator: Operator, operatorType: OperatorType)(implicit context: Context): Boolean = {
+    getCompiler(operator) match {
+      case Some(compiler) => compiler.operatorType == operatorType
+      case None           => false
+    }
+  }
+
+  def compile(operator: Operator, operatorType: OperatorType)(implicit context: Context): Type = {
+    getCompiler(operator) match {
+      case Some(compiler) if compiler.operatorType == operatorType => compiler.compile(operator)
+    }
+  }
+
+  private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[OperatorCompiler]] =
     mutable.WeakHashMap.empty
 
-  def apply(classLoader: ClassLoader): Seq[CoreOperatorCompiler] = {
+  private[this] def apply(classLoader: ClassLoader): Seq[OperatorCompiler] = {
     operatorCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
-  def reload(classLoader: ClassLoader): Seq[CoreOperatorCompiler] = {
-    val ors = ServiceLoader.load(classOf[CoreOperatorCompiler], classLoader).toSeq
-    operatorCompilers(classLoader) = ors
-    ors
-  }
-}
-
-trait UserOperatorCompiler extends OperatorCompiler {
-
-  override def support(operator: Operator)(implicit context: Context): Boolean = {
-    operator match {
-      case op: UserOperator => support(op)
-      case _                => false
-    }
-  }
-
-  def support(operator: UserOperator)(implicit context: Context): Boolean
-
-  override def compile(operator: Operator)(implicit context: Context): Type = {
-    operator match {
-      case op: UserOperator => compile(op)
-    }
-  }
-
-  def compile(operator: UserOperator)(implicit context: Context): Type
-}
-
-object UserOperatorCompiler {
-
-  private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[UserOperatorCompiler]] =
-    mutable.WeakHashMap.empty
-
-  def apply(classLoader: ClassLoader): Seq[UserOperatorCompiler] = {
-    operatorCompilers.getOrElse(classLoader, reload(classLoader))
-  }
-
-  def reload(classLoader: ClassLoader): Seq[UserOperatorCompiler] = {
-    val ors = ServiceLoader.load(classOf[UserOperatorCompiler], classLoader).toSeq
+  private[this] def reload(classLoader: ClassLoader): Seq[OperatorCompiler] = {
+    val ors = ServiceLoader.load(classOf[OperatorCompiler], classLoader).toSeq
     operatorCompilers(classLoader) = ors
     ors
   }

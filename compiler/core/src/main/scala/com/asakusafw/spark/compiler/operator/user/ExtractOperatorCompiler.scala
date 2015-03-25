@@ -8,7 +8,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
-import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
+import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.Extract

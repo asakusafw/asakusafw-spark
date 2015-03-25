@@ -19,7 +19,7 @@ import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate, MasterSelection }
@@ -32,8 +32,6 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
   import MasterJoinUpdateOperatorCompilerSpec._
 
   behavior of classOf[MasterJoinUpdateOperatorCompiler].getSimpleName
-
-  def resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile MasterJoinUpdate operator without master selection" in {
     val operator = OperatorExtractor
@@ -56,8 +54,7 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
         Thread.currentThread.getContextClassLoader,
         classpath))
 
-    val compiler = resolvers.find(_.support(operator)).get
-    val thisType = compiler.compile(operator)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
     val (updated, missed) = {
@@ -126,8 +123,7 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
         Thread.currentThread.getContextClassLoader,
         classpath))
 
-    val compiler = resolvers.find(_.support(operator)).get
-    val thisType = compiler.compile(operator)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
     val (updated, missed) = {

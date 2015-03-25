@@ -8,7 +8,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
-import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
+import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._

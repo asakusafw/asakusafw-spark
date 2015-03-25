@@ -18,7 +18,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
 import com.asakusafw.spark.compiler.partitioner.GroupingPartitionerClassBuilder
-import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd
 import com.asakusafw.spark.tools.asm._
@@ -48,8 +48,13 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
     val operators = subplan.getOperators
       .filterNot(_.getOriginalSerialNumber == dominant.getOriginalSerialNumber)
-      .map { operator =>
-        operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.MapType)
+      .map {
+        case marker: MarkerOperator =>
+          marker.getOriginalSerialNumber ->
+            OutputFragmentClassBuilder.getOrCompile(context.flowId, marker.getInput.getDataType.asType, context.jpContext)
+        case operator =>
+          operator.getOriginalSerialNumber ->
+            OperatorCompiler.compile(operator, OperatorType.MapType)
       }.toMap[Long, Type] +
       (operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.CoGroupType))
 

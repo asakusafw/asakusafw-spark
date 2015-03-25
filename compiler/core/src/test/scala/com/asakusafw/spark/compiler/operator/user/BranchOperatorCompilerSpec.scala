@@ -16,7 +16,7 @@ import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Branch
@@ -29,8 +29,6 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
   import BranchOperatorCompilerSpec._
 
   behavior of classOf[BranchOperatorCompiler].getSimpleName
-
-  def resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Branch operator" in {
     val operator = OperatorExtractor
@@ -49,8 +47,7 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath))
 
-    val compiler = resolvers.find(_.support(operator)).get
-    val thisType = compiler.compile(operator)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val (out1, out2) = {

@@ -14,10 +14,10 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
-import com.asakusafw.spark.compiler.operator._
+import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.partitioner.GroupingPartitionerClassBuilder
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, SubPlanCompiler }
+import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -61,8 +61,13 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
     val operators = subplan.getOperators
       .filterNot(_.getOriginalSerialNumber == dominant.getOriginalSerialNumber)
-      .map { operator =>
-        operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.MapType)
+      .map {
+        case marker: MarkerOperator =>
+          marker.getOriginalSerialNumber ->
+            OutputFragmentClassBuilder.getOrCompile(context.flowId, marker.getInput.getDataType.asType, context.jpContext)
+        case operator =>
+          operator.getOriginalSerialNumber ->
+            OperatorCompiler.compile(operator, OperatorType.MapType)
       }.toMap[Long, Type]
 
     val edges = subplan.getOperators.flatMap {

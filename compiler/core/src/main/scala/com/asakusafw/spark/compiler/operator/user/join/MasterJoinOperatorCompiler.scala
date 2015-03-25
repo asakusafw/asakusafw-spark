@@ -10,7 +10,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
 import com.asakusafw.lang.compiler.model.graph.UserOperator
-import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
+import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._

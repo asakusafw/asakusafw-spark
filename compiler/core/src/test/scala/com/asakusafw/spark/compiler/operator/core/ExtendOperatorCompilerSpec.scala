@@ -17,7 +17,7 @@ import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 
@@ -29,8 +29,6 @@ class ExtendOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
   import ExtendOperatorCompilerSpec._
 
   behavior of classOf[ExtendOperatorCompiler].getSimpleName
-
-  def resolvers = CoreOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Extend operator" in {
     val operator = CoreOperator.builder(CoreOperatorKind.EXTEND)
@@ -46,8 +44,7 @@ class ExtendOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath))
 
-    val compiler = resolvers.find(_.support(operator)).get
-    val thisType = compiler.compile(operator)(context)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out = {

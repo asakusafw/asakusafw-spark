@@ -15,7 +15,7 @@ import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Update
@@ -28,8 +28,6 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
   import UpdateOperatorCompilerSpec._
 
   behavior of classOf[UpdateOperatorCompiler].getSimpleName
-
-  def resolvers = UserOperatorCompiler(Thread.currentThread.getContextClassLoader)
 
   it should "compile Update operator" in {
     val operator = OperatorExtractor.extract(
@@ -47,8 +45,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath))
 
-    val compiler = resolvers.find(_.support(operator)).get
-    val thisType = compiler.compile(operator)(context)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath)
       .asSubclass(classOf[Fragment[TestModel]])
 

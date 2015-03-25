@@ -1,3 +1,7 @@
+com.asakusafw.spark.compiler.operator.core.ProjectOperatorCompiler
+com.asakusafw.spark.compiler.operator.core.ExtendOperatorCompiler
+com.asakusafw.spark.compiler.operator.core.RestructureOperatorCompiler
+
 com.asakusafw.spark.compiler.operator.user.BranchOperatorCompiler
 com.asakusafw.spark.compiler.operator.user.ConvertOperatorCompiler
 com.asakusafw.spark.compiler.operator.user.ExtractOperatorCompiler

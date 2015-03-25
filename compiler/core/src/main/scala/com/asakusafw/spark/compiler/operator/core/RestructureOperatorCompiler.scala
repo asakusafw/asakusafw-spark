@@ -5,7 +5,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
-import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
+import com.asakusafw.spark.compiler.spi.OperatorType
 
 class RestructureOperatorCompiler extends CoreOperatorCompiler {
 
