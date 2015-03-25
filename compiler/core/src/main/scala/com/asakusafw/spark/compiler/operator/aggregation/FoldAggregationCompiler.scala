@@ -19,36 +19,26 @@ class FoldAggregationCompiler extends AggregationCompiler {
   def of: Class[_] = classOf[Fold]
 
   def compile(operator: UserOperator)(implicit context: Context): Type = {
-    val annotationDesc = operator.getAnnotation
-    assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
-    val methodDesc = operator.getMethod
-    val methodType = Type.getType(methodDesc.resolve(context.jpContext.getClassLoader))
-    val implementationClassType = operator.getImplementationClass.asType
 
-    val inputs = operator.getInputs.toSeq
-    assert(inputs.size == 1)
-    val input = inputs.head
-    val inputDataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
-    val inputDataModelType = inputDataModelRef.getDeclaration.asType
+    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    val outputs = operator.getOutputs.toSeq
-    assert(outputs.size == 1)
-    val output = outputs.head
-    val outputDataModelRef = context.jpContext.getDataModelLoader.load(output.getDataType)
-    val outputDataModelType = outputDataModelRef.getDeclaration.asType
+    assert(operatorInfo.annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
+    assert(operatorInfo.inputs.size == 1)
+    assert(operatorInfo.outputs.size == 1)
+    assert(operatorInfo.inputDataModelTypes(Fold.ID_INPUT) == operatorInfo.outputDataModelTypes(Fold.ID_OUTPUT))
 
-    assert(inputDataModelType == outputDataModelType)
-
-    val arguments = operator.getArguments.toSeq
-
-    assert(methodType.getArgumentTypes.toSeq ==
-      Seq(inputDataModelType, outputDataModelType)
-      ++ arguments.map(_.getValue.getValueType.asType))
+    assert(operatorInfo.methodType.getArgumentTypes.toSeq ==
+      Seq(operatorInfo.inputDataModelTypes(Fold.ID_INPUT),
+        operatorInfo.outputDataModelTypes(Fold.ID_OUTPUT))
+        ++ operatorInfo.argumentTypes)
 
     val builder = new AggregationClassBuilder(
-      context.flowId, classOf[Seq[_]].asType, inputDataModelType, outputDataModelType) with OperatorField {
+      context.flowId,
+      classOf[Seq[_]].asType,
+      operatorInfo.inputDataModelTypes(Fold.ID_INPUT),
+      operatorInfo.outputDataModelTypes(Fold.ID_OUTPUT)) with OperatorField {
 
-      override val operatorType: Type = implementationClassType
+      override val operatorType: Type = operatorInfo.implementationClassType
 
       override def defFields(fieldDef: FieldDef): Unit = {
         defOperatorField(fieldDef)
@@ -61,7 +51,7 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
       override def defMapSideCombiner(mb: MethodBuilder): Unit = {
         import mb._
-        val partialAggregation = annotationDesc.getElements()("partialAggregation")
+        val partialAggregation = operatorInfo.annotationDesc.getElements()("partialAggregation")
           .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]
         `return`(ldc(partialAggregation == PartialAggregation.PARTIAL))
       }
@@ -73,9 +63,10 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
       override def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
         import mb._
-        getOperatorField(mb).invokeV(methodDesc.getName,
+        getOperatorField(mb).invokeV(
+          operatorInfo.methodDesc.getName,
           Seq(combinerVar.push(), valueVar.push())
-            ++ arguments.map { argument =>
+            ++ operatorInfo.arguments.map { argument =>
               ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
                 ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
             }: _*)

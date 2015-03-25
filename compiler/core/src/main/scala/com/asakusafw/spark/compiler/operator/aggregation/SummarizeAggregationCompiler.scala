@@ -23,29 +23,23 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
   def of: Class[_] = classOf[Summarize]
 
   def compile(operator: UserOperator)(implicit context: Context): Type = {
-    val annotationDesc = operator.getAnnotation
-    assert(annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
+    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    val inputs = operator.getInputs.toSeq
-    assert(inputs.size == 1)
-    val input = inputs.head
-    val inputDataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
-    val inputDataModelType = inputDataModelRef.getDeclaration.asType
-
-    val outputs = operator.getOutputs.toSeq
-    assert(outputs.size == 1)
-    val output = outputs.head
-    val outputDataModelRef = context.jpContext.getDataModelLoader.load(output.getDataType)
-    val outputDataModelType = outputDataModelRef.getDeclaration.asType
+    assert(operatorInfo.annotationDesc.getDeclaringClass.resolve(context.jpContext.getClassLoader) == of)
+    assert(operatorInfo.inputs.size == 1)
+    assert(operatorInfo.outputs.size == 1)
 
     val propertyFoldings = SummarizedModelUtil.getPropertyFoldings(context.jpContext.getClassLoader, operator).toSeq
 
     val builder = new AggregationClassBuilder(
-      context.flowId, classOf[Seq[_]].asType, inputDataModelType, outputDataModelType) {
+      context.flowId,
+      classOf[Seq[_]].asType,
+      operatorInfo.inputDataModelTypes(Summarize.ID_INPUT),
+      operatorInfo.outputDataModelTypes(Summarize.ID_OUTPUT)) {
 
       override def defMapSideCombiner(mb: MethodBuilder): Unit = {
         import mb._
-        val partialAggregation = annotationDesc.getElements()("partialAggregation")
+        val partialAggregation = operatorInfo.annotationDesc.getElements()("partialAggregation")
           .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]
         `return`(ldc(partialAggregation != PartialAggregation.TOTAL))
       }
@@ -55,8 +49,8 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
         val combinerVar = pushNew0(combinerType).store(valueVar.nextLocal)
         propertyFoldings.foreach { folding =>
           val mapping = folding.getMapping
-          val valuePropertyRef = inputDataModelRef.findProperty(mapping.getSourceProperty)
-          val combinerPropertyRef = outputDataModelRef.findProperty(mapping.getDestinationProperty)
+          val valuePropertyRef = operatorInfo.inputDataModelRefs(Summarize.ID_INPUT).findProperty(mapping.getSourceProperty)
+          val combinerPropertyRef = operatorInfo.outputDataModelRefs(Summarize.ID_OUTPUT).findProperty(mapping.getDestinationProperty)
           folding.getAggregation match {
             case PropertyFolding.Aggregation.ANY =>
               getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
@@ -85,8 +79,8 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
         import mb._
         propertyFoldings.foreach { folding =>
           val mapping = folding.getMapping
-          val valuePropertyRef = inputDataModelRef.findProperty(mapping.getSourceProperty)
-          val combinerPropertyRef = outputDataModelRef.findProperty(mapping.getDestinationProperty)
+          val valuePropertyRef = operatorInfo.inputDataModelRefs(Summarize.ID_INPUT).findProperty(mapping.getSourceProperty)
+          val combinerPropertyRef = operatorInfo.outputDataModelRefs(Summarize.ID_OUTPUT).findProperty(mapping.getDestinationProperty)
           folding.getAggregation match {
             case PropertyFolding.Aggregation.SUM =>
               getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
@@ -121,7 +115,7 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
         import mb._
         propertyFoldings.foreach { folding =>
           val mapping = folding.getMapping
-          val combinerPropertyRef = outputDataModelRef.findProperty(mapping.getDestinationProperty)
+          val combinerPropertyRef = operatorInfo.outputDataModelRefs(Summarize.ID_OUTPUT).findProperty(mapping.getDestinationProperty)
           folding.getAggregation match {
             case PropertyFolding.Aggregation.SUM =>
               getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
