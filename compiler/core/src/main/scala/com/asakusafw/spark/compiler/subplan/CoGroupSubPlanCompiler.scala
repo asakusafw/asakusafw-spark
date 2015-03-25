@@ -43,15 +43,13 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     assert(dominant.isInstanceOf[UserOperator])
     val operator = dominant.asInstanceOf[UserOperator]
 
-    val outputs = subplan.getOutputs.toSeq
-
     val builder = new CoGroupDriverClassBuilder(context.flowId, classOf[AnyRef].asType) {
 
-      override def jpContext = context.jpContext
+      override val jpContext = context.jpContext
 
-      override def dominantOperator = operator
+      override val dominantOperator = operator
 
-      override def subplanOutputs: Seq[SubPlan.Output] = outputs
+      override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)

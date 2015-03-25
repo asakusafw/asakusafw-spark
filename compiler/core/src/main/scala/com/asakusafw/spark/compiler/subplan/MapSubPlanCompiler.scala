@@ -37,15 +37,13 @@ class MapSubPlanCompiler extends SubPlanCompiler {
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val operator = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
 
-    val outputs = subplan.getOutputs.toSeq
-
     val builder = new MapDriverClassBuilder(context.flowId, operator.getInputs.head.getDataType.asType) {
 
-      override def jpContext = context.jpContext
+      override val jpContext = context.jpContext
 
-      override def dominantOperator = operator
+      override val dominantOperator = operator
 
-      override def subplanOutputs: Seq[SubPlan.Output] = outputs
+      override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)

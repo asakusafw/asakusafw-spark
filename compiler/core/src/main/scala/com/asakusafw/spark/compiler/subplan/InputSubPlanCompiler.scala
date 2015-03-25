@@ -33,15 +33,13 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val operator = dominant.asInstanceOf[ExternalInput]
     val inputRef = context.jpContext.addExternalInput(operator.getName, operator.getInfo)
 
-    val outputs = subplan.getOutputs.toSeq
-
     val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
-      override def jpContext = context.jpContext
+      override val jpContext = context.jpContext
 
-      override def dominantOperator = operator
+      override val dominantOperator = operator
 
-      override def subplanOutputs: Seq[SubPlan.Output] = outputs
+      override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)

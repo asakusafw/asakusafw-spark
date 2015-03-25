@@ -14,7 +14,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
-import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OutputFragmentClassBuilder }
+import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.partitioner.GroupingPartitionerClassBuilder
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
@@ -39,27 +39,21 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     assert(dominant.isInstanceOf[UserOperator])
     val operator = dominant.asInstanceOf[UserOperator]
 
-    val operatorInputs = operator.getInputs.toSeq
-    assert(operatorInputs.size == 1)
-    val input = operatorInputs.head
-    val inputDataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
-    val inputDataModelType = inputDataModelRef.getDeclaration.asType
+    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    val operatorOutputs = operator.getOutputs.toSeq
-    assert(operatorOutputs.size == 1)
-    val output = operatorOutputs.head
-    val outputDataModelRef = context.jpContext.getDataModelLoader.load(output.getDataType)
-    val outputDataModelType = outputDataModelRef.getDeclaration.asType
+    assert(operatorInfo.inputs.size == 1)
+    assert(operatorInfo.outputs.size == 1)
 
-    val outputs = subplan.getOutputs.toSeq
+    val builder = new AggregateDriverClassBuilder(
+      context.flowId,
+      operatorInfo.inputDataModelTypes.head,
+      operatorInfo.outputDataModelTypes.head) {
 
-    val builder = new AggregateDriverClassBuilder(context.flowId, inputDataModelType, outputDataModelType) {
+      override val jpContext = context.jpContext
 
-      override def jpContext = context.jpContext
+      override val dominantOperator = operator
 
-      override def dominantOperator = operator
-
-      override def subplanOutputs: Seq[SubPlan.Output] = outputs
+      override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
