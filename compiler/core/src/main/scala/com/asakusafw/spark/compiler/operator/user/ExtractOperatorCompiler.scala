@@ -15,13 +15,18 @@ import com.asakusafw.vocabulary.operator.Extract
 
 class ExtractOperatorCompiler extends UserOperatorCompiler {
 
-  override def of: Class[_] = classOf[Extract]
+  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    operatorInfo.annotationClass == classOf[Extract]
+  }
+
+  override def operatorType: OperatorType = OperatorType.MapType
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
+    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    assert(operatorInfo.annotationClass == of)
     assert(operatorInfo.inputs.size == 1) // FIXME to take multiple inputs for side data?
     assert(operatorInfo.outputs.size > 0)
 

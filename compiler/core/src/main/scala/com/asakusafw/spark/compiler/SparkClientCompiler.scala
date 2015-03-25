@@ -64,6 +64,7 @@ class SparkClientCompiler extends JobflowProcessor {
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
       val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
+      implicit val context = SubPlanCompiler.Context(source.getFlowId, jpContext)
 
       val builder = new SparkClientClassBuilder(source.getFlowId) {
 
@@ -76,11 +77,10 @@ class SparkClientCompiler extends JobflowProcessor {
 
             subplans.foreach { subplan =>
               val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-              val compiler = subplanCompilers(dominant)
+              val compiler = subplanCompilers.find(_.support(dominant)).get
               val instantiator = compiler.instantiator
-              val context = compiler.Context(source.getFlowId, jpContext)
 
-              val driverType = compiler.compile(subplan)(context)
+              val driverType = compiler.compile(subplan)
               val driverVar = instantiator.newInstance(driverType, subplan)(
                 instantiator.Context(mb, scVar, rddVars, nextLocal, source.getFlowId, jpContext))
               val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)

@@ -48,15 +48,16 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val compiler = resolvers(classOf[MasterJoinUpdate])
     val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
-    val context = OperatorCompiler.Context(
+    implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath))
-    val thisType = compiler.compile(operator)(context)
+
+    val compiler = resolvers.find(_.support(operator)).get
+    val thisType = compiler.compile(operator)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
     val (updated, missed) = {
@@ -117,15 +118,16 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val compiler = resolvers(classOf[MasterJoinUpdate])
     val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
-    val context = OperatorCompiler.Context(
+    implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath))
-    val thisType = compiler.compile(operator)(context)
+
+    val compiler = resolvers.find(_.support(operator)).get
+    val thisType = compiler.compile(operator)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
     val (updated, missed) = {

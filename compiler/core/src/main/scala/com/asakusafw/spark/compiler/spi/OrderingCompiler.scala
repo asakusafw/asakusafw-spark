@@ -21,18 +21,18 @@ trait OrderingCompiler {
 
 object OrderingCompiler {
 
-  private[this] val _orderingCompilers: mutable.Map[ClassLoader, Map[Type, OrderingCompiler]] =
+  private[this] val orderingCompilers: mutable.Map[ClassLoader, Map[Type, OrderingCompiler]] =
     mutable.WeakHashMap.empty
 
   def apply(classLoader: ClassLoader): Map[Type, OrderingCompiler] = {
-    _orderingCompilers.getOrElse(classLoader, reload(classLoader))
+    orderingCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
   def reload(classLoader: ClassLoader): Map[Type, OrderingCompiler] = {
     val ors = ServiceLoader.load(classOf[OrderingCompiler], classLoader).map {
       resolver => resolver.of -> resolver
     }.toMap
-    _orderingCompilers(classLoader) = ors
+    orderingCompilers(classLoader) = ors
     ors
   }
 }

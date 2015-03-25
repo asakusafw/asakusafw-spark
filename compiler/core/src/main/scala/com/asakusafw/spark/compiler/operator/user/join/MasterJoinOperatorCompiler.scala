@@ -19,13 +19,18 @@ import com.asakusafw.vocabulary.operator.MasterJoin
 
 class MasterJoinOperatorCompiler extends UserOperatorCompiler {
 
-  override def of: Class[_] = classOf[MasterJoin]
+  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    operatorInfo.annotationClass == classOf[MasterJoin]
+  }
+
+  override def operatorType: OperatorType = OperatorType.CoGroupType
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
+    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    assert(operatorInfo.annotationClass == of)
     assert(operatorInfo.inputs.size >= 2)
     assert(operatorInfo.outputs.size == 2)
 

@@ -24,7 +24,6 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.compiler.subplan.SubPlanType.CoGroupSubPlan
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.orderings._
 import com.asakusafw.spark.tools.asm._
@@ -106,14 +105,15 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     val subplan = plan.getElements.head
     subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
 
-    val compiler = resolvers(operator)
-    val context = compiler.Context(
+    implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile))
-    val thisType = compiler.compile(subplan)(context)
+
+    val compiler = resolvers.find(_.support(operator)).get
+    val thisType = compiler.compile(subplan)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver[Long, _]])
 
     val hogeOrd = implicitly[Ordering[(IntOption, Boolean)]]

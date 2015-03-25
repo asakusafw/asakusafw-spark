@@ -49,15 +49,16 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val compiler = resolvers(classOf[MasterBranch])
     val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    val context = OperatorCompiler.Context(
+    implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath))
-    val thisType = compiler.compile(operator)(context)
+
+    val compiler = resolvers.find(_.support(operator)).get
+    val thisType = compiler.compile(operator)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
     val (low, high) = {
@@ -118,15 +119,15 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val compiler = resolvers(classOf[MasterBranch])
     val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    val context = OperatorCompiler.Context(
+    implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath))
-    val thisType = compiler.compile(operator)(context)
+    val compiler = resolvers.find(_.support(operator)).get
+    val thisType = compiler.compile(operator)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
     val (low, high) = {

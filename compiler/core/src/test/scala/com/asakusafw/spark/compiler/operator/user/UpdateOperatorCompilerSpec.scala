@@ -39,14 +39,15 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("rate", ImmediateDescription.of(100))
       .build();
 
-    val compiler = resolvers(classOf[Update])
     val classpath = Files.createTempDirectory("UpdateOperatorCompilerSpec").toFile
-    val context = OperatorCompiler.Context(
+    implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath))
+
+    val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(operator)(context)
     val cls = loadClass(thisType.getClassName, classpath)
       .asSubclass(classOf[Fragment[TestModel]])

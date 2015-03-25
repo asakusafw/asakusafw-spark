@@ -24,7 +24,6 @@ import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.compiler.subplan.SubPlanType.{ InputSubPlan, OutputSubPlan }
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.tools.asm._
 
@@ -69,8 +68,8 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val outputSubPlan = outputPlan.getElements.head
     outputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(outputOperator))
 
-    val outputCompiler = resolvers(outputOperator)
-    val outputCompilerContext = outputCompiler.Context(flowId = "flowId", jpContext = jpContext)
+    val outputCompilerContext = SubPlanCompiler.Context(flowId = "flowId", jpContext = jpContext)
+    val outputCompiler = resolvers.find(_.support(outputOperator)(outputCompilerContext)).get
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
 
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
@@ -115,8 +114,8 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val inputSubPlan = inputPlan.getElements.head
     inputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(inputOperator))
 
-    val inputCompiler = resolvers(inputOperator)
-    val inputCompilerContext = inputCompiler.Context(flowId = "flowId", jpContext = jpContext)
+    val inputCompilerContext = SubPlanCompiler.Context(flowId = "flowId", jpContext = jpContext)
+    val inputCompiler = resolvers.find(_.support(inputOperator)(inputCompilerContext)).get
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
 
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge, Long]])

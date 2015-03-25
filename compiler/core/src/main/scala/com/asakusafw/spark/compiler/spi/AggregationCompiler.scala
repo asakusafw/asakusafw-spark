@@ -20,18 +20,18 @@ trait AggregationCompiler {
 
 object AggregationCompiler {
 
-  private[this] val _aggregationCompilers: mutable.Map[ClassLoader, Map[Class[_], AggregationCompiler]] =
+  private[this] val aggregationCompilers: mutable.Map[ClassLoader, Map[Class[_], AggregationCompiler]] =
     mutable.WeakHashMap.empty
 
   def apply(classLoader: ClassLoader): Map[Class[_], AggregationCompiler] = {
-    _aggregationCompilers.getOrElse(classLoader, reload(classLoader))
+    aggregationCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
   def reload(classLoader: ClassLoader): Map[Class[_], AggregationCompiler] = {
     val ors = ServiceLoader.load(classOf[AggregationCompiler], classLoader).map {
       resolver => resolver.of -> resolver
     }.toMap[Class[_], AggregationCompiler]
-    _aggregationCompilers(classLoader) = ors
+    aggregationCompilers(classLoader) = ors
     ors
   }
 }

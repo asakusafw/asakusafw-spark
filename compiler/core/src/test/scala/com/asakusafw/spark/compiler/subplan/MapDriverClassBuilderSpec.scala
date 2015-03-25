@@ -78,14 +78,15 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
             Seq(PropertyName.of("hogeId")),
             Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.DESCENDANT)))))
 
-    val compiler = resolvers(operator)
-    val context = compiler.Context(
+    implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile))
-    val thisType = compiler.compile(subplan)(context)
+
+    val compiler = resolvers.find(_.support(operator)).get
+    val thisType = compiler.compile(subplan)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[MapDriver[_, Long]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -144,14 +145,15 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     val subplan = plan.getElements.head
     subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
 
-    val compiler = resolvers(operator)
-    val context = compiler.Context(
+    implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile))
-    val thisType = compiler.compile(subplan)(context)
+
+    val compiler = resolvers.find(_.support(operator)).get
+    val thisType = compiler.compile(subplan)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[MapDriver[_, Long]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>

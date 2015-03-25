@@ -14,17 +14,22 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.spark.compiler.spi.UserOperatorCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.CoGroup
+import com.asakusafw.vocabulary.operator.{ CoGroup, GroupSort }
 
 class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
-  override def of: Class[_] = classOf[CoGroup]
+  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    operatorInfo.annotationClass == classOf[CoGroup] || operatorInfo.annotationClass == classOf[GroupSort]
+  }
+
+  override def operatorType: OperatorType = OperatorType.CoGroupType
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
+    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
-    assert(operatorInfo.annotationClass == of)
     assert(operatorInfo.inputs.size > 0)
 
     assert(operatorInfo.methodType.getArgumentTypes.toSeq ==

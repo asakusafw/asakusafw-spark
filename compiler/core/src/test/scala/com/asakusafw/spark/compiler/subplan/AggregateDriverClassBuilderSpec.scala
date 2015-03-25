@@ -67,14 +67,15 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new PartitioningParameters(
           new Group(Seq(PropertyName.of("i")), Seq.empty[Group.Ordering])))
 
-    val compiler = resolvers(operator)
-    val context = compiler.Context(
+    implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile))
-    val thisType = compiler.compile(subplan)(context)
+
+    val compiler = resolvers.find(_.support(operator)).get
+    val thisType = compiler.compile(subplan)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Seq[_], Hoge, Hoge, Long]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>

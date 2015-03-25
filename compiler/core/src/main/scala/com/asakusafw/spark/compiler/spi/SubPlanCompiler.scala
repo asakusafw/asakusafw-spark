@@ -15,11 +15,9 @@ import com.asakusafw.spark.tools.asm.ClassBuilder
 
 trait SubPlanCompiler {
 
-  case class Context(
-    flowId: String,
-    jpContext: JPContext)
+  type Context = SubPlanCompiler.Context
 
-  def of(operator: Operator, classLoader: ClassLoader): Boolean
+  def support(operator: Operator)(implicit context: Context): Boolean
 
   def compile(subplan: SubPlan)(implicit context: Context): Type
 
@@ -28,22 +26,20 @@ trait SubPlanCompiler {
 
 object SubPlanCompiler {
 
-  private[this] val _operatorCompilers: mutable.Map[ClassLoader, (Operator => SubPlanCompiler)] =
+  case class Context(
+    flowId: String,
+    jpContext: JPContext)
+
+  private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[SubPlanCompiler]] =
     mutable.WeakHashMap.empty
 
-  def apply(classLoader: ClassLoader): (Operator => SubPlanCompiler) = {
-    _operatorCompilers.getOrElse(classLoader, reload(classLoader))
+  def apply(classLoader: ClassLoader): Seq[SubPlanCompiler] = {
+    operatorCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
-  def reload(classLoader: ClassLoader): (Operator => SubPlanCompiler) = {
-    val compilers = ServiceLoader.load(classOf[SubPlanCompiler], classLoader)
-    val ors: PartialFunction[Operator, SubPlanCompiler] =
-      compilers.map { compiler =>
-        {
-          case operator: Operator if compiler.of(operator, classLoader) => compiler
-        }: PartialFunction[Operator, SubPlanCompiler]
-      }.reduce(_ orElse _)
-    _operatorCompilers(classLoader) = ors
+  def reload(classLoader: ClassLoader): Seq[SubPlanCompiler] = {
+    val ors = ServiceLoader.load(classOf[SubPlanCompiler], classLoader).toSeq
+    operatorCompilers(classLoader) = ors
     ors
   }
 }

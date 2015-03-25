@@ -29,12 +29,11 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
   import CoGroupSubPlanCompiler._
 
-  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
-    operator match {
-      case op: UserOperator =>
-        CompilableOperators(op.getAnnotation.resolve(classLoader).annotationType)
-      case _ => false
-    }
+  override def support(operator: Operator)(implicit context: Context): Boolean = {
+    OperatorCompiler.support(
+      operator,
+      OperatorType.CoGroupType)(
+        OperatorCompiler.Context(context.flowId, context.jpContext))
   }
 
   override def instantiator: Instantiator = CoGroupSubPlanCompiler.CoGroupDriverInstantiator
@@ -47,9 +46,12 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     val outputs = subplan.getOutputs.toSeq
 
     implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
-    val operators = subplan.getOperators.map { operator =>
-      operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator)
-    }.toMap[Long, Type]
+    val operators = subplan.getOperators
+      .filterNot(_.getOriginalSerialNumber == dominant.getOriginalSerialNumber)
+      .map { operator =>
+        operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.MapType)
+      }.toMap[Long, Type] +
+      (operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.CoGroupType))
 
     val edges = subplan.getOperators.flatMap {
       _.getOutputs.collect {

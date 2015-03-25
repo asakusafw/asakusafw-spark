@@ -9,7 +9,11 @@ import com.asakusafw.spark.compiler.spi.CoreOperatorCompiler
 
 class RestructureOperatorCompiler extends CoreOperatorCompiler {
 
-  override def of: CoreOperatorKind = CoreOperatorKind.RESTRUCTURE
+  override def support(operator: CoreOperator)(implicit context: Context): Boolean = {
+    operator.getCoreOperatorKind == CoreOperatorKind.RESTRUCTURE
+  }
+
+  override def operatorType: OperatorType = OperatorType.MapType
 
   override def compile(operator: CoreOperator)(implicit context: Context): Type = {
     ???

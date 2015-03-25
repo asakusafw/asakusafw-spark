@@ -25,19 +25,11 @@ class MapSubPlanCompiler extends SubPlanCompiler {
 
   import MapSubPlanCompiler._
 
-  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
-    operator match {
-      case op: UserOperator =>
-        CompilableOperators(op.getAnnotation.resolve(classLoader).annotationType)
-      case op: CoreOperator =>
-        op.getCoreOperatorKind match {
-          case CoreOperator.CoreOperatorKind.CHECKPOINT  => false
-          case CoreOperator.CoreOperatorKind.PROJECT     => true
-          case CoreOperator.CoreOperatorKind.EXTEND      => true
-          case CoreOperator.CoreOperatorKind.RESTRUCTURE => false
-        }
-      case _ => false
-    }
+  override def support(operator: Operator)(implicit context: Context): Boolean = {
+    OperatorCompiler.support(
+      operator,
+      OperatorType.MapType)(
+        OperatorCompiler.Context(context.flowId, context.jpContext))
   }
 
   override def instantiator: Instantiator = MapSubPlanCompiler.MapDriverInstantiator
@@ -49,7 +41,7 @@ class MapSubPlanCompiler extends SubPlanCompiler {
 
     implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
     val operators = subplan.getOperators.map { operator =>
-      operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator)
+      operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.MapType)
     }.toMap[Long, Type]
 
     val edges = subplan.getOperators.flatMap {

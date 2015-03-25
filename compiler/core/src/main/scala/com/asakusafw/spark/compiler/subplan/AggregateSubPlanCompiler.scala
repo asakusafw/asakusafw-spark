@@ -28,11 +28,11 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
   import AggregateSubPlanCompiler._
 
-  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+  override def support(operator: Operator)(implicit context: Context): Boolean = {
     operator match {
       case op: UserOperator =>
-        AggregationCompiler(classLoader)
-          .contains(op.getAnnotation.resolve(classLoader).annotationType)
+        AggregationCompiler(context.jpContext.getClassLoader)
+          .contains(op.getAnnotation.resolve(context.jpContext.getClassLoader).annotationType)
       case _ => false
     }
   }
@@ -62,7 +62,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     val operators = subplan.getOperators
       .filterNot(_.getOriginalSerialNumber == dominant.getOriginalSerialNumber)
       .map { operator =>
-        operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator)
+        operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.MapType)
       }.toMap[Long, Type]
 
     val edges = subplan.getOperators.flatMap {

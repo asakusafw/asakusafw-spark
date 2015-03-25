@@ -21,7 +21,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class InputSubPlanCompiler extends SubPlanCompiler {
 
-  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+  override def support(operator: Operator)(implicit context: Context): Boolean = {
     operator.isInstanceOf[ExternalInput]
   }
 
@@ -39,7 +39,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val operators = subplan.getOperators
       .filterNot(_.getOriginalSerialNumber == operator.getOriginalSerialNumber)
       .map { operator =>
-        operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator)
+        operator.getOriginalSerialNumber -> OperatorCompiler.compile(operator, OperatorType.MapType)
       }.toMap[Long, Type]
 
     val edges = subplan.getOperators.flatMap {

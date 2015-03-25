@@ -17,7 +17,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class OutputSubPlanCompiler extends SubPlanCompiler {
 
-  override def of(operator: Operator, classLoader: ClassLoader): Boolean = {
+  override def support(operator: Operator)(implicit context: Context): Boolean = {
     operator.isInstanceOf[ExternalOutput]
   }
 

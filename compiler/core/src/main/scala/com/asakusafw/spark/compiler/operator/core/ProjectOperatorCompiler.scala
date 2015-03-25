@@ -16,10 +16,14 @@ import com.asakusafw.vocabulary.operator.Project
 
 class ProjectOperatorCompiler extends CoreOperatorCompiler {
 
-  override def of: CoreOperatorKind = CoreOperatorKind.PROJECT
+  override def support(operator: CoreOperator)(implicit context: Context): Boolean = {
+    operator.getCoreOperatorKind == CoreOperatorKind.PROJECT
+  }
+
+  override def operatorType: OperatorType = OperatorType.MapType
 
   override def compile(operator: CoreOperator)(implicit context: Context): Type = {
-    assert(operator.getCoreOperatorKind == of)
+    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
 
