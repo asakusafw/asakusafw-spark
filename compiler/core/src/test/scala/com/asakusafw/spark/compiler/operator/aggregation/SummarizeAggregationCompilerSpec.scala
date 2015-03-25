@@ -30,8 +30,6 @@ class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
 
   behavior of classOf[SummarizeAggregationCompiler].getSimpleName
 
-  def resolvers = AggregationCompiler(Thread.currentThread.getContextClassLoader)
-
   it should "compile Aggregation for Summarize" in {
     val operator = OperatorExtractor
       .extract(classOf[Summarize], classOf[SummarizeOperator], "summarize")
@@ -39,15 +37,15 @@ class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
       .output("output", ClassDescription.of(classOf[SummarizedValue]))
       .build()
 
-    val compiler = resolvers(classOf[Summarize])
     val classpath = Files.createTempDirectory("SummarizeAggregationCompilerSpec").toFile
-    val context = compiler.Context(
+    implicit val context = AggregationCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath))
-    val thisType = compiler.compile(operator)(context)
+
+    val thisType = AggregationCompiler.compile(operator)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Value, SummarizedValue]])
 
     val aggregation = cls.newInstance()

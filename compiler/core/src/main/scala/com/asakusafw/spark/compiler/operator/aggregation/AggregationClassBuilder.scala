@@ -109,9 +109,7 @@ object AggregationClassBuilder {
     jpContext: JPContext): Type = {
     cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
       (flowId, operator.getOriginalSerialNumber), {
-        val compiler = AggregationCompiler(jpContext.getClassLoader)(
-          operator.getAnnotation.getDeclaringClass.resolve(jpContext.getClassLoader))
-        compiler.compile(operator)(compiler.Context(flowId, jpContext))
+        AggregationCompiler.compile(operator)(AggregationCompiler.Context(flowId, jpContext))
       })
   }
 }

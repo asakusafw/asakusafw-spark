@@ -48,9 +48,7 @@ trait AggregationsField extends ClassBuilder {
       Option(output.getAttribute(classOf[NextDominantOperator])).foreach { dominant =>
         if (dominant.getNextDominantOperator.isInstanceOf[UserOperator]) {
           val operator = dominant.getNextDominantOperator.asInstanceOf[UserOperator]
-          if (AggregationCompiler(jpContext.getClassLoader)
-            .contains(operator.getAnnotation.resolve(jpContext.getClassLoader).annotationType)) {
-
+          if (AggregationCompiler.support(operator)(AggregationCompiler.Context(flowId, jpContext))) {
             builder.invokeI(NameTransformer.encode("+="),
               classOf[mutable.Builder[_, _]].asType, {
                 getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)

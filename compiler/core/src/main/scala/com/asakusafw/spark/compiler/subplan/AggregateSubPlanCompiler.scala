@@ -29,12 +29,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
   import AggregateSubPlanCompiler._
 
   override def support(operator: Operator)(implicit context: Context): Boolean = {
-    operator match {
-      case op: UserOperator =>
-        AggregationCompiler(context.jpContext.getClassLoader)
-          .contains(op.getAnnotation.resolve(context.jpContext.getClassLoader).annotationType)
-      case _ => false
-    }
+    AggregationCompiler.support(operator)(AggregationCompiler.Context(context.flowId, context.jpContext))
   }
 
   override def instantiator: Instantiator = AggregateDriverInstantiator

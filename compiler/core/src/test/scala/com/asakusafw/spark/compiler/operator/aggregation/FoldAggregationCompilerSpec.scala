@@ -29,8 +29,6 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
 
   behavior of classOf[FoldAggregationCompiler].getSimpleName
 
-  def resolvers = AggregationCompiler(Thread.currentThread.getContextClassLoader)
-
   it should "compile Aggregation for Fold" in {
     val operator = OperatorExtractor
       .extract(classOf[Fold], classOf[FoldOperator], "fold")
@@ -39,15 +37,15 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val compiler = resolvers(classOf[Fold])
     val classpath = Files.createTempDirectory("FoldAggregationCompilerSpec").toFile
-    val context = compiler.Context(
+    implicit val context = AggregationCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath))
-    val thisType = compiler.compile(operator)(context)
+
+    val thisType = AggregationCompiler.compile(operator)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Hoge, Hoge]])
 
     val aggregation = cls.newInstance()
