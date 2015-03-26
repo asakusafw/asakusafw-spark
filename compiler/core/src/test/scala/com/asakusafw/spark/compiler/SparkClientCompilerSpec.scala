@@ -182,7 +182,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
       override def preparePlan(graph: OperatorGraph): Plan = {
         val plan = super.preparePlan(graph)
-        assert(plan.getElements.size === 4)
+        assert(plan.getElements.size === 3)
         plan
       }
     }
