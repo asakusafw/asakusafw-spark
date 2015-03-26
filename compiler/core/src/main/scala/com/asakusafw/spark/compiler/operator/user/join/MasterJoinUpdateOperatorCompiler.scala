@@ -36,10 +36,13 @@ class MasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
       assert(output.dataModelType == inputs(MasterJoinUpdate.ID_INPUT_TRANSACTION).dataModelType)
     }
 
-    assert(methodDesc.parameterTypes ==
-      inputs(MasterJoinUpdate.ID_INPUT_MASTER).dataModelType
-      +: inputs(MasterJoinUpdate.ID_INPUT_TRANSACTION).dataModelType
-      +: arguments.map(_.asType))
+    methodDesc.parameterClasses
+      .zip(inputs(MasterJoinUpdate.ID_INPUT_MASTER).dataModelClass
+        +: inputs(MasterJoinUpdate.ID_INPUT_TRANSACTION).dataModelClass
+        +: arguments.map(_.resolveClass))
+      .foreach {
+        case (method, model) => assert(method.isAssignableFrom(model))
+      }
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
@@ -57,8 +60,8 @@ class MasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
           getOperatorField(mb)
             .invokeV(
               methodDesc.getName,
-              masterVar.push()
-                +: txVar.push()
+              masterVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
+                +: txVar.push().asType(methodDesc.asType.getArgumentTypes()(1))
                 +: arguments.map { argument =>
                   ldc(argument.value)(ClassTag(argument.resolveClass))
                 }: _*)

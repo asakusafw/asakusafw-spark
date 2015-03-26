@@ -37,10 +37,6 @@ class OperatorInfo(operator: Operator)(implicit jpContext: JPContext) {
 
     def name: String = methodDesc.getName
 
-    def returnType: Type = asType.getReturnType
-
-    def parameterTypes: Seq[Type] = asType.getArgumentTypes
-
     def parameterClasses: Seq[Class[_]] = methodDesc.getParameterTypes.map(_.resolve(jpContext.getClassLoader))
   }
 

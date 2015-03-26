@@ -37,10 +37,13 @@ class MasterBranchOperatorCompiler extends UserOperatorCompiler {
       assert(output.dataModelType == inputs(MasterBranch.ID_INPUT_TRANSACTION).dataModelType)
     }
 
-    assert(methodDesc.parameterTypes ==
-      inputs(MasterBranch.ID_INPUT_MASTER).dataModelType
-      +: inputs(MasterBranch.ID_INPUT_TRANSACTION).dataModelType
-      +: arguments.map(_.asType))
+    methodDesc.parameterClasses
+      .zip(inputs(MasterBranch.ID_INPUT_MASTER).dataModelClass
+        +: inputs(MasterBranch.ID_INPUT_TRANSACTION).dataModelClass
+        +: arguments.map(_.resolveClass))
+      .foreach {
+        case (method, model) => assert(method.isAssignableFrom(model))
+      }
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
@@ -55,9 +58,9 @@ class MasterBranchOperatorCompiler extends UserOperatorCompiler {
         val branch = getOperatorField(mb)
           .invokeV(
             methodDesc.name,
-            methodDesc.returnType,
-            masterVar.push()
-              +: txVar.push()
+            methodDesc.asType.getReturnType,
+            masterVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
+              +: txVar.push().asType(methodDesc.asType.getArgumentTypes()(1))
               +: arguments.map { argument =>
                 ldc(argument.value)(ClassTag(argument.resolveClass))
               }: _*)
@@ -68,7 +71,7 @@ class MasterBranchOperatorCompiler extends UserOperatorCompiler {
         branchOutputMap.foreach {
           case (output, enum) =>
             branch.dup().unlessNe(
-              getStatic(methodDesc.returnType, enum.name, methodDesc.returnType)) {
+              getStatic(methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
                 getOutputField(mb, output)
                   .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
                 branch.pop()
