@@ -67,7 +67,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
             fragment.dup().invokeInit(outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
             fragment.store(nextLocal.getAndAdd(fragment.size))
           }
-          val outputsVar = fragmentBuilder.buildOutputsVar()
+          val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
           `return`(
             getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).

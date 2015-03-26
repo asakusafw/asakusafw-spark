@@ -62,7 +62,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
           val fragmentBuilder = new FragmentTreeBuilder(
             mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext))
           val fragmentVar = fragmentBuilder.build(operator.getOperatorPort)
-          val outputsVar = fragmentBuilder.buildOutputsVar()
+          val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
           `return`(
             getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
