@@ -86,11 +86,73 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     assert(out1.buffer.size === 0)
     assert(out2.buffer.size === 0)
   }
+
+  it should "compile Convert operator with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[Convert], classOf[ConvertOperator], "convertp")
+      .input("input", ClassDescription.of(classOf[InputModel]))
+      .output("original", ClassDescription.of(classOf[InputModel]))
+      .output("out", ClassDescription.of(classOf[OutputModel]))
+      .argument("n", ImmediateDescription.of(10))
+      .build()
+
+    val classpath = Files.createTempDirectory("ConvertOperatorCompilerSpec").toFile
+    implicit val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+
+    val out1 = {
+      val builder = new OutputFragmentClassBuilder(
+        context.flowId, classOf[InputModel].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[InputModel]])
+      cls.newInstance()
+    }
+
+    val out2 = {
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[OutputModel].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[OutputModel]])
+      cls.newInstance()
+    }
+
+    val fragment = cls.getConstructor(classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(out1, out2)
+
+    val dm = new InputModel()
+    for (i <- 0 until 10) {
+      dm.i.modify(i)
+      dm.l.modify(i)
+      fragment.add(dm)
+    }
+    assert(out1.buffer.size === 10)
+    assert(out2.buffer.size === 10)
+    out1.buffer.zipWithIndex.foreach {
+      case (dm, i) =>
+        assert(dm.i.get === i)
+        assert(dm.l.get === i)
+    }
+    out2.buffer.zipWithIndex.foreach {
+      case (dm, i) =>
+        assert(dm.l.get === 10 * i)
+    }
+    fragment.reset()
+    assert(out1.buffer.size === 0)
+    assert(out2.buffer.size === 0)
+  }
 }
 
 object ConvertOperatorCompilerSpec {
 
-  class InputModel extends DataModel[InputModel] {
+  trait InputP {
+    def getIOption: IntOption
+    def getLOption: LongOption
+  }
+
+  class InputModel extends DataModel[InputModel] with InputP {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
@@ -132,6 +194,13 @@ object ConvertOperatorCompilerSpec {
     def convert(in: InputModel, n: Int): OutputModel = {
       out.reset()
       out.l.modify(n * in.l.get)
+      out
+    }
+
+    @Convert
+    def convertp[I <: InputP](in: I, n: Int): OutputModel = {
+      out.reset()
+      out.getLOption.modify(n * in.getLOption.get)
       out
     }
   }

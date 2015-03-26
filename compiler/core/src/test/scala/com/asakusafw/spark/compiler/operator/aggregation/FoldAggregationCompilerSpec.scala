@@ -69,11 +69,56 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
     assert(combinerCombiner.toSeq.map { case (k, v) => k -> v.i.get }
       === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
   }
+
+  it should "compile Aggregation for Fold with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[Fold], classOf[FoldOperator], "foldp")
+      .input("input", ClassDescription.of(classOf[Hoge]))
+      .output("output", ClassDescription.of(classOf[Hoge]))
+      .argument("n", ImmediateDescription.of(10))
+      .build()
+
+    val classpath = Files.createTempDirectory("FoldAggregationCompilerSpec").toFile
+    implicit val context = AggregationCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = AggregationCompiler.compile(operator)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Hoge, Hoge]])
+
+    val aggregation = cls.newInstance()
+    assert(aggregation.mapSideCombine === true)
+
+    val valueCombiner = aggregation.valueCombiner()
+    valueCombiner.insertAll((0 until 100).map { i =>
+      val hoge = new Hoge()
+      hoge.i.modify(i)
+      (Seq(i % 2), hoge)
+    }.iterator)
+    assert(valueCombiner.toSeq.map { case (k, v) => k -> v.i.get }
+      === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
+
+    val combinerCombiner = aggregation.combinerCombiner()
+    combinerCombiner.insertAll((0 until 100).map { i =>
+      val hoge = new Hoge()
+      hoge.i.modify(i)
+      (Seq(i % 2), hoge)
+    }.iterator)
+    assert(combinerCombiner.toSeq.map { case (k, v) => k -> v.i.get }
+      === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
+  }
 }
 
 object FoldAggregationCompilerSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  trait HogeP {
+    def getIOption: IntOption
+  }
+
+  class Hoge extends DataModel[Hoge] with HogeP {
 
     val i = new IntOption()
 
@@ -94,6 +139,12 @@ object FoldAggregationCompilerSpec {
     def fold(acc: Hoge, value: Hoge, n: Int): Unit = {
       acc.i.add(value.i)
       acc.i.add(n)
+    }
+
+    @Fold(partialAggregation = PartialAggregation.PARTIAL)
+    def foldp[H <: HogeP](acc: H, value: H, n: Int): Unit = {
+      acc.getIOption.add(value.getIOption)
+      acc.getIOption.add(n)
     }
   }
 }

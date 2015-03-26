@@ -173,11 +173,156 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
     assert(updated.buffer.size === 0)
     assert(missed.buffer.size === 0)
   }
+
+  it should "compile MasterJoinUpdate operator without master selection with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[MasterJoinUpdate], classOf[MasterJoinUpdateOperator], "updatep")
+      .input("hoges", ClassDescription.of(classOf[Hoge]),
+        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+      .input("foos", ClassDescription.of(classOf[Foo]),
+        new Group(
+          Seq(PropertyName.of("hogeId")),
+          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+      .output("updated", ClassDescription.of(classOf[Foo]))
+      .output("missed", ClassDescription.of(classOf[Foo]))
+      .build()
+
+    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
+    implicit val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+
+    val (updated, missed) = {
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
+      (cls.newInstance(), cls.newInstance())
+    }
+
+    val fragment = cls.getConstructor(
+      classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(updated, missed)
+
+    {
+      val hoge = new Hoge()
+      hoge.id.modify(1)
+      val hoges = Seq(hoge)
+      val foo = new Foo()
+      foo.id.modify(10)
+      foo.hogeId.modify(1)
+      val foos = Seq(foo)
+      fragment.add(Seq(hoges, foos))
+      assert(updated.buffer.size === 1)
+      assert(updated.buffer(0).id.get === 10)
+      assert(missed.buffer.size === 0)
+    }
+
+    fragment.reset()
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
+
+    {
+      val hoges = Seq.empty[Hoge]
+      val foo = new Foo()
+      foo.id.modify(10)
+      foo.hogeId.modify(1)
+      val foos = Seq(foo)
+      fragment.add(Seq(hoges, foos))
+      assert(updated.buffer.size === 0)
+      assert(missed.buffer.size === 1)
+      assert(missed.buffer(0).id.get === 10)
+    }
+
+    fragment.reset()
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
+  }
+
+  it should "compile MasterJoinUpdate operator with master selection with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[MasterJoinUpdate], classOf[MasterJoinUpdateOperator], "updateWithSelectionp")
+      .input("hoges", ClassDescription.of(classOf[Hoge]),
+        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+      .input("foos", ClassDescription.of(classOf[Foo]),
+        new Group(
+          Seq(PropertyName.of("hogeId")),
+          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+      .output("updated", ClassDescription.of(classOf[Foo]))
+      .output("missed", ClassDescription.of(classOf[Foo]))
+      .build()
+
+    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
+    implicit val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+
+    val (updated, missed) = {
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
+      (cls.newInstance(), cls.newInstance())
+    }
+
+    val fragment = cls.getConstructor(
+      classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(updated, missed)
+
+    {
+      val hoge = new Hoge()
+      hoge.id.modify(0)
+      val hoges = Seq(hoge)
+      val foos = (0 until 10).map { i =>
+        val foo = new Foo()
+        foo.id.modify(i)
+        foo.hogeId.modify(0)
+        foo
+      }
+      fragment.add(Seq(hoges, foos))
+      assert(updated.buffer.size === 5)
+      assert(updated.buffer.map(_.id.get) === (0 until 10 by 2))
+      assert(missed.buffer.size === 5)
+      assert(missed.buffer.map(_.id.get) === (1 until 10 by 2))
+    }
+
+    fragment.reset()
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
+
+    {
+      val hoges = Seq.empty[Hoge]
+      val foo = new Foo()
+      foo.id.modify(10)
+      foo.hogeId.modify(1)
+      val foos = Seq(foo)
+      fragment.add(Seq(hoges, foos))
+      assert(updated.buffer.size === 0)
+      assert(missed.buffer.size === 1)
+      assert(missed.buffer(0).id.get === 10)
+    }
+
+    fragment.reset()
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
+  }
 }
 
 object MasterJoinUpdateOperatorCompilerSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  trait HogeP {
+    def getIdOption: IntOption
+  }
+
+  class Hoge extends DataModel[Hoge] with HogeP {
 
     val id = new IntOption()
 
@@ -191,7 +336,12 @@ object MasterJoinUpdateOperatorCompilerSpec {
     def getIdOption: IntOption = id
   }
 
-  class Foo extends DataModel[Foo] {
+  trait FooP {
+    def getIdOption: IntOption
+    def getHogeIdOption: IntOption
+  }
+
+  class Foo extends DataModel[Foo] with FooP {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -223,6 +373,25 @@ object MasterJoinUpdateOperatorCompilerSpec {
         hoges.headOption.orNull
       } else {
         null
+      }
+    }
+
+    @MasterJoinUpdate
+    def updatep[H <: HogeP, F <: FooP](hoge: H, foo: F): Unit = {}
+
+    @MasterJoinUpdate(selection = "selectp")
+    def updateWithSelectionp[H <: HogeP, F <: FooP](hoge: H, foo: F): Unit = {}
+
+    @MasterSelection
+    def selectp[H <: HogeP, F <: FooP](hoges: JList[H], foo: F): H = {
+      if (foo.getIdOption.get % 2 == 0) {
+        if (hoges.size > 0) {
+          hoges.head
+        } else {
+          null.asInstanceOf[H]
+        }
+      } else {
+        null.asInstanceOf[H]
       }
     }
   }

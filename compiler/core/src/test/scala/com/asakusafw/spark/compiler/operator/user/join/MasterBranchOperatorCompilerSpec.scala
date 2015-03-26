@@ -174,11 +174,156 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     assert(low.buffer.size === 0)
     assert(high.buffer.size === 0)
   }
+
+  it should "compile MasterBranch operator without master selection with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branchp")
+      .input("hoges", ClassDescription.of(classOf[Hoge]),
+        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+      .input("foos", ClassDescription.of(classOf[Foo]),
+        new Group(
+          Seq(PropertyName.of("hogeId")),
+          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+      .output("low", ClassDescription.of(classOf[Foo]))
+      .output("high", ClassDescription.of(classOf[Foo]))
+      .build()
+
+    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    implicit val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+
+    val (low, high) = {
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
+      (cls.newInstance(), cls.newInstance())
+    }
+
+    val fragment = cls.getConstructor(
+      classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(low, high)
+
+    {
+      val hoge = new Hoge()
+      hoge.id.modify(10)
+      val hoges = Seq(hoge)
+      val foo = new Foo()
+      foo.id.modify(10)
+      foo.hogeId.modify(10)
+      val foos = Seq(foo)
+      fragment.add(Seq(hoges, foos))
+      assert(low.buffer.size === 0)
+      assert(high.buffer.size === 1)
+      assert(high.buffer(0).id.get === 10)
+    }
+
+    fragment.reset()
+    assert(low.buffer.size === 0)
+    assert(high.buffer.size === 0)
+
+    {
+      val hoges = Seq.empty[Hoge]
+      val foo = new Foo()
+      foo.id.modify(10)
+      foo.hogeId.modify(1)
+      val foos = Seq(foo)
+      fragment.add(Seq(hoges, foos))
+      assert(low.buffer.size === 1)
+      assert(low.buffer(0).id.get === 10)
+      assert(high.buffer.size === 0)
+    }
+
+    fragment.reset()
+    assert(low.buffer.size === 0)
+    assert(high.buffer.size === 0)
+  }
+
+  it should "compile MasterBranch operator with master selection with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branchWithSelectionp")
+      .input("hoges", ClassDescription.of(classOf[Hoge]),
+        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+      .input("foos", ClassDescription.of(classOf[Foo]),
+        new Group(
+          Seq(PropertyName.of("hogeId")),
+          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+      .output("low", ClassDescription.of(classOf[Foo]))
+      .output("high", ClassDescription.of(classOf[Foo]))
+      .build()
+
+    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    implicit val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+
+    val (low, high) = {
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
+      (cls.newInstance(), cls.newInstance())
+    }
+
+    val fragment = cls.getConstructor(
+      classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(low, high)
+
+    {
+      val hoge = new Hoge()
+      hoge.id.modify(10)
+      val hoges = Seq(hoge)
+      val foos = (0 until 10).map { i =>
+        val foo = new Foo()
+        foo.id.modify(i)
+        foo.hogeId.modify(10)
+        foo
+      }
+      fragment.add(Seq(hoges, foos))
+      assert(low.buffer.size === 5)
+      assert(low.buffer.map(_.id.get) === (1 until 10 by 2))
+      assert(high.buffer.size === 5)
+      assert(high.buffer.map(_.id.get) === (0 until 10 by 2))
+    }
+
+    fragment.reset()
+    assert(low.buffer.size === 0)
+    assert(high.buffer.size === 0)
+
+    {
+      val hoges = Seq.empty[Hoge]
+      val foo = new Foo()
+      foo.id.modify(10)
+      foo.hogeId.modify(1)
+      val foos = Seq(foo)
+      fragment.add(Seq(hoges, foos))
+      assert(low.buffer.size === 1)
+      assert(low.buffer(0).id.get === 10)
+      assert(high.buffer.size === 0)
+    }
+
+    fragment.reset()
+    assert(low.buffer.size === 0)
+    assert(high.buffer.size === 0)
+  }
 }
 
 object MasterBranchOperatorCompilerSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  trait HogeP {
+    def getIdOption: IntOption
+  }
+
+  class Hoge extends DataModel[Hoge] with HogeP {
 
     val id = new IntOption()
 
@@ -192,7 +337,12 @@ object MasterBranchOperatorCompilerSpec {
     def getIdOption: IntOption = id
   }
 
-  class Foo extends DataModel[Foo] {
+  trait FooP {
+    def getIdOption: IntOption
+    def getHogeIdOption: IntOption
+  }
+
+  class Foo extends DataModel[Foo] with FooP {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -236,6 +386,37 @@ object MasterBranchOperatorCompilerSpec {
         hoges.headOption.orNull
       } else {
         null
+      }
+    }
+
+    @MasterBranch
+    def branchp[H <: HogeP, F <: FooP](hoge: H, foo: F): BranchOperatorCompilerSpecTestBranch = {
+      if (hoge == null || hoge.getIdOption.get < 5) {
+        BranchOperatorCompilerSpecTestBranch.LOW
+      } else {
+        BranchOperatorCompilerSpecTestBranch.HIGH
+      }
+    }
+
+    @MasterBranch(selection = "selectp")
+    def branchWithSelectionp[H <: HogeP, F <: FooP](hoge: H, foo: F): BranchOperatorCompilerSpecTestBranch = {
+      if (hoge == null || hoge.getIdOption.get < 5) {
+        BranchOperatorCompilerSpecTestBranch.LOW
+      } else {
+        BranchOperatorCompilerSpecTestBranch.HIGH
+      }
+    }
+
+    @MasterSelection
+    def selectp[H <: HogeP, F <: FooP](hoges: JList[H], foo: F): H = {
+      if (foo.getIdOption.get % 2 == 0) {
+        if (hoges.size > 0) {
+          hoges.head
+        } else {
+          null.asInstanceOf[H]
+        }
+      } else {
+        null.asInstanceOf[H]
       }
     }
   }
