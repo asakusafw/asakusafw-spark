@@ -28,10 +28,13 @@ class FoldAggregationCompiler extends AggregationCompiler {
     assert(outputs.size == 1)
     assert(inputs(Fold.ID_INPUT).dataModelType == outputs(Fold.ID_OUTPUT).dataModelType)
 
-    assert(methodDesc.parameterTypes ==
-      inputs(Fold.ID_INPUT).dataModelType
-      +: outputs(Fold.ID_OUTPUT).dataModelType
-      +: arguments.map(_.asType))
+    methodDesc.parameterClasses
+      .zip(inputs(Fold.ID_INPUT).dataModelClass
+        +: outputs(Fold.ID_OUTPUT).dataModelClass
+        +: arguments.map(_.resolveClass))
+      .foreach {
+        case (method, model) => assert(method.isAssignableFrom(model))
+      }
 
     val builder = new AggregationClassBuilder(
       context.flowId,
@@ -66,8 +69,9 @@ class FoldAggregationCompiler extends AggregationCompiler {
         import mb._
         getOperatorField(mb).invokeV(
           methodDesc.getName,
-          Seq(combinerVar.push(), valueVar.push())
-            ++ arguments.map { argument =>
+          combinerVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
+            +: valueVar.push().asType(methodDesc.asType.getArgumentTypes()(1))
+            +: arguments.map { argument =>
               ldc(argument.value)(ClassTag(argument.resolveClass))
             }: _*)
         `return`(combinerVar.push())

@@ -34,10 +34,13 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
     assert(inputs.size > 0)
 
-    assert(methodDesc.parameterTypes ==
-      inputs.map(_ => classOf[JList[_]].asType)
-      ++ outputs.map(_ => classOf[Result[_]].asType)
-      ++ arguments.map(_.asType))
+    methodDesc.parameterClasses
+      .zip(inputs.map(_ => classOf[JList[_]])
+        ++: outputs.map(_ => classOf[Result[_]])
+        ++: arguments.map(_.resolveClass))
+      .foreach {
+        case (method, model) => assert(method.isAssignableFrom(model))
+      }
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,

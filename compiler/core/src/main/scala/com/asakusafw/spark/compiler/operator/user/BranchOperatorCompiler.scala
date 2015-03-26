@@ -35,8 +35,11 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
       assert(output.dataModelType == inputs(Branch.ID_INPUT).dataModelType)
     }
 
-    assert(methodDesc.parameterTypes ==
-      inputs(Branch.ID_INPUT).dataModelType +: arguments.map(_.asType))
+    methodDesc.parameterClasses
+      .zip(inputs(Branch.ID_INPUT).dataModelClass +: arguments.map(_.resolveClass))
+      .foreach {
+        case (method, model) => assert(method.isAssignableFrom(model))
+      }
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
@@ -49,8 +52,8 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
         val branch = getOperatorField(mb)
           .invokeV(
             methodDesc.name,
-            methodDesc.returnType,
-            dataModelVar.push()
+            methodDesc.asType.getReturnType,
+            dataModelVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
               +: arguments.map { argument =>
                 ldc(argument.value)(ClassTag(argument.resolveClass))
               }: _*)
@@ -60,7 +63,7 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
         branchOutputMap.foreach {
           case (output, enum) =>
             branch.dup().unlessNe(
-              getStatic(methodDesc.returnType, enum.name, methodDesc.returnType)) {
+              getStatic(methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
                 getOutputField(mb, output)
                   .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
                 `return`()

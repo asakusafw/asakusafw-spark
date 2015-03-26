@@ -32,10 +32,13 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
     assert(inputs.size == 1) // FIXME to take multiple inputs for side data?
     assert(outputs.size > 0)
 
-    assert(methodDesc.parameterTypes ==
-      inputs(Extract.ID_INPUT).dataModelType
-      +: outputs.map(_ => classOf[Result[_]].asType)
-      ++: arguments.map(_.asType))
+    methodDesc.parameterClasses
+      .zip(inputs(Extract.ID_INPUT).dataModelClass
+        +: outputs.map(_ => classOf[Result[_]])
+        ++: arguments.map(_.resolveClass))
+      .foreach {
+        case (method, model) => assert(method.isAssignableFrom(model))
+      }
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
@@ -48,7 +51,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
         getOperatorField(mb)
           .invokeV(
             methodDesc.getName,
-            dataModelVar.push()
+            dataModelVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
               +: outputs.map { output =>
                 getOutputField(mb, output).asType(classOf[Result[_]].asType)
               }

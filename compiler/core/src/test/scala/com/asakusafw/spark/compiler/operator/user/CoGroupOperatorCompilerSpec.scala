@@ -167,7 +167,11 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
 object CoGroupOperatorCompilerSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  trait HogeP {
+    def getIdOption: IntOption
+  }
+
+  class Hoge extends DataModel[Hoge] with HogeP {
 
     val id = new IntOption()
 
@@ -181,7 +185,12 @@ object CoGroupOperatorCompilerSpec {
     def getIdOption: IntOption = id
   }
 
-  class Foo extends DataModel[Foo] {
+  trait FooP {
+    def getIdOption: IntOption
+    def getHogeIdOption: IntOption
+  }
+
+  class Foo extends DataModel[Foo] with FooP {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -222,6 +231,23 @@ object CoGroupOperatorCompilerSpec {
       hogeList: JList[Hoge], fooList: JList[Foo],
       hogeResult: Result[Hoge], fooResult: Result[Foo],
       hogeError: Result[Hoge], fooError: Result[Foo],
+      nResult: Result[N], n: Int): Unit = {
+      if (hogeList.size == 1 && fooList.size == 1) {
+        hogeResult.add(hogeList(0))
+        fooResult.add(fooList(0))
+      } else {
+        hogeList.foreach(hogeError.add)
+        fooList.foreach(fooError.add)
+      }
+      this.n.n.modify(n)
+      nResult.add(this.n)
+    }
+
+    @CoGroup
+    def cogroupp[H <: HogeP, F <: FooP](
+      hogeList: JList[H], fooList: JList[F],
+      hogeResult: Result[H], fooResult: Result[F],
+      hogeError: Result[H], fooError: Result[F],
       nResult: Result[N], n: Int): Unit = {
       if (hogeList.size == 1 && fooList.size == 1) {
         hogeResult.add(hogeList(0))

@@ -31,9 +31,11 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
     assert(inputs.size == 1) // FIXME to take multiple inputs for side data?
     assert(outputs.size == 2)
 
-    assert(methodDesc.parameterTypes ==
-      inputs(Convert.ID_INPUT).dataModelType
-      +: arguments.map(_.asType))
+    methodDesc.parameterClasses
+      .zip(inputs(Convert.ID_INPUT).dataModelClass +: arguments.map(_.resolveClass))
+      .foreach {
+        case (method, model) => assert(method.isAssignableFrom(model))
+      }
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
@@ -51,7 +53,7 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
               .invokeV(
                 methodDesc.getName,
                 outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
-                dataModelVar.push()
+                dataModelVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
                   +: arguments.map { argument =>
                     ldc(argument.value)(ClassTag(argument.resolveClass))
                   }: _*)

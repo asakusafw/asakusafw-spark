@@ -77,11 +77,63 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     fragment.reset()
     assert(out1.buffer.size === 0)
   }
+
+  it should "compile Branch operator with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[Branch], classOf[BranchOperator], "branchp")
+      .input("input", ClassDescription.of(classOf[InputModel]))
+      .output("low", ClassDescription.of(classOf[InputModel]))
+      .output("high", ClassDescription.of(classOf[InputModel]))
+      .argument("n", ImmediateDescription.of(10))
+      .build()
+
+    val classpath = Files.createTempDirectory("BranchOperatorCompilerSpec").toFile
+    implicit val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+
+    val (out1, out2) = {
+      val builder = new OutputFragmentClassBuilder(
+        context.flowId, classOf[InputModel].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[InputModel]])
+      (cls.newInstance(), cls.newInstance())
+    }
+
+    val fragment = cls.getConstructor(classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(out1, out2)
+
+    val dm = new InputModel()
+    for (i <- 0 until 10) {
+      dm.i.modify(i)
+      fragment.add(dm)
+    }
+    assert(out1.buffer.size === 5)
+    assert(out2.buffer.size === 5)
+    out1.buffer.zipWithIndex.foreach {
+      case (dm, i) =>
+        assert(dm.i.get === i)
+    }
+    out2.buffer.zipWithIndex.foreach {
+      case (dm, i) =>
+        assert(dm.i.get === i + 5)
+    }
+    fragment.reset()
+    assert(out1.buffer.size === 0)
+  }
 }
 
 object BranchOperatorCompilerSpec {
 
-  class InputModel extends DataModel[InputModel] {
+  trait InputP {
+    def getIOption: IntOption
+  }
+
+  class InputModel extends DataModel[InputModel] with InputP {
 
     val i: IntOption = new IntOption()
 
@@ -101,6 +153,15 @@ object BranchOperatorCompilerSpec {
     @Branch
     def branch(in: InputModel, n: Int): BranchOperatorCompilerSpecTestBranch = {
       if (in.i.get < 5) {
+        BranchOperatorCompilerSpecTestBranch.LOW
+      } else {
+        BranchOperatorCompilerSpecTestBranch.HIGH
+      }
+    }
+
+    @Branch
+    def branchp[I <: InputP](in: I, n: Int): BranchOperatorCompilerSpecTestBranch = {
+      if (in.getIOption.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW
       } else {
         BranchOperatorCompilerSpecTestBranch.HIGH

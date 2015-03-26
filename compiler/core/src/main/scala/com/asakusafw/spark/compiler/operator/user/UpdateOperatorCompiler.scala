@@ -33,9 +33,11 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
 
     assert(inputs(Update.ID_INPUT).dataModelType == outputs(Update.ID_OUTPUT).dataModelType)
 
-    assert(methodDesc.parameterTypes ==
-      inputs(Update.ID_INPUT).dataModelType
-      +: arguments.map(_.asType))
+    methodDesc.parameterClasses
+      .zip(inputs(Update.ID_INPUT).dataModelClass +: arguments.map(_.resolveClass))
+      .foreach {
+        case (method, model) => assert(method.isAssignableFrom(model))
+      }
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
@@ -48,7 +50,7 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
         getOperatorField(mb)
           .invokeV(
             methodDesc.getName,
-            dataModelVar.push()
+            dataModelVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
               +: arguments.map { argument =>
                 ldc(argument.value)(ClassTag(argument.resolveClass))
               }: _*)

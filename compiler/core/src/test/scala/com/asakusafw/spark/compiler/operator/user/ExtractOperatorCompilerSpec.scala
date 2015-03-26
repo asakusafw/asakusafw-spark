@@ -84,11 +84,71 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     fragment.reset()
     assert(out1.buffer.size === 0)
   }
+
+  it should "compile Extract operator with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[Extract], classOf[ExtractOperator], "extractp")
+      .input("input", ClassDescription.of(classOf[InputModel]))
+      .output("output1", ClassDescription.of(classOf[IntOutputModel]))
+      .output("output2", ClassDescription.of(classOf[LongOutputModel]))
+      .argument("n", ImmediateDescription.of(10))
+      .build()
+
+    val classpath = Files.createTempDirectory("ExtractOperatorCompilerSpec").toFile
+    implicit val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+
+    val out1 = {
+      val builder = new OutputFragmentClassBuilder(
+        context.flowId, classOf[IntOutputModel].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[IntOutputModel]])
+      cls.newInstance()
+    }
+
+    val out2 = {
+      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[LongOutputModel].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[LongOutputModel]])
+      cls.newInstance()
+    }
+
+    val fragment = cls.getConstructor(classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(out1, out2)
+
+    val dm = new InputModel()
+    for (i <- 0 until 10) {
+      dm.i.modify(i)
+      dm.l.modify(i)
+      fragment.add(dm)
+    }
+    assert(out1.buffer.size === 10)
+    assert(out2.buffer.size === 100)
+    out1.buffer.zipWithIndex.foreach {
+      case (dm, i) =>
+        assert(dm.i.get === i)
+    }
+    out2.buffer.zipWithIndex.foreach {
+      case (dm, i) =>
+        assert(dm.l.get === i / 10)
+    }
+    fragment.reset()
+    assert(out1.buffer.size === 0)
+  }
 }
 
 object ExtractOperatorCompilerSpec {
 
-  class InputModel extends DataModel[InputModel] {
+  trait InputP {
+    def getIOption: IntOption
+    def getLOption: LongOption
+  }
+
+  class InputModel extends DataModel[InputModel] with InputP {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
@@ -107,7 +167,11 @@ object ExtractOperatorCompilerSpec {
     def getLOption: LongOption = l
   }
 
-  class IntOutputModel extends DataModel[IntOutputModel] {
+  trait IntOutputP {
+    def getIOption: IntOption
+  }
+
+  class IntOutputModel extends DataModel[IntOutputModel] with IntOutputP {
 
     val i: IntOption = new IntOption()
 
@@ -122,7 +186,11 @@ object ExtractOperatorCompilerSpec {
     def getIOption: IntOption = i
   }
 
-  class LongOutputModel extends DataModel[LongOutputModel] {
+  trait LongOutputP {
+    def getLOption: LongOption
+  }
+
+  class LongOutputModel extends DataModel[LongOutputModel] with LongOutputP {
 
     val l: LongOption = new LongOption()
 
@@ -149,6 +217,16 @@ object ExtractOperatorCompilerSpec {
       for (_ <- 0 until n) {
         l.getLOption.copyFrom(in.getLOption)
         out2.add(l)
+      }
+    }
+
+    @Extract
+    def extractp[I <: InputP, IO <: IntOutputP, LO <: LongOutputP](in: I, out1: Result[IO], out2: Result[LO], n: Int): Unit = {
+      i.getIOption.copyFrom(in.getIOption)
+      out1.add(i.asInstanceOf[IO])
+      for (_ <- 0 until n) {
+        l.getLOption.copyFrom(in.getLOption)
+        out2.add(l.asInstanceOf[LO])
       }
     }
   }

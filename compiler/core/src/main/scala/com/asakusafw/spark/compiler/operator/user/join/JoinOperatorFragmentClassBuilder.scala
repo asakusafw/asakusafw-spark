@@ -46,7 +46,12 @@ abstract class JoinOperatorFragmentClassBuilder(
         .cast(txType).store(txIterVar.nextLocal)
       val selectedVar = (masterSelection match {
         case Some((name, t)) =>
-          getOperatorField(mb).invokeV(name, t.getReturnType(), mastersVar.push(), txVar.push())
+          getOperatorField(mb)
+            .invokeV(
+              name,
+              t.getReturnType(),
+              mastersVar.push().asType(t.getArgumentTypes()(0)),
+              txVar.push().asType(t.getArgumentTypes()(1)))
         case None =>
           getStatic(DefaultMasterSelection.getClass.asType, "MODULE$", DefaultMasterSelection.getClass.asType)
             .invokeV("select", classOf[AnyRef].asType, mastersVar.push(), txVar.push().asType(classOf[AnyRef].asType))

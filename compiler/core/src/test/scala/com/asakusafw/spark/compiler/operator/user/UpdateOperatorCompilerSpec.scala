@@ -74,11 +74,62 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     fragment.reset()
     assert(out.buffer.size === 0)
   }
+
+  it should "compile Update operator with projective model" in {
+    val operator = OperatorExtractor.extract(
+      classOf[Update], classOf[UpdateOperator], "updatep")
+      .input("in", ClassDescription.of(classOf[TestModel]))
+      .output("out", ClassDescription.of(classOf[TestModel]))
+      .argument("rate", ImmediateDescription.of(100))
+      .build();
+
+    val classpath = Files.createTempDirectory("UpdateOperatorCompilerSpec").toFile
+    implicit val context = OperatorCompiler.Context(
+      flowId = "flowId",
+      jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath))
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val cls = loadClass(thisType.getClassName, classpath)
+      .asSubclass(classOf[Fragment[TestModel]])
+
+    val out = {
+      val builder = new OutputFragmentClassBuilder(
+        context.flowId, classOf[TestModel].asType)
+      val cls = loadClass(builder.thisType.getClassName, builder.build())
+        .asSubclass(classOf[OutputFragment[TestModel]])
+      cls.newInstance
+    }
+
+    val fragment = cls.getConstructor(classOf[Fragment[_]]).newInstance(out)
+
+    val dm = new TestModel()
+    for (i <- 0 until 10) {
+      dm.reset()
+      dm.i.modify(i)
+      fragment.add(dm)
+    }
+    assert(out.buffer.size === 10)
+    out.buffer.zipWithIndex.foreach {
+      case (dm, i) =>
+        assert(dm.i.get === i)
+        assert(dm.l.get === i * 100)
+    }
+    fragment.reset()
+    assert(out.buffer.size === 0)
+  }
 }
 
 object UpdateOperatorCompilerSpec {
 
-  class TestModel extends DataModel[TestModel] {
+  trait TestP {
+    def getIOption: IntOption
+    def getLOption: LongOption
+  }
+
+  class TestModel extends DataModel[TestModel] with TestP {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
@@ -102,6 +153,11 @@ object UpdateOperatorCompilerSpec {
     @Update
     def update(item: TestModel, rate: Int): Unit = {
       item.l.modify(rate * item.i.get)
+    }
+
+    @Update
+    def updatep[T <: TestP](item: T, rate: Int): Unit = {
+      item.getLOption.modify(rate * item.getIOption.get)
     }
   }
 }
