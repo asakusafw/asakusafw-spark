@@ -40,6 +40,7 @@ object AggregationCompiler {
   def compile(operator: Operator)(implicit context: Context): Type = {
     getCompiler(operator) match {
       case Some(compiler) => compiler.compile(operator.asInstanceOf[UserOperator])
+      case _              => throw new AssertionError()
     }
   }
 
