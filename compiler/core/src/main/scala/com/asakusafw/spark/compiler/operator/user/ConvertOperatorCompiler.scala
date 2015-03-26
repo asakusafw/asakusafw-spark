@@ -16,7 +16,8 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    operatorInfo.annotationClass == classOf[Convert]
+    import operatorInfo._
+    annotationDesc.resolveClass == classOf[Convert]
   }
 
   override def operatorType: OperatorType = OperatorType.MapType
@@ -25,34 +26,34 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.inputs.size == 1) // FIXME to take multiple inputs for side data?
-    assert(operatorInfo.outputs.size == 2)
+    assert(inputs.size == 1) // FIXME to take multiple inputs for side data?
+    assert(outputs.size == 2)
 
-    assert(operatorInfo.methodType.getArgumentTypes.toSeq ==
-      operatorInfo.inputDataModelTypes(Convert.ID_INPUT)
-      +: operatorInfo.argumentTypes)
+    assert(methodDesc.parameterTypes ==
+      inputs(Convert.ID_INPUT).dataModelType
+      +: arguments.map(_.asType))
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
-      operatorInfo.inputDataModelTypes(Convert.ID_INPUT),
-      operatorInfo.implementationClassType,
-      operatorInfo.outputs) {
+      inputs(Convert.ID_INPUT).dataModelType,
+      implementationClassType,
+      outputs) {
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
         import mb._
-        getOutputField(mb, operatorInfo.outputs(Convert.ID_OUTPUT_ORIGINAL))
+        getOutputField(mb, outputs(Convert.ID_OUTPUT_ORIGINAL))
           .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
-        getOutputField(mb, operatorInfo.outputs(Convert.ID_OUTPUT_CONVERTED))
+        getOutputField(mb, outputs(Convert.ID_OUTPUT_CONVERTED))
           .invokeV("add",
             getOperatorField(mb)
               .invokeV(
-                operatorInfo.methodDesc.getName,
-                operatorInfo.outputDataModelTypes(Convert.ID_OUTPUT_CONVERTED),
+                methodDesc.getName,
+                outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
                 dataModelVar.push()
-                  +: operatorInfo.arguments.map { argument =>
-                    ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
-                      ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
+                  +: arguments.map { argument =>
+                    ldc(argument.value)(ClassTag(argument.resolveClass))
                   }: _*)
               .asType(classOf[AnyRef].asType))
         `return`()

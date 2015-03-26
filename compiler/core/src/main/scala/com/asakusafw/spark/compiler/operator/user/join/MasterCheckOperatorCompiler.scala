@@ -15,7 +15,8 @@ class MasterCheckOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    operatorInfo.annotationClass == classOf[MasterCheck]
+    import operatorInfo._
+    annotationDesc.resolveClass == classOf[MasterCheck]
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -24,26 +25,27 @@ class MasterCheckOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.inputs.size >= 2)
+    assert(inputs.size >= 2)
 
-    operatorInfo.outputDataModelTypes.foreach(outputDataModelType =>
-      assert(outputDataModelType == operatorInfo.inputDataModelTypes(MasterCheck.ID_INPUT_TRANSACTION)))
+    outputs.foreach(output =>
+      assert(output.dataModelType == inputs(MasterCheck.ID_INPUT_TRANSACTION).dataModelType))
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
-      operatorInfo.implementationClassType,
-      operatorInfo.outputs,
-      operatorInfo.inputDataModelTypes(MasterCheck.ID_INPUT_MASTER),
-      operatorInfo.inputDataModelTypes(MasterCheck.ID_INPUT_TRANSACTION),
-      operatorInfo.selectionMethod) {
+      implementationClassType,
+      outputs,
+      inputs(MasterCheck.ID_INPUT_MASTER).dataModelType,
+      inputs(MasterCheck.ID_INPUT_TRANSACTION).dataModelType,
+      selectionMethod) {
 
       override def join(mb: MethodBuilder, ctrl: LoopControl, masterVar: Var, txVar: Var): Unit = {
         import mb._
         masterVar.push().ifNull({
-          getOutputField(mb, operatorInfo.outputs(MasterCheck.ID_OUTPUT_MISSED))
+          getOutputField(mb, outputs(MasterCheck.ID_OUTPUT_MISSED))
         }, {
-          getOutputField(mb, operatorInfo.outputs(MasterCheck.ID_OUTPUT_FOUND))
+          getOutputField(mb, outputs(MasterCheck.ID_OUTPUT_FOUND))
         }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
       }
     }

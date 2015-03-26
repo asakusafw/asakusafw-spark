@@ -17,7 +17,8 @@ class MasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    operatorInfo.annotationClass == classOf[MasterJoinUpdate]
+    import operatorInfo._
+    annotationDesc.resolveClass == classOf[MasterJoinUpdate]
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -26,41 +27,42 @@ class MasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.inputs.size >= 2)
-    assert(operatorInfo.outputs.size == 2)
+    assert(inputs.size >= 2)
+    assert(outputs.size == 2)
 
-    operatorInfo.outputDataModelTypes.foreach(outputDataModelType =>
-      assert(outputDataModelType == operatorInfo.inputDataModelTypes(MasterJoinUpdate.ID_INPUT_TRANSACTION)))
+    outputs.foreach { output =>
+      assert(output.dataModelType == inputs(MasterJoinUpdate.ID_INPUT_TRANSACTION).dataModelType)
+    }
 
-    assert(operatorInfo.methodType.getArgumentTypes.toSeq ==
-      Seq(operatorInfo.inputDataModelTypes(MasterJoinUpdate.ID_INPUT_MASTER),
-        operatorInfo.inputDataModelTypes(MasterJoinUpdate.ID_INPUT_TRANSACTION))
-        ++ operatorInfo.argumentTypes)
+    assert(methodDesc.parameterTypes ==
+      inputs(MasterJoinUpdate.ID_INPUT_MASTER).dataModelType
+      +: inputs(MasterJoinUpdate.ID_INPUT_TRANSACTION).dataModelType
+      +: arguments.map(_.asType))
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
-      operatorInfo.implementationClassType,
-      operatorInfo.outputs,
-      operatorInfo.inputDataModelTypes(MasterJoinUpdate.ID_INPUT_MASTER),
-      operatorInfo.inputDataModelTypes(MasterJoinUpdate.ID_INPUT_TRANSACTION),
-      operatorInfo.selectionMethod) {
+      implementationClassType,
+      outputs,
+      inputs(MasterJoinUpdate.ID_INPUT_MASTER).dataModelType,
+      inputs(MasterJoinUpdate.ID_INPUT_TRANSACTION).dataModelType,
+      selectionMethod) {
 
       override def join(mb: MethodBuilder, ctrl: LoopControl, masterVar: Var, txVar: Var): Unit = {
         import mb._
         masterVar.push().ifNull({
-          getOutputField(mb, operatorInfo.outputs(MasterJoinUpdate.ID_OUTPUT_MISSED))
+          getOutputField(mb, outputs(MasterJoinUpdate.ID_OUTPUT_MISSED))
         }, {
           getOperatorField(mb)
             .invokeV(
-              operatorInfo.methodDesc.getName,
+              methodDesc.getName,
               masterVar.push()
                 +: txVar.push()
-                +: operatorInfo.arguments.map { argument =>
-                  ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
-                    ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
+                +: arguments.map { argument =>
+                  ldc(argument.value)(ClassTag(argument.resolveClass))
                 }: _*)
-          getOutputField(mb, operatorInfo.outputs(MasterJoinUpdate.ID_OUTPUT_UPDATED))
+          getOutputField(mb, outputs(MasterJoinUpdate.ID_OUTPUT_UPDATED))
         }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
       }
     }

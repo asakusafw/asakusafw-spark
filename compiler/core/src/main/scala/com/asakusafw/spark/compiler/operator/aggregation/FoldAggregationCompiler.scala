@@ -21,24 +21,25 @@ class FoldAggregationCompiler extends AggregationCompiler {
   def compile(operator: UserOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.annotationClass == of)
-    assert(operatorInfo.inputs.size == 1)
-    assert(operatorInfo.outputs.size == 1)
-    assert(operatorInfo.inputDataModelTypes(Fold.ID_INPUT) == operatorInfo.outputDataModelTypes(Fold.ID_OUTPUT))
+    assert(annotationDesc.resolveClass == of)
+    assert(inputs.size == 1)
+    assert(outputs.size == 1)
+    assert(inputs(Fold.ID_INPUT).dataModelType == outputs(Fold.ID_OUTPUT).dataModelType)
 
-    assert(operatorInfo.methodType.getArgumentTypes.toSeq ==
-      Seq(operatorInfo.inputDataModelTypes(Fold.ID_INPUT),
-        operatorInfo.outputDataModelTypes(Fold.ID_OUTPUT))
-        ++ operatorInfo.argumentTypes)
+    assert(methodDesc.parameterTypes ==
+      inputs(Fold.ID_INPUT).dataModelType
+      +: outputs(Fold.ID_OUTPUT).dataModelType
+      +: arguments.map(_.asType))
 
     val builder = new AggregationClassBuilder(
       context.flowId,
       classOf[Seq[_]].asType,
-      operatorInfo.inputDataModelTypes(Fold.ID_INPUT),
-      operatorInfo.outputDataModelTypes(Fold.ID_OUTPUT)) with OperatorField {
+      inputs(Fold.ID_INPUT).dataModelType,
+      outputs(Fold.ID_OUTPUT).dataModelType) with OperatorField {
 
-      override val operatorType: Type = operatorInfo.implementationClassType
+      override val operatorType: Type = implementationClassType
 
       override def defFields(fieldDef: FieldDef): Unit = {
         defOperatorField(fieldDef)
@@ -51,7 +52,7 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
       override def defMapSideCombiner(mb: MethodBuilder): Unit = {
         import mb._
-        val partialAggregation = operatorInfo.annotationDesc.getElements()("partialAggregation")
+        val partialAggregation = annotationDesc.getElements()("partialAggregation")
           .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]
         `return`(ldc(partialAggregation == PartialAggregation.PARTIAL))
       }
@@ -64,11 +65,10 @@ class FoldAggregationCompiler extends AggregationCompiler {
       override def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
         import mb._
         getOperatorField(mb).invokeV(
-          operatorInfo.methodDesc.getName,
+          methodDesc.getName,
           Seq(combinerVar.push(), valueVar.push())
-            ++ operatorInfo.arguments.map { argument =>
-              ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
-                ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
+            ++ arguments.map { argument =>
+              ldc(argument.value)(ClassTag(argument.resolveClass))
             }: _*)
         `return`(combinerVar.push())
       }

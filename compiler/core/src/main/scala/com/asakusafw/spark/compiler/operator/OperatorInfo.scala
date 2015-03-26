@@ -8,7 +8,9 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.analyzer.util.{ BranchOperatorUtil, MasterJoinOperatorUtil }
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
+import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph._
+import com.asakusafw.spark.tools.asm._
 
 class OperatorInfo(operator: Operator)(implicit jpContext: JPContext) {
 
@@ -16,7 +18,10 @@ class OperatorInfo(operator: Operator)(implicit jpContext: JPContext) {
     case op: UserOperator => op.getAnnotation
   }
 
-  lazy val annotationClass = annotationDesc.getDeclaringClass.resolve(jpContext.getClassLoader)
+  implicit class AugmentedAnnotationDescription(ad: AnnotationDescription) {
+
+    def resolveClass: Class[_] = ad.getDeclaringClass.resolve(jpContext.getClassLoader)
+  }
 
   lazy val implementationClassType = operator match {
     case op: UserOperator => op.getImplementationClass.asType
@@ -26,27 +31,42 @@ class OperatorInfo(operator: Operator)(implicit jpContext: JPContext) {
     case op: UserOperator => op.getMethod
   }
 
-  lazy val methodType = Type.getType(methodDesc.resolve(jpContext.getClassLoader))
+  implicit class AugmentedMethodDescirption(md: MethodDescription) {
+
+    def asType: Type = Type.getType(md.resolve(jpContext.getClassLoader))
+
+    def name: String = methodDesc.getName
+
+    def returnType: Type = asType.getReturnType
+
+    def parameterTypes: Seq[Type] = asType.getArgumentTypes
+
+    def parameterClasses: Seq[Class[_]] = methodDesc.getParameterTypes.map(_.resolve(jpContext.getClassLoader))
+  }
 
   lazy val inputs = operator.getInputs.toSeq
 
-  lazy val inputDataModelRefs = inputs.map(input => jpContext.getDataModelLoader.load(input.getDataType))
-  def inputDataModelRefs(input: OperatorInput): DataModelReference = inputDataModelRefs(inputs.indexOf(input))
-
-  lazy val inputDataModelTypes = inputDataModelRefs.map(_.getDeclaration.asType)
-  def inputDataModelTypes(input: OperatorInput): Type = inputDataModelTypes(inputs.indexOf(input))
-
   lazy val outputs = operator.getOutputs.toSeq
 
-  lazy val outputDataModelRefs = outputs.map(output => jpContext.getDataModelLoader.load(output.getDataType))
-  def outputDataModelRefs(output: OperatorOutput): DataModelReference = outputDataModelRefs(outputs.indexOf(output))
+  implicit class AugmentedOperatorInput(oi: OperatorPort) {
 
-  lazy val outputDataModelTypes = outputDataModelRefs.map(_.getDeclaration.asType)
-  def outputDataModelTypes(output: OperatorOutput): Type = outputDataModelTypes(outputs.indexOf(output))
+    def dataModelRef: DataModelReference = jpContext.getDataModelLoader.load(oi.getDataType)
+
+    def dataModelType: Type = dataModelRef.getDeclaration.asType
+
+    def dataModelClass: Class[_] = dataModelRef.getDeclaration.resolve(jpContext.getClassLoader)
+  }
 
   lazy val arguments = operator.getArguments.toSeq
 
-  lazy val argumentTypes = arguments.map(_.getValue.getValueType.asType)
+  implicit class AugmentedOperatorArgument(oa: OperatorArgument) {
+
+    def asType: Type = oa.getValue.getValueType.asType
+
+    def resolveClass: Class[_] = oa.getValue.getValueType.resolve(jpContext.getClassLoader)
+
+    def value: Any = oa.getValue.resolve(jpContext.getClassLoader)
+  }
 
   lazy val branchOutputMap = BranchOperatorUtil.getOutputMap(jpContext.getClassLoader, operator).toMap
 

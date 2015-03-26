@@ -29,16 +29,17 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
     assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.inputs.size == 1)
-    assert(operatorInfo.outputs.size == 1)
+    assert(inputs.size == 1)
+    assert(outputs.size == 1)
 
     val mappings = ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator).toSeq
 
     val builder = new CoreOperatorFragmentClassBuilder(
       context.flowId,
-      operatorInfo.inputDataModelTypes.head,
-      operatorInfo.outputDataModelTypes.head) {
+      inputs.head.dataModelType,
+      outputs.head.dataModelType) {
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
         import mb._
@@ -46,9 +47,9 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
         thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
 
         mappings.foreach { mapping =>
-          val srcProperty = operatorInfo.inputDataModelRefs(mapping.getSourcePort)
+          val srcProperty = mapping.getSourcePort.dataModelRef
             .findProperty(mapping.getSourceProperty)
-          val destProperty = operatorInfo.outputDataModelRefs(mapping.getDestinationPort)
+          val destProperty = mapping.getDestinationPort.dataModelRef
             .findProperty(mapping.getDestinationProperty)
           assert(srcProperty.getType.asType == destProperty.getType.asType)
 

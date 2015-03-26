@@ -17,7 +17,8 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    operatorInfo.annotationClass == classOf[Extract]
+    import operatorInfo._
+    annotationDesc.resolveClass == classOf[Extract]
   }
 
   override def operatorType: OperatorType = OperatorType.MapType
@@ -26,33 +27,33 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.inputs.size == 1) // FIXME to take multiple inputs for side data?
-    assert(operatorInfo.outputs.size > 0)
+    assert(inputs.size == 1) // FIXME to take multiple inputs for side data?
+    assert(outputs.size > 0)
 
-    assert(operatorInfo.methodType.getArgumentTypes.toSeq ==
-      operatorInfo.inputDataModelTypes(Extract.ID_INPUT)
-      +: operatorInfo.outputDataModelTypes.map(_ => classOf[Result[_]].asType)
-      ++: operatorInfo.argumentTypes)
+    assert(methodDesc.parameterTypes ==
+      inputs(Extract.ID_INPUT).dataModelType
+      +: outputs.map(_ => classOf[Result[_]].asType)
+      ++: arguments.map(_.asType))
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
-      operatorInfo.inputDataModelTypes(Extract.ID_INPUT),
-      operatorInfo.implementationClassType,
-      operatorInfo.outputs) {
+      inputs(Extract.ID_INPUT).dataModelType,
+      implementationClassType,
+      outputs) {
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
         import mb._
         getOperatorField(mb)
           .invokeV(
-            operatorInfo.methodDesc.getName,
+            methodDesc.getName,
             dataModelVar.push()
-              +: operatorInfo.outputs.map { output =>
+              +: outputs.map { output =>
                 getOutputField(mb, output).asType(classOf[Result[_]].asType)
               }
-              ++: operatorInfo.arguments.map { argument =>
-                ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
-                  ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
+              ++: arguments.map { argument =>
+                ldc(argument.value)(ClassTag(argument.resolveClass))
               }: _*)
         `return`()
       }

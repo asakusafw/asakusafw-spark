@@ -20,7 +20,8 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    operatorInfo.annotationClass == classOf[CoGroup] || operatorInfo.annotationClass == classOf[GroupSort]
+    import operatorInfo._
+    annotationDesc.resolveClass == classOf[CoGroup] || annotationDesc.resolveClass == classOf[GroupSort]
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -29,26 +30,27 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.inputs.size > 0)
+    assert(inputs.size > 0)
 
-    assert(operatorInfo.methodType.getArgumentTypes.toSeq ==
-      operatorInfo.inputDataModelTypes.map(_ => classOf[JList[_]].asType)
-      ++ operatorInfo.outputDataModelTypes.map(_ => classOf[Result[_]].asType)
-      ++ operatorInfo.argumentTypes)
+    assert(methodDesc.parameterTypes ==
+      inputs.map(_ => classOf[JList[_]].asType)
+      ++ outputs.map(_ => classOf[Result[_]].asType)
+      ++ arguments.map(_.asType))
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
       classOf[Seq[Iterable[_]]].asType,
-      operatorInfo.implementationClassType,
-      operatorInfo.outputs) {
+      implementationClassType,
+      outputs) {
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
         import mb._
         getOperatorField(mb)
           .invokeV(
-            operatorInfo.methodDesc.getName,
-            operatorInfo.inputs.zipWithIndex.map {
+            methodDesc.getName,
+            inputs.zipWithIndex.map {
               case (_, i) =>
                 getStatic(JavaConversions.getClass.asType, "MODULE$", JavaConversions.getClass.asType)
                   .invokeV("seqAsJavaList", classOf[JList[_]].asType,
@@ -57,12 +59,11 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
                       .cast(classOf[Iterable[_]].asType)
                       .invokeI("toSeq", classOf[Seq[_]].asType))
             }
-              ++ operatorInfo.outputs.map { output =>
+              ++ outputs.map { output =>
                 getOutputField(mb, output).asType(classOf[Result[_]].asType)
               }
-              ++ operatorInfo.arguments.map { argument =>
-                ldc(argument.getValue.resolve(context.jpContext.getClassLoader))(
-                  ClassTag(argument.getValue.getValueType.resolve(context.jpContext.getClassLoader)))
+              ++ arguments.map { argument =>
+                ldc(argument.value)(ClassTag(argument.resolveClass))
               }: _*)
         `return`()
       }

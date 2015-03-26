@@ -40,14 +40,15 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     val operator = dominant.asInstanceOf[UserOperator]
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.inputs.size == 1)
-    assert(operatorInfo.outputs.size == 1)
+    assert(inputs.size == 1)
+    assert(outputs.size == 1)
 
     val builder = new AggregateDriverClassBuilder(
       context.flowId,
-      operatorInfo.inputDataModelTypes.head,
-      operatorInfo.outputDataModelTypes.head) {
+      inputs.head.dataModelType,
+      outputs.head.dataModelType) {
 
       override val jpContext = context.jpContext
 

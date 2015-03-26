@@ -21,7 +21,8 @@ class MasterJoinOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    operatorInfo.annotationClass == classOf[MasterJoin]
+    import operatorInfo._
+    annotationDesc.resolveClass == classOf[MasterJoin]
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -30,54 +31,54 @@ class MasterJoinOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
+    import operatorInfo._
 
-    assert(operatorInfo.inputs.size >= 2)
-    assert(operatorInfo.outputs.size == 2)
+    assert(inputs.size >= 2)
+    assert(outputs.size == 2)
 
-    assert(operatorInfo.outputDataModelTypes(MasterJoin.ID_OUTPUT_MISSED)
-      == operatorInfo.inputDataModelTypes(MasterJoin.ID_INPUT_TRANSACTION))
+    assert(outputs(MasterJoin.ID_OUTPUT_MISSED).dataModelType
+      == inputs(MasterJoin.ID_INPUT_TRANSACTION).dataModelType)
 
     val mappings = JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
-      operatorInfo.implementationClassType,
-      operatorInfo.outputs,
-      operatorInfo.inputDataModelTypes(MasterJoin.ID_INPUT_MASTER),
-      operatorInfo.inputDataModelTypes(MasterJoin.ID_INPUT_TRANSACTION),
-      operatorInfo.selectionMethod) {
+      implementationClassType,
+      outputs,
+      inputs(MasterJoin.ID_INPUT_MASTER).dataModelType,
+      inputs(MasterJoin.ID_INPUT_TRANSACTION).dataModelType,
+      selectionMethod) {
 
       override def defFields(fieldDef: FieldDef): Unit = {
         super.defFields(fieldDef)
-        fieldDef.newField("joinedDataModel",
-          operatorInfo.outputDataModelTypes(MasterJoin.ID_OUTPUT_JOINED))
+        fieldDef.newField("joinedDataModel", outputs(MasterJoin.ID_OUTPUT_JOINED).dataModelType)
       }
 
       override def initFields(mb: MethodBuilder): Unit = {
         import mb._
         thisVar.push().putField(
           "joinedDataModel",
-          operatorInfo.outputDataModelTypes(MasterJoin.ID_OUTPUT_JOINED),
-          pushNew0(operatorInfo.outputDataModelTypes(MasterJoin.ID_OUTPUT_JOINED)))
+          outputs(MasterJoin.ID_OUTPUT_JOINED).dataModelType,
+          pushNew0(outputs(MasterJoin.ID_OUTPUT_JOINED).dataModelType))
       }
 
       override def join(mb: MethodBuilder, ctrl: LoopControl, masterVar: Var, txVar: Var): Unit = {
         import mb._
         masterVar.push().unlessNotNull {
-          getOutputField(mb, operatorInfo.outputs(MasterJoin.ID_OUTPUT_MISSED))
+          getOutputField(mb, outputs(MasterJoin.ID_OUTPUT_MISSED))
             .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
           ctrl.continue()
         }
 
         val vars = Seq(masterVar, txVar)
 
-        thisVar.push().getField("joinedDataModel", operatorInfo.outputDataModelTypes(MasterJoin.ID_OUTPUT_JOINED)).invokeV("reset")
+        thisVar.push().getField("joinedDataModel", outputs(MasterJoin.ID_OUTPUT_JOINED).dataModelType).invokeV("reset")
 
         mappings.foreach { mapping =>
-          val src = operatorInfo.inputs.indexOf(mapping.getSourcePort)
+          val src = inputs.indexOf(mapping.getSourcePort)
           val srcVar = vars(src)
-          val srcProperty = operatorInfo.inputDataModelRefs(src).findProperty(mapping.getSourceProperty)
-          val destProperty = operatorInfo.outputDataModelRefs(MasterJoin.ID_OUTPUT_JOINED).findProperty(mapping.getDestinationProperty)
+          val srcProperty = inputs(src).dataModelRef.findProperty(mapping.getSourceProperty)
+          val destProperty = outputs(MasterJoin.ID_OUTPUT_JOINED).dataModelRef.findProperty(mapping.getDestinationProperty)
           assert(srcProperty.getType.asType == destProperty.getType.asType)
 
           getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
@@ -85,13 +86,13 @@ class MasterJoinOperatorCompiler extends UserOperatorCompiler {
               "copy",
               srcVar.push()
                 .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
-              thisVar.push().getField("joinedDataModel", operatorInfo.outputDataModelTypes(MasterJoin.ID_OUTPUT_JOINED))
+              thisVar.push().getField("joinedDataModel", outputs(MasterJoin.ID_OUTPUT_JOINED).dataModelType)
                 .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
         }
 
-        getOutputField(mb, operatorInfo.outputs(MasterJoin.ID_OUTPUT_JOINED))
+        getOutputField(mb, outputs(MasterJoin.ID_OUTPUT_JOINED))
           .invokeV("add",
-            thisVar.push().getField("joinedDataModel", operatorInfo.outputDataModelTypes(MasterJoin.ID_OUTPUT_JOINED))
+            thisVar.push().getField("joinedDataModel", outputs(MasterJoin.ID_OUTPUT_JOINED).dataModelType)
               .asType(classOf[AnyRef].asType))
       }
     }
