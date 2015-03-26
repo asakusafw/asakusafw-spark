@@ -8,7 +8,10 @@ import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-abstract class CoreOperatorFragmentClassBuilder(flowId: String, dataModelType: Type, childDataModelType: Type)
+abstract class CoreOperatorFragmentClassBuilder(
+  flowId: String,
+  dataModelType: Type,
+  val childDataModelType: Type)
     extends FragmentClassBuilder(flowId, dataModelType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
