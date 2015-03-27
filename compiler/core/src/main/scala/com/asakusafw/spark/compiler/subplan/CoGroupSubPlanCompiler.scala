@@ -117,7 +117,8 @@ object CoGroupSubPlanCompiler {
 
       val cogroupDriver = pushNew(driverType)
       cogroupDriver.dup().invokeInit(
-        context.scVar.push(), {
+        context.scVar.push(),
+        context.hadoopConfVar.push(), {
           // Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)

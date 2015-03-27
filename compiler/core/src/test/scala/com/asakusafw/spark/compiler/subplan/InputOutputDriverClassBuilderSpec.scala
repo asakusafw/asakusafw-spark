@@ -10,8 +10,10 @@ import java.nio.file.{ Files, Path }
 
 import scala.collection.JavaConversions._
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -79,8 +81,14 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       hoge.id.modify(i)
       (hoge, hoge)
     }
-    val outputDriver = outputDriverCls.getConstructor(classOf[SparkContext], classOf[Seq[RDD[_]]])
-      .newInstance(sc, Seq(hoges))
+    val outputDriver = outputDriverCls.getConstructor(
+      classOf[SparkContext],
+      classOf[Broadcast[Configuration]],
+      classOf[Seq[RDD[_]]])
+      .newInstance(
+        sc,
+        hadoopConf,
+        Seq(hoges))
     outputDriver.execute()
 
     // prepare for input
@@ -119,7 +127,12 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
 
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge, Long]])
-    val inputDriver = inputDriverCls.getConstructor(classOf[SparkContext]).newInstance(sc)
+    val inputDriver = inputDriverCls.getConstructor(
+      classOf[SparkContext],
+      classOf[Broadcast[Configuration]])
+      .newInstance(
+        sc,
+        hadoopConf)
     val inputs = inputDriver.execute()
     assert(inputDriver.branchKeys === Set(inputMarker.getOriginalSerialNumber))
     assert(inputs(inputMarker.getOriginalSerialNumber).map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))

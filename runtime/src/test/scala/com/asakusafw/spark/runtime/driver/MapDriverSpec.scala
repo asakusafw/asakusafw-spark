@@ -5,20 +5,14 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import java.io.DataInput
-import java.io.DataOutput
-
-import scala.reflect.ClassTag
-
-import org.apache.hadoop.io.Writable
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
-import org.apache.spark.SparkContext._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.orderings._
 
 @RunWith(classOf[JUnitRunner])
 class MapDriverSpecTest extends MapDriverSpec
@@ -36,7 +30,7 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
       ((), hoge)
     }.asInstanceOf[RDD[(_, Hoge)]]
 
-    val driver = new TestMapDriver(sc, hoges)
+    val driver = new TestMapDriver(sc, hadoopConf, hoges)
 
     val outputs = driver.execute()
     outputs.mapValues(_.collect.toSeq).foreach {
@@ -62,8 +56,9 @@ object MapDriverSpec {
 
   class TestMapDriver(
     @transient sc: SparkContext,
+    @transient hadoopConf: Broadcast[Configuration],
     @transient prev: RDD[(_, Hoge)])
-      extends MapDriver[Hoge, String](sc, Seq(prev)) {
+      extends MapDriver[Hoge, String](sc, hadoopConf, Seq(prev)) {
 
     override def name = "TestMap"
 

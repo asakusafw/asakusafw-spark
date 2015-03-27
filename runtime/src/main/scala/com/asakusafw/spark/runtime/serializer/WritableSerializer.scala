@@ -9,12 +9,12 @@ import com.esotericsoftware.kryo.io._
 
 import com.asakusafw.runtime.model._
 
-abstract class DataModelSerializer[T <: DataModel[T] with Writable] extends Serializer[T](false, false) {
+abstract class WritableSerializer[W <: Writable] extends Serializer[W](false, false) {
 
   var dos: DataOutputStream = _
   var last: Output = _
 
-  override def write(kryo: Kryo, output: Output, obj: T) = {
+  override def write(kryo: Kryo, output: Output, obj: W) = {
     if (output != last) {
       dos = new DataOutputStream(output)
       last = output
@@ -26,11 +26,11 @@ abstract class DataModelSerializer[T <: DataModel[T] with Writable] extends Seri
     }
   }
 
-  override def read(kryo: Kryo, input: Input, t: Class[T]): T = {
+  override def read(kryo: Kryo, input: Input, t: Class[W]): W = {
     val obj = newInstance
     obj.readFields(new DataInputStream(input))
     obj
   }
 
-  def newInstance: T
+  def newInstance: W
 }

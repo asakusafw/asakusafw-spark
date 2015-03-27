@@ -8,7 +8,9 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 import scala.collection.JavaConversions._
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 import org.slf4j.LoggerFactory
@@ -69,10 +71,11 @@ class SparkClientCompiler extends JobflowProcessor {
       val builder = new SparkClientClassBuilder(source.getFlowId) {
 
         override def defMethods(methodDef: MethodDef): Unit = {
-          methodDef.newMethod("execute", Type.INT_TYPE, Seq(classOf[SparkContext].asType)) { mb =>
+          methodDef.newMethod("execute", Type.INT_TYPE, Seq(classOf[SparkContext].asType, classOf[Broadcast[Configuration]].asType)) { mb =>
             import mb._
             val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-            val nextLocal = new AtomicInteger(scVar.nextLocal)
+            val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+            val nextLocal = new AtomicInteger(hadoopConfVar.nextLocal)
             val rddVars = mutable.Map.empty[Long, Var] // MarkerOperator.serialNumber
 
             subplans.foreach { subplan =>
@@ -82,7 +85,7 @@ class SparkClientCompiler extends JobflowProcessor {
 
               val driverType = compiler.compile(subplan)
               val driverVar = instantiator.newInstance(driverType, subplan)(
-                instantiator.Context(mb, scVar, rddVars, nextLocal, source.getFlowId, jpContext))
+                instantiator.Context(mb, scVar, hadoopConfVar, rddVars, nextLocal, source.getFlowId, jpContext))
               val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)
               val rddsVar = rdds.store(nextLocal.getAndAdd(rdds.size))
 

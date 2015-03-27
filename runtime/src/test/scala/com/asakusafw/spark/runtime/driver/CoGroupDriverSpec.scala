@@ -5,14 +5,12 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import java.io.DataInput
-import java.io.DataOutput
-
 import scala.reflect.ClassTag
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
 import org.apache.spark._
-import org.apache.spark.SparkContext._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
@@ -48,7 +46,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
     val part = new GroupingPartitioner(2)
     val groupingOrd = new GroupingOrdering
     val driver = new TestCoGroupDriver[Product](
-      sc, Seq((Seq(hoges), Some(hogeOrd)), (Seq(foos), Some(fooOrd))), part, groupingOrd)
+      sc, hadoopConf, Seq((Seq(hoges), Some(hogeOrd)), (Seq(foos), Some(fooOrd))), part, groupingOrd)
 
     val outputs = driver.execute()
     outputs.mapValues(_.collect.toSeq).foreach {
@@ -86,10 +84,11 @@ object CoGroupDriverSpec {
 
   class TestCoGroupDriver[K <: Product: ClassTag](
     @transient sc: SparkContext,
+    @transient hadoopConf: Broadcast[Configuration],
     @transient inputs: Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])],
     @transient part: Partitioner,
     groupingOrdering: Ordering[K])
-      extends CoGroupDriver[String, K](sc, inputs, part, groupingOrdering) {
+      extends CoGroupDriver[String, K](sc, hadoopConf, inputs, part, groupingOrdering) {
 
     override def name = "TestCoGroup"
 

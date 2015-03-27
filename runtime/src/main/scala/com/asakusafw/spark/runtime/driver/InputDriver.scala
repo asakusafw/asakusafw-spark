@@ -5,10 +5,12 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.{ classTag, ClassTag }
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import org.apache.spark.backdoor._
@@ -22,7 +24,8 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
-  @transient val sc: SparkContext)
+  @transient val sc: SparkContext,
+  val hadoopConf: Broadcast[Configuration])
     extends SubPlanDriver[B] with Branch[B, T] {
 
   def paths: Set[String]

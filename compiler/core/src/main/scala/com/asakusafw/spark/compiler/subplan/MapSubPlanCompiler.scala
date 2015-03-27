@@ -88,7 +88,8 @@ object MapSubPlanCompiler {
         .map(context.rddVars)
       val mapDriver = pushNew(driverType)
       mapDriver.dup().invokeInit(
-        context.scVar.push(), {
+        context.scVar.push(),
+        context.hadoopConfVar.push(), {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
           prevRddVars.foreach { rddVar =>
