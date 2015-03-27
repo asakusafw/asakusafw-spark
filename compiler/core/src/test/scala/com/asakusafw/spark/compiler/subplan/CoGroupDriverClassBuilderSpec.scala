@@ -10,7 +10,9 @@ import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
+import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
@@ -131,8 +133,18 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     })
     val part = new GroupingPartitioner(2)
     val groupingOrd = new GroupingOrdering
-    val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[_]], classOf[Partitioner], classOf[Ordering[_]])
-      .newInstance(sc, Seq((Seq(hogeList), Some(hogeOrd)), (Seq(fooList), Some(fooOrd))), part, groupingOrd)
+    val driver = cls.getConstructor(
+      classOf[SparkContext],
+      classOf[Broadcast[Configuration]],
+      classOf[Seq[_]],
+      classOf[Partitioner],
+      classOf[Ordering[_]])
+      .newInstance(
+        sc,
+        hadoopConf,
+        Seq((Seq(hogeList), Some(hogeOrd)), (Seq(fooList), Some(fooOrd))),
+        part,
+        groupingOrd)
     val results = driver.execute()
 
     assert(driver.branchKeys ===

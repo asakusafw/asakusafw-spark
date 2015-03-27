@@ -7,7 +7,9 @@ import org.scalatest.junit.JUnitRunner
 
 import scala.collection.JavaConversions._
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -84,8 +86,16 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       hoge.sum.modify(i)
       (Seq(hoge.i), hoge)
     }
-    val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[RDD[_]]], classOf[Partitioner])
-      .newInstance(sc, Seq(hoges), new HashPartitioner(2))
+    val driver = cls.getConstructor(
+      classOf[SparkContext],
+      classOf[Broadcast[Configuration]],
+      classOf[Seq[RDD[_]]],
+      classOf[Partitioner])
+      .newInstance(
+        sc,
+        hadoopConf,
+        Seq(hoges),
+        new HashPartitioner(2))
     val results = driver.execute()
 
     assert(driver.branchKeys === Set(resultMarker.getOriginalSerialNumber))

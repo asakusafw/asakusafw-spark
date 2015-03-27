@@ -17,6 +17,7 @@ trait Instantiator {
   case class Context(
     mb: MethodBuilder,
     scVar: Var,
+    hadoopConfVar: Var,
     rddVars: mutable.Map[Long, Var],
     nextLocal: AtomicInteger,
     flowId: String,

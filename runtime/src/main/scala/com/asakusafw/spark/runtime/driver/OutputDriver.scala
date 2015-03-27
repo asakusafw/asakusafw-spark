@@ -3,11 +3,13 @@ package driver
 
 import scala.reflect.{ classTag, ClassTag }
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.SparkContext._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 import org.slf4j.LoggerFactory
 
@@ -21,6 +23,7 @@ import com.asakusafw.runtime.util.VariableTable
 
 abstract class OutputDriver[T <: DataModel[T]: ClassTag](
   @transient val sc: SparkContext,
+  val hadoopConf: Broadcast[Configuration],
   @transient prevs: Seq[RDD[(_, T)]])
     extends SubPlanDriver[Nothing] {
   assert(prevs.size > 0)

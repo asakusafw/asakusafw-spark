@@ -9,16 +9,16 @@ import java.io.{ DataInput, DataOutput, File }
 
 import scala.reflect.ClassTag
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
 import org.apache.spark._
-import org.apache.spark.SparkContext._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.orderings._
 
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverSpecTest extends InputOutputDriverSpec
@@ -40,9 +40,9 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
       (hoge, hoge)
     }
 
-    new TestOutputDriver(sc, hoges.asInstanceOf[RDD[(_, Hoge)]], path).execute()
+    new TestOutputDriver(sc, hadoopConf, hoges.asInstanceOf[RDD[(_, Hoge)]], path).execute()
 
-    val inputs = new TestInputDriver(sc, path).execute()
+    val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
     assert(inputs("hogeResult").map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
   }
 }
@@ -51,17 +51,19 @@ object InputOutputDriverSpec {
 
   class TestOutputDriver(
     @transient sc: SparkContext,
+    @transient hadoopConf: Broadcast[Configuration],
     @transient input: RDD[(_, Hoge)],
     val path: String)
-      extends OutputDriver[Hoge](sc, Seq(input)) {
+      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input)) {
 
     override def name = "TestOutput"
   }
 
   class TestInputDriver(
     @transient sc: SparkContext,
+    @transient hadoopConf: Broadcast[Configuration],
     basePath: String)
-      extends InputDriver[Hoge, String](sc) {
+      extends InputDriver[Hoge, String](sc, hadoopConf) {
 
     override def name = "TestInput"
 

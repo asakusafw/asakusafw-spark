@@ -5,9 +5,11 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.reflect.ClassTag
 
+import org.apache.hadoop.conf.Configuration
+import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
-import org.apache.spark.SparkContext
 
 import com.asakusafw.spark.runtime.driver.InputDriver
 import com.asakusafw.spark.tools.asm._
@@ -23,10 +25,17 @@ abstract class InputDriverClassBuilder(
     with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(classOf[SparkContext].asType)) { mb =>
+    ctorDef.newInit(Seq(
+      classOf[SparkContext].asType,
+      classOf[Broadcast[Configuration]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-      thisVar.push().invokeInit(superType, scVar.push(),
+      val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+
+      thisVar.push().invokeInit(
+        superType,
+        scVar.push(),
+        hadoopConfVar.push(),
         getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
           .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
 

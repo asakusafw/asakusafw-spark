@@ -2,8 +2,10 @@ package com.asakusafw.spark.runtime.driver
 
 import scala.reflect.ClassTag
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.SparkContext._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 
 import org.apache.spark.backdoor._
@@ -12,6 +14,7 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver[B, K: ClassTag](
   @transient val sc: SparkContext,
+  val hadoopConf: Broadcast[Configuration],
   @transient inputs: Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])],
   @transient part: Partitioner,
   @transient grouping: Ordering[K])

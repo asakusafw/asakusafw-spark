@@ -87,7 +87,9 @@ object InputSubPlanCompiler {
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
       val inputDriver = pushNew(driverType)
-      inputDriver.dup().invokeInit(context.scVar.push())
+      inputDriver.dup().invokeInit(
+        context.scVar.push(),
+        context.hadoopConfVar.push())
       inputDriver.store(context.nextLocal.getAndAdd(inputDriver.size))
     }
   }

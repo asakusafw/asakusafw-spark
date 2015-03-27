@@ -7,7 +7,9 @@ import org.scalatest.junit.JUnitRunner
 
 import scala.collection.JavaConversions._
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -94,7 +96,14 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
       hoge.id.modify(i)
       ((), hoge)
     }
-    val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[RDD[_]]]).newInstance(sc, Seq(hoges))
+    val driver = cls.getConstructor(
+      classOf[SparkContext],
+      classOf[Broadcast[Configuration]],
+      classOf[Seq[RDD[_]]])
+      .newInstance(
+        sc,
+        hadoopConf,
+        Seq(hoges))
     val results = driver.execute()
 
     assert(driver.branchKeys ===
@@ -161,7 +170,14 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
       hoge.id.modify(i)
       ((), hoge)
     }
-    val driver = cls.getConstructor(classOf[SparkContext], classOf[Seq[RDD[_]]]).newInstance(sc, Seq(hoges))
+    val driver = cls.getConstructor(
+      classOf[SparkContext],
+      classOf[Broadcast[Configuration]],
+      classOf[Seq[RDD[_]]])
+      .newInstance(
+        sc,
+        hadoopConf,
+        Seq(hoges))
     val results = driver.execute()
 
     assert(driver.branchKeys === Set(hogeResultMarker).map(_.getOriginalSerialNumber))

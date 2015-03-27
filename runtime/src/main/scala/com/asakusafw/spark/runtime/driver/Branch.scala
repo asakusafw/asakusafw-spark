@@ -3,8 +3,10 @@ package com.asakusafw.spark.runtime.driver
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark.Partitioner
 import org.apache.spark.SparkContext._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
@@ -12,6 +14,8 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 trait Branch[B, T] {
+
+  def hadoopConf: Broadcast[Configuration]
 
   def branchKeys: Set[B]
 
@@ -26,24 +30,6 @@ trait Branch[B, T] {
   def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[U]])
 
   def branch(rdd: RDD[(_, T)]): Map[B, RDD[(_, _)]] = {
-    val f: (Iterator[(_, T)] => Iterator[((B, _), _)]) = { iter =>
-      val (fragment, outputs) = fragments
-      assert(outputs.keys.toSet == branchKeys)
-
-      iter.flatMap {
-        case (_, value) =>
-          fragment.reset()
-          fragment.add(value)
-          outputs.iterator.flatMap {
-            case (key, output) =>
-              def prepare[V <: DataModel[V]](buffer: mutable.ArrayBuffer[_]) = {
-                buffer.asInstanceOf[mutable.ArrayBuffer[V]]
-                  .map(out => ((key, shuffleKey(key, out)), out))
-              }
-              prepare(output.buffer)
-          }
-      }
-    }
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
         rdd.mapPartitions({ iter =>
@@ -75,5 +61,26 @@ trait Branch[B, T] {
         keyOrderings = orderings,
         preservesPartitioning = true)
     }
+  }
+
+  private def f(iter: Iterator[(_, T)]): Iterator[((B, _), _)] = {
+    val (fragment, outputs) = fragments
+    assert(outputs.keys.toSet == branchKeys)
+
+    new ResourceBrokingIterator(
+      hadoopConf.value,
+      iter.flatMap {
+        case (_, value) =>
+          fragment.reset()
+          fragment.add(value)
+          outputs.iterator.flatMap {
+            case (key, output) =>
+              def prepare[V <: DataModel[V]](buffer: mutable.ArrayBuffer[_]) = {
+                buffer.asInstanceOf[mutable.ArrayBuffer[V]]
+                  .map(out => ((key, shuffleKey(key, out)), out))
+              }
+              prepare(output.buffer)
+          }
+      })
   }
 }

@@ -5,19 +5,16 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import java.io.DataInput
-import java.io.DataOutput
-
 import scala.reflect.ClassTag
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
-import org.apache.spark.SparkContext._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.orderings._
 
 @RunWith(classOf[JUnitRunner])
 class AggregateDriverSpecTest extends AggregateDriverSpec
@@ -39,7 +36,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val part = new GroupingPartitioner(2)
     val aggregation = new TestAggregation()
 
-    val driver = new TestAggregateDriver(sc, hoges, part, aggregation)
+    val driver = new TestAggregateDriver(sc, hadoopConf, hoges, part, aggregation)
 
     val outputs = driver.execute()
     assert(outputs("result").map {
@@ -56,7 +53,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
       (hoge.id, hoge)
     }
 
-    val driver = new TestPartialAggregationMapDriver(sc, hoges)
+    val driver = new TestPartialAggregationMapDriver(sc, hadoopConf, hoges)
 
     val outputs = driver.execute()
     assert(outputs("result").map {
@@ -91,10 +88,11 @@ object AggregateDriverSpec {
 
   class TestAggregateDriver(
     @transient sc: SparkContext,
+    @transient hadoopConf: Broadcast[Configuration],
     @transient prev: RDD[(IntOption, Hoge)],
     @transient part: Partitioner,
     val aggregation: Aggregation[IntOption, Hoge, Hoge])
-      extends AggregateDriver[IntOption, Hoge, Hoge, String](sc, Seq(prev), part) {
+      extends AggregateDriver[IntOption, Hoge, Hoge, String](sc, hadoopConf, Seq(prev), part) {
 
     override def name = "TestAggregation"
 
@@ -119,8 +117,9 @@ object AggregateDriverSpec {
 
   class TestPartialAggregationMapDriver(
     @transient sc: SparkContext,
+    @transient hadoopConf: Broadcast[Configuration],
     @transient prev: RDD[(IntOption, Hoge)])
-      extends MapDriver[Hoge, String](sc, Seq(prev.asInstanceOf[RDD[(_, Hoge)]])) {
+      extends MapDriver[Hoge, String](sc, hadoopConf, Seq(prev.asInstanceOf[RDD[(_, Hoge)]])) {
 
     override def name = "TestPartialAggregation"
 

@@ -1,6 +1,8 @@
 package com.asakusafw.spark.runtime
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
+import org.apache.spark.broadcast.Broadcast
 
 abstract class SparkClient {
 
@@ -10,13 +12,14 @@ abstract class SparkClient {
 
     val sc = new SparkContext(conf)
     try {
-      execute(sc)
+      val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
+      execute(sc, hadoopConf)
     } finally {
       sc.stop()
     }
   }
 
-  def execute(sc: SparkContext): Int
+  def execute(sc: SparkContext, hadoopConf: Broadcast[Configuration]): Int
 
   def kryoRegistrator: String
 }

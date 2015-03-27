@@ -1,5 +1,6 @@
 package com.asakusafw.spark.runtime.serializer
 
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark.serializer.{ KryoRegistrator => SparkKryoRegistrator }
 
 import com.esotericsoftware.kryo.Kryo
@@ -9,6 +10,12 @@ import com.asakusafw.runtime.value._
 class KryoRegistrator extends SparkKryoRegistrator {
 
   override def registerClasses(kryo: Kryo): Unit = {
+    kryo.register(
+      classOf[Configuration],
+      new WritableSerializer[Configuration] {
+        override def newInstance: Configuration = new Configuration()
+      })
+
     kryo.register(
       classOf[BooleanOption],
       new ValueOptionSerializer[BooleanOption] {
