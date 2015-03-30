@@ -30,13 +30,15 @@ abstract class CoGroupDriverClassBuilder(
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
+      classOf[Map[Long, Broadcast[_]]].asType,
       classOf[Seq[_]].asType,
       classOf[Partitioner].asType,
       classOf[Ordering[_]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
       val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-      val inputsVar = `var`(classOf[Seq[_]].asType, hadoopConfVar.nextLocal)
+      val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
+      val inputsVar = `var`(classOf[Seq[_]].asType, broadcastsVar.nextLocal)
       val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
       val groupingVar = `var`(classOf[Ordering[_]].asType, partVar.nextLocal)
 
@@ -44,6 +46,7 @@ abstract class CoGroupDriverClassBuilder(
         superType,
         scVar.push(),
         hadoopConfVar.push(),
+        broadcastsVar.push(),
         inputsVar.push(),
         partVar.push(),
         groupingVar.push(),

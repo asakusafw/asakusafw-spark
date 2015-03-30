@@ -24,9 +24,10 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class InputDriver[T <: DataModel[T]: ClassTag, B](
-  @transient val sc: SparkContext,
-  val hadoopConf: Broadcast[Configuration])
-    extends SubPlanDriver[B] with Branch[B, T] {
+  sc: SparkContext,
+  hadoopConf: Broadcast[Configuration],
+  broadcasts: Map[B, Broadcast[_]])
+    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, T] {
 
   def paths: Set[String]
 

@@ -88,7 +88,7 @@ object CoGroupDriverSpec {
     @transient inputs: Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])],
     @transient part: Partitioner,
     groupingOrdering: Ordering[K])
-      extends CoGroupDriver[String, K](sc, hadoopConf, inputs, part, groupingOrdering) {
+      extends CoGroupDriver[String, K](sc, hadoopConf, Map.empty, inputs, part, groupingOrdering) {
 
     override def name = "TestCoGroup"
 

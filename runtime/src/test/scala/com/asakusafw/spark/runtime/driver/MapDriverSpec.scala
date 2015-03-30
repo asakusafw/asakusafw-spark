@@ -58,7 +58,7 @@ object MapDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient prev: RDD[(_, Hoge)])
-      extends MapDriver[Hoge, String](sc, hadoopConf, Seq(prev)) {
+      extends MapDriver[Hoge, String](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def name = "TestMap"
 

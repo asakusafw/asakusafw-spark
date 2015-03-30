@@ -54,7 +54,7 @@ object InputOutputDriverSpec {
     @transient hadoopConf: Broadcast[Configuration],
     @transient input: RDD[(_, Hoge)],
     val path: String)
-      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input)) {
+      extends OutputDriver[Hoge, String](sc, hadoopConf, Seq(input)) {
 
     override def name = "TestOutput"
   }
@@ -63,7 +63,7 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     basePath: String)
-      extends InputDriver[Hoge, String](sc, hadoopConf) {
+      extends InputDriver[Hoge, String](sc, hadoopConf, Map.empty) {
 
     override def name = "TestInput"
 

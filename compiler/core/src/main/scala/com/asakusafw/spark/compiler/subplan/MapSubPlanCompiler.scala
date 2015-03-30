@@ -7,6 +7,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.NameTransformer
 
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
@@ -82,14 +83,25 @@ object MapSubPlanCompiler {
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
+
+      val broadcastsVar = {
+        // TODO broadcast
+        val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+        val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
+        broadcasts.store(context.nextLocal.getAndAdd(broadcasts.size))
+      }
+
       val prevRddVars = subplan.getInputs.toSet[SubPlan.Input]
         .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
         .map(_.getOperator.getSerialNumber)
         .map(context.rddVars)
+
       val mapDriver = pushNew(driverType)
       mapDriver.dup().invokeInit(
         context.scVar.push(),
-        context.hadoopConfVar.push(), {
+        context.hadoopConfVar.push(),
+        broadcastsVar.push(), {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
           prevRddVars.foreach { rddVar =>

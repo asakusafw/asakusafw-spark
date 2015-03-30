@@ -21,16 +21,16 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.util.VariableTable
 
-abstract class OutputDriver[T <: DataModel[T]: ClassTag](
-  @transient val sc: SparkContext,
-  val hadoopConf: Broadcast[Configuration],
+abstract class OutputDriver[T <: DataModel[T]: ClassTag, B](
+  sc: SparkContext,
+  hadoopConf: Broadcast[Configuration],
   @transient prevs: Seq[RDD[(_, T)]])
-    extends SubPlanDriver[Nothing] {
+    extends SubPlanDriver[B](sc, hadoopConf, Map.empty) {
   assert(prevs.size > 0)
 
   val Logger = LoggerFactory.getLogger(getClass())
 
-  override def execute(): Map[Nothing, RDD[(_, _)]] = {
+  override def execute(): Map[B, RDD[(_, _)]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])

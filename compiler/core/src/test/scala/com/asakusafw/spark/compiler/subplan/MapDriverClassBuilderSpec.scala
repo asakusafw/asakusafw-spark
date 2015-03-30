@@ -99,10 +99,12 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Seq[RDD[_]]])
       .newInstance(
         sc,
         hadoopConf,
+        Map.empty,
         Seq(hoges))
     val results = driver.execute()
 
@@ -173,10 +175,12 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Seq[RDD[_]]])
       .newInstance(
         sc,
         hadoopConf,
+        Map.empty,
         Seq(hoges))
     val results = driver.execute()
 

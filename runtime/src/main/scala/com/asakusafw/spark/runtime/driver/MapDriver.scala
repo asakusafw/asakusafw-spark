@@ -12,10 +12,11 @@ import org.apache.spark.util.backdoor.CallSite
 import com.asakusafw.runtime.model.DataModel
 
 abstract class MapDriver[T <: DataModel[T]: ClassTag, B](
-  @transient val sc: SparkContext,
-  val hadoopConf: Broadcast[Configuration],
+  sc: SparkContext,
+  hadoopConf: Broadcast[Configuration],
+  broadcasts: Map[B, Broadcast[_]],
   @transient prevs: Seq[RDD[(_, T)]])
-    extends SubPlanDriver[B] with Branch[B, T] {
+    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, T] {
   assert(prevs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {

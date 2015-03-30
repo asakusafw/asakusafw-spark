@@ -7,6 +7,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.NameTransformer
 
+import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
@@ -86,10 +87,20 @@ object InputSubPlanCompiler {
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
+
+      val broadcastsVar = {
+        // TODO broadcast
+        val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+        val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
+        broadcasts.store(context.nextLocal.getAndAdd(broadcasts.size))
+      }
+
       val inputDriver = pushNew(driverType)
       inputDriver.dup().invokeInit(
         context.scVar.push(),
-        context.hadoopConfVar.push())
+        context.hadoopConfVar.push(),
+        broadcastsVar.push())
       inputDriver.store(context.nextLocal.getAndAdd(inputDriver.size))
     }
   }

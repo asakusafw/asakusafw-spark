@@ -89,11 +89,13 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Seq[RDD[_]]],
       classOf[Partitioner])
       .newInstance(
         sc,
         hadoopConf,
+        Map.empty,
         Seq(hoges),
         new HashPartitioner(2))
     val results = driver.execute()

@@ -27,15 +27,18 @@ abstract class InputDriverClassBuilder(
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
-      classOf[Broadcast[Configuration]].asType)) { mb =>
+      classOf[Broadcast[Configuration]].asType,
+      classOf[Map[Long, Broadcast[_]]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
       val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+      val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
 
       thisVar.push().invokeInit(
         superType,
         scVar.push(),
         hadoopConfVar.push(),
+        broadcastsVar.push(),
         getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
           .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
 

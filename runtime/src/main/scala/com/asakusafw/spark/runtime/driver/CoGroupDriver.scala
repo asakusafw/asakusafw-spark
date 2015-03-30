@@ -13,12 +13,13 @@ import org.apache.spark.util.backdoor._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver[B, K: ClassTag](
-  @transient val sc: SparkContext,
-  val hadoopConf: Broadcast[Configuration],
+  sc: SparkContext,
+  hadoopConf: Broadcast[Configuration],
+  broadcasts: Map[B, Broadcast[_]],
   @transient inputs: Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])],
   @transient part: Partitioner,
   @transient grouping: Ordering[K])
-    extends SubPlanDriver[B] with Branch[B, Seq[Iterable[_]]] {
+    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, Seq[Iterable[_]]] {
   assert(inputs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {

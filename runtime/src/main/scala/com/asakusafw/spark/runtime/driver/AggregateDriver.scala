@@ -15,11 +15,12 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class AggregateDriver[K: ClassTag, V: ClassTag, C <: DataModel[C], B](
-  @transient val sc: SparkContext,
-  val hadoopConf: Broadcast[Configuration],
+  sc: SparkContext,
+  hadoopConf: Broadcast[Configuration],
+  broadcasts: Map[B, Broadcast[_]],
   @transient prevs: Seq[RDD[(K, V)]],
   @transient partitioner: Partitioner)
-    extends SubPlanDriver[B] with Branch[B, C] {
+    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, C] {
   assert(prevs.size > 0)
 
   override def execute(): Map[B, RDD[(_, _)]] = {

@@ -8,6 +8,7 @@ import scala.collection.mutable
 import scala.reflect.NameTransformer
 
 import org.apache.spark._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
@@ -106,6 +107,14 @@ object AggregateSubPlanCompiler {
         dataModelRef.findProperty(grouping).getType.asType
       }.toSeq
 
+      val broadcastsVar = {
+        // TODO broadcast
+        val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+        val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
+        broadcasts.store(context.nextLocal.getAndAdd(broadcasts.size))
+      }
+
       val partitionerType = GroupingPartitionerClassBuilder.getOrCompile(
         context.flowId, properties, context.jpContext)
       val partitioner = pushNew(partitionerType)
@@ -122,7 +131,8 @@ object AggregateSubPlanCompiler {
       val aggregateDriver = pushNew(driverType)
       aggregateDriver.dup().invokeInit(
         context.scVar.push(),
-        context.hadoopConfVar.push(), {
+        context.hadoopConfVar.push(),
+        broadcastsVar.push(), {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
           inputRddVars.foreach { rddVar =>

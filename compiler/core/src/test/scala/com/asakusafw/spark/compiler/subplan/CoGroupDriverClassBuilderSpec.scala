@@ -136,12 +136,14 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Seq[_]],
       classOf[Partitioner],
       classOf[Ordering[_]])
       .newInstance(
         sc,
         hadoopConf,
+        Map.empty,
         Seq((Seq(hogeList), Some(hogeOrd)), (Seq(fooList), Some(fooOrd))),
         part,
         groupingOrd)

@@ -22,7 +22,7 @@ abstract class OutputDriverClassBuilder(
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/OutputDriver$$${OutputDriverClassBuilder.nextId};"),
       Option(OutputDriverClassBuilder.signature(dataModelType)),
-      classOf[OutputDriver[_]].asType) with DriverName {
+      classOf[OutputDriver[_, _]].asType) with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     super.defConstructors(ctorDef)
@@ -56,7 +56,7 @@ object OutputDriverClassBuilder {
   def signature(dataModelType: Type): String = {
     new ClassSignatureBuilder()
       .newSuperclass {
-        _.newClassType(classOf[OutputDriver[_]].asType) {
+        _.newClassType(classOf[OutputDriver[_, _]].asType) {
           _
             .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
         }

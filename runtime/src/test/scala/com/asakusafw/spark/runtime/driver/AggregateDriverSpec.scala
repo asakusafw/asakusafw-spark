@@ -92,7 +92,7 @@ object AggregateDriverSpec {
     @transient prev: RDD[(IntOption, Hoge)],
     @transient part: Partitioner,
     val aggregation: Aggregation[IntOption, Hoge, Hoge])
-      extends AggregateDriver[IntOption, Hoge, Hoge, String](sc, hadoopConf, Seq(prev), part) {
+      extends AggregateDriver[IntOption, Hoge, Hoge, String](sc, hadoopConf, Map.empty, Seq(prev), part) {
 
     override def name = "TestAggregation"
 
@@ -119,7 +119,7 @@ object AggregateDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient prev: RDD[(IntOption, Hoge)])
-      extends MapDriver[Hoge, String](sc, hadoopConf, Seq(prev.asInstanceOf[RDD[(_, Hoge)]])) {
+      extends MapDriver[Hoge, String](sc, hadoopConf, Map.empty, Seq(prev.asInstanceOf[RDD[(_, Hoge)]])) {
 
     override def name = "TestPartialAggregation"
 
