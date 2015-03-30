@@ -37,21 +37,18 @@ object OperatorCompiler {
     flowId: String,
     jpContext: JPContext)
 
-  private def getCompiler(operator: Operator)(implicit context: Context): Option[OperatorCompiler] = {
-    apply(context.jpContext.getClassLoader).find(_.support(operator))
+  private def getCompiler(operator: Operator)(implicit context: Context): Seq[OperatorCompiler] = {
+    apply(context.jpContext.getClassLoader).filter(_.support(operator))
   }
 
   def support(operator: Operator, operatorType: OperatorType)(implicit context: Context): Boolean = {
-    getCompiler(operator) match {
-      case Some(compiler) => compiler.operatorType == operatorType
-      case None           => false
-    }
+    getCompiler(operator).exists(_.operatorType == operatorType)
   }
 
   def compile(operator: Operator, operatorType: OperatorType)(implicit context: Context): Type = {
-    getCompiler(operator) match {
-      case Some(compiler) if compiler.operatorType == operatorType => compiler.compile(operator)
-    }
+    val compilers = getCompiler(operator).filter(_.operatorType == operatorType)
+    assert(compilers.size == 1)
+    compilers.head.compile(operator)
   }
 
   private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[OperatorCompiler]] =
