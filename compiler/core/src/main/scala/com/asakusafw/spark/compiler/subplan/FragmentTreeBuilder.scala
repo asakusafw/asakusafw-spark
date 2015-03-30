@@ -7,6 +7,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.NameTransformer
 
+import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
@@ -43,7 +44,9 @@ class FragmentTreeBuilder(
       case _ =>
         val outputs = operator.getOutputs.map(build)
         val fragment = pushNew(t)
-        fragment.dup().invokeInit(outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
+        fragment.dup().invokeInit(
+          thisVar.push().invokeV("broadcasts", classOf[Map[Long, Broadcast[_]]].asType)
+            +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
         fragment
     }
     fragment.store(nextLocal.getAndAdd(fragment.size))

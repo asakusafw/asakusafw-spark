@@ -10,6 +10,8 @@ import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 
+import org.apache.spark.broadcast.Broadcast
+
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
@@ -80,10 +82,11 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls.getConstructor(
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]],
       classOf[Fragment[_]], classOf[Fragment[_]],
       classOf[Fragment[_]])
-      .newInstance(hogeResult, fooResult, hogeError, fooError, nResult)
+      .newInstance(Map.empty, hogeResult, fooResult, hogeError, fooError, nResult)
 
     {
       val hoges = Seq.empty[Hoge]

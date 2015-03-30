@@ -10,6 +10,8 @@ import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 
+import org.apache.spark.broadcast.Broadcast
+
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
@@ -64,8 +66,9 @@ class MasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls.getConstructor(
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(found, missed)
+      .newInstance(Map.empty, found, missed)
 
     {
       val hoge = new Hoge()
@@ -133,8 +136,9 @@ class MasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls.getConstructor(
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(found, missed)
+      .newInstance(Map.empty, found, missed)
 
     {
       val hoge = new Hoge()

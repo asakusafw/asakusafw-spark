@@ -10,6 +10,8 @@ import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 
+import org.apache.spark.broadcast.Broadcast
+
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
@@ -63,9 +65,11 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
       (cls.newInstance(), cls.newInstance())
     }
 
-    val fragment = cls.getConstructor(
-      classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(updated, missed)
+    val fragment = cls
+      .getConstructor(
+        classOf[Map[Long, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(Map.empty, updated, missed)
 
     {
       val hoge = new Hoge()
@@ -132,9 +136,11 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
       (cls.newInstance(), cls.newInstance())
     }
 
-    val fragment = cls.getConstructor(
-      classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(updated, missed)
+    val fragment = cls
+      .getConstructor(
+        classOf[Map[Long, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(Map.empty, updated, missed)
 
     {
       val hoge = new Hoge()
@@ -204,9 +210,11 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
       (cls.newInstance(), cls.newInstance())
     }
 
-    val fragment = cls.getConstructor(
-      classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(updated, missed)
+    val fragment = cls
+      .getConstructor(
+        classOf[Map[Long, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(Map.empty, updated, missed)
 
     {
       val hoge = new Hoge()
@@ -273,9 +281,11 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
       (cls.newInstance(), cls.newInstance())
     }
 
-    val fragment = cls.getConstructor(
-      classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(updated, missed)
+    val fragment = cls
+      .getConstructor(
+        classOf[Map[Long, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(Map.empty, updated, missed)
 
     {
       val hoge = new Hoge()

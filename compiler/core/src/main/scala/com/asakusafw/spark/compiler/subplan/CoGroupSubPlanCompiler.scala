@@ -65,7 +65,9 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
             val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
             val outputs = operator.getOutputs.map(fragmentBuilder.build)
             val fragment = pushNew(t)
-            fragment.dup().invokeInit(outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
+            fragment.dup().invokeInit(
+              thisVar.push().invokeV("broadcasts", classOf[Map[Long, Broadcast[_]]].asType)
+                +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
             fragment.store(nextLocal.getAndAdd(fragment.size))
           }
           val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)

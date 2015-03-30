@@ -11,6 +11,8 @@ import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 
+import org.apache.spark.broadcast.Broadcast
+
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
@@ -65,8 +67,9 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls.getConstructor(
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(low, high)
+      .newInstance(Map.empty, low, high)
 
     {
       val hoge = new Hoge()
@@ -134,8 +137,9 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls.getConstructor(
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(low, high)
+      .newInstance(Map.empty, low, high)
 
     {
       val hoge = new Hoge()
@@ -206,8 +210,9 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls.getConstructor(
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(low, high)
+      .newInstance(Map.empty, low, high)
 
     {
       val hoge = new Hoge()
@@ -275,8 +280,9 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls.getConstructor(
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(low, high)
+      .newInstance(Map.empty, low, high)
 
     {
       val hoge = new Hoge()

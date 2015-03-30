@@ -2,6 +2,7 @@ package com.asakusafw.spark.compiler
 package operator
 package user
 
+import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -16,28 +17,40 @@ abstract class UserOperatorFragmentClassBuilder(
   val operatorOutputs: Seq[OperatorOutput])
     extends FragmentClassBuilder(flowId, dataModelType)
     with OperatorField
+    with BroadcastsField
     with OutputFragments {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     defOperatorField(fieldDef)
+    defBroadcastsField(fieldDef)
     defOutputFields(fieldDef)
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit((0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
-      ((new MethodSignatureBuilder() /: operatorOutputs) {
-        case (builder, output) =>
-          builder.newParameterType {
-            _.newClassType(classOf[Fragment[_]].asType) {
-              _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
-            }
+    ctorDef.newInit(
+      classOf[Map[Long, Broadcast[_]]].asType +: (0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
+      ((new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Broadcast[_]].asType)
           }
-      })
+        } /: operatorOutputs) {
+          case (builder, output) =>
+            builder.newParameterType {
+              _.newClassType(classOf[Fragment[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
+              }
+            }
+        })
         .newVoidReturnType()
         .build()) { mb =>
         import mb._
+        val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, thisVar.nextLocal)
+
         thisVar.push().invokeInit(superType)
-        initOutputFields(mb, thisVar.nextLocal)
+        initBroadcastsField(mb, broadcastsVar)
+        initOutputFields(mb, broadcastsVar.nextLocal)
         initFields(mb)
       }
   }

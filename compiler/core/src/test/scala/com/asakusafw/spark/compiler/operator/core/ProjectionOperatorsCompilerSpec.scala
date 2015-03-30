@@ -9,6 +9,8 @@ import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 
+import org.apache.spark.broadcast.Broadcast
+
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
@@ -54,7 +56,9 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       cls.newInstance()
     }
 
-    val fragment = cls.getConstructor(classOf[Fragment[_]]).newInstance(out)
+    val fragment = cls
+      .getConstructor(classOf[Map[Long, Broadcast[_]]], classOf[Fragment[_]])
+      .newInstance(Map.empty, out)
 
     val dm = new ProjectInputModel()
     for (i <- 0 until 10) {
@@ -95,7 +99,9 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       cls.newInstance()
     }
 
-    val fragment = cls.getConstructor(classOf[Fragment[_]]).newInstance(out)
+    val fragment = cls
+      .getConstructor(classOf[Map[Long, Broadcast[_]]], classOf[Fragment[_]])
+      .newInstance(Map.empty, out)
 
     val dm = new ExtendInputModel()
     for (i <- 0 until 10) {
@@ -136,7 +142,9 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       cls.newInstance()
     }
 
-    val fragment = cls.getConstructor(classOf[Fragment[_]]).newInstance(out)
+    val fragment = cls
+      .getConstructor(classOf[Map[Long, Broadcast[_]]], classOf[Fragment[_]])
+      .newInstance(Map.empty, out)
 
     val dm = new RestructureInputModel()
     for (i <- 0 until 10) {
