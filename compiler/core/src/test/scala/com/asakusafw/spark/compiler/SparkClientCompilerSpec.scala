@@ -82,8 +82,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(graph: OperatorGraph, flowId: String, dump: Boolean): Plan = {
+        val plan = super.preparePlan(graph, flowId, dump)
         assert(plan.getElements.size === 2)
         plan
       }
@@ -180,8 +180,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(graph: OperatorGraph, flowId: String, dump: Boolean): Plan = {
+        val plan = super.preparePlan(graph, flowId, dump)
         assert(plan.getElements.size === 3)
         plan
       }
@@ -351,8 +351,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(graph: OperatorGraph, flowId: String, dump: Boolean): Plan = {
+        val plan = super.preparePlan(graph, flowId, dump)
         assert(plan.getElements.size === 8)
         plan
       }
@@ -518,8 +518,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(graph: OperatorGraph, flowId: String, dump: Boolean): Plan = {
+        val plan = super.preparePlan(graph, flowId, dump)
         assert(plan.getElements.size === 4)
         plan
       }
@@ -646,8 +646,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(graph: OperatorGraph, flowId: String, dump: Boolean): Plan = {
+        val plan = super.preparePlan(graph, flowId, dump)
         assert(plan.getElements.size === 4)
         plan
       }
