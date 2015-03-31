@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.reflect.NameTransformer
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
@@ -74,38 +75,71 @@ class SparkClientCompiler extends JobflowProcessor {
 
       val builder = new SparkClientClassBuilder(source.getFlowId) {
 
+        override def defFields(fieldDef: FieldDef): Unit = {
+          fieldDef.newField("sc", classOf[SparkContext].asType)
+          fieldDef.newField("hadoopConf", classOf[Broadcast[Configuration]].asType)
+          fieldDef.newField("rdds", classOf[mutable.Map[Long, RDD[_]]].asType)
+        }
+
         override def defMethods(methodDef: MethodDef): Unit = {
           methodDef.newMethod("execute", Type.INT_TYPE, Seq(classOf[SparkContext].asType, classOf[Broadcast[Configuration]].asType)) { mb =>
             import mb._
             val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
             val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-            val nextLocal = new AtomicInteger(hadoopConfVar.nextLocal)
-            val rddVars = mutable.Map.empty[Long, Var] // MarkerOperator.serialNumber
+            thisVar.push().putField("sc", classOf[SparkContext].asType, scVar.push())
+            thisVar.push().putField("hadoopConf", classOf[Broadcast[Configuration]].asType, hadoopConfVar.push())
+            thisVar.push().putField("rdds", classOf[mutable.Map[Long, RDD[_]]].asType,
+              getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
+                .invokeV("empty", classOf[mutable.Map[Long, RDD[_]]].asType))
 
-            subplans.foreach { subplan =>
-              val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-              val compiler = subplanCompilers.find(_.support(dominant)).get
-              val instantiator = compiler.instantiator
-
-              val driverType = compiler.compile(subplan)
-              val driverVar = instantiator.newInstance(driverType, subplan)(
-                instantiator.Context(mb, scVar, hadoopConfVar, rddVars, nextLocal, source.getFlowId, jpContext))
-              val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)
-              val rddsVar = rdds.store(nextLocal.getAndAdd(rdds.size))
-
-              subplan.getOutputs.collect {
-                case output if output.getOpposites.size > 0 => output.getOperator
-              }.foreach { marker =>
-                rddVars += (marker.getSerialNumber -> {
-                  val rdd = rddsVar.push()
-                    .invokeI("apply", classOf[AnyRef].asType,
-                      ldc(marker.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType))
-                    .cast(classOf[RDD[_]].asType)
-                  rdd.store(nextLocal.getAndAdd(rdd.size))
-                })
-              }
+            subplans.zipWithIndex.foreach {
+              case (_, i) =>
+                thisVar.push().invokeV(s"execute${i}")
             }
+
             `return`(ldc(0))
+          }
+
+          subplans.zipWithIndex.foreach {
+            case (subplan, i) =>
+              methodDef.newMethod(s"execute${i}", Seq.empty) { mb =>
+                import mb._
+                val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
+                val compiler = subplanCompilers.find(_.support(dominant)).get
+                val driverType = compiler.compile(subplan)
+
+                val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType).store(thisVar.nextLocal)
+                val hadoopConfVar = thisVar.push().getField("hadoopConf", classOf[Broadcast[Configuration]].asType).store(scVar.nextLocal)
+                val rddsVar = thisVar.push().getField("rdds", classOf[mutable.Map[Long, RDD[_]]].asType).store(hadoopConfVar.nextLocal)
+                val nextLocal = new AtomicInteger(rddsVar.nextLocal)
+
+                val instantiator = compiler.instantiator
+                val driverVar = instantiator.newInstance(driverType, subplan)(
+                  instantiator.Context(mb, scVar, hadoopConfVar, rddsVar, nextLocal, source.getFlowId, jpContext))
+                val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)
+                val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
+
+                subplan.getOutputs.collect {
+                  case output if output.getOpposites.size > 0 => output.getOperator
+                }.foreach { marker =>
+                  rddsVar.push().invokeI(
+                    NameTransformer.encode("+="),
+                    classOf[mutable.MapLike[_, _, _]].asType,
+                    getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+                      .invokeV(
+                        "apply",
+                        classOf[(Long, RDD[_])].asType,
+                        ldc(marker.getSerialNumber).box().asType(classOf[AnyRef].asType),
+                        resultVar.push().invokeI(
+                          "apply",
+                          classOf[AnyRef].asType,
+                          ldc(marker.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType))
+                          .cast(classOf[RDD[_]].asType)
+                          .asType(classOf[AnyRef].asType)))
+                    .pop()
+                }
+                `return`()
+              }
           }
 
           methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>

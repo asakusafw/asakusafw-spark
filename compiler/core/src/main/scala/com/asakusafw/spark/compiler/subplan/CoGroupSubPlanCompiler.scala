@@ -128,19 +128,22 @@ object CoGroupSubPlanCompiler {
                 getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
                   .invokeV("apply", classOf[(_, _)].asType,
                     {
-                      val oppositeRddVars = input.getOpposites.toSet[OperatorOutput]
+                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+                      input.getOpposites.toSet[OperatorOutput]
                         .flatMap(opposite => subplan.getInputs.find(
                           _.getOperator.getOriginalSerialNumber == opposite.getOwner.getOriginalSerialNumber)
                           .get.getOpposites.toSeq)
                         .map(_.getOperator.getSerialNumber)
-                        .map(context.rddVars)
+                        .foreach { sn =>
+                          builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+                            context.rddsVar.push().invokeI(
+                              "apply",
+                              classOf[AnyRef].asType,
+                              ldc(sn).box().asType(classOf[AnyRef].asType)))
+                        }
 
-                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-                      oppositeRddVars.foreach { rddVar =>
-                        builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                          rddVar.push().asType(classOf[AnyRef].asType))
-                      }
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                     }.asType(classOf[AnyRef].asType),
                     {
