@@ -17,7 +17,6 @@ import org.apache.spark.SparkContext._
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description.ClassDescription
@@ -83,8 +82,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph, flowId: String, jpContext: JPContext): Plan = {
-        val plan = super.preparePlan(graph, flowId, jpContext)
+      override def preparePlan(graph: OperatorGraph): Plan = {
+        val plan = super.preparePlan(graph)
         assert(plan.getElements.size === 2)
         plan
       }
@@ -181,8 +180,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph, flowId: String, jpContext: JPContext): Plan = {
-        val plan = super.preparePlan(graph, flowId, jpContext)
+      override def preparePlan(graph: OperatorGraph): Plan = {
+        val plan = super.preparePlan(graph)
         assert(plan.getElements.size === 3)
         plan
       }
@@ -352,8 +351,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph, flowId: String, jpContext: JPContext): Plan = {
-        val plan = super.preparePlan(graph, flowId, jpContext)
+      override def preparePlan(graph: OperatorGraph): Plan = {
+        val plan = super.preparePlan(graph)
         assert(plan.getElements.size === 8)
         plan
       }
@@ -519,8 +518,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph, flowId: String, jpContext: JPContext): Plan = {
-        val plan = super.preparePlan(graph, flowId, jpContext)
+      override def preparePlan(graph: OperatorGraph): Plan = {
+        val plan = super.preparePlan(graph)
         assert(plan.getElements.size === 4)
         plan
       }
@@ -647,8 +646,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph, flowId: String, jpContext: JPContext): Plan = {
-        val plan = super.preparePlan(graph, flowId, jpContext)
+      override def preparePlan(graph: OperatorGraph): Plan = {
+        val plan = super.preparePlan(graph)
         assert(plan.getElements.size === 4)
         plan
       }

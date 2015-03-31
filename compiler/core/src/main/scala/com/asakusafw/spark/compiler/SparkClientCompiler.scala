@@ -45,7 +45,16 @@ class SparkClientCompiler extends JobflowProcessor {
       Logger.debug("Start Asakusafw Spark compiler.")
     }
 
-    val plan = preparePlan(source.getOperatorGraph.copy, source.getFlowId, jpContext)
+    val plan = preparePlan(source.getOperatorGraph.copy)
+
+    for {
+      dotOutputStream <- managed(new PrintStream(
+        jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/plan.dot", '/'))))
+    } {
+      val dotGenerator = new DotGenerator
+      val dot = dotGenerator.generate(plan, source.getFlowId)
+      dotGenerator.save(dotOutputStream, dot)
+    }
 
     if (JBoolean.parseBoolean(jpContext.getOptions.get(SparkPlanVerifyOption, false.toString)) == false) {
 
@@ -110,42 +119,8 @@ class SparkClientCompiler extends JobflowProcessor {
     }
   }
 
-  def preparePlan(graph: OperatorGraph, flowId: String, jpContext: JPContext): Plan = {
-    if (JBoolean.parseBoolean(jpContext.getOptions.get(SparkPlanDumpOption, false.toString)) == false) {
-      val plan = new LogicalSparkPlanner().createPlan(graph).getPlan
-
-      for {
-        dotOutputStream <- managed(new PrintStream(
-          jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/plan.dot", '/'))))
-      } {
-        val dotGenerator = new DotGenerator
-        val dot = dotGenerator.generate(plan, flowId)
-        dotGenerator.save(dotOutputStream, dot)
-      }
-
-      plan
-    } else {
-      var plan: Plan = null
-      for {
-        given <- managed(
-          jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/0_given.dot", '/')))
-        normalized <- managed(
-          jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/1_normalized.dot", '/')))
-        optimized <- managed(
-          jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/2_optimized.dot", '/')))
-        marked <- managed(
-          jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/3_marked.dot", '/')))
-        primitive <- managed(
-          jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/4_primitive.dot", '/')))
-        unified <- managed(
-          jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/5_unified.dot", '/')))
-      } {
-        plan = new LogicalSparkPlanner().createPlanWithDumpStepByStep(
-          graph,
-          given, normalized, optimized, marked, primitive, unified).getPlan
-      }
-      plan
-    }
+  def preparePlan(graph: OperatorGraph): Plan = {
+    new LogicalSparkPlanner().createPlan(graph).getPlan
   }
 }
 
@@ -158,6 +133,4 @@ object SparkClientCompiler {
   val Command: Location = Location.of("spark/bin/spark-execute.sh")
 
   val SparkPlanVerifyOption = "spark.plan.verify"
-
-  val SparkPlanDumpOption = "spark.plan.dump"
 }
