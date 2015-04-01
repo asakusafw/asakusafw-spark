@@ -59,7 +59,7 @@ class OperatorInfo(operator: Operator)(implicit jpContext: JPContext) {
 
     def asType: Type = oa.getValue.getValueType.asType
 
-    def resolveClass: Class[_] = oa.getValue.getValueType.resolve(jpContext.getClassLoader)
+    def resolveClass: Class[_] = oa.getValue.getValueType.getErasure.resolve(jpContext.getClassLoader)
 
     def value: Any = oa.getValue.resolve(jpContext.getClassLoader)
   }
