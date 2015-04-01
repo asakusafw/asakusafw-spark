@@ -24,20 +24,20 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.vocabulary.operator.{ MasterCheck, MasterSelection }
+import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp, MasterSelection }
 
 @RunWith(classOf[JUnitRunner])
-class MasterCheckOperatorCompilerSpecTest extends MasterCheckOperatorCompilerSpec
+class ShuffledMasterCheckOperatorCompilerSpecTest extends ShuffledMasterCheckOperatorCompilerSpec
 
-class MasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import MasterCheckOperatorCompilerSpec._
+  import ShuffledMasterCheckOperatorCompilerSpec._
 
-  behavior of classOf[MasterCheckOperatorCompiler].getSimpleName
+  behavior of classOf[ShuffledMasterCheckOperatorCompiler].getSimpleName
 
   it should "compile MasterCheck operator without master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterCheck], classOf[MasterCheckOperator], "check")
+      .extract(classOf[MasterCheckOp], classOf[MasterCheckOperator], "check")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -107,7 +107,7 @@ class MasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
   it should "compile MasterCheck operator with master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterCheck], classOf[MasterCheckOperator], "checkWithSelection")
+      .extract(classOf[MasterCheckOp], classOf[MasterCheckOperator], "checkWithSelection")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -179,7 +179,7 @@ class MasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object MasterCheckOperatorCompilerSpec {
+object ShuffledMasterCheckOperatorCompilerSpec {
 
   class Hoge extends DataModel[Hoge] {
 
@@ -215,10 +215,10 @@ object MasterCheckOperatorCompilerSpec {
 
   class MasterCheckOperator {
 
-    @MasterCheck
+    @MasterCheckOp
     def check(hoge: Hoge, foo: Foo): Boolean = ???
 
-    @MasterCheck(selection = "select")
+    @MasterCheckOp(selection = "select")
     def checkWithSelection(hoge: Hoge, foo: Foo): Boolean = ???
 
     @MasterSelection

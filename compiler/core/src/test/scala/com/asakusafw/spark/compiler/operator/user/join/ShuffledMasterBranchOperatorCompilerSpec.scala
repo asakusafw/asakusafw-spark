@@ -25,20 +25,20 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.vocabulary.operator.{ MasterBranch, MasterSelection }
+import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp, MasterSelection }
 
 @RunWith(classOf[JUnitRunner])
-class MasterBranchOperatorCompilerSpecTest extends MasterBranchOperatorCompilerSpec
+class ShuffledMasterBranchOperatorCompilerSpecTest extends ShuffledMasterBranchOperatorCompilerSpec
 
-class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import MasterBranchOperatorCompilerSpec._
+  import ShuffledMasterBranchOperatorCompilerSpec._
 
-  behavior of classOf[MasterBranchOperatorCompiler].getSimpleName
+  behavior of classOf[ShuffledMasterBranchOperatorCompiler].getSimpleName
 
   it should "compile MasterBranch operator without master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branch")
+      .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branch")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -108,7 +108,7 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
   it should "compile MasterBranch operator with master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branchWithSelection")
+      .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchWithSelection")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -181,7 +181,7 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
   it should "compile MasterBranch operator without master selection with projective model" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branchp")
+      .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchp")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -251,7 +251,7 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
   it should "compile MasterBranch operator with master selection with projective model" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branchWithSelectionp")
+      .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchWithSelectionp")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -323,7 +323,7 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object MasterBranchOperatorCompilerSpec {
+object ShuffledMasterBranchOperatorCompilerSpec {
 
   trait HogeP {
     def getIdOption: IntOption
@@ -368,7 +368,7 @@ object MasterBranchOperatorCompilerSpec {
 
   class MasterBranchOperator {
 
-    @MasterBranch
+    @MasterBranchOp
     def branch(hoge: Hoge, foo: Foo): BranchOperatorCompilerSpecTestBranch = {
       if (hoge == null || hoge.id.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW
@@ -377,7 +377,7 @@ object MasterBranchOperatorCompilerSpec {
       }
     }
 
-    @MasterBranch(selection = "select")
+    @MasterBranchOp(selection = "select")
     def branchWithSelection(hoge: Hoge, foo: Foo): BranchOperatorCompilerSpecTestBranch = {
       if (hoge == null || hoge.id.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW
@@ -395,7 +395,7 @@ object MasterBranchOperatorCompilerSpec {
       }
     }
 
-    @MasterBranch
+    @MasterBranchOp
     def branchp[H <: HogeP, F <: FooP](hoge: H, foo: F): BranchOperatorCompilerSpecTestBranch = {
       if (hoge == null || hoge.getIdOption.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW
@@ -404,7 +404,7 @@ object MasterBranchOperatorCompilerSpec {
       }
     }
 
-    @MasterBranch(selection = "selectp")
+    @MasterBranchOp(selection = "selectp")
     def branchWithSelectionp[H <: HogeP, F <: FooP](hoge: H, foo: F): BranchOperatorCompilerSpecTestBranch = {
       if (hoge == null || hoge.getIdOption.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW

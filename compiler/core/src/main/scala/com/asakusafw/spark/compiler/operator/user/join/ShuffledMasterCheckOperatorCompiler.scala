@@ -7,16 +7,14 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
-import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.MasterCheck
+import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 
-class MasterCheckOperatorCompiler extends UserOperatorCompiler {
+class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
-    annotationDesc.resolveClass == classOf[MasterCheck]
+    annotationDesc.resolveClass == classOf[MasterCheckOp]
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -30,24 +28,18 @@ class MasterCheckOperatorCompiler extends UserOperatorCompiler {
     assert(inputs.size >= 2)
 
     outputs.foreach(output =>
-      assert(output.dataModelType == inputs(MasterCheck.ID_INPUT_TRANSACTION).dataModelType))
+      assert(output.dataModelType == inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType))
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
       implementationClassType,
-      outputs,
-      inputs(MasterCheck.ID_INPUT_MASTER).dataModelType,
-      inputs(MasterCheck.ID_INPUT_TRANSACTION).dataModelType,
-      selectionMethod) {
+      outputs) with ShuffledJoin with MasterCheck {
 
-      override def join(mb: MethodBuilder, ctrl: LoopControl, masterVar: Var, txVar: Var): Unit = {
-        import mb._
-        masterVar.push().ifNull({
-          getOutputField(mb, outputs(MasterCheck.ID_OUTPUT_MISSED))
-        }, {
-          getOutputField(mb, outputs(MasterCheck.ID_OUTPUT_FOUND))
-        }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
-      }
+      val masterType: Type = inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType
+      val txType: Type = inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType
+      val masterSelection: Option[(String, Type)] = selectionMethod
+
+      val opInfo: OperatorInfo = operatorInfo
     }
 
     context.jpContext.addClass(builder)

@@ -39,7 +39,7 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
 
   def resolvers = SubPlanCompiler(Thread.currentThread.getContextClassLoader)
 
-  it should "build map driver class" in {
+  ignore should "build map driver class" in {
     val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -131,7 +131,7 @@ class MapDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar 
     nResult.foreach(n => assert(n.n.get === 10))
   }
 
-  it should "build map driver class missing port connection" in {
+  ignore should "build map driver class missing port connection" in {
     val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 

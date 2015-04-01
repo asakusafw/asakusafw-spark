@@ -25,20 +25,20 @@ import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.model.{ Joined, Key }
-import com.asakusafw.vocabulary.operator.{ MasterJoin, MasterSelection }
+import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp, MasterSelection }
 
 @RunWith(classOf[JUnitRunner])
-class MasterJoinOperatorCompilerSpecTest extends MasterJoinOperatorCompilerSpec
+class ShuffledMasterJoinOperatorCompilerSpecTest extends ShuffledMasterJoinOperatorCompilerSpec
 
-class MasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import MasterJoinOperatorCompilerSpec._
+  import ShuffledMasterJoinOperatorCompilerSpec._
 
-  behavior of classOf[MasterJoinOperatorCompiler].getSimpleName
+  behavior of classOf[ShuffledMasterJoinOperatorCompiler].getSimpleName
 
   it should "compile MasterJoin operator without master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterJoin], classOf[MasterJoinOperator], "join")
+      .extract(classOf[MasterJoinOp], classOf[MasterJoinOperator], "join")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -120,7 +120,7 @@ class MasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
   it should "compile MasterJoin operator with master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterJoin], classOf[MasterJoinOperator], "joinWithSelection")
+      .extract(classOf[MasterJoinOp], classOf[MasterJoinOperator], "joinWithSelection")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -205,7 +205,7 @@ class MasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 }
 
-object MasterJoinOperatorCompilerSpec {
+object ShuffledMasterJoinOperatorCompilerSpec {
 
   class Hoge extends DataModel[Hoge] {
 
@@ -278,10 +278,10 @@ object MasterJoinOperatorCompilerSpec {
 
   class MasterJoinOperator {
 
-    @MasterJoin
+    @MasterJoinOp
     def join(hoge: Hoge, foo: Foo): Baa = ???
 
-    @MasterJoin(selection = "select")
+    @MasterJoinOp(selection = "select")
     def joinWithSelection(hoge: Hoge, foo: Foo): Baa = ???
 
     @MasterSelection

@@ -24,20 +24,20 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate, MasterSelection }
+import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateOp, MasterSelection }
 
 @RunWith(classOf[JUnitRunner])
-class MasterJoinUpdateOperatorCompilerSpecTest extends MasterJoinUpdateOperatorCompilerSpec
+class ShuffledMasterJoinUpdateOperatorCompilerSpecTest extends ShuffledMasterJoinUpdateOperatorCompilerSpec
 
-class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import MasterJoinUpdateOperatorCompilerSpec._
+  import ShuffledMasterJoinUpdateOperatorCompilerSpec._
 
-  behavior of classOf[MasterJoinUpdateOperatorCompiler].getSimpleName
+  behavior of classOf[ShuffledMasterJoinUpdateOperatorCompiler].getSimpleName
 
   it should "compile MasterJoinUpdate operator without master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterJoinUpdate], classOf[MasterJoinUpdateOperator], "update")
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "update")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -108,7 +108,7 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
 
   it should "compile MasterJoinUpdate operator with master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterJoinUpdate], classOf[MasterJoinUpdateOperator], "updateWithSelection")
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updateWithSelection")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -182,7 +182,7 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
 
   it should "compile MasterJoinUpdate operator without master selection with projective model" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterJoinUpdate], classOf[MasterJoinUpdateOperator], "updatep")
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updatep")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -253,7 +253,7 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
 
   it should "compile MasterJoinUpdate operator with master selection with projective model" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterJoinUpdate], classOf[MasterJoinUpdateOperator], "updateWithSelectionp")
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updateWithSelectionp")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
@@ -326,7 +326,7 @@ class MasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar 
   }
 }
 
-object MasterJoinUpdateOperatorCompilerSpec {
+object ShuffledMasterJoinUpdateOperatorCompilerSpec {
 
   trait HogeP {
     def getIdOption: IntOption
@@ -371,10 +371,10 @@ object MasterJoinUpdateOperatorCompilerSpec {
 
   class MasterJoinUpdateOperator {
 
-    @MasterJoinUpdate
+    @MasterJoinUpdateOp
     def update(hoge: Hoge, foo: Foo): Unit = {}
 
-    @MasterJoinUpdate(selection = "select")
+    @MasterJoinUpdateOp(selection = "select")
     def updateWithSelection(hoge: Hoge, foo: Foo): Unit = {}
 
     @MasterSelection
@@ -386,10 +386,10 @@ object MasterJoinUpdateOperatorCompilerSpec {
       }
     }
 
-    @MasterJoinUpdate
+    @MasterJoinUpdateOp
     def updatep[H <: HogeP, F <: FooP](hoge: H, foo: F): Unit = {}
 
-    @MasterJoinUpdate(selection = "selectp")
+    @MasterJoinUpdateOp(selection = "selectp")
     def updateWithSelectionp[H <: HogeP, F <: FooP](hoge: H, foo: F): Unit = {}
 
     @MasterSelection
