@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.reflect.NameTransformer
+import scala.reflect.{ ClassTag, NameTransformer }
 
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
@@ -13,7 +13,7 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
@@ -101,9 +101,70 @@ object CoGroupSubPlanCompiler {
       val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
 
       val broadcastsVar = {
-        // TODO broadcast
         val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
           .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+        subplan.getInputs.toSet[SubPlan.Input]
+          .filter(_.getOperator.getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST)
+          .foreach { input =>
+            val dataModelRef = context.jpContext.getDataModelLoader.load(input.getOperator.getInput.getDataType)
+            val key = input.getAttribute(classOf[PartitioningParameters]).getKey
+            val groupings = key.getGrouping.toSeq.map { grouping =>
+              (dataModelRef.findProperty(grouping).getType.asType, true)
+            }
+            val orderings = groupings ++ key.getOrdering.toSeq.map { ordering =>
+              (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                ordering.getDirection == Group.Direction.ASCENDANT)
+            }
+
+            builder.invokeI(
+              NameTransformer.encode("+="),
+              classOf[mutable.Builder[_, _]].asType,
+              getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+                .invokeV(
+                  "apply",
+                  classOf[(Long, Broadcast[_])].asType,
+                  ldc(input.getOperator.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
+                  thisVar.push().invokeV(
+                    "broadcastAsHash",
+                    classOf[Broadcast[_]].asType,
+                    context.scVar.push(),
+                    {
+                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+                      input.getOpposites.toSeq.map(_.getOperator.getSerialNumber).foreach { sn =>
+                        builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+                          context.rddsVar.push().invokeI(
+                            "apply",
+                            classOf[AnyRef].asType,
+                            ldc(sn).box().asType(classOf[AnyRef].asType)))
+                      }
+
+                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                    },
+                    {
+                      val partitionerType = GroupingPartitionerClassBuilder.getOrCompile(
+                        context.flowId, groupings.map(_._1), context.jpContext)
+                      val partitioner = pushNew(partitionerType)
+                      partitioner.dup().invokeInit(context.scVar.push().invokeV("defaultParallelism", Type.INT_TYPE))
+                      partitioner.asType(classOf[Partitioner].asType)
+                    },
+                    {
+                      val orderingType = OrderingClassBuilder.getOrCompile(context.flowId, orderings, context.jpContext)
+                      pushNew0(orderingType).asType(classOf[Ordering[_]].asType)
+                    },
+                    {
+                      val groupingType = OrderingClassBuilder.getOrCompile(context.flowId, groupings, context.jpContext)
+                      pushNew0(groupingType).asType(classOf[Ordering[_]].asType)
+                    },
+                    {
+                      getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+                        .invokeV("apply", classOf[ClassTag[_]].asType,
+                          ldc(classOf[Seq[_]].asType).asType(classOf[Class[_]].asType))
+                    })
+                    .asType(classOf[AnyRef].asType))
+                .asType(classOf[AnyRef].asType))
+          }
         val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
         broadcasts.store(context.nextLocal.getAndAdd(broadcasts.size))
       }
@@ -144,8 +205,12 @@ object CoGroupSubPlanCompiler {
                         .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
                       input.getOpposites.toSet[OperatorOutput]
-                        .flatMap(opposite => subplan.getInputs.find(
-                          _.getOperator.getOriginalSerialNumber == opposite.getOwner.getOriginalSerialNumber)
+                        .flatMap(opposite => subplan.getInputs
+                          .filter { input =>
+                            val marker = input.getOperator.getAttribute(classOf[PlanMarker])
+                            marker == PlanMarker.CHECKPOINT || marker == PlanMarker.GATHER
+                          }.find(
+                            _.getOperator.getOriginalSerialNumber == opposite.getOwner.getOriginalSerialNumber)
                           .get.getOpposites.toSeq)
                         .map(_.getOperator.getSerialNumber)
                         .foreach { sn =>

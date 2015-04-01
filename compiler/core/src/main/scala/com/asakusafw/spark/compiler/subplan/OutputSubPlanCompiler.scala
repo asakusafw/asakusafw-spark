@@ -9,7 +9,7 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.tools.asm._
@@ -61,6 +61,7 @@ object OutputSubPlanCompiler {
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
+
       val outputDriver = pushNew(driverType)
       outputDriver.dup().invokeInit(
         context.scVar.push(),
@@ -69,6 +70,10 @@ object OutputSubPlanCompiler {
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
           subplan.getInputs.toSet[SubPlan.Input]
+            .filter { input =>
+              val marker = input.getOperator.getAttribute(classOf[PlanMarker])
+              marker == PlanMarker.CHECKPOINT || marker == PlanMarker.GATHER
+            }
             .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
             .map(_.getOperator.getSerialNumber)
             .foreach { sn =>
