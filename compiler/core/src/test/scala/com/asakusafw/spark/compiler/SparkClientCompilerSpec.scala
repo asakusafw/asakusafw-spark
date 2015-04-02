@@ -609,6 +609,150 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     }
   }
 
+  it should "compile Spark client with broadcast MasterCheck" in {
+    val tmpDir = File.createTempFile("test-", null)
+    tmpDir.delete
+    val classpath = new File(tmpDir, "classes").getAbsoluteFile
+    classpath.mkdirs()
+    val path = new File(tmpDir, "tmp").getAbsolutePath
+
+    spark { sc =>
+      {
+        val hoges = sc.parallelize(0 until 10).map { i =>
+          val hoge = new Hoge()
+          hoge.id.modify(i)
+          hoge
+        }
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        job.setOutputKeyClass(classOf[NullWritable])
+        job.setOutputValueClass(classOf[Hoge])
+        job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge"))
+        hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+      }
+      {
+        val foos = sc.parallelize(5 until 15).map { i =>
+          val foo = new Foo()
+          foo.id.modify(10 + i)
+          foo.hogeId.modify(i)
+          foo
+        }
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        job.setOutputKeyClass(classOf[NullWritable])
+        job.setOutputValueClass(classOf[Foo])
+        job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/foo"))
+        foos.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+      }
+    }
+
+    val hogeInputOperator = ExternalInput
+      .newInstance("hoge/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Hoge]),
+          "hoges1",
+          ClassDescription.of(classOf[Hoge]),
+          ExternalInputInfo.DataSize.TINY))
+
+    val fooInputOperator = ExternalInput
+      .newInstance("foo/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "foos",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val masterCheckOperator = OperatorExtractor
+      .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
+      .input("hoges", ClassDescription.of(classOf[Hoge]),
+        new Group(
+          Seq(PropertyName.of("id")),
+          Seq.empty[Group.Ordering]),
+        hogeInputOperator.getOperatorPort)
+      .input("foos", ClassDescription.of(classOf[Foo]),
+        new Group(
+          Seq(PropertyName.of("hogeId")),
+          Seq.empty[Group.Ordering]),
+        fooInputOperator.getOperatorPort)
+      .output("found", ClassDescription.of(classOf[Foo]))
+      .output("missed", ClassDescription.of(classOf[Foo]))
+      .build()
+
+    val foundOutputOperator = ExternalOutput
+      .newInstance("found", masterCheckOperator.findOutput("found"))
+
+    val missedOutputOperator = ExternalOutput
+      .newInstance("missed", masterCheckOperator.findOutput("missed"))
+
+    val graph = new OperatorGraph(Seq(
+      hogeInputOperator, fooInputOperator,
+      masterCheckOperator,
+      foundOutputOperator, missedOutputOperator))
+
+    val compiler = new SparkClientCompiler {
+
+      override def preparePlan(graph: OperatorGraph, flowId: String, dump: Boolean): Plan = {
+        val plan = super.preparePlan(graph, flowId, true)
+        assert(plan.getElements.size === 4)
+        plan
+      }
+    }
+
+    val jpContext = new MockJobflowProcessorContext(
+      new CompilerOptions("buildid", path, Map.empty[String, String]),
+      Thread.currentThread.getContextClassLoader,
+      classpath)
+    val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
+
+    compiler.process(jpContext, jobflow)
+
+    val cl = Thread.currentThread.getContextClassLoader
+    try {
+      val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
+      Thread.currentThread.setContextClassLoader(classloader)
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
+        .asSubclass(classOf[SparkClient])
+      val instance = cls.newInstance
+
+      val conf = new SparkConf()
+      conf.setAppName("AsakusaSparkClient")
+      conf.setMaster("local[*]")
+
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+      conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
+      instance.execute(conf)
+    } finally {
+      Thread.currentThread.setContextClassLoader(cl)
+    }
+
+    spark { sc =>
+      {
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"found/*/part-*")))
+        val found = sc.newAPIHadoopRDD(
+          job.getConfiguration,
+          classOf[TemporaryInputFormat[Foo]],
+          classOf[NullWritable],
+          classOf[Foo]).map(_._2.id.get).collect.toSeq
+        assert(found.size === 5)
+        assert(found === (5 until 10).map(10 + _))
+      }
+      {
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"missed/*/part-*")))
+        val missed = sc.newAPIHadoopRDD(
+          job.getConfiguration,
+          classOf[TemporaryInputFormat[Foo]],
+          classOf[NullWritable],
+          classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get)).collect.toSeq
+        assert(missed.size === 5)
+        assert(missed === (10 until 15).map(i => (10 + i, i)))
+      }
+    }
+  }
+
   it should "compile Spark client with Fold" in {
     val tmpDir = File.createTempFile("test-", null)
     tmpDir.delete

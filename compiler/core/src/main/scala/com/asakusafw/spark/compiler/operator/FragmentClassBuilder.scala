@@ -11,8 +11,8 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class FragmentClassBuilder(
-  flowId: String,
-  dataModelType: Type,
+  val flowId: String,
+  val dataModelType: Type,
   signature: Option[String],
   superType: Type,
   interfaceTypes: Type*)

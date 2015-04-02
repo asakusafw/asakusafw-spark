@@ -11,6 +11,7 @@ import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
+import com.asakusafw.spark.tools.asm._
 
 class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
@@ -36,6 +37,7 @@ class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
+      classOf[Seq[Iterable[_]]].asType,
       implementationClassType,
       outputs) with ShuffledJoin with MasterJoin {
 

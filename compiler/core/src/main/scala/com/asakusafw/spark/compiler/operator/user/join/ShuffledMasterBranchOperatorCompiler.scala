@@ -8,6 +8,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp }
+import com.asakusafw.spark.tools.asm._
 
 class ShuffledMasterBranchOperatorCompiler extends UserOperatorCompiler {
 
@@ -42,6 +43,7 @@ class ShuffledMasterBranchOperatorCompiler extends UserOperatorCompiler {
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
+      classOf[Seq[Iterable[_]]].asType,
       implementationClassType,
       outputs) with ShuffledJoin with MasterBranch {
 

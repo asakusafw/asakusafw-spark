@@ -41,6 +41,6 @@ abstract class SparkClient {
         Seq((confluent(rdds, part, Option(ordering)).asInstanceOf[RDD[(K, _)]], Option(ordering))),
         part,
         grouping)
-        .mapValues(_.head.toSeq.asInstanceOf[Seq[V]]).collect.toMap)
+        .mapValues(_.head.toSeq.asInstanceOf[Seq[V]]).collect.toMap.withDefault(_ => Seq.empty))
   }
 }

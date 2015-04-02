@@ -8,6 +8,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
+import com.asakusafw.spark.tools.asm._
 
 class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
@@ -32,6 +33,7 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,
+      classOf[Seq[Iterable[_]]].asType,
       implementationClassType,
       outputs) with ShuffledJoin with MasterCheck {
 
