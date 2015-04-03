@@ -17,7 +17,7 @@ class KryoRegistrator extends SparkKryoRegistrator {
         override def newInstance: Configuration = new Configuration()
       })
 
-    kryo.register(classOf[ShuffleKey])
+    kryo.addDefaultSerializer(classOf[ShuffleKey], new ShuffleKeySerializer)
 
     kryo.register(
       classOf[BooleanOption],
