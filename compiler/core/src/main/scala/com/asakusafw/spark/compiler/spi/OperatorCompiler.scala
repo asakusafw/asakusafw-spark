@@ -35,7 +35,8 @@ object OperatorCompiler {
 
   case class Context(
     flowId: String,
-    jpContext: JPContext)
+    jpContext: JPContext,
+    shuffleKeyTypes: mutable.Set[Type])
 
   private def getCompiler(operator: Operator)(implicit context: Context): Seq[OperatorCompiler] = {
     apply(context.jpContext.getClassLoader).filter(_.support(operator))

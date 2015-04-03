@@ -5,6 +5,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import scala.collection.mutable
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.conf.Configuration
@@ -74,40 +75,43 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classServer.root.toFile))
+        classServer.root.toFile),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Seq[_], Hoge, Hoge, Long]])
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge, Long]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
       hoge.i.modify(i % 2)
       hoge.sum.modify(i)
-      (Seq(hoge.i), hoge)
+      (new ShuffleKey(Seq(hoge.i), Seq.empty) {}, hoge)
     }
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
       classOf[Map[Long, Broadcast[_]]],
-      classOf[Seq[RDD[_]]],
+      classOf[Seq[RDD[(ShuffleKey, _)]]],
+      classOf[Seq[Boolean]],
       classOf[Partitioner])
       .newInstance(
         sc,
         hadoopConf,
         Map.empty,
         Seq(hoges),
+        Seq.empty,
         new HashPartitioner(2))
     val results = driver.execute()
 
     assert(driver.branchKeys === Set(resultMarker.getOriginalSerialNumber))
 
-    val result = results(resultMarker.getOriginalSerialNumber).asInstanceOf[RDD[(Seq[IntOption], Hoge)]]
-      .collect.toSeq.sortBy(_._1.head)
+    val result = results(resultMarker.getOriginalSerialNumber).asInstanceOf[RDD[(ShuffleKey, Hoge)]]
+      .collect.toSeq.sortBy(_._1.grouping(0).asInstanceOf[IntOption].get)
     assert(result.size === 2)
-    assert(result(0)._1.head.get === 0)
+    assert(result(0)._1.grouping(0).asInstanceOf[IntOption].get === 0)
     assert(result(0)._2.getSumOption.get === (0 until 10 by 2).sum + 4 * 10)
-    assert(result(1)._1.head.get === 1)
+    assert(result(1)._1.grouping(0).asInstanceOf[IntOption].get === 1)
     assert(result(1)._2.getSumOption.get === (1 until 10 by 2).sum + 4 * 10)
   }
 }

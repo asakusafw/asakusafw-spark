@@ -18,9 +18,8 @@ import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, Partitioni
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
-import com.asakusafw.spark.compiler.partitioner.GroupingPartitionerClassBuilder
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
-import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
@@ -54,6 +53,8 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
+      override val shuffleKeyTypes = context.shuffleKeyTypes
+
       override val dominantOperator = operator
 
       override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
@@ -66,7 +67,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
           val fragmentBuilder = new FragmentTreeBuilder(
-            mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext))
+            mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes))
           val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
           val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
@@ -151,24 +152,22 @@ object AggregateSubPlanCompiler {
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                     },
                     {
-                      val partitionerType = GroupingPartitionerClassBuilder.getOrCompile(
-                        context.flowId, groupings.map(_._1), context.jpContext)
-                      val partitioner = pushNew(partitionerType)
+                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+                      key.getOrdering.foreach { ordering =>
+                        builder.invokeI(
+                          NameTransformer.encode("+="),
+                          classOf[mutable.Builder[_, _]].asType,
+                          ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+                      }
+
+                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                    },
+                    {
+                      val partitioner = pushNew(classOf[HashPartitioner].asType)
                       partitioner.dup().invokeInit(context.scVar.push().invokeV("defaultParallelism", Type.INT_TYPE))
                       partitioner.asType(classOf[Partitioner].asType)
-                    },
-                    {
-                      val orderingType = OrderingClassBuilder.getOrCompile(context.flowId, orderings, context.jpContext)
-                      pushNew0(orderingType).asType(classOf[Ordering[_]].asType)
-                    },
-                    {
-                      val groupingType = OrderingClassBuilder.getOrCompile(context.flowId, groupings, context.jpContext)
-                      pushNew0(groupingType).asType(classOf[Ordering[_]].asType)
-                    },
-                    {
-                      getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-                        .invokeV("apply", classOf[ClassTag[_]].asType,
-                          ldc(classOf[Seq[_]].asType).asType(classOf[Class[_]].asType))
                     })
                     .asType(classOf[AnyRef].asType))
                 .asType(classOf[AnyRef].asType))
@@ -177,9 +176,7 @@ object AggregateSubPlanCompiler {
         broadcasts.store(context.nextLocal.getAndAdd(broadcasts.size))
       }
 
-      val partitionerType = GroupingPartitionerClassBuilder.getOrCompile(
-        context.flowId, properties, context.jpContext)
-      val partitioner = pushNew(partitionerType)
+      val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(
         context.scVar.push()
           .invokeV("defaultParallelism", Type.INT_TYPE))
@@ -207,6 +204,18 @@ object AggregateSubPlanCompiler {
                   classOf[AnyRef].asType,
                   ldc(sn).box().asType(classOf[AnyRef].asType)))
             }
+
+          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+        }, {
+          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+          input.getGroup.getOrdering.foreach { ordering =>
+            builder.invokeI(
+              NameTransformer.encode("+="),
+              classOf[mutable.Builder[_, _]].asType,
+              ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+          }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         },

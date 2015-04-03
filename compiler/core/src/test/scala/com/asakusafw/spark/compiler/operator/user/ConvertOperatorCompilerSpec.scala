@@ -8,6 +8,7 @@ import org.scalatest.junit.JUnitRunner
 import java.nio.file.Files
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import org.apache.spark.broadcast.Broadcast
 
@@ -47,7 +48,8 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classpath))
+        classpath),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
@@ -106,7 +108,8 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classpath))
+        classpath),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])

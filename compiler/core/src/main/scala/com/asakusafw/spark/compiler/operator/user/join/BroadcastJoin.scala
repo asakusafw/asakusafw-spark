@@ -17,6 +17,8 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput }
 import com.asakusafw.lang.compiler.planning.PlanMarker
+import com.asakusafw.spark.compiler.subplan.ShuffleKeyClassBuilder
+import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
@@ -25,6 +27,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
 
   def jpContext: JPContext
+  def shuffleKeyTypes: mutable.Set[Type]
 
   def masterInput: OperatorInput
   def txInput: OperatorInput
@@ -72,20 +75,23 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
     val keyVar = {
       val dataModelRef = jpContext.getDataModelLoader.load(txInput.getDataType)
       val group = txInput.getGroup
-      val builder = getStatic(Vector.getClass.asType, "MODULE$", Vector.getClass.asType)
-        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-      group.getGrouping.foreach { grouping =>
-        val property = dataModelRef.findProperty(grouping)
-        builder.invokeI(
-          NameTransformer.encode("+="),
-          classOf[mutable.Builder[_, _]].asType,
-          dataModelVar.push().invokeV(property.getDeclaration.getName, property.getType.asType)
-            .asType(classOf[AnyRef].asType))
-      }
+      val shuffleKeyType = ShuffleKeyClassBuilder.getOrCompile(jpContext)(
+        flowId,
+        dataModelType,
+        group.getGrouping.map { grouping =>
+          val property = dataModelRef.findProperty(grouping)
+          (property.getDeclaration.getName, property.getType.asType)
+        },
+        group.getOrdering.map { ordering =>
+          val property = dataModelRef.findProperty(ordering.getPropertyName)
+          (property.getDeclaration.getName, property.getType.asType)
+        })
+      shuffleKeyTypes += shuffleKeyType
 
-      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Vector[_]].asType)
-        .store(dataModelVar.nextLocal)
+      val shuffleKey = pushNew(shuffleKeyType)
+      shuffleKey.dup().invokeInit(dataModelVar.push())
+      shuffleKey.invokeV("dropOrdering", classOf[ShuffleKey].asType).store(dataModelVar.nextLocal)
     }
 
     val mastersVar = getStatic(JavaConversions.getClass.asType, "MODULE$", JavaConversions.getClass.asType)

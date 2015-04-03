@@ -63,15 +63,10 @@ class SparkClientCompiler extends JobflowProcessor {
 
     if (JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString)) == false) {
 
-      val registrator = KryoRegistratorCompiler.compile(
-        OperatorUtil.collectDataTypes(plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
-          .toSet[TypeDescription].map(_.asType))(
-          KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
-
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
       val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
-      implicit val context = SubPlanCompiler.Context(source.getFlowId, jpContext)
+      implicit val context = SubPlanCompiler.Context(source.getFlowId, jpContext, mutable.Set.empty)
 
       val builder = new SparkClientClassBuilder(source.getFlowId) {
 
@@ -141,6 +136,14 @@ class SparkClientCompiler extends JobflowProcessor {
                 `return`()
               }
           }
+
+          val registrator = KryoRegistratorCompiler.compile(
+            OperatorUtil.collectDataTypes(
+              plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
+              .toSet[TypeDescription]
+              .map(_.asType)
+              ++ context.shuffleKeyTypes)(
+              KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
 
           methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
             import mb._

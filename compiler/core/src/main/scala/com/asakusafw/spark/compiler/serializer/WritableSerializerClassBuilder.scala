@@ -14,28 +14,28 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.serializer.WritableSerializer
 import com.asakusafw.spark.tools.asm._
 
-class KryoSerializerClassBuilder(flowId: String, dataModelType: Type)
+class WritableSerializerClassBuilder(flowId: String, writableType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/serializer/DataModelSerializer$$${KryoSerializerClassBuilder.nextId};"),
-      Some(KryoSerializerClassBuilder.signature(dataModelType)),
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/serializer/WritableSerializer$$${WritableSerializerClassBuilder.nextId};"),
+      Some(WritableSerializerClassBuilder.signature(writableType)),
       classOf[WritableSerializer[_]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("newInstance", dataModelType, Seq.empty) { mb =>
+    methodDef.newMethod("newInstance", writableType, Seq.empty) { mb =>
       import mb._
-      `return`(pushNew0(dataModelType))
+      `return`(pushNew0(writableType))
     }
 
     methodDef.newMethod("newInstance", classOf[Writable].asType, Seq.empty) { mb =>
       import mb._
-      `return`(thisVar.push().invokeV("newInstance", dataModelType))
+      `return`(thisVar.push().invokeV("newInstance", writableType))
     }
   }
 }
 
-object KryoSerializerClassBuilder {
+object WritableSerializerClassBuilder {
 
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
@@ -58,11 +58,11 @@ object KryoSerializerClassBuilder {
 
   def getOrCompile(
     flowId: String,
-    dataModelType: Type,
+    writableType: Type,
     jpContext: JPContext): Type = {
     cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
-      (flowId, dataModelType), {
-        jpContext.addClass(new KryoSerializerClassBuilder(flowId, dataModelType))
+      (flowId, writableType), {
+        jpContext.addClass(new WritableSerializerClassBuilder(flowId, writableType))
       })
   }
 }

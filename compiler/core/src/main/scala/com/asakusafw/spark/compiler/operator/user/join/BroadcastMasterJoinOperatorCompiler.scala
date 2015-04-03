@@ -4,6 +4,7 @@ package user
 package join
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import org.objectweb.asm.Type
 
@@ -42,6 +43,7 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
       outputs) with BroadcastJoin with MasterJoin {
 
       val jpContext: JPContext = context.jpContext
+      val shuffleKeyTypes: mutable.Set[Type] = context.shuffleKeyTypes
 
       lazy val masterInput: OperatorInput = inputs(MasterJoinOp.ID_INPUT_MASTER)
       lazy val txInput: OperatorInput = inputs(MasterJoinOp.ID_INPUT_TRANSACTION)

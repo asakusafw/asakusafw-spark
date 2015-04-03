@@ -12,8 +12,8 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.spark.runtime.driver.AggregateDriver
-import com.asakusafw.spark.runtime.fragment.Aggregation
+import com.asakusafw.spark.runtime.aggregation.Aggregation
+import com.asakusafw.spark.runtime.driver.{ AggregateDriver, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -23,8 +23,17 @@ abstract class AggregateDriverClassBuilder(
   val combinerType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/AggregateDriver$$${AggregateDriverClassBuilder.nextId};"),
-      Option(AggregateDriverClassBuilder.signature(valueType, combinerType)),
-      classOf[AggregateDriver[_, _, _, _]].asType)
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[AggregateDriver[_, _, _]].asType) {
+            _
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+          }
+        }
+        .build(),
+      classOf[AggregateDriver[_, _, _]].asType)
     with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -32,14 +41,16 @@ abstract class AggregateDriverClassBuilder(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
       classOf[Map[Long, Broadcast[_]]].asType,
-      classOf[Seq[RDD[_]]].asType,
+      classOf[Seq[RDD[(ShuffleKey, _)]]].asType,
+      classOf[Seq[Boolean]].asType,
       classOf[Partitioner].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
       val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
       val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
-      val prevsVar = `var`(classOf[Seq[RDD[_]]].asType, broadcastsVar.nextLocal)
-      val partVar = `var`(classOf[Partitioner].asType, prevsVar.nextLocal)
+      val prevsVar = `var`(classOf[Seq[RDD[(ShuffleKey, _)]]].asType, broadcastsVar.nextLocal)
+      val directionsVar = `var`(classOf[Seq[Boolean]].asType, prevsVar.nextLocal)
+      val partVar = `var`(classOf[Partitioner].asType, directionsVar.nextLocal)
 
       thisVar.push().invokeInit(
         superType,
@@ -47,11 +58,8 @@ abstract class AggregateDriverClassBuilder(
         hadoopConfVar.push(),
         broadcastsVar.push(),
         prevsVar.push(),
-        partVar.push(),
-        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-          .invokeV("apply", classOf[ClassTag[_]].asType, ldc(classOf[Seq[_]].asType).asType(classOf[Class[_]].asType)),
-        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-          .invokeV("apply", classOf[ClassTag[_]].asType, ldc(valueType).asType(classOf[Class[_]].asType)))
+        directionsVar.push(),
+        partVar.push())
 
       initFields(mb)
     }
@@ -63,18 +71,4 @@ object AggregateDriverClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
-
-  def signature(valueType: Type, combinerType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[AggregateDriver[_, _, _, _]].asType) {
-          _
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Seq[_]].asType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
-        }
-      }
-      .build()
-  }
 }

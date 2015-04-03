@@ -20,7 +20,15 @@ abstract class InputDriverClassBuilder(
   val dataModelType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/InputDriver$$${InputDriverClassBuilder.nextId};"),
-      Option(InputDriverClassBuilder.signature(dataModelType)),
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[InputDriver[_, _]].asType) {
+            _
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+          }
+        }
+        .build(),
       classOf[InputDriver[_, _]].asType)
     with Branching with DriverName {
 
@@ -52,16 +60,4 @@ object InputDriverClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
-
-  def signature(dataModelType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[InputDriver[_, _]].asType) {
-          _
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
-        }
-      }
-      .build()
-  }
 }

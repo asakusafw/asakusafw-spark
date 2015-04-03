@@ -672,7 +672,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       .input("foos", ClassDescription.of(classOf[Foo]),
         new Group(
           Seq(PropertyName.of("hogeId")),
-          Seq.empty[Group.Ordering]),
+          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))),
         fooInputOperator.getOperatorPort)
       .output("found", ClassDescription.of(classOf[Foo]))
       .output("missed", ClassDescription.of(classOf[Foo]))

@@ -8,12 +8,13 @@ import scala.reflect.ClassTag
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.runtime.driver.CoGroupDriver
+import com.asakusafw.spark.runtime.driver.{ CoGroupDriver, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -22,8 +23,14 @@ abstract class CoGroupDriverClassBuilder(
   val groupingKeyType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${CoGroupDriverClassBuilder.nextId};"),
-      Option(CoGroupDriverClassBuilder.signature(groupingKeyType)),
-      classOf[CoGroupDriver[_, _]].asType)
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[CoGroupDriver[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+          }
+        }
+        .build(),
+      classOf[CoGroupDriver[_]].asType)
     with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -31,16 +38,14 @@ abstract class CoGroupDriverClassBuilder(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
       classOf[Map[Long, Broadcast[_]]].asType,
-      classOf[Seq[_]].asType,
-      classOf[Partitioner].asType,
-      classOf[Ordering[_]].asType)) { mb =>
+      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[Seq[Boolean]])]].asType,
+      classOf[Partitioner].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
       val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
       val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
       val inputsVar = `var`(classOf[Seq[_]].asType, broadcastsVar.nextLocal)
       val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
-      val groupingVar = `var`(classOf[Ordering[_]].asType, partVar.nextLocal)
 
       thisVar.push().invokeInit(
         superType,
@@ -48,10 +53,7 @@ abstract class CoGroupDriverClassBuilder(
         hadoopConfVar.push(),
         broadcastsVar.push(),
         inputsVar.push(),
-        partVar.push(),
-        groupingVar.push(),
-        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-          .invokeV("apply", classOf[ClassTag[_]].asType, ldc(groupingKeyType).asType(classOf[Class[_]].asType)))
+        partVar.push())
 
       initFields(mb)
     }
@@ -63,16 +65,4 @@ object CoGroupDriverClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
-
-  def signature(groupingKeyType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[CoGroupDriver[_, _]].asType) {
-          _
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, groupingKeyType)
-        }
-      }
-      .build()
-  }
 }

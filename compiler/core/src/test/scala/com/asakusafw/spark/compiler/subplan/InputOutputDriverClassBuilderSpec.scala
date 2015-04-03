@@ -8,6 +8,7 @@ import org.scalatest.junit.JUnitRunner
 import java.io.{ DataInput, DataOutput, File }
 import java.nio.file.{ Files, Path }
 
+import scala.collection.mutable
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.conf.Configuration
@@ -70,7 +71,10 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val outputSubPlan = outputPlan.getElements.head
     outputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(outputOperator))
 
-    val outputCompilerContext = SubPlanCompiler.Context(flowId = "flowId", jpContext = jpContext)
+    val outputCompilerContext = SubPlanCompiler.Context(
+      flowId = "flowId",
+      jpContext = jpContext,
+      shuffleKeyTypes = mutable.Set.empty)
     val outputCompiler = resolvers.find(_.support(outputOperator)(outputCompilerContext)).get
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
 
@@ -122,7 +126,10 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val inputSubPlan = inputPlan.getElements.head
     inputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(inputOperator))
 
-    val inputCompilerContext = SubPlanCompiler.Context(flowId = "flowId", jpContext = jpContext)
+    val inputCompilerContext = SubPlanCompiler.Context(
+      flowId = "flowId",
+      jpContext = jpContext,
+      shuffleKeyTypes = mutable.Set.empty)
     val inputCompiler = resolvers.find(_.support(inputOperator)(inputCompilerContext)).get
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
 

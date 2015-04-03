@@ -13,9 +13,11 @@ object KryoRegistratorCompiler {
 
   case class Context(flowId: String, jpContext: JPContext)
 
-  def compile(dataModels: Set[Type])(implicit context: Context): Type = {
-    val serializers = dataModels.map(dataModel =>
-      dataModel -> KryoSerializerClassBuilder.getOrCompile(context.flowId, dataModel, context.jpContext)).toMap
+  def compile(
+    writables: Set[Type])(implicit context: Context): Type = {
+    val serializers = writables.map { writable =>
+      writable -> WritableSerializerClassBuilder.getOrCompile(context.flowId, writable, context.jpContext)
+    }.toMap
 
     val builder = new ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/KryoRegistrator;"),

@@ -7,7 +7,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.{ ClassTag, NameTransformer }
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
@@ -18,7 +18,6 @@ import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, Partitioni
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
-import com.asakusafw.spark.compiler.partitioner.GroupingPartitionerClassBuilder
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd
@@ -34,7 +33,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     OperatorCompiler.support(
       operator,
       OperatorType.CoGroupType)(
-        OperatorCompiler.Context(context.flowId, context.jpContext))
+        OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes))
   }
 
   override def instantiator: Instantiator = CoGroupSubPlanCompiler.CoGroupDriverInstantiator
@@ -48,6 +47,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
+      override val shuffleKeyTypes = context.shuffleKeyTypes
+
       override val dominantOperator = operator
 
       override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
@@ -59,7 +60,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
           import mb._
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-          implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext)
+          implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes)
           val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)
           val fragmentVar = {
             val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -143,24 +144,22 @@ object CoGroupSubPlanCompiler {
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                     },
                     {
-                      val partitionerType = GroupingPartitionerClassBuilder.getOrCompile(
-                        context.flowId, groupings.map(_._1), context.jpContext)
-                      val partitioner = pushNew(partitionerType)
+                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+                      key.getOrdering.foreach { ordering =>
+                        builder.invokeI(
+                          NameTransformer.encode("+="),
+                          classOf[mutable.Builder[_, _]].asType,
+                          ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+                      }
+
+                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                    },
+                    {
+                      val partitioner = pushNew(classOf[HashPartitioner].asType)
                       partitioner.dup().invokeInit(context.scVar.push().invokeV("defaultParallelism", Type.INT_TYPE))
                       partitioner.asType(classOf[Partitioner].asType)
-                    },
-                    {
-                      val orderingType = OrderingClassBuilder.getOrCompile(context.flowId, orderings, context.jpContext)
-                      pushNew0(orderingType).asType(classOf[Ordering[_]].asType)
-                    },
-                    {
-                      val groupingType = OrderingClassBuilder.getOrCompile(context.flowId, groupings, context.jpContext)
-                      pushNew0(groupingType).asType(classOf[Ordering[_]].asType)
-                    },
-                    {
-                      getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-                        .invokeV("apply", classOf[ClassTag[_]].asType,
-                          ldc(classOf[Seq[_]].asType).asType(classOf[Class[_]].asType))
                     })
                     .asType(classOf[AnyRef].asType))
                 .asType(classOf[AnyRef].asType))
@@ -176,12 +175,8 @@ object CoGroupSubPlanCompiler {
         }.toSeq
       }.toSet
       assert(properties.size == 1)
-      val partitionerType = GroupingPartitionerClassBuilder.getOrCompile(
-        context.flowId, properties.head, context.jpContext)
-      val orderingType = OrderingClassBuilder.getOrCompile(
-        context.flowId, properties.head.map((_, true)), context.jpContext)
 
-      val partitioner = pushNew(partitionerType)
+      val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(
         context.scVar.push()
           .invokeV("defaultParallelism", Type.INT_TYPE))
@@ -192,7 +187,7 @@ object CoGroupSubPlanCompiler {
         context.scVar.push(),
         context.hadoopConfVar.push(),
         broadcastsVar.push(), {
-          // Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])]
+          // Seq[(Seq[RDD[(K, _)]], Seq[Boolean])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
           dominant.getInputs.foreach { input =>
@@ -224,22 +219,17 @@ object CoGroupSubPlanCompiler {
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                     }.asType(classOf[AnyRef].asType),
                     {
-                      val orderings = {
-                        val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
-                        val group = input.getGroup
-                        group.getGrouping.map { grouping =>
-                          (dataModelRef.findProperty(grouping).getType.asType, true)
-                        } ++
-                          group.getOrdering.map { ordering =>
-                            (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                              ordering.getDirection == Group.Direction.ASCENDANT)
-                          }
-                      }.toSeq
-                      val orderingType = OrderingClassBuilder.getOrCompile(context.flowId, orderings, context.jpContext)
+                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-                      getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
-                        .invokeV("apply", classOf[Option[_]].asType,
-                          pushNew0(orderingType).asType(classOf[AnyRef].asType))
+                      input.getGroup.getOrdering.foreach { ordering =>
+                        builder.invokeI(
+                          NameTransformer.encode("+="),
+                          classOf[mutable.Builder[_, _]].asType,
+                          ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+                      }
+
+                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                         .asType(classOf[AnyRef].asType)
                     }).asType(classOf[AnyRef].asType)
               })
@@ -248,9 +238,6 @@ object CoGroupSubPlanCompiler {
         }, {
           // Partitioner
           partitionerVar.push().asType(classOf[Partitioner].asType)
-        }, {
-          // Ordering
-          pushNew0(orderingType).asType(classOf[Ordering[_]].asType)
         })
       cogroupDriver.store(context.nextLocal.getAndAdd(cogroupDriver.size))
     }

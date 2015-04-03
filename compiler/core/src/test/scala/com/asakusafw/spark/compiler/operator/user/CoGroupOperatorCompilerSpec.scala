@@ -9,6 +9,7 @@ import java.nio.file.Files
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import org.apache.spark.broadcast.Broadcast
 
@@ -58,7 +59,8 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classpath))
+        classpath),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])

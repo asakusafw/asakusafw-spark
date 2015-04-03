@@ -110,10 +110,11 @@ object ShuffleKeyClassBuilder {
     mutable.WeakHashMap.empty
 
   def getOrCompile(
-    flowId: String,
-    dataModelType: Type,
-    grouping: Seq[(String, Type)],
-    ordering: Seq[(String, Type)])(implicit jpContext: JPContext): Type = {
+    jpContext: JPContext)(
+      flowId: String,
+      dataModelType: Type,
+      grouping: Seq[(String, Type)],
+      ordering: Seq[(String, Type)]): Type = {
     cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
       (flowId, dataModelType, grouping, ordering), {
         jpContext.addClass(new ShuffleKeyClassBuilder(flowId, dataModelType, grouping, ordering))

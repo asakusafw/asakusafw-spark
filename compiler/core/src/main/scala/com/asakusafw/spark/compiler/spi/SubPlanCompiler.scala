@@ -28,7 +28,8 @@ object SubPlanCompiler {
 
   case class Context(
     flowId: String,
-    jpContext: JPContext)
+    jpContext: JPContext,
+    shuffleKeyTypes: mutable.Set[Type])
 
   private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[SubPlanCompiler]] =
     mutable.WeakHashMap.empty

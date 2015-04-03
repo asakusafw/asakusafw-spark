@@ -21,7 +21,14 @@ abstract class OutputDriverClassBuilder(
   val dataModelType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/OutputDriver$$${OutputDriverClassBuilder.nextId};"),
-      Option(OutputDriverClassBuilder.signature(dataModelType)),
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[OutputDriver[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE)
+          }
+        }
+        .build(),
       classOf[OutputDriver[_, _]].asType) with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -52,15 +59,4 @@ object OutputDriverClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
-
-  def signature(dataModelType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[OutputDriver[_, _]].asType) {
-          _
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-        }
-      }
-      .build()
-  }
 }
