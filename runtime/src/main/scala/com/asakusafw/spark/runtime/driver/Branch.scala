@@ -1,15 +1,15 @@
 package com.asakusafw.spark.runtime.driver
 
 import scala.collection.mutable
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.Partitioner
 import org.apache.spark.SparkContext._
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd._
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
@@ -21,15 +21,15 @@ trait Branch[B, T] {
 
   def partitioners: Map[B, Partitioner]
 
-  def orderings[K]: Map[B, Ordering[K]]
+  def orderings: Map[B, Ordering[ShuffleKey]]
 
-  def aggregations: Map[B, Aggregation[_, _, _]]
+  def aggregations: Map[B, Aggregation[ShuffleKey, _, _]]
 
-  def shuffleKey[U](branch: B, value: DataModel[_]): U
+  def shuffleKey(branch: B, value: Any): ShuffleKey
 
   def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[U]])
 
-  def branch(rdd: RDD[(_, T)]): Map[B, RDD[(_, _)]] = {
+  def branch(rdd: RDD[(ShuffleKey, T)]): Map[B, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
         rdd.mapPartitions({ iter =>
@@ -38,16 +38,16 @@ trait Branch[B, T] {
           }
         }, preservesPartitioning = true))
     } else {
-      rdd.branch[B, Any, Any](
+      rdd.branch[B, ShuffleKey, Any](
         branchKeys,
         { iter =>
           val combiners = aggregations.collect {
             case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
-          }.toMap[B, Aggregation.Combiner[_, _, _]]
+          }.toMap[B, Aggregation.Combiner[ShuffleKey, _, _]]
 
           f(iter).flatMap {
             case ((b, k), v) if combiners.contains(b) =>
-              combiners(b).asInstanceOf[Aggregation.Combiner[Any, Any, Any]].insert(k, v)
+              combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]].insert(k, v)
               Iterator.empty
             case otherwise => Iterator(otherwise)
           } ++ combiners.iterator.flatMap {
@@ -63,7 +63,7 @@ trait Branch[B, T] {
     }
   }
 
-  private def f(iter: Iterator[(_, T)]): Iterator[((B, _), _)] = {
+  private def f(iter: Iterator[(ShuffleKey, T)]): Iterator[((B, ShuffleKey), _)] = {
     val (fragment, outputs) = fragments
     assert(outputs.keys.toSet == branchKeys)
 
@@ -75,7 +75,7 @@ trait Branch[B, T] {
           fragment.add(value)
           outputs.iterator.flatMap {
             case (key, output) =>
-              def prepare[V <: DataModel[V]](buffer: mutable.ArrayBuffer[_]) = {
+              def prepare[V](buffer: mutable.ArrayBuffer[_]) = {
                 buffer.asInstanceOf[mutable.ArrayBuffer[V]]
                   .map(out => ((key, shuffleKey(key, out)), out))
               }

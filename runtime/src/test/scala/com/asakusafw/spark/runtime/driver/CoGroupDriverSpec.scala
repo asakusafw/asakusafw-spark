@@ -14,7 +14,8 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.orderings._
 
@@ -28,46 +29,45 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
   behavior of "CoGroupDriver"
 
   it should "cogroup" in {
-    val hogeOrd = implicitly[Ordering[(IntOption, Boolean)]].asInstanceOf[Ordering[Product]]
+    val hogeOrd = Seq(true)
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
       hoge.id.modify(i)
-      ((hoge.id, hoge.id.get % 3 == 0), hoge)
-    }.asInstanceOf[RDD[(Product, Any)]]
+      (new ShuffleKey(Seq(hoge.id), Seq(new BooleanOption().modify(hoge.id.get % 3 == 0))) {}, hoge)
+    }.asInstanceOf[RDD[(ShuffleKey, _)]]
 
-    val fooOrd = implicitly[Ordering[(IntOption, Int)]].asInstanceOf[Ordering[Product]]
+    val fooOrd = Seq(true)
     val foos = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
       val foo = new Foo()
       foo.id.modify(10 + j)
       foo.hogeId.modify(i)
-      ((foo.hogeId, foo.id.toString.hashCode), foo)
-    }).asInstanceOf[RDD[(Product, Any)]]
+      (new ShuffleKey(Seq(foo.hogeId), Seq(new IntOption().modify(foo.id.toString.hashCode))) {}, foo)
+    }).asInstanceOf[RDD[(ShuffleKey, _)]]
 
-    val part = new GroupingPartitioner(2)
-    val groupingOrd = new GroupingOrdering
-    val driver = new TestCoGroupDriver[Product](
-      sc, hadoopConf, Seq((Seq(hoges), Some(hogeOrd)), (Seq(foos), Some(fooOrd))), part, groupingOrd)
+    val part = new HashPartitioner(2)
+    val driver = new TestCoGroupDriver(
+      sc, hadoopConf, Seq((Seq(hoges), hogeOrd), (Seq(foos), fooOrd)), part)
 
     val outputs = driver.execute()
     outputs.mapValues(_.collect.toSeq).foreach {
       case ("hogeResult", values) =>
-        val hogeResults = values.asInstanceOf[Seq[(Hoge, Hoge)]]
+        val hogeResults = values.asInstanceOf[Seq[(ShuffleKey, Hoge)]]
         assert(hogeResults.size === 1)
         assert(hogeResults(0)._2.id.get === 1)
       case ("fooResult", values) =>
-        val fooResults = values.asInstanceOf[Seq[(Foo, Foo)]]
+        val fooResults = values.asInstanceOf[Seq[(ShuffleKey, Foo)]]
         assert(fooResults.size === 1)
         assert(fooResults(0)._2.id.get === 10)
         assert(fooResults(0)._2.hogeId.get === 1)
       case ("hogeError", values) =>
-        val hogeErrors = values.asInstanceOf[Seq[(Hoge, Hoge)]].sortBy(_._1.id)
+        val hogeErrors = values.asInstanceOf[Seq[(ShuffleKey, Hoge)]].sortBy(_._2.id)
         assert(hogeErrors.size === 9)
         assert(hogeErrors(0)._2.id.get === 0)
         for (i <- 2 until 10) {
           assert(hogeErrors(i - 1)._2.id.get === i)
         }
       case ("fooError", values) =>
-        val fooErrors = values.asInstanceOf[Seq[(Foo, Foo)]].sortBy(_._1.hogeId)
+        val fooErrors = values.asInstanceOf[Seq[(ShuffleKey, Foo)]].sortBy(_._2.hogeId)
         assert(fooErrors.size === 44)
         for {
           i <- 2 until 10
@@ -82,13 +82,12 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
 
 object CoGroupDriverSpec {
 
-  class TestCoGroupDriver[K <: Product: ClassTag](
+  class TestCoGroupDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient inputs: Seq[(Seq[RDD[(K, _)]], Option[Ordering[K]])],
-    @transient part: Partitioner,
-    groupingOrdering: Ordering[K])
-      extends CoGroupDriver[String, K](sc, hadoopConf, Map.empty, inputs, part, groupingOrdering) {
+    @transient inputs: Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])],
+    @transient part: Partitioner)
+      extends CoGroupDriver[String](sc, hadoopConf, Map.empty, inputs, part) {
 
     override def name = "TestCoGroup"
 
@@ -98,9 +97,9 @@ object CoGroupDriverSpec {
 
     override def partitioners: Map[String, Partitioner] = Map.empty
 
-    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
 
     override def fragments[U <: DataModel[U]]: (Fragment[Seq[Iterable[_]]], Map[String, OutputFragment[U]]) = {
       val outputs = Map(
@@ -112,9 +111,7 @@ object CoGroupDriverSpec {
       (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
-      value.asInstanceOf[U]
-    }
+    override def shuffleKey(branch: String, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] {
@@ -155,18 +152,9 @@ object CoGroupDriverSpec {
   class GroupingPartitioner(val numPartitions: Int) extends Partitioner {
 
     override def getPartition(key: Any): Int = {
-      val group = key.asInstanceOf[Product].productElement(0)
-      val part = group.hashCode % numPartitions
+      val shuffleKey = key.asInstanceOf[ShuffleKey]
+      val part = shuffleKey.grouping.hashCode % numPartitions
       if (part < 0) part + numPartitions else part
-    }
-  }
-
-  class GroupingOrdering extends Ordering[Product] {
-
-    override def compare(x: Product, y: Product): Int = {
-      implicitly[Ordering[IntOption]].compare(
-        x.productElement(0).asInstanceOf[IntOption],
-        y.productElement(0).asInstanceOf[IntOption])
     }
   }
 

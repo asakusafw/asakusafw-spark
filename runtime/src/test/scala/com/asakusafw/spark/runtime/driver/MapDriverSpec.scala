@@ -8,10 +8,11 @@ import org.scalatest.junit.JUnitRunner
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd._
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 
 @RunWith(classOf[JUnitRunner])
@@ -27,8 +28,8 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
       hoge.id.modify(i)
-      ((), hoge)
-    }.asInstanceOf[RDD[(_, Hoge)]]
+      (new ShuffleKey(Seq.empty, Seq.empty) {}, hoge)
+    }.asInstanceOf[RDD[(ShuffleKey, Hoge)]]
 
     val driver = new TestMapDriver(sc, hadoopConf, hoges)
 
@@ -57,7 +58,7 @@ object MapDriverSpec {
   class TestMapDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient prev: RDD[(_, Hoge)])
+    @transient prev: RDD[(ShuffleKey, Hoge)])
       extends MapDriver[Hoge, String](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def name = "TestMap"
@@ -66,9 +67,9 @@ object MapDriverSpec {
 
     override def partitioners: Map[String, Partitioner] = Map.empty
 
-    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
 
     override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
       val outputs = Map(
@@ -78,9 +79,7 @@ object MapDriverSpec {
       (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
-      value.asInstanceOf[U]
-    }
+    override def shuffleKey(branch: String, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] {

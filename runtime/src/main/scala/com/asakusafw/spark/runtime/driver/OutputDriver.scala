@@ -21,7 +21,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.util.VariableTable
 
-abstract class OutputDriver[T <: DataModel[T]: ClassTag, B](
+abstract class OutputDriver[T: ClassTag, B](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   @transient prevs: Seq[RDD[(_, T)]])
@@ -30,7 +30,7 @@ abstract class OutputDriver[T <: DataModel[T]: ClassTag, B](
 
   val Logger = LoggerFactory.getLogger(getClass())
 
-  override def execute(): Map[B, RDD[(_, _)]] = {
+  override def execute(): Map[B, RDD[(ShuffleKey, _)]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])

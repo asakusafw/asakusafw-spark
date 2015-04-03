@@ -5,7 +5,7 @@ import java.io.{ DataInputStream, DataOutputStream }
 import com.esotericsoftware.kryo._
 import com.esotericsoftware.kryo.io._
 
-import com.asakusafw.runtime.value._
+import com.asakusafw.runtime.value.ValueOption
 
 abstract class ValueOptionSerializer[T <: ValueOption[T]] extends Serializer[T](false, false) {
 

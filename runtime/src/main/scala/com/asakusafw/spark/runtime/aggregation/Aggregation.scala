@@ -1,4 +1,4 @@
-package com.asakusafw.spark.runtime.fragment
+package com.asakusafw.spark.runtime.aggregation
 
 import org.apache.spark.{ Aggregator, SparkEnv, TaskContext }
 import org.apache.spark.util.collection.{ AppendOnlyMap, ExternalAppendOnlyMap }

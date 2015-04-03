@@ -15,5 +15,5 @@ abstract class SubPlanDriver[B](
 
   def name: String
 
-  def execute(): Map[B, RDD[(_, _)]]
+  def execute(): Map[B, RDD[(ShuffleKey, _)]]
 }

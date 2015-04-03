@@ -8,7 +8,7 @@ import org.apache.hadoop.io.{ BooleanWritable, Writable }
 
 import com.asakusafw.runtime.value.ValueOption
 
-class ShuffleKey protected (
+class ShuffleKey(
     val grouping: Seq[ValueOption[_]],
     val ordering: Seq[ValueOption[_]]) extends Writable with Equals {
 
@@ -30,7 +30,7 @@ class ShuffleKey protected (
     }
   }
 
-  override def hashCode: Int = (grouping ++ ordering).hashCode
+  override def hashCode: Int = grouping.hashCode
 
   override def equals(obj: Any): Boolean = {
     obj match {

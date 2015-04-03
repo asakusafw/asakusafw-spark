@@ -1,5 +1,5 @@
 package com.asakusafw.spark.runtime
-package fragment
+package aggregation
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec

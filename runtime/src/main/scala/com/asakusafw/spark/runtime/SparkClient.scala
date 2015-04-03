@@ -1,13 +1,12 @@
 package com.asakusafw.spark.runtime
 
-import scala.reflect.ClassTag
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.SparkContext._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
+import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class SparkClient {
@@ -29,18 +28,19 @@ abstract class SparkClient {
 
   def kryoRegistrator: String
 
-  def broadcastAsHash[K: ClassTag, V](
+  def broadcastAsHash[V](
     sc: SparkContext,
-    rdds: Seq[RDD[(K, V)]],
-    part: Partitioner,
-    ordering: Ordering[K],
-    grouping: Ordering[K]): Broadcast[Map[K, Seq[V]]] = {
+    rdds: Seq[RDD[(ShuffleKey, V)]],
+    directions: Seq[Boolean],
+    part: Partitioner): Broadcast[Map[ShuffleKey, Seq[V]]] = {
 
+    val ordering = Option(new ShuffleKey.SortOrdering(directions))
     sc.broadcast(
-      smcogroup[K](
-        Seq((confluent(rdds, part, Option(ordering)).asInstanceOf[RDD[(K, _)]], Option(ordering))),
+      smcogroup(
+        Seq((confluent(rdds, part, ordering).asInstanceOf[RDD[(ShuffleKey, _)]], ordering)),
         part,
-        grouping)
-        .mapValues(_.head.toSeq.asInstanceOf[Seq[V]]).collect.toMap.withDefault(_ => Seq.empty))
+        ShuffleKey.GroupingOrdering)
+        .map { case (k, vs) => (k.dropOrdering, vs(0).toSeq.asInstanceOf[Seq[V]]) }
+        .collect.toMap.withDefault(_ => Seq.empty))
   }
 }
