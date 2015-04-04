@@ -101,73 +101,6 @@ object CoGroupSubPlanCompiler {
 
       val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
 
-      val broadcastsVar = {
-        val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-        subplan.getInputs.toSet[SubPlan.Input]
-          .filter(_.getOperator.getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST)
-          .foreach { input =>
-            val dataModelRef = context.jpContext.getDataModelLoader.load(input.getOperator.getInput.getDataType)
-            val key = input.getAttribute(classOf[PartitioningParameters]).getKey
-            val groupings = key.getGrouping.toSeq.map { grouping =>
-              (dataModelRef.findProperty(grouping).getType.asType, true)
-            }
-            val orderings = groupings ++ key.getOrdering.toSeq.map { ordering =>
-              (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                ordering.getDirection == Group.Direction.ASCENDANT)
-            }
-
-            builder.invokeI(
-              NameTransformer.encode("+="),
-              classOf[mutable.Builder[_, _]].asType,
-              getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
-                .invokeV(
-                  "apply",
-                  classOf[(Long, Broadcast[_])].asType,
-                  ldc(input.getOperator.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-                  thisVar.push().invokeV(
-                    "broadcastAsHash",
-                    classOf[Broadcast[_]].asType,
-                    context.scVar.push(),
-                    {
-                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-                      input.getOpposites.toSeq.map(_.getOperator.getSerialNumber).foreach { sn =>
-                        builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                          context.rddsVar.push().invokeI(
-                            "apply",
-                            classOf[AnyRef].asType,
-                            ldc(sn).box().asType(classOf[AnyRef].asType)))
-                      }
-
-                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-                    },
-                    {
-                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-                      key.getOrdering.foreach { ordering =>
-                        builder.invokeI(
-                          NameTransformer.encode("+="),
-                          classOf[mutable.Builder[_, _]].asType,
-                          ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
-                      }
-
-                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-                    },
-                    {
-                      val partitioner = pushNew(classOf[HashPartitioner].asType)
-                      partitioner.dup().invokeInit(context.scVar.push().invokeV("defaultParallelism", Type.INT_TYPE))
-                      partitioner.asType(classOf[Partitioner].asType)
-                    })
-                    .asType(classOf[AnyRef].asType))
-                .asType(classOf[AnyRef].asType))
-          }
-        val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-        broadcasts.store(context.nextLocal.getAndAdd(broadcasts.size))
-      }
-
       val properties = dominant.getInputs.map { input =>
         val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
         input.getGroup.getGrouping.map { grouping =>
@@ -186,7 +119,7 @@ object CoGroupSubPlanCompiler {
       cogroupDriver.dup().invokeInit(
         context.scVar.push(),
         context.hadoopConfVar.push(),
-        broadcastsVar.push(), {
+        context.broadcastsVar.push(), {
           // Seq[(Seq[RDD[(K, _)]], Seq[Boolean])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)

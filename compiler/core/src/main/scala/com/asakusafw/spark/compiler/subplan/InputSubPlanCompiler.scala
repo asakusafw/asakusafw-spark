@@ -92,70 +92,11 @@ object InputSubPlanCompiler {
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
 
-      val broadcastsVar = {
-        val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-        subplan.getInputs.toSet[SubPlan.Input]
-          .filter(_.getOperator.getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST)
-          .foreach { input =>
-            val key = input.getAttribute(classOf[PartitioningParameters]).getKey
-
-            builder.invokeI(
-              NameTransformer.encode("+="),
-              classOf[mutable.Builder[_, _]].asType,
-              getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
-                .invokeV(
-                  "apply",
-                  classOf[(Long, Broadcast[_])].asType,
-                  ldc(input.getOperator.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-                  thisVar.push().invokeV(
-                    "broadcastAsHash",
-                    classOf[Broadcast[_]].asType,
-                    context.scVar.push(),
-                    {
-                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-                      input.getOpposites.toSeq.map(_.getOperator.getSerialNumber).foreach { sn =>
-                        builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                          context.rddsVar.push().invokeI(
-                            "apply",
-                            classOf[AnyRef].asType,
-                            ldc(sn).box().asType(classOf[AnyRef].asType)))
-                      }
-
-                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-                    },
-                    {
-                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-                      key.getOrdering.foreach { ordering =>
-                        builder.invokeI(
-                          NameTransformer.encode("+="),
-                          classOf[mutable.Builder[_, _]].asType,
-                          ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
-                      }
-
-                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-                    },
-                    {
-                      val partitioner = pushNew(classOf[HashPartitioner].asType)
-                      partitioner.dup().invokeInit(context.scVar.push().invokeV("defaultParallelism", Type.INT_TYPE))
-                      partitioner.asType(classOf[Partitioner].asType)
-                    })
-                    .asType(classOf[AnyRef].asType))
-                .asType(classOf[AnyRef].asType))
-          }
-        val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-        broadcasts.store(context.nextLocal.getAndAdd(broadcasts.size))
-      }
-
       val inputDriver = pushNew(driverType)
       inputDriver.dup().invokeInit(
         context.scVar.push(),
         context.hadoopConfVar.push(),
-        broadcastsVar.push())
+        context.broadcastsVar.push())
       inputDriver.store(context.nextLocal.getAndAdd(inputDriver.size))
     }
   }
