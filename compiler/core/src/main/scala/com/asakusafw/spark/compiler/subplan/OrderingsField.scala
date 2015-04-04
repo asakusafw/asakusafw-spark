@@ -13,7 +13,7 @@ import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.Group
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
-import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
+import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -47,25 +47,28 @@ trait OrderingsField extends ClassBuilder {
     subplanOutputs.sortBy(_.getOperator.getOriginalSerialNumber).foreach { output =>
       val op = output.getOperator
       Option(output.getAttribute(classOf[PartitioningParameters])).foreach { params =>
-        val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
-        val group = params.getKey
-        val properties: Seq[(Type, Boolean)] =
-          group.getGrouping.map { grouping =>
-            (dataModelRef.findProperty(grouping).getType.asType, true)
-          } ++
-            group.getOrdering.map { ordering =>
-              (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                ordering.getDirection == Group.Direction.ASCENDANT)
-            }
-        val orderingType = OrderingClassBuilder.getOrCompile(flowId, properties, jpContext)
-
         builder.invokeI(
           NameTransformer.encode("+="),
           classOf[mutable.Builder[_, _]].asType,
           getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
             invokeV("apply", classOf[(_, _)].asType,
-              ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-              pushNew0(orderingType).asType(classOf[AnyRef].asType))
+              ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType), {
+                val ordering = pushNew(classOf[ShuffleKey.SortOrdering].asType)
+                ordering.dup().invokeInit({
+                  val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                    .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+                  params.getKey.getOrdering.foreach { ordering =>
+                    builder.invokeI(
+                      NameTransformer.encode("+="),
+                      classOf[mutable.Builder[_, _]].asType,
+                      ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+                  }
+
+                  builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                })
+                ordering.asType(classOf[AnyRef].asType)
+              })
             .asType(classOf[AnyRef].asType))
       }
     }

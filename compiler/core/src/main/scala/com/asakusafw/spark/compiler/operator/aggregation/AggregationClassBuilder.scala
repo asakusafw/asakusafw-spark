@@ -11,7 +11,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
-import com.asakusafw.spark.runtime.fragment.Aggregation
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

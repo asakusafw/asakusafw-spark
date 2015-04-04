@@ -15,7 +15,7 @@ import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
-import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator.Fold

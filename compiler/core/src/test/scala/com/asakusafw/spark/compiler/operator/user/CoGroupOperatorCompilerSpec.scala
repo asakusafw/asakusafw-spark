@@ -9,6 +9,9 @@ import java.nio.file.Files
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
+
+import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
@@ -56,7 +59,8 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classpath))
+        classpath),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
@@ -80,10 +84,11 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls.getConstructor(
+      classOf[Map[Long, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]],
       classOf[Fragment[_]], classOf[Fragment[_]],
       classOf[Fragment[_]])
-      .newInstance(hogeResult, fooResult, hogeError, fooError, nResult)
+      .newInstance(Map.empty, hogeResult, fooResult, hogeError, fooError, nResult)
 
     {
       val hoges = Seq.empty[Hoge]

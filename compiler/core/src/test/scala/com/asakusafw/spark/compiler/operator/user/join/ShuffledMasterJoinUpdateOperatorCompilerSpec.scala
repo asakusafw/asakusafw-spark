@@ -1,6 +1,5 @@
 package com.asakusafw.spark.compiler.operator
-package user
-package join
+package user.join
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -10,6 +9,9 @@ import java.nio.file.Files
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
+
+import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
@@ -23,68 +25,71 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.vocabulary.operator.{ MasterBranch, MasterSelection }
+import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateOp, MasterSelection }
 
 @RunWith(classOf[JUnitRunner])
-class MasterBranchOperatorCompilerSpecTest extends MasterBranchOperatorCompilerSpec
+class ShuffledMasterJoinUpdateOperatorCompilerSpecTest extends ShuffledMasterJoinUpdateOperatorCompilerSpec
 
-class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
 
-  import MasterBranchOperatorCompilerSpec._
+  import ShuffledMasterJoinUpdateOperatorCompilerSpec._
 
-  behavior of classOf[MasterBranchOperatorCompiler].getSimpleName
+  behavior of classOf[ShuffledMasterJoinUpdateOperatorCompiler].getSimpleName
 
-  it should "compile MasterBranch operator without master selection" in {
+  it should "compile MasterJoinUpdate operator without master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branch")
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "update")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
         new Group(
           Seq(PropertyName.of("hogeId")),
           Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
+      .output("updated", ClassDescription.of(classOf[Foo]))
+      .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classpath))
+        classpath),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (low, high) = {
+    val (updated, missed) = {
       val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
       (cls.newInstance(), cls.newInstance())
     }
 
-    val fragment = cls.getConstructor(
-      classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(low, high)
+    val fragment = cls
+      .getConstructor(
+        classOf[Map[Long, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(Map.empty, updated, missed)
 
     {
       val hoge = new Hoge()
-      hoge.id.modify(10)
+      hoge.id.modify(1)
       val hoges = Seq(hoge)
       val foo = new Foo()
       foo.id.modify(10)
-      foo.hogeId.modify(10)
+      foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 0)
-      assert(high.buffer.size === 1)
-      assert(high.buffer(0).id.get === 10)
+      assert(updated.buffer.size === 1)
+      assert(updated.buffer(0).id.get === 10)
+      assert(missed.buffer.size === 0)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -93,70 +98,73 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 1)
-      assert(low.buffer(0).id.get === 10)
-      assert(high.buffer.size === 0)
+      assert(updated.buffer.size === 0)
+      assert(missed.buffer.size === 1)
+      assert(missed.buffer(0).id.get === 10)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
   }
 
-  it should "compile MasterBranch operator with master selection" in {
+  it should "compile MasterJoinUpdate operator with master selection" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branchWithSelection")
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updateWithSelection")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
         new Group(
           Seq(PropertyName.of("hogeId")),
           Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
+      .output("updated", ClassDescription.of(classOf[Foo]))
+      .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classpath))
+        classpath),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (low, high) = {
+    val (updated, missed) = {
       val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
       (cls.newInstance(), cls.newInstance())
     }
 
-    val fragment = cls.getConstructor(
-      classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(low, high)
+    val fragment = cls
+      .getConstructor(
+        classOf[Map[Long, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(Map.empty, updated, missed)
 
     {
       val hoge = new Hoge()
-      hoge.id.modify(10)
+      hoge.id.modify(0)
       val hoges = Seq(hoge)
       val foos = (0 until 10).map { i =>
         val foo = new Foo()
         foo.id.modify(i)
-        foo.hogeId.modify(10)
+        foo.hogeId.modify(0)
         foo
       }
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 5)
-      assert(low.buffer.map(_.id.get) === (1 until 10 by 2))
-      assert(high.buffer.size === 5)
-      assert(high.buffer.map(_.id.get) === (0 until 10 by 2))
+      assert(updated.buffer.size === 5)
+      assert(updated.buffer.map(_.id.get) === (0 until 10 by 2))
+      assert(missed.buffer.size === 5)
+      assert(missed.buffer.map(_.id.get) === (1 until 10 by 2))
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -165,67 +173,70 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 1)
-      assert(low.buffer(0).id.get === 10)
-      assert(high.buffer.size === 0)
+      assert(updated.buffer.size === 0)
+      assert(missed.buffer.size === 1)
+      assert(missed.buffer(0).id.get === 10)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
   }
 
-  it should "compile MasterBranch operator without master selection with projective model" in {
+  it should "compile MasterJoinUpdate operator without master selection with projective model" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branchp")
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updatep")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
         new Group(
           Seq(PropertyName.of("hogeId")),
           Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
+      .output("updated", ClassDescription.of(classOf[Foo]))
+      .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classpath))
+        classpath),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (low, high) = {
+    val (updated, missed) = {
       val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
       (cls.newInstance(), cls.newInstance())
     }
 
-    val fragment = cls.getConstructor(
-      classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(low, high)
+    val fragment = cls
+      .getConstructor(
+        classOf[Map[Long, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(Map.empty, updated, missed)
 
     {
       val hoge = new Hoge()
-      hoge.id.modify(10)
+      hoge.id.modify(1)
       val hoges = Seq(hoge)
       val foo = new Foo()
       foo.id.modify(10)
-      foo.hogeId.modify(10)
+      foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 0)
-      assert(high.buffer.size === 1)
-      assert(high.buffer(0).id.get === 10)
+      assert(updated.buffer.size === 1)
+      assert(updated.buffer(0).id.get === 10)
+      assert(missed.buffer.size === 0)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -234,70 +245,73 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 1)
-      assert(low.buffer(0).id.get === 10)
-      assert(high.buffer.size === 0)
+      assert(updated.buffer.size === 0)
+      assert(missed.buffer.size === 1)
+      assert(missed.buffer(0).id.get === 10)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
   }
 
-  it should "compile MasterBranch operator with master selection with projective model" in {
+  it should "compile MasterJoinUpdate operator with master selection with projective model" in {
     val operator = OperatorExtractor
-      .extract(classOf[MasterBranch], classOf[MasterBranchOperator], "branchWithSelectionp")
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updateWithSelectionp")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
         new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
       .input("foos", ClassDescription.of(classOf[Foo]),
         new Group(
           Seq(PropertyName.of("hogeId")),
           Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
+      .output("updated", ClassDescription.of(classOf[Foo]))
+      .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classpath))
+        classpath),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (low, high) = {
+    val (updated, missed) = {
       val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
       val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
       (cls.newInstance(), cls.newInstance())
     }
 
-    val fragment = cls.getConstructor(
-      classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(low, high)
+    val fragment = cls
+      .getConstructor(
+        classOf[Map[Long, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+      .newInstance(Map.empty, updated, missed)
 
     {
       val hoge = new Hoge()
-      hoge.id.modify(10)
+      hoge.id.modify(0)
       val hoges = Seq(hoge)
       val foos = (0 until 10).map { i =>
         val foo = new Foo()
         foo.id.modify(i)
-        foo.hogeId.modify(10)
+        foo.hogeId.modify(0)
         foo
       }
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 5)
-      assert(low.buffer.map(_.id.get) === (1 until 10 by 2))
-      assert(high.buffer.size === 5)
-      assert(high.buffer.map(_.id.get) === (0 until 10 by 2))
+      assert(updated.buffer.size === 5)
+      assert(updated.buffer.map(_.id.get) === (0 until 10 by 2))
+      assert(missed.buffer.size === 5)
+      assert(missed.buffer.map(_.id.get) === (1 until 10 by 2))
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -306,18 +320,18 @@ class MasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 1)
-      assert(low.buffer(0).id.get === 10)
-      assert(high.buffer.size === 0)
+      assert(updated.buffer.size === 0)
+      assert(missed.buffer.size === 1)
+      assert(missed.buffer(0).id.get === 10)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(updated.buffer.size === 0)
+    assert(missed.buffer.size === 0)
   }
 }
 
-object MasterBranchOperatorCompilerSpec {
+object ShuffledMasterJoinUpdateOperatorCompilerSpec {
 
   trait HogeP {
     def getIdOption: IntOption
@@ -360,25 +374,13 @@ object MasterBranchOperatorCompilerSpec {
     def getHogeIdOption: IntOption = hogeId
   }
 
-  class MasterBranchOperator {
+  class MasterJoinUpdateOperator {
 
-    @MasterBranch
-    def branch(hoge: Hoge, foo: Foo): BranchOperatorCompilerSpecTestBranch = {
-      if (hoge == null || hoge.id.get < 5) {
-        BranchOperatorCompilerSpecTestBranch.LOW
-      } else {
-        BranchOperatorCompilerSpecTestBranch.HIGH
-      }
-    }
+    @MasterJoinUpdateOp
+    def update(hoge: Hoge, foo: Foo): Unit = {}
 
-    @MasterBranch(selection = "select")
-    def branchWithSelection(hoge: Hoge, foo: Foo): BranchOperatorCompilerSpecTestBranch = {
-      if (hoge == null || hoge.id.get < 5) {
-        BranchOperatorCompilerSpecTestBranch.LOW
-      } else {
-        BranchOperatorCompilerSpecTestBranch.HIGH
-      }
-    }
+    @MasterJoinUpdateOp(selection = "select")
+    def updateWithSelection(hoge: Hoge, foo: Foo): Unit = {}
 
     @MasterSelection
     def select(hoges: JList[Hoge], foo: Foo): Hoge = {
@@ -389,23 +391,11 @@ object MasterBranchOperatorCompilerSpec {
       }
     }
 
-    @MasterBranch
-    def branchp[H <: HogeP, F <: FooP](hoge: H, foo: F): BranchOperatorCompilerSpecTestBranch = {
-      if (hoge == null || hoge.getIdOption.get < 5) {
-        BranchOperatorCompilerSpecTestBranch.LOW
-      } else {
-        BranchOperatorCompilerSpecTestBranch.HIGH
-      }
-    }
+    @MasterJoinUpdateOp
+    def updatep[H <: HogeP, F <: FooP](hoge: H, foo: F): Unit = {}
 
-    @MasterBranch(selection = "selectp")
-    def branchWithSelectionp[H <: HogeP, F <: FooP](hoge: H, foo: F): BranchOperatorCompilerSpecTestBranch = {
-      if (hoge == null || hoge.getIdOption.get < 5) {
-        BranchOperatorCompilerSpecTestBranch.LOW
-      } else {
-        BranchOperatorCompilerSpecTestBranch.HIGH
-      }
-    }
+    @MasterJoinUpdateOp(selection = "selectp")
+    def updateWithSelectionp[H <: HogeP, F <: FooP](hoge: H, foo: F): Unit = {}
 
     @MasterSelection
     def selectp[H <: HogeP, F <: FooP](hoges: JList[H], foo: F): H = {

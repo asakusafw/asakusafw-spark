@@ -8,11 +8,13 @@ import org.scalatest.junit.JUnitRunner
 import java.nio.file.Files
 import java.util.{ List => JList }
 
+import scala.collection.mutable
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
@@ -112,39 +114,39 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       jpContext = new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
-        classServer.root.toFile))
+        classServer.root.toFile),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver[Long, _]])
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver[Long]])
 
-    val hogeOrd = implicitly[Ordering[(IntOption, Boolean)]]
+    val hogeOrd = Seq(true)
     val hogeList = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
       hoge.id.modify(i)
-      ((hoge.id, hoge.id.get % 3 == 0), hoge)
+      (new ShuffleKey(Seq(hoge.id), Seq(new BooleanOption().modify(hoge.id.get % 3 == 0))) {}, hoge)
     }
-    val fooOrd = implicitly[Ordering[(IntOption, Int)]]
+    val fooOrd = Seq(true)
     val fooList = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
       val foo = new Foo()
       foo.id.modify(10 + j)
       foo.hogeId.modify(i)
-      ((foo.hogeId, foo.id.toString.hashCode), foo)
+      (new ShuffleKey(Seq(foo.hogeId), Seq(new IntOption().modify(foo.id.toString.hashCode))) {}, foo)
     })
-    val part = new GroupingPartitioner(2)
-    val groupingOrd = new GroupingOrdering
+    val part = new HashPartitioner(2)
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
-      classOf[Seq[_]],
-      classOf[Partitioner],
-      classOf[Ordering[_]])
+      classOf[Map[Long, Broadcast[_]]],
+      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])]],
+      classOf[Partitioner])
       .newInstance(
         sc,
         hadoopConf,
-        Seq((Seq(hogeList), Some(hogeOrd)), (Seq(fooList), Some(fooOrd))),
-        part,
-        groupingOrd)
+        Map.empty,
+        Seq((Seq(hogeList), hogeOrd), (Seq(fooList), fooOrd)),
+        part)
     val results = driver.execute()
 
     assert(driver.branchKeys ===
@@ -247,24 +249,6 @@ object CoGroupDriverClassBuilderSpec {
     }
 
     def getNOption: IntOption = n
-  }
-
-  class GroupingPartitioner(val numPartitions: Int) extends Partitioner {
-
-    override def getPartition(key: Any): Int = {
-      val group = key.asInstanceOf[Product].productElement(0)
-      val part = group.hashCode % numPartitions
-      if (part < 0) part + numPartitions else part
-    }
-  }
-
-  class GroupingOrdering extends Ordering[Product] {
-
-    override def compare(x: Product, y: Product): Int = {
-      implicitly[Ordering[IntOption]].compare(
-        x.productElement(0).asInstanceOf[IntOption],
-        y.productElement(0).asInstanceOf[IntOption])
-    }
   }
 
   class CoGroupOperator {

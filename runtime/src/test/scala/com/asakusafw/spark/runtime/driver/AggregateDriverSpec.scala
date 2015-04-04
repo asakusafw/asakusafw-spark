@@ -14,6 +14,7 @@ import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 
 @RunWith(classOf[JUnitRunner])
@@ -23,24 +24,44 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
 
   import AggregateDriverSpec._
 
-  behavior of classOf[AggregateDriver[_, _, _, _]].getSimpleName
+  behavior of classOf[AggregateDriver[_, _, _]].getSimpleName
 
-  it should "aggregate" in {
+  it should "aggregate with map-side combine" in {
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
       hoge.id.modify(i % 2)
       hoge.price.modify(i * 100)
-      (hoge.id, hoge)
+      (new ShuffleKey(Seq(hoge.id), Seq(hoge.price)) {}, hoge)
     }
 
-    val part = new GroupingPartitioner(2)
-    val aggregation = new TestAggregation()
+    val part = new HashPartitioner(2)
+    val aggregation = new TestAggregation(true)
 
-    val driver = new TestAggregateDriver(sc, hadoopConf, hoges, part, aggregation)
+    val driver = new TestAggregateDriver(sc, hadoopConf, hoges, Seq(false), part, aggregation)
 
     val outputs = driver.execute()
     assert(outputs("result").map {
-      case (id: IntOption, hoge: Hoge) => (id.get, hoge.price.get)
+      case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
+    }.collect.toSeq.sortBy(_._1) ===
+      Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
+  }
+
+  it should "aggregate without map-side combine" in {
+    val hoges = sc.parallelize(0 until 10).map { i =>
+      val hoge = new Hoge()
+      hoge.id.modify(i % 2)
+      hoge.price.modify(i * 100)
+      (new ShuffleKey(Seq(hoge.id), Seq(hoge.price)) {}, hoge)
+    }
+
+    val part = new HashPartitioner(2)
+    val aggregation = new TestAggregation(false)
+
+    val driver = new TestAggregateDriver(sc, hadoopConf, hoges, Seq(false), part, aggregation)
+
+    val outputs = driver.execute()
+    assert(outputs("result").map {
+      case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
     }.collect.toSeq.sortBy(_._1) ===
       Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
   }
@@ -50,14 +71,14 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
       val hoge = new Hoge()
       hoge.id.modify(i % 2)
       hoge.price.modify(i * 100)
-      (hoge.id, hoge)
+      (new ShuffleKey(Seq(hoge.id), Seq(hoge.price)) {}, hoge)
     }
 
     val driver = new TestPartialAggregationMapDriver(sc, hadoopConf, hoges)
 
     val outputs = driver.execute()
     assert(outputs("result").map {
-      case (id: IntOption, hoge: Hoge) => (id.get, hoge.price.get)
+      case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
     }.collect.toSeq.sortBy(_._1) ===
       Seq(
         (0, (0 until 10).filter(_ % 2 == 0).filter(_ < 5).map(_ * 100).sum),
@@ -69,9 +90,8 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
 
 object AggregateDriverSpec {
 
-  class TestAggregation extends Aggregation[IntOption, Hoge, Hoge] {
-
-    override def mapSideCombine: Boolean = true
+  class TestAggregation(val mapSideCombine: Boolean)
+      extends Aggregation[ShuffleKey, Hoge, Hoge] {
 
     override def createCombiner(value: Hoge): Hoge = value
 
@@ -89,10 +109,11 @@ object AggregateDriverSpec {
   class TestAggregateDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient prev: RDD[(IntOption, Hoge)],
+    @transient prev: RDD[(ShuffleKey, Hoge)],
+    @transient directions: Seq[Boolean],
     @transient part: Partitioner,
-    val aggregation: Aggregation[IntOption, Hoge, Hoge])
-      extends AggregateDriver[IntOption, Hoge, Hoge, String](sc, hadoopConf, Seq(prev), part) {
+    val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
+      extends AggregateDriver[Hoge, Hoge, String](sc, hadoopConf, Map.empty, Seq(prev), directions, part) {
 
     override def name = "TestAggregation"
 
@@ -100,9 +121,9 @@ object AggregateDriverSpec {
 
     override def partitioners: Map[String, Partitioner] = Map.empty
 
-    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
 
     override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
       val fragment = new HogeOutputFragment
@@ -110,29 +131,29 @@ object AggregateDriverSpec {
       (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
-      value.asInstanceOf[Hoge].id.asInstanceOf[U]
+    override def shuffleKey(branch: String, value: Any): ShuffleKey = {
+      new ShuffleKey(Seq(value.asInstanceOf[Hoge].id), Seq.empty) {}
     }
   }
 
   class TestPartialAggregationMapDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient prev: RDD[(IntOption, Hoge)])
-      extends MapDriver[Hoge, String](sc, hadoopConf, Seq(prev.asInstanceOf[RDD[(_, Hoge)]])) {
+    @transient prev: RDD[(ShuffleKey, Hoge)])
+      extends MapDriver[Hoge, String](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def name = "TestPartialAggregation"
 
     override def branchKeys: Set[String] = Set("result")
 
     override def partitioners: Map[String, Partitioner] = {
-      Map("result" -> new GroupingPartitioner(2))
+      Map("result" -> new HashPartitioner(2))
     }
 
-    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[_, _, _]] = {
-      Map("result" -> new TestAggregation)
+    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = {
+      Map("result" -> new TestAggregation(true))
     }
 
     override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
@@ -141,8 +162,8 @@ object AggregateDriverSpec {
       (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
-      value.asInstanceOf[Hoge].id.asInstanceOf[U]
+    override def shuffleKey(branch: String, value: Any): ShuffleKey = {
+      new ShuffleKey(Seq(value.asInstanceOf[Hoge].id), Seq.empty) {}
     }
   }
 
@@ -163,14 +184,5 @@ object AggregateDriverSpec {
 
   class HogeOutputFragment extends OutputFragment[Hoge] {
     override def newDataModel: Hoge = new Hoge()
-  }
-
-  class GroupingPartitioner(val numPartitions: Int) extends Partitioner {
-
-    override def getPartition(key: Any): Int = {
-      val group = key.asInstanceOf[IntOption]
-      val part = group.hashCode % numPartitions
-      if (part < 0) part + numPartitions else part
-    }
   }
 }

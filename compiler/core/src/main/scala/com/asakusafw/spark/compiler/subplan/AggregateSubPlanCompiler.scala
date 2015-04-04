@@ -5,20 +5,21 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.reflect.NameTransformer
+import scala.reflect.{ ClassTag, NameTransformer }
 
 import org.apache.spark._
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
+import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
+import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
-import com.asakusafw.spark.compiler.partitioner.GroupingPartitionerClassBuilder
+import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
-import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
@@ -52,6 +53,8 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
+      override val shuffleKeyTypes = context.shuffleKeyTypes
+
       override val dominantOperator = operator
 
       override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
@@ -64,7 +67,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
           val fragmentBuilder = new FragmentTreeBuilder(
-            mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext))
+            mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes))
           val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
           val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
@@ -106,9 +109,7 @@ object AggregateSubPlanCompiler {
         dataModelRef.findProperty(grouping).getType.asType
       }.toSeq
 
-      val partitionerType = GroupingPartitionerClassBuilder.getOrCompile(
-        context.flowId, properties, context.jpContext)
-      val partitioner = pushNew(partitionerType)
+      val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(
         context.scVar.push()
           .invokeV("defaultParallelism", Type.INT_TYPE))
@@ -117,11 +118,16 @@ object AggregateSubPlanCompiler {
       val aggregateDriver = pushNew(driverType)
       aggregateDriver.dup().invokeInit(
         context.scVar.push(),
-        context.hadoopConfVar.push(), {
+        context.hadoopConfVar.push(),
+        context.broadcastsVar.push(), {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
           subplan.getInputs.toSet[SubPlan.Input]
+            .filter { input =>
+              val marker = input.getOperator.getAttribute(classOf[PlanMarker])
+              marker == PlanMarker.CHECKPOINT || marker == PlanMarker.GATHER
+            }
             .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
             .map(_.getOperator.getSerialNumber)
             .foreach { sn =>
@@ -131,6 +137,18 @@ object AggregateSubPlanCompiler {
                   classOf[AnyRef].asType,
                   ldc(sn).box().asType(classOf[AnyRef].asType)))
             }
+
+          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+        }, {
+          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+          input.getGroup.getOrdering.foreach { ordering =>
+            builder.invokeI(
+              NameTransformer.encode("+="),
+              classOf[mutable.Builder[_, _]].asType,
+              ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+          }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         },

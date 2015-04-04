@@ -18,6 +18,7 @@ import org.apache.spark.rdd._
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 
 @RunWith(classOf[JUnitRunner])
@@ -54,7 +55,7 @@ object InputOutputDriverSpec {
     @transient hadoopConf: Broadcast[Configuration],
     @transient input: RDD[(_, Hoge)],
     val path: String)
-      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input)) {
+      extends OutputDriver[Hoge, String](sc, hadoopConf, Seq(input)) {
 
     override def name = "TestOutput"
   }
@@ -63,7 +64,7 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     basePath: String)
-      extends InputDriver[Hoge, String](sc, hadoopConf) {
+      extends InputDriver[Hoge, String](sc, hadoopConf, Map.empty) {
 
     override def name = "TestInput"
 
@@ -73,9 +74,9 @@ object InputOutputDriverSpec {
 
     override def partitioners: Map[String, Partitioner] = Map.empty
 
-    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
 
     override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
       val fragment = new HogeOutputFragment
@@ -83,8 +84,7 @@ object InputOutputDriverSpec {
       (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U =
-      value.asInstanceOf[Hoge].id.get.asInstanceOf[U]
+    override def shuffleKey(branch: String, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] with Writable {

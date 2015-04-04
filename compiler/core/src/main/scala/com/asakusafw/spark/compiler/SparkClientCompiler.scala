@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 import scala.reflect.NameTransformer
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkContext
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
@@ -25,7 +25,7 @@ import com.asakusafw.lang.compiler.common.Location
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, TypeDescription }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
-import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSparkPlanner }
+import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSparkPlanner, PartitioningParameters }
 import com.asakusafw.lang.compiler.planning.util.DotGenerator
 import com.asakusafw.spark.compiler.serializer.KryoRegistratorCompiler
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
@@ -63,15 +63,10 @@ class SparkClientCompiler extends JobflowProcessor {
 
     if (JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString)) == false) {
 
-      val registrator = KryoRegistratorCompiler.compile(
-        OperatorUtil.collectDataTypes(plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
-          .toSet[TypeDescription].map(_.asType))(
-          KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
-
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
       val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
-      implicit val context = SubPlanCompiler.Context(source.getFlowId, jpContext)
+      implicit val context = SubPlanCompiler.Context(source.getFlowId, jpContext, mutable.Set.empty)
 
       val builder = new SparkClientClassBuilder(source.getFlowId) {
 
@@ -113,9 +108,77 @@ class SparkClientCompiler extends JobflowProcessor {
                 val rddsVar = thisVar.push().getField("rdds", classOf[mutable.Map[Long, RDD[_]]].asType).store(hadoopConfVar.nextLocal)
                 val nextLocal = new AtomicInteger(rddsVar.nextLocal)
 
+                val broadcastsVar = {
+                  val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+                    .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                  subplan.getInputs.toSet[SubPlan.Input]
+                    .filter(_.getOperator.getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST)
+                    .foreach { input =>
+                      val dataModelRef = context.jpContext.getDataModelLoader.load(input.getOperator.getInput.getDataType)
+                      val key = input.getAttribute(classOf[PartitioningParameters]).getKey
+                      val groupings = key.getGrouping.toSeq.map { grouping =>
+                        (dataModelRef.findProperty(grouping).getType.asType, true)
+                      }
+                      val orderings = groupings ++ key.getOrdering.toSeq.map { ordering =>
+                        (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                          ordering.getDirection == Group.Direction.ASCENDANT)
+                      }
+
+                      builder.invokeI(
+                        NameTransformer.encode("+="),
+                        classOf[mutable.Builder[_, _]].asType,
+                        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+                          .invokeV(
+                            "apply",
+                            classOf[(Long, Broadcast[_])].asType,
+                            ldc(input.getOperator.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
+                            thisVar.push().invokeV(
+                              "broadcastAsHash",
+                              classOf[Broadcast[_]].asType,
+                              scVar.push(),
+                              {
+                                val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                                  .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+                                input.getOpposites.toSeq.map(_.getOperator.getSerialNumber).foreach { sn =>
+                                  builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+                                    rddsVar.push().invokeI(
+                                      "apply",
+                                      classOf[AnyRef].asType,
+                                      ldc(sn).box().asType(classOf[AnyRef].asType)))
+                                }
+
+                                builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                              },
+                              {
+                                val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                                  .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+                                key.getOrdering.foreach { ordering =>
+                                  builder.invokeI(
+                                    NameTransformer.encode("+="),
+                                    classOf[mutable.Builder[_, _]].asType,
+                                    ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+                                }
+
+                                builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                              },
+                              {
+                                val partitioner = pushNew(classOf[HashPartitioner].asType)
+                                partitioner.dup().invokeInit(scVar.push().invokeV("defaultParallelism", Type.INT_TYPE))
+                                partitioner.asType(classOf[Partitioner].asType)
+                              })
+                              .asType(classOf[AnyRef].asType))
+                          .asType(classOf[AnyRef].asType))
+                    }
+                  val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
+                  broadcasts.store(nextLocal.getAndAdd(broadcasts.size))
+                }
+
                 val instantiator = compiler.instantiator
                 val driverVar = instantiator.newInstance(driverType, subplan)(
-                  instantiator.Context(mb, scVar, hadoopConfVar, rddsVar, nextLocal, source.getFlowId, jpContext))
+                  instantiator.Context(mb, scVar, hadoopConfVar, broadcastsVar, rddsVar,
+                    nextLocal, source.getFlowId, jpContext))
                 val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)
                 val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
 
@@ -141,6 +204,14 @@ class SparkClientCompiler extends JobflowProcessor {
                 `return`()
               }
           }
+
+          val registrator = KryoRegistratorCompiler.compile(
+            OperatorUtil.collectDataTypes(
+              plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
+              .toSet[TypeDescription]
+              .map(_.asType),
+            context.shuffleKeyTypes.toSet)(
+              KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
 
           methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
             import mb._

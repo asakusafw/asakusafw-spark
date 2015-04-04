@@ -1,6 +1,7 @@
 package com.asakusafw.spark.compiler.operator
 package core
 
+import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -25,8 +26,15 @@ abstract class CoreOperatorFragmentClassBuilder(
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(classOf[Fragment[_]].asType),
+    ctorDef.newInit(
+      Seq(classOf[Map[Long, Broadcast[_]]].asType, classOf[Fragment[_]].asType),
       new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Broadcast[_]].asType)
+          }
+        }
         .newParameterType {
           _.newClassType(classOf[Fragment[_]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, childDataModelType)
@@ -35,8 +43,10 @@ abstract class CoreOperatorFragmentClassBuilder(
         .newVoidReturnType()
         .build()) { mb =>
         import mb._
+        val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, thisVar.nextLocal)
+        val childVar = `var`(classOf[Fragment[_]].asType, broadcastsVar.nextLocal)
+
         thisVar.push().invokeInit(superType)
-        val childVar = `var`(classOf[Fragment[_]].asType, thisVar.nextLocal)
         thisVar.push().putField("child", classOf[Fragment[_]].asType, childVar.push())
         thisVar.push().putField("childDataModel", childDataModelType, pushNew0(childDataModelType))
       }

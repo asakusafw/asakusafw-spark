@@ -10,11 +10,12 @@ import scala.reflect.ClassTag
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd._
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
+import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 
 @RunWith(classOf[JUnitRunner])
@@ -31,7 +32,7 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkSugar {
       val hoge = new Hoge()
       hoge.id.modify(i)
       ((), hoge)
-    }.asInstanceOf[RDD[(_, Hoge)]]
+    }.asInstanceOf[RDD[(ShuffleKey, Hoge)]]
 
     val driver = new TestDriver(sc, hadoopConf, hoges)
 
@@ -49,8 +50,8 @@ object ResourceBrokingIteratorSpec {
   class TestDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient prev: RDD[(_, Hoge)])
-      extends MapDriver[Hoge, String](sc, hadoopConf, Seq(prev)) {
+    @transient prev: RDD[(ShuffleKey, Hoge)])
+      extends MapDriver[Hoge, String](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def name = "TestMap"
 
@@ -58,9 +59,9 @@ object ResourceBrokingIteratorSpec {
 
     override def partitioners: Map[String, Partitioner] = Map.empty
 
-    override def orderings[K]: Map[String, Ordering[K]] = Map.empty
+    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[_, _, _]] = Map.empty
+    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
 
     override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
       val outputs = Map(
@@ -69,9 +70,7 @@ object ResourceBrokingIteratorSpec {
       (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
     }
 
-    override def shuffleKey[U](branch: String, value: DataModel[_]): U = {
-      value.asInstanceOf[U]
-    }
+    override def shuffleKey(branch: String, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] {

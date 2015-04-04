@@ -6,6 +6,7 @@ import org.apache.spark.serializer.{ KryoRegistrator => SparkKryoRegistrator }
 import com.esotericsoftware.kryo.Kryo
 
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.runtime.driver.ShuffleKey
 
 class KryoRegistrator extends SparkKryoRegistrator {
 
@@ -15,6 +16,8 @@ class KryoRegistrator extends SparkKryoRegistrator {
       new WritableSerializer[Configuration] {
         override def newInstance: Configuration = new Configuration()
       })
+
+    kryo.addDefaultSerializer(classOf[ShuffleKey], new ShuffleKeySerializer)
 
     kryo.register(
       classOf[BooleanOption],

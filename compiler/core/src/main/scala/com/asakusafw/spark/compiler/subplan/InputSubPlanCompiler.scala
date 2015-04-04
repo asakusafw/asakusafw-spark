@@ -5,15 +5,18 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.reflect.NameTransformer
+import scala.reflect.{ ClassTag, NameTransformer }
 
+import org.apache.spark.{ HashPartitioner, Partitioner }
+import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
+import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
+import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
+import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
@@ -36,6 +39,8 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
       override val jpContext = context.jpContext
+
+      override val shuffleKeyTypes = context.shuffleKeyTypes
 
       override val dominantOperator = operator
 
@@ -60,7 +65,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
           val fragmentBuilder = new FragmentTreeBuilder(
-            mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext))
+            mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes))
           val fragmentVar = fragmentBuilder.build(operator.getOperatorPort)
           val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
@@ -86,10 +91,12 @@ object InputSubPlanCompiler {
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
+
       val inputDriver = pushNew(driverType)
       inputDriver.dup().invokeInit(
         context.scVar.push(),
-        context.hadoopConfVar.push())
+        context.hadoopConfVar.push(),
+        context.broadcastsVar.push())
       inputDriver.store(context.nextLocal.getAndAdd(inputDriver.size))
     }
   }
