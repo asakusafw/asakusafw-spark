@@ -34,7 +34,6 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
 
     val builder = new AggregationClassBuilder(
       context.flowId,
-      classOf[Seq[_]].asType,
       inputs(Summarize.ID_INPUT).dataModelType,
       outputs(Summarize.ID_OUTPUT).dataModelType) {
 

@@ -12,17 +12,25 @@ import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
+import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class AggregationClassBuilder(
   val flowId: String,
-  val keyType: Type,
   val valueType: Type,
   val combinerType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/Aggregation$$${AggregationClassBuilder.nextId};"),
-      Option(AggregationClassBuilder.signature(keyType, valueType, combinerType)),
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[Aggregation[_, _, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
+          }
+        }
+        .build(),
       classOf[Aggregation[_, _, _]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
@@ -87,18 +95,6 @@ object AggregationClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
-
-  def signature(keyType: Type, valueType: Type, combinerType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[Aggregation[_, _, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, keyType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
-        }
-      }
-      .build()
-  }
 
   private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Long), Type]] =
     mutable.WeakHashMap.empty

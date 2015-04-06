@@ -38,7 +38,6 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
     val builder = new AggregationClassBuilder(
       context.flowId,
-      classOf[Seq[_]].asType,
       inputs(Fold.ID_INPUT).dataModelType,
       outputs(Fold.ID_OUTPUT).dataModelType) with OperatorField {
 
