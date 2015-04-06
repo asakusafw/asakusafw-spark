@@ -38,15 +38,7 @@ trait PreparingKey extends ClassBuilder {
       }
 
     methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
-      Seq(Type.LONG_TYPE, classOf[DataModel[_]].asType),
-      new MethodSignatureBuilder()
-        .newFormalTypeParameter("U", classOf[AnyRef].asType)
-        .newParameterType(Type.LONG_TYPE)
-        .newParameterType(classOf[DataModel[_]].asType)
-        .newReturnType {
-          _.newTypeVariable("U")
-        }
-        .build()) { mb =>
+      Seq(Type.LONG_TYPE, classOf[DataModel[_]].asType)) { mb =>
         import mb._
         val branchVar = `var`(Type.LONG_TYPE, thisVar.nextLocal)
         val valueVar = `var`(classOf[DataModel[_]].asType, branchVar.nextLocal)

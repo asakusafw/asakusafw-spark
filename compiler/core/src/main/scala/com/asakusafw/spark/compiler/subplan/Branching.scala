@@ -8,11 +8,11 @@ import com.asakusafw.spark.tools.asm._
 
 trait Branching
     extends ClassBuilder
-    with PreparingKey
     with BranchKeysField
     with PartitionersField
     with OrderingsField
-    with AggregationsField {
+    with AggregationsField
+    with PreparingKey {
 
   override def subplanOutputs: Seq[SubPlan.Output]
 
