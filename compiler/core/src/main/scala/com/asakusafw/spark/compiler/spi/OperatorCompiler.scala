@@ -48,7 +48,10 @@ object OperatorCompiler {
 
   def compile(operator: Operator, operatorType: OperatorType)(implicit context: Context): Type = {
     val compilers = getCompiler(operator).filter(_.operatorType == operatorType)
-    assert(compilers.size == 1)
+    assert(compilers.size != 0,
+      s"The compiler supporting operator (${operator}, ${operatorType}) is not found.")
+    assert(compilers.size == 1,
+      s"The number of compiler supporting operator (${operator}, ${operatorType}) should be 1: ${compilers.size}")
     compilers.head.compile(operator)
   }
 

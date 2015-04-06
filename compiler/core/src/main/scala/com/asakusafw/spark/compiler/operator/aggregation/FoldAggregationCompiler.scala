@@ -23,18 +23,34 @@ class FoldAggregationCompiler extends AggregationCompiler {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
 
-    assert(annotationDesc.resolveClass == of)
-    assert(inputs.size == 1)
-    assert(outputs.size == 1)
-    assert(inputs(Fold.ID_INPUT).dataModelType == outputs(Fold.ID_OUTPUT).dataModelType)
+    assert(annotationDesc.resolveClass == of,
+      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
+    assert(inputs.size == 1,
+      s"The size of inputs should be 1: ${inputs.size}")
+    assert(outputs.size == 1,
+      s"The size of outputs should be 1: ${outputs.size}")
+    assert(inputs(Fold.ID_INPUT).dataModelType == outputs(Fold.ID_OUTPUT).dataModelType,
+      s"The data models are not the same type: (${
+        inputs(Fold.ID_INPUT).dataModelType
+      }, ${
+        outputs(Fold.ID_OUTPUT).dataModelType
+      })")
 
-    methodDesc.parameterClasses
-      .zip(inputs(Fold.ID_INPUT).dataModelClass
-        +: outputs(Fold.ID_OUTPUT).dataModelClass
-        +: arguments.map(_.resolveClass))
-      .foreach {
-        case (method, model) => assert(method.isAssignableFrom(model))
-      }
+    assert(
+      methodDesc.parameterClasses
+        .zip(inputs.map(_.dataModelClass)
+          ++: outputs.map(_.dataModelClass)
+          ++: arguments.map(_.resolveClass))
+        .forall {
+          case (method, model) => method.isAssignableFrom(model)
+        },
+      s"The operator method parameter types are not compatible: (${
+        methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
+      }, ${
+        (inputs.map(_.dataModelClass)
+          ++: outputs.map(_.dataModelClass)
+          ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
+      })")
 
     val builder = new AggregationClassBuilder(
       context.flowId,

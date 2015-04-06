@@ -36,14 +36,17 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[UserOperator])
+    assert(dominant.isInstanceOf[UserOperator],
+      s"The dominant operator should be user operator: ${dominant}")
     val operator = dominant.asInstanceOf[UserOperator]
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
 
-    assert(inputs.size == 1)
-    assert(outputs.size == 1)
+    assert(inputs.size == 1,
+      s"The size of inputs should be 1: ${inputs.size}")
+    assert(outputs.size == 1,
+      s"The size of outputs should be 1: ${outputs.size}")
 
     val builder = new AggregateDriverClassBuilder(
       context.flowId,
@@ -101,9 +104,13 @@ object AggregateSubPlanCompiler {
 
       val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator.asInstanceOf[UserOperator]
 
-      assert(dominant.getInputs.size == 1)
-      val input = dominant.getInputs.head
-      val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
+      val operatorInfo = new OperatorInfo(dominant)(context.jpContext)
+      import operatorInfo._
+
+      assert(inputs.size == 1,
+        s"The size of inputs should be 1: ${inputs.size}")
+      val input = inputs.head
+      val dataModelRef = input.dataModelRef
       val properties = input.getGroup.getGrouping.map { grouping =>
         dataModelRef.findProperty(grouping).getType.asType
       }.toSeq

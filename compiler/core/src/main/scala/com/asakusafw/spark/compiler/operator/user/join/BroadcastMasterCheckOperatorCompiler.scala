@@ -24,15 +24,22 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
   override def operatorType: OperatorType = OperatorType.MapType
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
-    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
 
-    assert(inputs.size >= 2)
+    assert(support(operator),
+      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
+    assert(inputs.size == 2, // FIXME to take multiple inputs for side data?
+      s"The size of inputs should be 2: ${inputs.size}")
 
-    outputs.foreach(output =>
-      assert(output.dataModelType == inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType))
+    assert(
+      outputs.forall { output =>
+        output.dataModelType == inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType
+      },
+      s"All of output types should be the same as the transaction type: ${
+        outputs.map(_.dataModelType).mkString("(", ",", ")")
+      }")
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,

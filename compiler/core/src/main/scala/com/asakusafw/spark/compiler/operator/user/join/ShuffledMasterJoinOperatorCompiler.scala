@@ -24,16 +24,22 @@ class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
   override def operatorType: OperatorType = OperatorType.CoGroupType
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
-    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
 
-    assert(inputs.size >= 2)
-    assert(outputs.size == 2)
+    assert(support(operator),
+      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
+    assert(inputs.size == 2, // FIXME to take multiple inputs for side data?
+      s"The size of inputs should be 2: ${inputs.size}")
+    assert(outputs.size == 2,
+      s"The size of outputs should be greater than 2: ${outputs.size}")
 
     assert(outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
-      == inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType)
+      == inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
+      s"The `missed` output type should be the same as the transaction type: ${
+        outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
+      }")
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,

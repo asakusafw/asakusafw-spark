@@ -22,7 +22,6 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator._
 
 class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
@@ -39,7 +38,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[UserOperator])
+    assert(dominant.isInstanceOf[UserOperator],
+      s"The dominant operator should be user operator: ${dominant}")
     val operator = dominant.asInstanceOf[UserOperator]
 
     val builder = new CoGroupDriverClassBuilder(context.flowId, classOf[AnyRef].asType) {
@@ -88,9 +88,6 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
 object CoGroupSubPlanCompiler {
 
-  val CompilableOperators: Set[Class[_]] =
-    Set(classOf[CoGroup], classOf[MasterBranch], classOf[MasterCheck], classOf[MasterJoin], classOf[MasterJoinUpdate])
-
   object CoGroupDriverInstantiator extends Instantiator {
 
     override def newInstance(
@@ -100,13 +97,19 @@ object CoGroupSubPlanCompiler {
 
       val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
 
-      val properties = dominant.getInputs.map { input =>
-        val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
+      val operatorInfo = new OperatorInfo(dominant)(context.jpContext)
+      import operatorInfo._
+
+      val properties = inputs.map { input =>
+        val dataModelRef = input.dataModelRef
         input.getGroup.getGrouping.map { grouping =>
           dataModelRef.findProperty(grouping).getType.asType
         }.toSeq
       }.toSet
-      assert(properties.size == 1)
+      assert(properties.size == 1,
+        s"The grouping of all inputs should be the same: ${
+          properties.map(_.mkString("(", ",", ")")).mkString("(", ",", ")")
+        }")
 
       val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(

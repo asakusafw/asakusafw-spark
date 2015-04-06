@@ -50,7 +50,8 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
       val srcVar = vars(src)
       val srcProperty = inputs(src).dataModelRef.findProperty(mapping.getSourceProperty)
       val destProperty = outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelRef.findProperty(mapping.getDestinationProperty)
-      assert(srcProperty.getType.asType == destProperty.getType.asType)
+      assert(srcProperty.getType.asType == destProperty.getType.asType,
+        s"The source and destination types should be the same: (${srcProperty.getType}, ${destProperty.getType}")
 
       getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
         .invokeV(

@@ -25,7 +25,8 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[ExternalOutput])
+    assert(dominant.isInstanceOf[ExternalOutput],
+      s"The dominant operator should be external output: ${dominant}")
     val operator = dominant.asInstanceOf[ExternalOutput]
 
     context.jpContext.addExternalOutput(

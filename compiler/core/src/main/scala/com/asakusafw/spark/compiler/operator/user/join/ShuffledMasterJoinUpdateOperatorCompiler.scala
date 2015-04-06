@@ -21,25 +21,38 @@ class ShuffledMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
   override def operatorType: OperatorType = OperatorType.CoGroupType
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
-    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
 
-    assert(inputs.size >= 2)
-    assert(outputs.size == 2)
+    assert(support(operator),
+      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
+    assert(inputs.size == 2, // FIXME to take multiple inputs for side data?
+      s"The size of inputs should be 2: ${inputs.size}")
+    assert(outputs.size == 2,
+      s"The size of outputs should be 2: ${outputs.size}")
 
-    outputs.foreach { output =>
-      assert(output.dataModelType == inputs(MasterJoinUpdateOp.ID_INPUT_TRANSACTION).dataModelType)
-    }
+    assert(
+      outputs.forall { output =>
+        output.dataModelType == inputs(MasterJoinUpdateOp.ID_INPUT_TRANSACTION).dataModelType
+      },
+      s"All of output types should be the same as the transaction type: ${
+        outputs.map(_.dataModelType).mkString("(", ",", ")")
+      }")
 
-    methodDesc.parameterClasses
-      .zip(inputs(MasterJoinUpdateOp.ID_INPUT_MASTER).dataModelClass
-        +: inputs(MasterJoinUpdateOp.ID_INPUT_TRANSACTION).dataModelClass
-        +: arguments.map(_.resolveClass))
-      .foreach {
-        case (method, model) => assert(method.isAssignableFrom(model))
-      }
+    assert(
+      methodDesc.parameterClasses
+        .zip(inputs.map(_.dataModelClass)
+          ++: arguments.map(_.resolveClass))
+        .forall {
+          case (method, model) => method.isAssignableFrom(model)
+        },
+      s"The operator method parameter types are not compatible: (${
+        methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
+      }, ${
+        (inputs.map(_.dataModelClass)
+          ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
+      })")
 
     val builder = new JoinOperatorFragmentClassBuilder(
       context.flowId,

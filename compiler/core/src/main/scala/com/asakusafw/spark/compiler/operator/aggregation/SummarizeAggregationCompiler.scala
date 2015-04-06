@@ -23,12 +23,16 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
   def of: Class[_] = classOf[Summarize]
 
   def compile(operator: UserOperator)(implicit context: Context): Type = {
+
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
 
-    assert(annotationDesc.resolveClass == of)
-    assert(inputs.size == 1)
-    assert(outputs.size == 1)
+    assert(annotationDesc.resolveClass == of,
+      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
+    assert(inputs.size == 1,
+      s"The size of inputs should be 1: ${inputs.size}")
+    assert(outputs.size == 1,
+      s"The size of outputs should be 1: ${outputs.size}")
 
     val propertyFoldings = SummarizedModelUtil.getPropertyFoldings(context.jpContext.getClassLoader, operator).toSeq
 

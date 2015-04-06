@@ -31,7 +31,8 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[ExternalInput])
+    assert(dominant.isInstanceOf[ExternalInput],
+      s"The dominant operator should be external input: ${dominant}")
     val operator = dominant.asInstanceOf[ExternalInput]
     val inputRef = context.externalInputs.getOrElseUpdate(
       operator.getName,

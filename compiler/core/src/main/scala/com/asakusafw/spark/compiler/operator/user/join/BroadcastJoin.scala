@@ -53,10 +53,15 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
 
     val masterSerialNumber: Long = {
       val opposites = masterInput.getOpposites
-      assert(opposites.size == 1)
+      assert(opposites.size == 1,
+        s"The size of master inputs should be 1: ${opposites.size}")
       val opposite = opposites.head.getOwner
-      assert(opposite.isInstanceOf[MarkerOperator])
-      assert(opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST)
+      assert(opposite.isInstanceOf[MarkerOperator],
+        s"The master input should be marker operator: ${opposite}")
+      assert(opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST,
+        s"The master input should be BROADCAST marker operator: ${
+          opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
+        }")
       opposite.getOriginalSerialNumber
     }
 

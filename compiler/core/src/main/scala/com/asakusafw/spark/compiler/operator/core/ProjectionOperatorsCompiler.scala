@@ -26,13 +26,16 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
   override def operatorType: OperatorType = OperatorType.MapType
 
   override def compile(operator: CoreOperator)(implicit context: Context): Type = {
-    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
 
-    assert(inputs.size == 1)
-    assert(outputs.size == 1)
+    assert(support(operator),
+      s"The operator type is not supported: ${operator.getCoreOperatorKind}")
+    assert(inputs.size == 1,
+      s"The size of inputs should be 1: ${inputs.size}")
+    assert(outputs.size == 1,
+      s"The size of outputs should be 1: ${outputs.size}")
 
     val mappings = ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator).toSeq
 
@@ -51,7 +54,8 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
             .findProperty(mapping.getSourceProperty)
           val destProperty = mapping.getDestinationPort.dataModelRef
             .findProperty(mapping.getDestinationProperty)
-          assert(srcProperty.getType.asType == destProperty.getType.asType)
+          assert(srcProperty.getType.asType == destProperty.getType.asType,
+            s"The source and destination types should be the same: (${srcProperty.getType}, ${destProperty.getType}")
 
           getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
             .invokeV(

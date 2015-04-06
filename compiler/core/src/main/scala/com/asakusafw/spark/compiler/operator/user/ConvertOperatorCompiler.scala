@@ -23,19 +23,30 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
   override def operatorType: OperatorType = OperatorType.MapType
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
-    assert(support(operator))
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
 
-    assert(inputs.size == 1) // FIXME to take multiple inputs for side data?
-    assert(outputs.size == 2)
+    assert(support(operator),
+      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
+    assert(inputs.size == 1, // FIXME to take multiple inputs for side data?
+      s"The size of inputs should be 1: ${inputs.size}")
+    assert(outputs.size == 2,
+      s"The size of outputs should be 2: ${outputs.size}")
 
-    methodDesc.parameterClasses
-      .zip(inputs(Convert.ID_INPUT).dataModelClass +: arguments.map(_.resolveClass))
-      .foreach {
-        case (method, model) => assert(method.isAssignableFrom(model))
-      }
+    assert(
+      methodDesc.parameterClasses
+        .zip(inputs.map(_.dataModelClass)
+          ++: arguments.map(_.resolveClass))
+        .forall {
+          case (method, model) => method.isAssignableFrom(model)
+        },
+      s"The operator method parameter types are not compatible: (${
+        methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
+      }, ${
+        (inputs.map(_.dataModelClass)
+          ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
+      })")
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
