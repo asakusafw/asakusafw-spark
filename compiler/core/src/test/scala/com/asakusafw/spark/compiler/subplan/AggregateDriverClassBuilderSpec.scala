@@ -17,7 +17,7 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, Group, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
@@ -76,6 +76,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile),
+      externalInputs = mutable.Map.empty,
       shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get

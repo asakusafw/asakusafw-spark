@@ -115,6 +115,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile),
+      externalInputs = mutable.Map.empty,
       shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get

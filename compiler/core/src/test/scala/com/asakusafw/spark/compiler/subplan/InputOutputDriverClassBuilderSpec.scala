@@ -74,6 +74,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val outputCompilerContext = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = jpContext,
+      externalInputs = mutable.Map.empty,
       shuffleKeyTypes = mutable.Set.empty)
     val outputCompiler = resolvers.find(_.support(outputOperator)(outputCompilerContext)).get
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
@@ -96,8 +97,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     outputDriver.execute()
 
     // prepare for input
-    val sn = outputOperator.getSerialNumber
-    val srcDir = new File(tmpDir, s"${outputOperator.getName}/${sn}")
+    val srcDir = new File(tmpDir, s"${outputOperator.getName}")
     val dstDir = new File(tmpDir, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}/${outputOperator.getName}")
     dstDir.getParentFile.mkdirs
     Files.move(srcDir.toPath, dstDir.toPath)
@@ -129,6 +129,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val inputCompilerContext = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = jpContext,
+      externalInputs = mutable.Map.empty,
       shuffleKeyTypes = mutable.Set.empty)
     val inputCompiler = resolvers.find(_.support(inputOperator)(inputCompilerContext)).get
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)

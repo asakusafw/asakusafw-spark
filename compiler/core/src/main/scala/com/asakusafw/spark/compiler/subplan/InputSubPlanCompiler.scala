@@ -34,7 +34,9 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
     assert(dominant.isInstanceOf[ExternalInput])
     val operator = dominant.asInstanceOf[ExternalInput]
-    val inputRef = context.jpContext.addExternalInput(operator.getName, operator.getInfo)
+    val inputRef = context.externalInputs.getOrElseUpdate(
+      operator.getName,
+      context.jpContext.addExternalInput(operator.getName, operator.getInfo))
 
     val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 

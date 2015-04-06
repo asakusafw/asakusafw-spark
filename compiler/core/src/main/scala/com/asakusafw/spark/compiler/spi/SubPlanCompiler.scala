@@ -7,6 +7,7 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.reference.ExternalInputReference
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.Operator
 import com.asakusafw.lang.compiler.planning.SubPlan
@@ -29,6 +30,7 @@ object SubPlanCompiler {
   case class Context(
     flowId: String,
     jpContext: JPContext,
+    externalInputs: mutable.Map[String, ExternalInputReference],
     shuffleKeyTypes: mutable.Set[Type])
 
   private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[SubPlanCompiler]] =

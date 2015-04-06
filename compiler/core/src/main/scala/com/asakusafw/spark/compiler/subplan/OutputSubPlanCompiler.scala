@@ -27,11 +27,10 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
     val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
     assert(dominant.isInstanceOf[ExternalOutput])
     val operator = dominant.asInstanceOf[ExternalOutput]
-    val outputPath = s"${operator.getName}/${operator.getSerialNumber}"
 
     context.jpContext.addExternalOutput(
       operator.getName, operator.getInfo,
-      Seq(context.jpContext.getOptions.getRuntimeWorkingPath(s"${outputPath}/part-*")))
+      Seq(context.jpContext.getOptions.getRuntimeWorkingPath(s"${operator.getName}/part-*")))
 
     val builder = new OutputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
@@ -42,7 +41,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
         methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
           import mb._
-          `return`(ldc(context.jpContext.getOptions.getRuntimeWorkingPath(outputPath)))
+          `return`(ldc(context.jpContext.getOptions.getRuntimeWorkingPath(operator.getName)))
         }
 
         defName(methodDef)

@@ -66,7 +66,7 @@ class SparkClientCompiler extends JobflowProcessor {
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
       val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
-      implicit val context = SubPlanCompiler.Context(source.getFlowId, jpContext, mutable.Set.empty)
+      implicit val context = SubPlanCompiler.Context(source.getFlowId, jpContext, mutable.Map.empty, mutable.Set.empty)
 
       val builder = new SparkClientClassBuilder(source.getFlowId) {
 

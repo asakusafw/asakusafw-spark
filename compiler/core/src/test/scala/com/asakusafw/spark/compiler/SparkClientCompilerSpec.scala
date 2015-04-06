@@ -120,7 +120,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     spark { sc =>
       val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-      TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"output/*/part-*")))
+      TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"output/part-*")))
       val rdd = sc.newAPIHadoopRDD(
         job.getConfiguration,
         classOf[TemporaryInputFormat[Hoge]],
@@ -219,7 +219,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     spark { sc =>
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"even/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"even/part-*")))
         val rdd = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Hoge]],
@@ -229,7 +229,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       }
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"odd/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"odd/part-*")))
         val rdd = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Hoge]],
@@ -390,7 +390,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     spark { sc =>
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"hogeResult/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"hogeResult/part-*")))
         val hogeResult = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Hoge]],
@@ -401,7 +401,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       }
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"fooResult/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"fooResult/part-*")))
         val fooResult = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Foo]],
@@ -412,7 +412,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       }
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"hogeError/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"hogeError/part-*")))
         val hogeError = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Hoge]],
@@ -426,7 +426,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       }
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"fooError/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"fooError/part-*")))
         val fooError = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Foo]],
@@ -586,7 +586,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     spark { sc =>
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"found/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"found/part-*")))
         val found = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Foo]],
@@ -597,7 +597,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       }
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"missed/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"missed/part-*")))
         val missed = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Foo]],
@@ -730,7 +730,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     spark { sc =>
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"found/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"found/part-*")))
         val found = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Foo]],
@@ -741,7 +741,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       }
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"missed/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"missed/part-*")))
         val missed = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Foo]],
@@ -749,6 +749,125 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
           classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get)).collect.toSeq
         assert(missed.size === 5)
         assert(missed === (10 until 15).map(i => (10 + i, i)))
+      }
+    }
+  }
+
+  it should "compile Spark client with broadcast self MasterCheck" in {
+    val tmpDir = File.createTempFile("test-", null)
+    tmpDir.delete
+    val classpath = new File(tmpDir, "classes").getAbsoluteFile
+    classpath.mkdirs()
+    val path = new File(tmpDir, "tmp").getAbsolutePath
+
+    spark { sc =>
+      val hoges = sc.parallelize(0 until 10).map { i =>
+        val hoge = new Hoge()
+        hoge.id.modify(i)
+        hoge
+      }
+      val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+      job.setOutputKeyClass(classOf[NullWritable])
+      job.setOutputValueClass(classOf[Hoge])
+      job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
+      TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge"))
+      hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
+    }
+
+    val hogeInputOperator = ExternalInput
+      .newInstance("hoge/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Hoge]),
+          "hoges1",
+          ClassDescription.of(classOf[Hoge]),
+          ExternalInputInfo.DataSize.TINY))
+
+    val masterCheckOperator = OperatorExtractor
+      .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
+      .input("hogems", ClassDescription.of(classOf[Hoge]),
+        new Group(
+          Seq(PropertyName.of("id")),
+          Seq.empty[Group.Ordering]),
+        hogeInputOperator.getOperatorPort)
+      .input("hogets", ClassDescription.of(classOf[Hoge]),
+        new Group(
+          Seq(PropertyName.of("id")),
+          Seq.empty[Group.Ordering]),
+        hogeInputOperator.getOperatorPort)
+      .output("found", ClassDescription.of(classOf[Hoge]))
+      .output("missed", ClassDescription.of(classOf[Hoge]))
+      .build()
+
+    val foundOutputOperator = ExternalOutput
+      .newInstance("found", masterCheckOperator.findOutput("found"))
+
+    val missedOutputOperator = ExternalOutput
+      .newInstance("missed", masterCheckOperator.findOutput("missed"))
+
+    val graph = new OperatorGraph(Seq(
+      hogeInputOperator,
+      masterCheckOperator,
+      foundOutputOperator, missedOutputOperator))
+
+    val compiler = new SparkClientCompiler {
+
+      override def preparePlan(graph: OperatorGraph, flowId: String, dump: Boolean): Plan = {
+        val plan = super.preparePlan(graph, flowId, true)
+        assert(plan.getElements.size === 4)
+        plan
+      }
+    }
+
+    val jpContext = new MockJobflowProcessorContext(
+      new CompilerOptions("buildid", path, Map.empty[String, String]),
+      Thread.currentThread.getContextClassLoader,
+      classpath)
+    val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
+
+    compiler.process(jpContext, jobflow)
+
+    val cl = Thread.currentThread.getContextClassLoader
+    try {
+      val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
+      Thread.currentThread.setContextClassLoader(classloader)
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
+        .asSubclass(classOf[SparkClient])
+      val instance = cls.newInstance
+
+      val conf = new SparkConf()
+      conf.setAppName("AsakusaSparkClient")
+      conf.setMaster("local[*]")
+
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+      conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
+      instance.execute(conf)
+    } finally {
+      Thread.currentThread.setContextClassLoader(cl)
+    }
+
+    spark { sc =>
+      {
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"found/part-*")))
+        val found = sc.newAPIHadoopRDD(
+          job.getConfiguration,
+          classOf[TemporaryInputFormat[Hoge]],
+          classOf[NullWritable],
+          classOf[Hoge]).map(_._2.id.get).collect.toSeq
+        assert(found.size === 10)
+        assert(found === (0 until 10))
+      }
+      {
+        val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"missed/part-*")))
+        val missed = sc.newAPIHadoopRDD(
+          job.getConfiguration,
+          classOf[TemporaryInputFormat[Hoge]],
+          classOf[NullWritable],
+          classOf[Hoge]).map(_._2.id.get).collect.toSeq
+        assert(missed.size === 0)
       }
     }
   }
@@ -866,7 +985,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     spark { sc =>
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"result/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"result/part-*")))
         val result = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[Baa]],
@@ -994,7 +1113,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     spark { sc =>
       {
         val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"result/*/part-*")))
+        TemporaryInputFormat.setInputPaths(job, Seq(new Path(path, s"result/part-*")))
         val result = sc.newAPIHadoopRDD(
           job.getConfiguration,
           classOf[TemporaryInputFormat[SummarizedBaa]],
