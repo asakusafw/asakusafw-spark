@@ -37,7 +37,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
     fieldDef.newField("masters", classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Seq[_]].asType)
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF) {
               _.newClassType(classOf[Seq[_]].asType) {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF, masterType)
