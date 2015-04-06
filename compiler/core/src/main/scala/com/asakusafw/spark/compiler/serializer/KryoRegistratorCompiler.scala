@@ -43,7 +43,7 @@ object KryoRegistratorCompiler {
 
           shuffleKeys.foreach { t =>
             kryoVar.push().invokeV("register", classOf[Registration].asType,
-              ldc(t).asType(classOf[Class[_]].asType))
+              ldc(t).asType(classOf[Class[_]].asType)).pop()
           }
 
           `return`()
