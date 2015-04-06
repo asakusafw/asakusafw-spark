@@ -16,7 +16,6 @@ import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
-import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._

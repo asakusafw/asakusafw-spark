@@ -17,7 +17,6 @@ import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
-import com.asakusafw.spark.compiler.ordering.OrderingClassBuilder
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.tools.asm._
