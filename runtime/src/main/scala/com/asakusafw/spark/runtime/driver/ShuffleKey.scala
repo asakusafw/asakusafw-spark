@@ -50,8 +50,14 @@ object ShuffleKey {
   object GroupingOrdering extends Ordering[ShuffleKey] {
 
     override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      assert(x.grouping.size == y.grouping.size)
-      assert(x.grouping.zip(y.grouping).forall { case (x, y) => x.getClass == y.getClass })
+      assert(x.grouping.size == y.grouping.size,
+        s"The size of grouping keys should be the same: (${x.grouping.size}, ${y.grouping.size})")
+      assert(x.grouping.zip(y.grouping).forall { case (x, y) => x.getClass == y.getClass },
+        s"The all of types of grouping keys should be the same: (${
+          x.grouping.map(_.getClass).mkString("(", ",", ")")
+        }, ${
+          y.grouping.map(_.getClass).mkString("(", ",", ")")
+        })")
 
       compare0(x.grouping, y.grouping, Seq.fill(x.grouping.size)(true))
     }
@@ -60,11 +66,24 @@ object ShuffleKey {
   class SortOrdering(directions: Seq[Boolean]) extends Ordering[ShuffleKey] {
 
     override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      assert(x.grouping.size == y.grouping.size)
-      assert(x.grouping.zip(y.grouping).forall { case (x, y) => x.getClass == y.getClass })
-      assert(x.ordering.size == y.ordering.size)
-      assert(x.ordering.zip(y.ordering).forall { case (x, y) => x.getClass == y.getClass })
-      assert(directions.size == x.ordering.size)
+      assert(x.grouping.size == y.grouping.size,
+        s"The size of grouping keys should be the same: (${x.grouping.size}, ${y.grouping.size})")
+      assert(x.grouping.zip(y.grouping).forall { case (x, y) => x.getClass == y.getClass },
+        s"The all of types of grouping keys should be the same: (${
+          x.grouping.map(_.getClass).mkString("(", ",", ")")
+        }, ${
+          y.grouping.map(_.getClass).mkString("(", ",", ")")
+        })")
+      assert(x.ordering.size == y.ordering.size,
+        s"The size of ordering keys should be the same: (${x.grouping.size}, ${y.grouping.size})")
+      assert(x.ordering.zip(y.ordering).forall { case (x, y) => x.getClass == y.getClass },
+        s"The all of types of ordering keys should be the same: (${
+          x.grouping.map(_.getClass).mkString("(", ",", ")")
+        }, ${
+          y.grouping.map(_.getClass).mkString("(", ",", ")")
+        })")
+      assert(directions.size == x.ordering.size,
+        s"The side of directions should be the same as ordering keys: (${directions.size}, ${x.ordering.size})")
 
       val cmp = GroupingOrdering.compare(x, y)
       if (cmp == 0) {

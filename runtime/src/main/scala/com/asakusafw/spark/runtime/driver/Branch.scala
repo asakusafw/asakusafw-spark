@@ -65,7 +65,8 @@ trait Branch[B, T] {
 
   private def f(iter: Iterator[(ShuffleKey, T)]): Iterator[((B, ShuffleKey), _)] = {
     val (fragment, outputs) = fragments
-    assert(outputs.keys.toSet == branchKeys)
+    assert(outputs.keys.toSet == branchKeys,
+      s"The size of outputs and branch keys should be the same: (${outputs.size}, ${branchKeys.size})")
 
     new ResourceBrokingIterator(
       hadoopConf.value,

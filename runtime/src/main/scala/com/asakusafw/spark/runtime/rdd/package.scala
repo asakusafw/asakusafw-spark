@@ -30,14 +30,16 @@ package object rdd {
 
   def zipPartitions[V: ClassTag](
     rdds: Seq[RDD[_]], preservesPartitioning: Boolean = false)(f: (Seq[Iterator[_]] => Iterator[V])): RDD[V] = {
-    assert(rdds.size > 0)
+    assert(rdds.size > 0,
+      s"The size of RDDs to be zipped should be more than 0: ${rdds.size}")
     val sc = rdds.head.sparkContext
     new ZippedPartitionsRDD(sc, sc.clean(f), rdds, preservesPartitioning)
   }
 
   def confluent[K, V](
     rdds: Seq[RDD[(K, V)]], part: Partitioner, ordering: Option[Ordering[K]]): RDD[(K, V)] = {
-    assert(rdds.size > 0)
+    assert(rdds.size > 0,
+      s"The size of RDDs to be confluented should be more than 0: ${rdds.size}")
     if (rdds.size > 1) {
       ordering match {
         case Some(ord) =>
@@ -81,7 +83,8 @@ package object rdd {
     rdds: Seq[(RDD[(K, _)], Option[Ordering[K]])],
     part: Partitioner,
     grouping: Ordering[K]): RDD[(K, Array[Iterable[_]])] = {
-    assert(rdds.size > 0)
+    assert(rdds.size > 0,
+      s"The size of RDDs to be smcogrouped should be more than 0: ${rdds.size}")
 
     val ord = Option(grouping)
     val shuffle: ((RDD[(K, Any)], Option[Ordering[K]])) => RDD[(K, _)] = {

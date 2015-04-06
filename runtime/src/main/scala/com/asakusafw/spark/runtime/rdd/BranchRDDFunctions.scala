@@ -51,7 +51,8 @@ private class BranchPartitioner[B](branchKeys: Set[B], partitioners: Map[B, Part
   override def numPartitions: Int = offsets.last
 
   override def getPartition(key: Any): Int = {
-    assert(key.isInstanceOf[(_, _)])
+    assert(key.isInstanceOf[(_, _)],
+      s"The key used for branch should be the form (branchKey, actualKey): ${key}")
     val (branch, origKey) = key.asInstanceOf[(B, Any)]
     offsetOf(branch) + getPartitionOf(branch, origKey)
   }

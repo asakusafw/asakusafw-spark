@@ -4,7 +4,8 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 
 abstract class EdgeFragment[T <: DataModel[T]](children: Seq[Fragment[T]]) extends Fragment[T] {
-  assert(children.size > 1)
+  assert(children.size > 1,
+    s"The size of children should be greater than 1: ${children.size}")
 
   def newDataModel(): T
 

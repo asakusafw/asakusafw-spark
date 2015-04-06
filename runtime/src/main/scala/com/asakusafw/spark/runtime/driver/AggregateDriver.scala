@@ -21,7 +21,8 @@ abstract class AggregateDriver[V, C, B](
   @transient directions: Seq[Boolean],
   @transient partitioner: Partitioner)
     extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, C] {
-  assert(prevs.size > 0)
+  assert(prevs.size > 0,
+    s"Previous RDDs should be more than 0: ${prevs.size}")
 
   override def execute(): Map[B, RDD[(ShuffleKey, _)]] = {
     val agg = aggregation

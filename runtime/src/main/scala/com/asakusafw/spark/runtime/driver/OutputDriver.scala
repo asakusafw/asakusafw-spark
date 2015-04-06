@@ -26,7 +26,8 @@ abstract class OutputDriver[T: ClassTag, B](
   hadoopConf: Broadcast[Configuration],
   @transient prevs: Seq[RDD[(_, T)]])
     extends SubPlanDriver[B](sc, hadoopConf, Map.empty) {
-  assert(prevs.size > 0)
+  assert(prevs.size > 0,
+    s"Previous RDDs should be more than 0: ${prevs.size}")
 
   val Logger = LoggerFactory.getLogger(getClass())
 

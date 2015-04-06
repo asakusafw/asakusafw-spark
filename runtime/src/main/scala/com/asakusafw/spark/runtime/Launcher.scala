@@ -11,7 +11,8 @@ object Launcher {
 
   def main(args: Array[String]): Unit = {
     try {
-      assert(args.length >= 5)
+      require(args.length >= 5,
+        s"The size of arguments should be more than 5: ${args.length}")
       val Array(client, batchId, flowId, executionId, batchArgs) = args.take(5)
 
       if (Logger.isInfoEnabled) {
