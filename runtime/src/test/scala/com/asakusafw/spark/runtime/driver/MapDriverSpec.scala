@@ -35,11 +35,11 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
 
     val outputs = driver.execute()
     outputs.mapValues(_.collect.toSeq).foreach {
-      case ("hogeResult", values) =>
+      case (HogeResult, values) =>
         val hogeResult = values.asInstanceOf[Seq[(_, Hoge)]].map(_._2)
         assert(hogeResult.size === 10)
         assert(hogeResult.map(_.id.get) === (0 until 10))
-      case ("fooResult", values) =>
+      case (FooResult, values) =>
         val fooResult = values.asInstanceOf[Seq[(_, Foo)]].map(_._2)
         assert(fooResult.size === 45)
         assert(fooResult.map(foo => (foo.id.get, foo.hogeId.get)) ===
@@ -55,6 +55,9 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
 
 object MapDriverSpec {
 
+  val HogeResult = BranchKey(0)
+  val FooResult = BranchKey(1)
+
   class TestMapDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
@@ -63,23 +66,23 @@ object MapDriverSpec {
 
     override def name = "TestMap"
 
-    override def branchKeys: Set[String] = Set("hogeResult", "fooResult")
+    override def branchKeys: Set[BranchKey] = Set(HogeResult, FooResult)
 
-    override def partitioners: Map[String, Partitioner] = Map.empty
+    override def partitioners: Map[BranchKey, Partitioner] = Map.empty
 
-    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
+    override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
+    override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[BranchKey, OutputFragment[U]]) = {
       val outputs = Map(
-        "hogeResult" -> new HogeOutputFragment,
-        "fooResult" -> new FooOutputFragment)
+        HogeResult -> new HogeOutputFragment,
+        FooResult -> new FooOutputFragment)
       val fragment = new TestFragment(outputs)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
+      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
     }
 
-    override def shuffleKey(branch: String, value: Any): ShuffleKey = null
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] {
@@ -117,17 +120,17 @@ object MapDriverSpec {
     override def newDataModel: Foo = new Foo()
   }
 
-  class TestFragment(outputs: Map[String, Fragment[_]]) extends Fragment[Hoge] {
+  class TestFragment(outputs: Map[BranchKey, Fragment[_]]) extends Fragment[Hoge] {
 
     private val foo = new Foo()
 
     override def add(hoge: Hoge): Unit = {
-      outputs("hogeResult").asInstanceOf[HogeOutputFragment].add(hoge)
+      outputs(HogeResult).asInstanceOf[HogeOutputFragment].add(hoge)
       for (i <- 0 until hoge.id.get) {
         foo.reset()
         foo.id.modify((hoge.id.get * (hoge.id.get - 1)) / 2 + i)
         foo.hogeId.copyFrom(hoge.id)
-        outputs("fooResult").asInstanceOf[FooOutputFragment].add(foo)
+        outputs(FooResult).asInstanceOf[FooOutputFragment].add(foo)
       }
     }
 

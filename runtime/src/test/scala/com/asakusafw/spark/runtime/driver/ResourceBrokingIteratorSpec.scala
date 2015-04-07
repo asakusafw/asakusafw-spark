@@ -38,7 +38,7 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkSugar {
 
     val outputs = driver.execute()
 
-    val result = outputs("result").map(_._2.asInstanceOf[Hoge]).collect.toSeq
+    val result = outputs(Result).map(_._2.asInstanceOf[Hoge]).collect.toSeq
     assert(result.size === 10)
     assert(result.map(_.id.get) === (0 until 10))
     assert(result.map(_.str.getAsString) === (0 until 10).map(i => s"test_${i}"))
@@ -46,6 +46,8 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkSugar {
 }
 
 object ResourceBrokingIteratorSpec {
+
+  val Result = BranchKey(0)
 
   class TestDriver(
     @transient sc: SparkContext,
@@ -55,22 +57,22 @@ object ResourceBrokingIteratorSpec {
 
     override def name = "TestMap"
 
-    override def branchKeys: Set[String] = Set("result")
+    override def branchKeys: Set[BranchKey] = Set(Result)
 
-    override def partitioners: Map[String, Partitioner] = Map.empty
+    override def partitioners: Map[BranchKey, Partitioner] = Map.empty
 
-    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
+    override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
+    override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[BranchKey, OutputFragment[U]]) = {
       val outputs = Map(
-        "result" -> new HogeOutputFragment)
-      val fragment = new TestFragment(outputs("result"))
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
+        Result -> new HogeOutputFragment)
+      val fragment = new TestFragment(outputs(Result))
+      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
     }
 
-    override def shuffleKey(branch: String, value: Any): ShuffleKey = null
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] {

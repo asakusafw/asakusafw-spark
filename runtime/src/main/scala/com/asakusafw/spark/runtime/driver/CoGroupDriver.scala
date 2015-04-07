@@ -16,11 +16,11 @@ abstract class CoGroupDriver[B](
   broadcasts: Map[B, Broadcast[_]],
   @transient prevs: Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])],
   @transient part: Partitioner)
-    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, Seq[Iterable[_]]] {
+    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[Seq[Iterable[_]]] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
-  override def execute(): Map[B, RDD[(ShuffleKey, _)]] = {
+  override def execute(): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     sc.clearCallSite()
     sc.setCallSite(name)
 

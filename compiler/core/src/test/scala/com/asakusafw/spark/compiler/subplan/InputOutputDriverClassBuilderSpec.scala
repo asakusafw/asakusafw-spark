@@ -145,7 +145,8 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
         Map.empty)
     val inputs = inputDriver.execute()
     assert(inputDriver.branchKeys === Set(inputMarker.getOriginalSerialNumber))
-    assert(inputs(inputMarker.getOriginalSerialNumber).map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
+    assert(inputs(BranchKey(inputMarker.getOriginalSerialNumber))
+      .map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
   }
 }
 

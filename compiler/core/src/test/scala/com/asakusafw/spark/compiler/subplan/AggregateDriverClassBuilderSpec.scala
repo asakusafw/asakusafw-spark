@@ -107,7 +107,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
     assert(driver.branchKeys === Set(resultMarker.getOriginalSerialNumber))
 
-    val result = results(resultMarker.getOriginalSerialNumber).asInstanceOf[RDD[(ShuffleKey, Hoge)]]
+    val result = results(BranchKey(resultMarker.getOriginalSerialNumber)).asInstanceOf[RDD[(ShuffleKey, Hoge)]]
       .collect.toSeq.sortBy(_._1.grouping(0).asInstanceOf[IntOption].get)
     assert(result.size === 2)
     assert(result(0)._1.grouping(0).asInstanceOf[IntOption].get === 0)

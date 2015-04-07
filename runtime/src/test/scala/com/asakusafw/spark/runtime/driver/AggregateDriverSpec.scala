@@ -40,7 +40,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val driver = new TestAggregateDriver(sc, hadoopConf, hoges, Seq(false), part, aggregation)
 
     val outputs = driver.execute()
-    assert(outputs("result").map {
+    assert(outputs(Result).map {
       case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
     }.collect.toSeq.sortBy(_._1) ===
       Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
@@ -60,7 +60,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val driver = new TestAggregateDriver(sc, hadoopConf, hoges, Seq(false), part, aggregation)
 
     val outputs = driver.execute()
-    assert(outputs("result").map {
+    assert(outputs(Result).map {
       case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
     }.collect.toSeq.sortBy(_._1) ===
       Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
@@ -77,7 +77,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val driver = new TestPartialAggregationMapDriver(sc, hadoopConf, hoges)
 
     val outputs = driver.execute()
-    assert(outputs("result").map {
+    assert(outputs(Result).map {
       case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
     }.collect.toSeq.sortBy(_._1) ===
       Seq(
@@ -89,6 +89,8 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
 }
 
 object AggregateDriverSpec {
+
+  val Result = BranchKey(0)
 
   class TestAggregation(val mapSideCombine: Boolean)
       extends Aggregation[ShuffleKey, Hoge, Hoge] {
@@ -117,21 +119,21 @@ object AggregateDriverSpec {
 
     override def name = "TestAggregation"
 
-    override def branchKeys: Set[String] = Set("result")
+    override def branchKeys: Set[BranchKey] = Set(Result)
 
-    override def partitioners: Map[String, Partitioner] = Map.empty
+    override def partitioners: Map[BranchKey, Partitioner] = Map.empty
 
-    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
+    override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
+    override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[BranchKey, OutputFragment[U]]) = {
       val fragment = new HogeOutputFragment
-      val outputs = Map("result" -> fragment)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
+      val outputs = Map(Result -> fragment)
+      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
     }
 
-    override def shuffleKey(branch: String, value: Any): ShuffleKey = {
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
       new ShuffleKey(Seq(value.asInstanceOf[Hoge].id), Seq.empty) {}
     }
   }
@@ -144,25 +146,25 @@ object AggregateDriverSpec {
 
     override def name = "TestPartialAggregation"
 
-    override def branchKeys: Set[String] = Set("result")
+    override def branchKeys: Set[BranchKey] = Set(Result)
 
-    override def partitioners: Map[String, Partitioner] = {
-      Map("result" -> new HashPartitioner(2))
+    override def partitioners: Map[BranchKey, Partitioner] = {
+      Map(Result -> new HashPartitioner(2))
     }
 
-    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
+    override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = {
-      Map("result" -> new TestAggregation(true))
+    override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = {
+      Map(Result -> new TestAggregation(true))
     }
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[BranchKey, OutputFragment[U]]) = {
       val fragment = new HogeOutputFragment
-      val outputs = Map("result" -> fragment)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
+      val outputs = Map(Result -> fragment)
+      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
     }
 
-    override def shuffleKey(branch: String, value: Any): ShuffleKey = {
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
       new ShuffleKey(Seq(value.asInstanceOf[Hoge].id), Seq.empty) {}
     }
   }
