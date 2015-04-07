@@ -116,10 +116,12 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile),
       externalInputs = mutable.Map.empty,
-      shuffleKeyTypes = mutable.Set.empty)
+      shuffleKeyTypes = mutable.Set.empty,
+      branchKeys = new BranchKeysClassBuilder("flowId"))
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
+    context.jpContext.addClass(context.branchKeys)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver[Long]])
 
     val hogeOrd = Seq(true)
@@ -150,24 +152,30 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         part)
     val results = driver.execute()
 
+    val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
     assert(driver.branchKeys ===
       Set(hogeResultMarker, fooResultMarker,
         hogeErrorMarker, fooErrorMarker,
         hogeAllMarker, fooAllMarker,
-        nResultMarker).map(_.getOriginalSerialNumber))
+        nResultMarker)
+      .map(marker => context.branchKeys.getField(marker.getOriginalSerialNumber))
+      .map(field => branchKeyCls.getField(field).get(null)))
 
-    val hogeResult = results(BranchKey(hogeResultMarker.getOriginalSerialNumber))
+    def getBranchKey(sn: Long): BranchKey =
+      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+
+    val hogeResult = results(getBranchKey(hogeResultMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[Hoge])
     assert(hogeResult.size === 1)
     assert(hogeResult(0).id.get === 1)
 
-    val fooResult = results(BranchKey(fooResultMarker.getOriginalSerialNumber))
+    val fooResult = results(getBranchKey(fooResultMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[Foo])
     assert(fooResult.size === 1)
     assert(fooResult(0).id.get === 10)
     assert(fooResult(0).hogeId.get === 1)
 
-    val hogeError = results(BranchKey(hogeErrorMarker.getOriginalSerialNumber))
+    val hogeError = results(getBranchKey(hogeErrorMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
     assert(hogeError.size === 9)
     assert(hogeError(0).id.get === 0)
@@ -175,7 +183,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       assert(hogeError(i - 1).id.get === i)
     }
 
-    val fooError = results(BranchKey(fooErrorMarker.getOriginalSerialNumber))
+    val fooError = results(getBranchKey(fooErrorMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
     assert(fooError.size === 44)
     for {
@@ -186,14 +194,14 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       assert(fooError((i * (i - 1)) / 2 + j - 1).hogeId.get == i)
     }
 
-    val hogeAll = results(BranchKey(hogeAllMarker.getOriginalSerialNumber))
+    val hogeAll = results(getBranchKey(hogeAllMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
     assert(hogeAll.size === 10)
     for (i <- 0 until 10) {
       assert(hogeAll(i).id.get === i)
     }
 
-    val fooAll = results(BranchKey(fooAllMarker.getOriginalSerialNumber))
+    val fooAll = results(getBranchKey(fooAllMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
     assert(fooAll.size === 45)
     for {
@@ -204,7 +212,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       assert(fooAll((i * (i - 1)) / 2 + j).hogeId.get == i)
     }
 
-    val nResult = results(BranchKey(nResultMarker.getOriginalSerialNumber))
+    val nResult = results(getBranchKey(nResultMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[N])
     assert(nResult.size === 10)
     nResult.foreach(n => assert(n.n.get === 10))

@@ -19,6 +19,7 @@ import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.subplan.BranchKeysClassBuilder
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Update
@@ -47,6 +48,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
@@ -96,6 +98,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)

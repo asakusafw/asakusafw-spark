@@ -24,6 +24,7 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.subplan.BranchKeysClassBuilder
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp, MasterSelection }
@@ -57,6 +58,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -128,6 +130,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -202,6 +205,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -273,6 +277,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)

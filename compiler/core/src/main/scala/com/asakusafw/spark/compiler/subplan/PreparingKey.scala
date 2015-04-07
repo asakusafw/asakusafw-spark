@@ -11,7 +11,7 @@ import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.driver.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 
 trait PreparingKey extends ClassBuilder {
@@ -20,6 +20,8 @@ trait PreparingKey extends ClassBuilder {
 
   def jpContext: JPContext
 
+  def branchKeys: BranchKeysClassBuilder
+
   def shuffleKeyTypes: mutable.Set[Type]
 
   def subplanOutputs: Seq[SubPlan.Output]
@@ -27,20 +29,20 @@ trait PreparingKey extends ClassBuilder {
   override def defMethods(methodDef: MethodDef): Unit = {
 
     methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
-      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { mb =>
+      Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { mb =>
         import mb._
-        val branchVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
+        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
         `return`(thisVar.push()
           .invokeV("shuffleKey", classOf[ShuffleKey].asType,
-            branchVar.push().cast(Type.LONG_TYPE.boxed).unbox(),
+            branchVar.push(),
             valueVar.push().cast(classOf[DataModel[_]].asType)))
       }
 
     methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
-      Seq(Type.LONG_TYPE, classOf[DataModel[_]].asType)) { mb =>
+      Seq(classOf[BranchKey].asType, classOf[DataModel[_]].asType)) { mb =>
         import mb._
-        val branchVar = `var`(Type.LONG_TYPE, thisVar.nextLocal)
+        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[DataModel[_]].asType, branchVar.nextLocal)
         subplanOutputs.sortBy(_.getOperator.getOriginalSerialNumber).foreach { output =>
           val op = output.getOperator
@@ -62,11 +64,15 @@ trait PreparingKey extends ClassBuilder {
               })
             shuffleKeyTypes += shuffleKeyType
 
-            branchVar.push().unlessNe(ldc(op.getOriginalSerialNumber)) {
-              val shuffleKey = pushNew(shuffleKeyType)
-              shuffleKey.dup().invokeInit(valueVar.push().cast(dataModelType))
-              `return`(shuffleKey)
-            }
+            branchVar.push().unlessNotEqual(
+              getStatic(
+                branchKeys.thisType,
+                branchKeys.getField(op.getOriginalSerialNumber),
+                classOf[BranchKey].asType)) {
+                val shuffleKey = pushNew(shuffleKeyType)
+                shuffleKey.dup().invokeInit(valueVar.push().cast(dataModelType))
+                `return`(shuffleKey)
+              }
           }
         }
         `return`(pushNull(classOf[ShuffleKey].asType))

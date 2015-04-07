@@ -72,13 +72,14 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     outputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(outputOperator))
 
     val outputCompilerContext = SubPlanCompiler.Context(
-      flowId = "flowId",
+      flowId = "outtputFlowId",
       jpContext = jpContext,
       externalInputs = mutable.Map.empty,
+      branchKeys = new BranchKeysClassBuilder("outputFlowId"),
       shuffleKeyTypes = mutable.Set.empty)
     val outputCompiler = resolvers.find(_.support(outputOperator)(outputCompilerContext)).get
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
-
+    outputCompilerContext.jpContext.addClass(outputCompilerContext.branchKeys)
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge, _]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -127,13 +128,14 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     inputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(inputOperator))
 
     val inputCompilerContext = SubPlanCompiler.Context(
-      flowId = "flowId",
+      flowId = "inputFlowId",
       jpContext = jpContext,
       externalInputs = mutable.Map.empty,
+      branchKeys = new BranchKeysClassBuilder("inputFlowId"),
       shuffleKeyTypes = mutable.Set.empty)
     val inputCompiler = resolvers.find(_.support(inputOperator)(inputCompilerContext)).get
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
-
+    inputCompilerContext.jpContext.addClass(inputCompilerContext.branchKeys)
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge, Long]])
     val inputDriver = inputDriverCls.getConstructor(
       classOf[SparkContext],
@@ -144,8 +146,17 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
         hadoopConf,
         Map.empty)
     val inputs = inputDriver.execute()
-    assert(inputDriver.branchKeys === Set(inputMarker.getOriginalSerialNumber))
-    assert(inputs(BranchKey(inputMarker.getOriginalSerialNumber))
+
+    val branchKeyCls = classServer.loadClass(inputCompilerContext.branchKeys.thisType.getClassName)
+    assert(inputDriver.branchKeys ===
+      Set(inputMarker)
+      .map(marker => inputCompilerContext.branchKeys.getField(marker.getOriginalSerialNumber))
+      .map(field => branchKeyCls.getField(field).get(null)))
+
+    def getBranchKey(sn: Long): BranchKey =
+      branchKeyCls.getField(inputCompilerContext.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+
+    assert(inputs(getBranchKey(inputMarker.getOriginalSerialNumber))
       .map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
   }
 }

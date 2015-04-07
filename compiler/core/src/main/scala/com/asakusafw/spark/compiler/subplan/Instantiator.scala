@@ -22,7 +22,8 @@ trait Instantiator {
     rddsVar: Var, // mutable.Map[Long, RDD[_]]
     nextLocal: AtomicInteger,
     flowId: String,
-    jpContext: JPContext)
+    jpContext: JPContext,
+    branchKeys: BranchKeysClassBuilder)
 
   def newInstance(
     driverType: Type,

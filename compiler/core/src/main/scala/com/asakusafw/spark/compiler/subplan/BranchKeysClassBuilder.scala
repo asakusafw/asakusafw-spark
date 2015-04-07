@@ -41,4 +41,20 @@ class BranchKeysClassBuilder(flowId: String)
       }
     }
   }
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newStaticMethod("valueOf", classOf[BranchKey].asType, Seq(Type.LONG_TYPE)) { mb =>
+      import mb._
+      val idVar = `var`(Type.LONG_TYPE, 0)
+      branchKeys.values.toSeq.sorted.foreach { id =>
+        idVar.push().unlessNe(ldc(id)) {
+          `return`(
+            getStatic(thisType, field(id), classOf[BranchKey].asType))
+        }
+      }
+      `throw`(pushNew0(classOf[AssertionError].asType))
+    }
+  }
 }

@@ -15,6 +15,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.driver.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -87,13 +88,16 @@ class FragmentTreeBuilder(
   def buildOutputsVar(outputs: Seq[SubPlan.Output]): Var = {
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    outputs.map(_.getOperator).sortBy(_.getOriginalSerialNumber).foreach { op =>
+    outputs.map(_.getOperator.getOriginalSerialNumber).sorted.foreach { sn =>
       builder.invokeI(NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
           invokeV("apply", classOf[(_, _)].asType,
-            ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
-            vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
+            getStatic(
+              context.branchKeys.thisType,
+              context.branchKeys.getField(sn),
+              classOf[BranchKey].asType).asType(classOf[AnyRef].asType),
+            vars(sn).push().asType(classOf[AnyRef].asType))
           .asType(classOf[AnyRef].asType))
     }
     val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)

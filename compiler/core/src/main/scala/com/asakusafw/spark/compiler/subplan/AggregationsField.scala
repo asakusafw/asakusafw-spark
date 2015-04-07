@@ -13,6 +13,7 @@ import com.asakusafw.lang.compiler.planning.spark.NextDominantOperator
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
+import com.asakusafw.spark.runtime.driver.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -22,13 +23,15 @@ trait AggregationsField extends ClassBuilder {
 
   def jpContext: JPContext
 
+  def branchKeys: BranchKeysClassBuilder
+
   def subplanOutputs: Seq[SubPlan.Output]
 
   def defAggregationsField(fieldDef: FieldDef): Unit = {
     fieldDef.newFinalField("aggregations", classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE)
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Aggregation[_, _, _]].asType)
         }
         .build())
@@ -53,7 +56,11 @@ trait AggregationsField extends ClassBuilder {
               classOf[mutable.Builder[_, _]].asType, {
                 getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
                   .invokeV("apply", classOf[(_, _)].asType,
-                    ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
+                    getStatic(
+                      branchKeys.thisType,
+                      branchKeys.getField(op.getOriginalSerialNumber),
+                      classOf[BranchKey].asType)
+                      .asType(classOf[AnyRef].asType),
                     pushNew0(AggregationClassBuilder.getOrCompile(flowId, operator, jpContext)).asType(classOf[AnyRef].asType))
               }.asType(classOf[AnyRef].asType))
           }
@@ -73,7 +80,7 @@ trait AggregationsField extends ClassBuilder {
       new MethodSignatureBuilder()
         .newReturnType {
           _.newClassType(classOf[Map[_, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
               .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Aggregation[_, _, _]].asType)
           }
         }

@@ -44,6 +44,8 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
       override val shuffleKeyTypes = context.shuffleKeyTypes
 
+      override val branchKeys: BranchKeysClassBuilder = context.branchKeys
+
       override val dominantOperator = operator
 
       override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
@@ -66,8 +68,12 @@ class InputSubPlanCompiler extends SubPlanCompiler {
           import mb._
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-          val fragmentBuilder = new FragmentTreeBuilder(
-            mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes))
+          val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)(
+            OperatorCompiler.Context(
+              flowId = context.flowId,
+              jpContext = context.jpContext,
+              branchKeys = context.branchKeys,
+              shuffleKeyTypes = context.shuffleKeyTypes))
           val fragmentVar = fragmentBuilder.build(operator.getOperatorPort)
           val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 

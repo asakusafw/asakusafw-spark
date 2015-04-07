@@ -12,6 +12,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
+import com.asakusafw.spark.runtime.driver.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -21,13 +22,15 @@ trait PartitionersField extends ClassBuilder {
 
   def jpContext: JPContext
 
+  def branchKeys: BranchKeysClassBuilder
+
   def subplanOutputs: Seq[SubPlan.Output]
 
   def defPartitionersField(fieldDef: FieldDef): Unit = {
     fieldDef.newFinalField("partitioners", classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
         }
         .build())
@@ -50,7 +53,10 @@ trait PartitionersField extends ClassBuilder {
           classOf[mutable.Builder[_, _]].asType,
           getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
             invokeV("apply", classOf[(_, _)].asType,
-              ldc(op.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType), {
+              getStatic(
+                branchKeys.thisType,
+                branchKeys.getField(op.getOriginalSerialNumber),
+                classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
                 val partitioner = pushNew(classOf[HashPartitioner].asType)
                 partitioner.dup().invokeInit(
                   thisVar.push().invokeV("sc", classOf[SparkContext].asType)
@@ -73,7 +79,7 @@ trait PartitionersField extends ClassBuilder {
       new MethodSignatureBuilder()
         .newReturnType {
           _.newClassType(classOf[Map[_, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
               .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
           }
         }

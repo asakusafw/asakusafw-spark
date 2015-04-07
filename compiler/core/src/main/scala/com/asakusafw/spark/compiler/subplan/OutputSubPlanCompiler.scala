@@ -12,6 +12,7 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.runtime.driver.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -81,7 +82,10 @@ object OutputSubPlanCompiler {
                 context.rddsVar.push().invokeI(
                   "apply",
                   classOf[AnyRef].asType,
-                  ldc(sn).box().asType(classOf[AnyRef].asType)))
+                  getStatic(
+                    context.branchKeys.thisType,
+                    context.branchKeys.getField(sn),
+                    classOf[BranchKey].asType).asType(classOf[AnyRef].asType)))
             }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
