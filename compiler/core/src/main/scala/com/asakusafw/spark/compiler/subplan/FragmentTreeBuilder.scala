@@ -15,7 +15,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.driver.BranchKey
+import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -46,7 +46,7 @@ class FragmentTreeBuilder(
         val outputs = operator.getOutputs.map(build)
         val fragment = pushNew(t)
         fragment.dup().invokeInit(
-          thisVar.push().invokeV("broadcasts", classOf[Map[Long, Broadcast[_]]].asType)
+          thisVar.push().invokeV("broadcasts", classOf[Map[BroadcastId, Broadcast[_]]].asType)
             +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
         fragment
     }

@@ -23,11 +23,11 @@ import com.asakusafw.runtime.util.VariableTable
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
-abstract class InputDriver[T: ClassTag, B](
+abstract class InputDriver[T: ClassTag](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[B, Broadcast[_]])
-    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[T] {
+  broadcasts: Map[BroadcastId, Broadcast[_]])
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[T] {
 
   def paths: Set[String]
 

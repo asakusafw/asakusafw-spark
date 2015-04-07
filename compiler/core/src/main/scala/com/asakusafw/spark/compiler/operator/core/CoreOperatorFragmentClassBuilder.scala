@@ -5,6 +5,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -27,7 +28,7 @@ abstract class CoreOperatorFragmentClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(
-      Seq(classOf[Map[Long, Broadcast[_]]].asType, classOf[Fragment[_]].asType),
+      Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType, classOf[Fragment[_]].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
@@ -43,7 +44,7 @@ abstract class CoreOperatorFragmentClassBuilder(
         .newVoidReturnType()
         .build()) { mb =>
         import mb._
-        val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, thisVar.nextLocal)
+        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
         val childVar = `var`(classOf[Fragment[_]].asType, broadcastsVar.nextLocal)
 
         thisVar.push().invokeInit(superType)

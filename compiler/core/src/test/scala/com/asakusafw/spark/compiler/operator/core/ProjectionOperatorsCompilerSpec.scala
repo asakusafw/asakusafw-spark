@@ -21,7 +21,8 @@ import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.compiler.subplan.BranchKeysClassBuilder
+import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
+import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 
@@ -48,6 +49,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath),
       branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
@@ -61,7 +63,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls
-      .getConstructor(classOf[Map[Long, Broadcast[_]]], classOf[Fragment[_]])
+      .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
     val dm = new ProjectInputModel()
@@ -93,6 +95,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath),
       branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
@@ -106,7 +109,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls
-      .getConstructor(classOf[Map[Long, Broadcast[_]]], classOf[Fragment[_]])
+      .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
     val dm = new ExtendInputModel()
@@ -138,6 +141,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
         Thread.currentThread.getContextClassLoader,
         classpath),
       branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
@@ -151,7 +155,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
     }
 
     val fragment = cls
-      .getConstructor(classOf[Map[Long, Broadcast[_]]], classOf[Fragment[_]])
+      .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
     val dm = new RestructureInputModel()

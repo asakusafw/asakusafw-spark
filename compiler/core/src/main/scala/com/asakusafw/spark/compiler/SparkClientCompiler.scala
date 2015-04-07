@@ -27,10 +27,14 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSparkPlanner, PartitioningParameters }
 import com.asakusafw.lang.compiler.planning.util.DotGenerator
-import com.asakusafw.spark.compiler.serializer.{ BranchKeySerializerClassBuilder, KryoRegistratorCompiler }
+import com.asakusafw.spark.compiler.serializer.{
+  BranchKeySerializerClassBuilder,
+  BroadcastIdSerializerClassBuilder,
+  KryoRegistratorCompiler
+}
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.compiler.subplan.BranchKeysClassBuilder
-import com.asakusafw.spark.runtime.driver.BranchKey
+import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
+import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.utils.graph.Graphs
@@ -73,6 +77,7 @@ class SparkClientCompiler extends JobflowProcessor {
         jpContext = jpContext,
         externalInputs = mutable.Map.empty,
         branchKeys = new BranchKeysClassBuilder(source.getFlowId),
+        broadcastIds = new BroadcastIdsClassBuilder(source.getFlowId),
         shuffleKeyTypes = mutable.Set.empty)
 
       val builder = new SparkClientClassBuilder(source.getFlowId) {
@@ -137,8 +142,12 @@ class SparkClientCompiler extends JobflowProcessor {
                         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
                           .invokeV(
                             "apply",
-                            classOf[(Long, Broadcast[_])].asType,
-                            ldc(input.getOperator.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
+                            classOf[(BroadcastId, Broadcast[_])].asType,
+                            getStatic(
+                              context.broadcastIds.thisType,
+                              context.broadcastIds.getField(input.getOperator.getOriginalSerialNumber),
+                              classOf[BroadcastId].asType)
+                              .asType(classOf[AnyRef].asType),
                             thisVar.push().invokeV(
                               "broadcastAsHash",
                               classOf[Broadcast[_]].asType,
@@ -223,6 +232,7 @@ class SparkClientCompiler extends JobflowProcessor {
           }
 
           val branchKeysType = jpContext.addClass(context.branchKeys)
+          val broadcastIdsType = jpContext.addClass(context.broadcastIds)
 
           val registrator = KryoRegistratorCompiler.compile(
             OperatorUtil.collectDataTypes(
@@ -230,7 +240,8 @@ class SparkClientCompiler extends JobflowProcessor {
               .toSet[TypeDescription]
               .map(_.asType),
             context.shuffleKeyTypes.toSet,
-            jpContext.addClass(new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)))(
+            jpContext.addClass(new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)),
+            jpContext.addClass(new BroadcastIdSerializerClassBuilder(context.flowId, broadcastIdsType)))(
               KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
 
           methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>

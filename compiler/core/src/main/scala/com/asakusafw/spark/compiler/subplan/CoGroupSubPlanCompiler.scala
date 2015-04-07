@@ -18,7 +18,7 @@ import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, Partitioni
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
-import com.asakusafw.spark.runtime.driver.BranchKey
+import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -35,6 +35,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
           flowId = context.flowId,
           jpContext = context.jpContext,
           branchKeys = context.branchKeys,
+          broadcastIds = context.broadcastIds,
           shuffleKeyTypes = context.shuffleKeyTypes))
   }
 
@@ -70,6 +71,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
               flowId = context.flowId,
               jpContext = context.jpContext,
               branchKeys = context.branchKeys,
+              broadcastIds = context.broadcastIds,
               shuffleKeyTypes = context.shuffleKeyTypes)
           val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)
           val fragmentVar = {
@@ -77,7 +79,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
             val outputs = operator.getOutputs.map(fragmentBuilder.build)
             val fragment = pushNew(t)
             fragment.dup().invokeInit(
-              thisVar.push().invokeV("broadcasts", classOf[Map[Long, Broadcast[_]]].asType)
+              thisVar.push().invokeV("broadcasts", classOf[Map[BroadcastId, Broadcast[_]]].asType)
                 +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
             fragment.store(nextLocal.getAndAdd(fragment.size))
           }

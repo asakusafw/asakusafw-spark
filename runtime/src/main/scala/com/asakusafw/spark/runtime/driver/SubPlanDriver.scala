@@ -8,10 +8,10 @@ import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 
-abstract class SubPlanDriver[B](
+abstract class SubPlanDriver(
     @transient val sc: SparkContext,
     val hadoopConf: Broadcast[Configuration],
-    val broadcasts: Map[B, Broadcast[_]]) extends Serializable {
+    val broadcasts: Map[BroadcastId, Broadcast[_]]) extends Serializable {
 
   def name: String
 

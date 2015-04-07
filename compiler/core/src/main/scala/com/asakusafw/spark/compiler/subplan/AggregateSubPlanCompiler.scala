@@ -76,6 +76,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
               flowId = context.flowId,
               jpContext = context.jpContext,
               branchKeys = context.branchKeys,
+              broadcastIds = context.broadcastIds,
               shuffleKeyTypes = context.shuffleKeyTypes))
           val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
           val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)

@@ -32,6 +32,7 @@ object SubPlanCompiler {
     jpContext: JPContext,
     externalInputs: mutable.Map[String, ExternalInputReference],
     branchKeys: BranchKeysClassBuilder,
+    broadcastIds: BroadcastIdsClassBuilder,
     shuffleKeyTypes: mutable.Set[Type])
 
   private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[SubPlanCompiler]] =

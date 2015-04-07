@@ -9,7 +9,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.spark.compiler.subplan.BranchKeysClassBuilder
+import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 sealed trait OperatorType
@@ -38,6 +38,7 @@ object OperatorCompiler {
     flowId: String,
     jpContext: JPContext,
     branchKeys: BranchKeysClassBuilder,
+    broadcastIds: BroadcastIdsClassBuilder,
     shuffleKeyTypes: mutable.Set[Type])
 
   private def getCompiler(operator: Operator)(implicit context: Context): Seq[OperatorCompiler] = {

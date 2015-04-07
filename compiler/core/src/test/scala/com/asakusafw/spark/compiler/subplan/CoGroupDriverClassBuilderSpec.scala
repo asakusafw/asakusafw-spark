@@ -116,13 +116,14 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile),
       externalInputs = mutable.Map.empty,
-      shuffleKeyTypes = mutable.Set.empty,
-      branchKeys = new BranchKeysClassBuilder("flowId"))
+      branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
+      shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
     context.jpContext.addClass(context.branchKeys)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver[Long]])
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
     val hogeOrd = Seq(true)
     val hogeList = sc.parallelize(0 until 10).map { i =>
@@ -141,7 +142,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
-      classOf[Map[Long, Broadcast[_]]],
+      classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])]],
       classOf[Partitioner])
       .newInstance(

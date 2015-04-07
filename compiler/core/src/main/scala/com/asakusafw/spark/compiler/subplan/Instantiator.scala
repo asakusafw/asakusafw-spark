@@ -18,8 +18,8 @@ trait Instantiator {
     mb: MethodBuilder,
     scVar: Var, // SparkContext
     hadoopConfVar: Var, // Broadcast[Configuration]
-    broadcastsVar: Var, // Map[Long, Broadcast[Map[ShuffleKey, Seq[_]]]]
-    rddsVar: Var, // mutable.Map[Long, RDD[_]]
+    broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
+    rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
     nextLocal: AtomicInteger,
     flowId: String,
     jpContext: JPContext,

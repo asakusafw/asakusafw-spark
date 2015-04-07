@@ -24,7 +24,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
 
   import AggregateDriverSpec._
 
-  behavior of classOf[AggregateDriver[_, _, _]].getSimpleName
+  behavior of classOf[AggregateDriver[_, _]].getSimpleName
 
   it should "aggregate with map-side combine" in {
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -115,7 +115,7 @@ object AggregateDriverSpec {
     @transient directions: Seq[Boolean],
     @transient part: Partitioner,
     val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
-      extends AggregateDriver[Hoge, Hoge, String](sc, hadoopConf, Map.empty, Seq(prev), directions, part) {
+      extends AggregateDriver[Hoge, Hoge](sc, hadoopConf, Map.empty, Seq(prev), directions, part) {
 
     override def name = "TestAggregation"
 
@@ -142,7 +142,7 @@ object AggregateDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient prev: RDD[(ShuffleKey, Hoge)])
-      extends MapDriver[Hoge, String](sc, hadoopConf, Map.empty, Seq(prev)) {
+      extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def name = "TestPartialAggregation"
 

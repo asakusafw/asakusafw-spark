@@ -22,7 +22,7 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
 
   import MapDriverSpec._
 
-  behavior of classOf[MapDriver[_, _]].getSimpleName
+  behavior of classOf[MapDriver[_]].getSimpleName
 
   it should "map" in {
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -62,7 +62,7 @@ object MapDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient prev: RDD[(ShuffleKey, Hoge)])
-      extends MapDriver[Hoge, String](sc, hadoopConf, Map.empty, Seq(prev)) {
+      extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def name = "TestMap"
 

@@ -73,6 +73,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               flowId = context.flowId,
               jpContext = context.jpContext,
               branchKeys = context.branchKeys,
+              broadcastIds = context.broadcastIds,
               shuffleKeyTypes = context.shuffleKeyTypes))
           val fragmentVar = fragmentBuilder.build(operator.getOperatorPort)
           val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)

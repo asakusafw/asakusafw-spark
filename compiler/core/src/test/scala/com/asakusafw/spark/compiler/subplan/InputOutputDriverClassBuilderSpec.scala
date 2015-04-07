@@ -76,11 +76,12 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       jpContext = jpContext,
       externalInputs = mutable.Map.empty,
       branchKeys = new BranchKeysClassBuilder("outputFlowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("outputFlowId"),
       shuffleKeyTypes = mutable.Set.empty)
     val outputCompiler = resolvers.find(_.support(outputOperator)(outputCompilerContext)).get
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
     outputCompilerContext.jpContext.addClass(outputCompilerContext.branchKeys)
-    val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge, _]])
+    val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
@@ -132,15 +133,16 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       jpContext = jpContext,
       externalInputs = mutable.Map.empty,
       branchKeys = new BranchKeysClassBuilder("inputFlowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("inputFlowId"),
       shuffleKeyTypes = mutable.Set.empty)
     val inputCompiler = resolvers.find(_.support(inputOperator)(inputCompilerContext)).get
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
     inputCompilerContext.jpContext.addClass(inputCompilerContext.branchKeys)
-    val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge, Long]])
+    val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge]])
     val inputDriver = inputDriverCls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
-      classOf[Map[Long, Broadcast[_]]])
+      classOf[Map[BroadcastId, Broadcast[_]]])
       .newInstance(
         sc,
         hadoopConf,

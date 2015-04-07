@@ -12,6 +12,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.spark.compiler.spi.OperatorType
+import com.asakusafw.spark.compiler.subplan.BroadcastIdsClassBuilder
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ CoGroup, GroupSort }
@@ -57,6 +58,8 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       classOf[Seq[Iterable[_]]].asType,
       implementationClassType,
       outputs) {
+
+      val broadcastIds: BroadcastIdsClassBuilder = context.broadcastIds
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
         import mb._

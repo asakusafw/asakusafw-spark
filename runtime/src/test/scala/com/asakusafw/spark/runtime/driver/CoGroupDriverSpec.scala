@@ -92,7 +92,7 @@ object CoGroupDriverSpec {
     @transient hadoopConf: Broadcast[Configuration],
     @transient inputs: Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])],
     @transient part: Partitioner)
-      extends CoGroupDriver[String](sc, hadoopConf, Map.empty, inputs, part) {
+      extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, part) {
 
     override def name = "TestCoGroup"
 
