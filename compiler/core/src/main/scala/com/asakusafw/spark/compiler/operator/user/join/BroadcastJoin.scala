@@ -3,7 +3,7 @@ package operator
 package user
 package join
 
-import java.util.{ List => JList }
+import java.util.{ ArrayList, List => JList }
 
 import scala.collection.mutable
 import scala.collection.JavaConversions
@@ -99,12 +99,21 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
       shuffleKey.invokeV("dropOrdering", classOf[ShuffleKey].asType).store(dataModelVar.nextLocal)
     }
 
-    val mastersVar = getStatic(JavaConversions.getClass.asType, "MODULE$", JavaConversions.getClass.asType)
-      .invokeV("seqAsJavaList", classOf[JList[_]].asType,
-        thisVar.push().getField("masters", classOf[Map[_, _]].asType)
-          .invokeI("apply", classOf[AnyRef].asType, keyVar.push().asType(classOf[AnyRef].asType))
-          .cast(classOf[Seq[_]].asType))
+    val mVar = thisVar.push().getField("masters", classOf[Map[_, _]].asType)
+      .invokeI("get", classOf[Option[_]].asType, keyVar.push().asType(classOf[AnyRef].asType))
+      .invokeV("orNull", classOf[AnyRef].asType,
+        getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
+          .invokeV("conforms", classOf[Predef.<:<[_, _]].asType))
+      .cast(classOf[Seq[_]].asType)
       .store(keyVar.nextLocal)
+
+    val mastersVar =
+      mVar.push().ifNull({
+        pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
+      }, {
+        getStatic(JavaConversions.getClass.asType, "MODULE$", JavaConversions.getClass.asType)
+          .invokeV("seqAsJavaList", classOf[JList[_]].asType, mVar.push())
+      }).store(mVar.nextLocal)
 
     val selectedVar = (masterSelection match {
       case Some((name, t)) =>

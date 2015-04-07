@@ -41,6 +41,6 @@ abstract class SparkClient {
         part,
         ShuffleKey.GroupingOrdering)
         .map { case (k, vs) => (k.dropOrdering, vs(0).toSeq.asInstanceOf[Seq[V]]) }
-        .collect.toMap.withDefault(_ => Seq.empty))
+        .collect.toMap)
   }
 }
