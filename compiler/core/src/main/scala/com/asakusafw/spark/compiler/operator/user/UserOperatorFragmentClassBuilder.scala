@@ -7,6 +7,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.OperatorOutput
+import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 
@@ -28,7 +29,7 @@ abstract class UserOperatorFragmentClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(
-      classOf[Map[Long, Broadcast[_]]].asType +: (0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
+      classOf[Map[BroadcastId, Broadcast[_]]].asType +: (0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
       ((new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
@@ -46,7 +47,7 @@ abstract class UserOperatorFragmentClassBuilder(
         .newVoidReturnType()
         .build()) { mb =>
         import mb._
-        val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, thisVar.nextLocal)
+        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
         thisVar.push().invokeInit(superType)
         initBroadcastsField(mb, broadcastsVar)

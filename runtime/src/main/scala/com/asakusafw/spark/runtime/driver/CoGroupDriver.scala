@@ -10,17 +10,17 @@ import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor._
 import com.asakusafw.spark.runtime.rdd._
 
-abstract class CoGroupDriver[B](
+abstract class CoGroupDriver(
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[B, Broadcast[_]],
+  broadcasts: Map[BroadcastId, Broadcast[_]],
   @transient prevs: Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])],
   @transient part: Partitioner)
-    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, Seq[Iterable[_]]] {
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[Seq[Iterable[_]]] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
-  override def execute(): Map[B, RDD[(ShuffleKey, _)]] = {
+  override def execute(): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     sc.clearCallSite()
     sc.setCallSite(name)
 

@@ -23,6 +23,8 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
+import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.model.{ Joined, Key }
@@ -57,6 +59,8 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -76,7 +80,7 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
 
     val fragment = cls
       .getConstructor(
-        classOf[Map[Long, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, joined, missed)
 
@@ -140,6 +144,8 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -159,7 +165,7 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
 
     val fragment = cls
       .getConstructor(
-        classOf[Map[Long, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, joined, missed)
 

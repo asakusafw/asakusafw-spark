@@ -18,7 +18,7 @@ import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput }
 import com.asakusafw.lang.compiler.planning.PlanMarker
 import com.asakusafw.spark.compiler.subplan.ShuffleKeyClassBuilder
-import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
@@ -49,7 +49,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
 
   override def initFields(mb: MethodBuilder): Unit = {
     import mb._
-    val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, thisVar.nextLocal)
+    val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
     val masterSerialNumber: Long = {
       val opposites = masterInput.getOpposites
@@ -68,9 +68,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
     thisVar.push().putField(
       "masters",
       classOf[Map[_, _]].asType,
-      broadcastsVar.push()
-        .invokeI("apply", classOf[AnyRef].asType, ldc(masterSerialNumber).box().asType(classOf[AnyRef].asType))
-        .cast(classOf[Broadcast[_]].asType)
+      getBroadcast(mb, masterSerialNumber)
         .invokeV("value", classOf[AnyRef].asType)
         .cast(classOf[Map[_, _]].asType))
   }

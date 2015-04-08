@@ -17,7 +17,13 @@ import com.asakusafw.spark.tools.asm._
 class WritableSerializerClassBuilder(flowId: String, writableType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/serializer/WritableSerializer$$${WritableSerializerClassBuilder.nextId};"),
-      Some(WritableSerializerClassBuilder.signature(writableType)),
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[WritableSerializer[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, writableType)
+          }
+        }
+        .build(),
       classOf[WritableSerializer[_]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
@@ -40,18 +46,6 @@ object WritableSerializerClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
-
-  def signature(dataModelType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[WritableSerializer[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-            _.newClassType(dataModelType)
-          }
-        }
-      }
-      .build()
-  }
 
   private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Type), Type]] =
     mutable.WeakHashMap.empty

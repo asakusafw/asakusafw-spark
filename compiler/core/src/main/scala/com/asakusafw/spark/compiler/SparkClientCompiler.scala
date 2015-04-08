@@ -28,8 +28,14 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSparkPlanner, PartitioningParameters }
 import com.asakusafw.lang.compiler.planning.util.DotGenerator
-import com.asakusafw.spark.compiler.serializer.KryoRegistratorCompiler
+import com.asakusafw.spark.compiler.serializer.{
+  BranchKeySerializerClassBuilder,
+  BroadcastIdSerializerClassBuilder,
+  KryoRegistratorCompiler
+}
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
+import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.utils.graph.Graphs
@@ -68,14 +74,20 @@ class SparkClientCompiler extends JobflowProcessor {
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
 
       val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
-      implicit val context = SubPlanCompiler.Context(source.getFlowId, jpContext, mutable.Map.empty, mutable.Set.empty)
+      implicit val context = SubPlanCompiler.Context(
+        flowId = source.getFlowId,
+        jpContext = jpContext,
+        externalInputs = mutable.Map.empty,
+        branchKeys = new BranchKeysClassBuilder(source.getFlowId),
+        broadcastIds = new BroadcastIdsClassBuilder(source.getFlowId),
+        shuffleKeyTypes = mutable.Set.empty)
 
       val builder = new SparkClientClassBuilder(source.getFlowId) {
 
         override def defFields(fieldDef: FieldDef): Unit = {
           fieldDef.newField("sc", classOf[SparkContext].asType)
           fieldDef.newField("hadoopConf", classOf[Broadcast[Configuration]].asType)
-          fieldDef.newField("rdds", classOf[mutable.Map[Long, RDD[_]]].asType)
+          fieldDef.newField("rdds", classOf[mutable.Map[BranchKey, RDD[_]]].asType)
         }
 
         override def defMethods(methodDef: MethodDef): Unit = {
@@ -85,9 +97,9 @@ class SparkClientCompiler extends JobflowProcessor {
             val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
             thisVar.push().putField("sc", classOf[SparkContext].asType, scVar.push())
             thisVar.push().putField("hadoopConf", classOf[Broadcast[Configuration]].asType, hadoopConfVar.push())
-            thisVar.push().putField("rdds", classOf[mutable.Map[Long, RDD[_]]].asType,
+            thisVar.push().putField("rdds", classOf[mutable.Map[BranchKey, RDD[_]]].asType,
               getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
-                .invokeV("empty", classOf[mutable.Map[Long, RDD[_]]].asType))
+                .invokeV("empty", classOf[mutable.Map[BranchKey, RDD[_]]].asType))
 
             subplans.zipWithIndex.foreach {
               case (_, i) =>
@@ -107,7 +119,7 @@ class SparkClientCompiler extends JobflowProcessor {
 
                 val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType).store(thisVar.nextLocal)
                 val hadoopConfVar = thisVar.push().getField("hadoopConf", classOf[Broadcast[Configuration]].asType).store(scVar.nextLocal)
-                val rddsVar = thisVar.push().getField("rdds", classOf[mutable.Map[Long, RDD[_]]].asType).store(hadoopConfVar.nextLocal)
+                val rddsVar = thisVar.push().getField("rdds", classOf[mutable.Map[BranchKey, RDD[_]]].asType).store(hadoopConfVar.nextLocal)
                 val nextLocal = new AtomicInteger(rddsVar.nextLocal)
 
                 val broadcastsVar = {
@@ -132,8 +144,12 @@ class SparkClientCompiler extends JobflowProcessor {
                         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
                           .invokeV(
                             "apply",
-                            classOf[(Long, Broadcast[_])].asType,
-                            ldc(input.getOperator.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType),
+                            classOf[(BroadcastId, Broadcast[_])].asType,
+                            getStatic(
+                              context.broadcastIds.thisType,
+                              context.broadcastIds.getField(input.getOperator.getOriginalSerialNumber),
+                              classOf[BroadcastId].asType)
+                              .asType(classOf[AnyRef].asType),
                             thisVar.push().invokeV(
                               "broadcastAsHash",
                               classOf[Broadcast[_]].asType,
@@ -147,7 +163,10 @@ class SparkClientCompiler extends JobflowProcessor {
                                     rddsVar.push().invokeI(
                                       "apply",
                                       classOf[AnyRef].asType,
-                                      ldc(sn).box().asType(classOf[AnyRef].asType)))
+                                      getStatic(
+                                        context.branchKeys.thisType,
+                                        context.branchKeys.getField(sn),
+                                        classOf[BranchKey].asType).asType(classOf[AnyRef].asType)))
                                 }
 
                                 builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
@@ -180,8 +199,8 @@ class SparkClientCompiler extends JobflowProcessor {
                 val instantiator = compiler.instantiator
                 val driverVar = instantiator.newInstance(driverType, subplan)(
                   instantiator.Context(mb, scVar, hadoopConfVar, broadcastsVar, rddsVar,
-                    nextLocal, source.getFlowId, jpContext))
-                val rdds = driverVar.push().invokeV("execute", classOf[Map[Long, RDD[_]]].asType)
+                    nextLocal, source.getFlowId, jpContext, context.branchKeys))
+                val rdds = driverVar.push().invokeV("execute", classOf[Map[BranchKey, RDD[_]]].asType)
                 val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
 
                 subplan.getOutputs.collect {
@@ -193,12 +212,19 @@ class SparkClientCompiler extends JobflowProcessor {
                     getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
                       .invokeV(
                         "apply",
-                        classOf[(Long, RDD[_])].asType,
-                        ldc(marker.getSerialNumber).box().asType(classOf[AnyRef].asType),
+                        classOf[(BranchKey, RDD[_])].asType,
+                        getStatic(
+                          context.branchKeys.thisType,
+                          context.branchKeys.getField(marker.getSerialNumber),
+                          classOf[BranchKey].asType)
+                          .asType(classOf[AnyRef].asType),
                         resultVar.push().invokeI(
                           "apply",
                           classOf[AnyRef].asType,
-                          ldc(marker.getOriginalSerialNumber).box().asType(classOf[AnyRef].asType))
+                          getStatic(
+                            context.branchKeys.thisType,
+                            context.branchKeys.getField(marker.getOriginalSerialNumber),
+                            classOf[BranchKey].asType).asType(classOf[AnyRef].asType))
                           .cast(classOf[RDD[_]].asType)
                           .asType(classOf[AnyRef].asType)))
                     .pop()
@@ -207,12 +233,17 @@ class SparkClientCompiler extends JobflowProcessor {
               }
           }
 
+          val branchKeysType = jpContext.addClass(context.branchKeys)
+          val broadcastIdsType = jpContext.addClass(context.broadcastIds)
+
           val registrator = KryoRegistratorCompiler.compile(
             OperatorUtil.collectDataTypes(
               plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
               .toSet[TypeDescription]
               .map(_.asType),
-            context.shuffleKeyTypes.toSet)(
+            context.shuffleKeyTypes.toSet,
+            jpContext.addClass(new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)),
+            jpContext.addClass(new BroadcastIdSerializerClassBuilder(context.flowId, broadcastIdsType)))(
               KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
 
           methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>

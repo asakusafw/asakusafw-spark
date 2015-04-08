@@ -23,6 +23,8 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
+import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateOp, MasterSelection }
@@ -56,6 +58,8 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -69,7 +73,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
 
     val fragment = cls
       .getConstructor(
-        classOf[Map[Long, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, updated, missed)
 
@@ -128,6 +132,8 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -141,7 +147,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
 
     val fragment = cls
       .getConstructor(
-        classOf[Map[Long, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, updated, missed)
 
@@ -203,6 +209,8 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -216,7 +224,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
 
     val fragment = cls
       .getConstructor(
-        classOf[Map[Long, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, updated, missed)
 
@@ -275,6 +283,8 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         new CompilerOptions("buildid", "", Map.empty[String, String]),
         Thread.currentThread.getContextClassLoader,
         classpath),
+      branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -288,7 +298,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
 
     val fragment = cls
       .getConstructor(
-        classOf[Map[Long, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, updated, missed)
 

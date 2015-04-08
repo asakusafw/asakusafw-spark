@@ -77,11 +77,14 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile),
       externalInputs = mutable.Map.empty,
+      branchKeys = new BranchKeysClassBuilder("flowId"),
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
       shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge, Long]])
+    context.jpContext.addClass(context.branchKeys)
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
@@ -92,7 +95,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
-      classOf[Map[Long, Broadcast[_]]],
+      classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Seq[RDD[(ShuffleKey, _)]]],
       classOf[Seq[Boolean]],
       classOf[Partitioner])
@@ -105,9 +108,16 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new HashPartitioner(2))
     val results = driver.execute()
 
-    assert(driver.branchKeys === Set(resultMarker.getOriginalSerialNumber))
+    val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+    assert(driver.branchKeys ===
+      Set(resultMarker)
+      .map(marker => context.branchKeys.getField(marker.getOriginalSerialNumber))
+      .map(field => branchKeyCls.getField(field).get(null)))
 
-    val result = results(resultMarker.getOriginalSerialNumber).asInstanceOf[RDD[(ShuffleKey, Hoge)]]
+    def getBranchKey(sn: Long): BranchKey =
+      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+
+    val result = results(getBranchKey(resultMarker.getOriginalSerialNumber)).asInstanceOf[RDD[(ShuffleKey, Hoge)]]
       .collect.toSeq.sortBy(_._1.grouping(0).asInstanceOf[IntOption].get)
     assert(result.size === 2)
     assert(result(0)._1.grouping(0).asInstanceOf[IntOption].get === 0)

@@ -11,7 +11,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.spark.runtime.driver.InputDriver
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, InputDriver }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -22,25 +22,24 @@ abstract class InputDriverClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/InputDriver$$${InputDriverClassBuilder.nextId};"),
       new ClassSignatureBuilder()
         .newSuperclass {
-          _.newClassType(classOf[InputDriver[_, _]].asType) {
+          _.newClassType(classOf[InputDriver[_]].asType) {
             _
               .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
           }
         }
         .build(),
-      classOf[InputDriver[_, _]].asType)
+      classOf[InputDriver[_]].asType)
     with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
-      classOf[Map[Long, Broadcast[_]]].asType)) { mb =>
+      classOf[Map[BroadcastId, Broadcast[_]]].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
       val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-      val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
+      val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
 
       thisVar.push().invokeInit(
         superType,

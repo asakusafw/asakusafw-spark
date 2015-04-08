@@ -13,23 +13,23 @@ import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
-trait Branch[B, T] {
+trait Branch[T] {
 
   def hadoopConf: Broadcast[Configuration]
 
-  def branchKeys: Set[B]
+  def branchKeys: Set[BranchKey]
 
-  def partitioners: Map[B, Partitioner]
+  def partitioners: Map[BranchKey, Partitioner]
 
-  def orderings: Map[B, Ordering[ShuffleKey]]
+  def orderings: Map[BranchKey, Ordering[ShuffleKey]]
 
-  def aggregations: Map[B, Aggregation[ShuffleKey, _, _]]
+  def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]]
 
-  def shuffleKey(branch: B, value: Any): ShuffleKey
+  def shuffleKey(branch: BranchKey, value: Any): ShuffleKey
 
-  def fragments[U <: DataModel[U]]: (Fragment[T], Map[B, OutputFragment[U]])
+  def fragments[U <: DataModel[U]]: (Fragment[T], Map[BranchKey, OutputFragment[U]])
 
-  def branch(rdd: RDD[(ShuffleKey, T)]): Map[B, RDD[(ShuffleKey, _)]] = {
+  def branch(rdd: RDD[(ShuffleKey, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
         rdd.mapPartitions({ iter =>
@@ -38,12 +38,12 @@ trait Branch[B, T] {
           }
         }, preservesPartitioning = true))
     } else {
-      rdd.branch[B, ShuffleKey, Any](
+      rdd.branch[BranchKey, ShuffleKey, Any](
         branchKeys,
         { iter =>
           val combiners = aggregations.collect {
             case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
-          }.toMap[B, Aggregation.Combiner[ShuffleKey, _, _]]
+          }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]
 
           f(iter).flatMap {
             case ((b, k), v) if combiners.contains(b) =>
@@ -63,10 +63,14 @@ trait Branch[B, T] {
     }
   }
 
-  private def f(iter: Iterator[(ShuffleKey, T)]): Iterator[((B, ShuffleKey), _)] = {
+  private def f(iter: Iterator[(ShuffleKey, T)]): Iterator[((BranchKey, ShuffleKey), _)] = {
     val (fragment, outputs) = fragments
     assert(outputs.keys.toSet == branchKeys,
-      s"The size of outputs and branch keys should be the same: (${outputs.size}, ${branchKeys.size})")
+      s"The branch keys of outputs and branch keys field should be the same: (${
+        outputs.keys.mkString("(", ",", ")")
+      }, ${
+        branchKeys.mkString("(", ",", ")")
+      })")
 
     new ResourceBrokingIterator(
       hadoopConf.value,

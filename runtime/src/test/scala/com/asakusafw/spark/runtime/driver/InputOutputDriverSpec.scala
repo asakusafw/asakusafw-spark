@@ -44,18 +44,20 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
     new TestOutputDriver(sc, hadoopConf, hoges.asInstanceOf[RDD[(_, Hoge)]], path).execute()
 
     val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
-    assert(inputs("hogeResult").map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
+    assert(inputs(HogeResult).map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
   }
 }
 
 object InputOutputDriverSpec {
+
+  val HogeResult = BranchKey(0)
 
   class TestOutputDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient input: RDD[(_, Hoge)],
     val path: String)
-      extends OutputDriver[Hoge, String](sc, hadoopConf, Seq(input)) {
+      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input)) {
 
     override def name = "TestOutput"
   }
@@ -64,27 +66,27 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     basePath: String)
-      extends InputDriver[Hoge, String](sc, hadoopConf, Map.empty) {
+      extends InputDriver[Hoge](sc, hadoopConf, Map.empty) {
 
     override def name = "TestInput"
 
     override def paths: Set[String] = Set(basePath + "/part-*")
 
-    override def branchKeys: Set[String] = Set("hogeResult")
+    override def branchKeys: Set[BranchKey] = Set(HogeResult)
 
-    override def partitioners: Map[String, Partitioner] = Map.empty
+    override def partitioners: Map[BranchKey, Partitioner] = Map.empty
 
-    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
+    override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
+    override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[String, OutputFragment[U]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[BranchKey, OutputFragment[U]]) = {
       val fragment = new HogeOutputFragment
-      val outputs = Map("hogeResult" -> fragment)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
+      val outputs = Map(HogeResult -> fragment)
+      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
     }
 
-    override def shuffleKey(branch: String, value: Any): ShuffleKey = null
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] with Writable {

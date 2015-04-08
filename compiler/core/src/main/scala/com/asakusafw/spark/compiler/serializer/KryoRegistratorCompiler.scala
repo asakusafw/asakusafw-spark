@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.{ Kryo, Registration, Serializer }
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
 import com.asakusafw.spark.runtime.serializer.KryoRegistrator
 import com.asakusafw.spark.tools.asm._
 
@@ -15,7 +16,9 @@ object KryoRegistratorCompiler {
 
   def compile(
     writables: Set[Type],
-    shuffleKeys: Set[Type])(implicit context: Context): Type = {
+    shuffleKeys: Set[Type],
+    branchKeySerializer: Type,
+    broadcastIdSerializer: Type)(implicit context: Context): Type = {
     val serializers = writables.map { writable =>
       writable -> WritableSerializerClassBuilder.getOrCompile(context.flowId, writable, context.jpContext)
     }.toMap
@@ -45,6 +48,18 @@ object KryoRegistratorCompiler {
             kryoVar.push().invokeV("register", classOf[Registration].asType,
               ldc(t).asType(classOf[Class[_]].asType)).pop()
           }
+
+          kryoVar.push().invokeV(
+            "register",
+            classOf[Registration].asType,
+            ldc(classOf[BranchKey].asType).asType(classOf[Class[_]].asType),
+            pushNew0(branchKeySerializer).asType(classOf[Serializer[_]].asType)).pop()
+
+          kryoVar.push().invokeV(
+            "register",
+            classOf[Registration].asType,
+            ldc(classOf[BroadcastId].asType).asType(classOf[Class[_]].asType),
+            pushNew0(broadcastIdSerializer).asType(classOf[Serializer[_]].asType)).pop()
 
           `return`()
         }

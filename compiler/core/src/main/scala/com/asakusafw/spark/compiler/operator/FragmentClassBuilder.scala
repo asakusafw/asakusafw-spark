@@ -12,22 +12,17 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class FragmentClassBuilder(
   val flowId: String,
-  val dataModelType: Type,
-  signature: Option[String],
-  superType: Type,
-  interfaceTypes: Type*)
+  val dataModelType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/Fragment$$${FragmentClassBuilder.nextId};"),
-      signature,
-      superType,
-      interfaceTypes: _*) {
-
-  def this(flowId: String, dataModelType: Type) =
-    this(
-      flowId,
-      dataModelType,
-      Option(FragmentClassBuilder.signature(dataModelType)),
-      classOf[Fragment[_]].asType)
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[Fragment[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+          }
+        }
+        .build(),
+      classOf[Fragment[_]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
@@ -53,16 +48,4 @@ object FragmentClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
-
-  def signature(dataModelType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[Fragment[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-            _.newClassType(dataModelType)
-          }
-        }
-      }
-      .build()
-  }
 }

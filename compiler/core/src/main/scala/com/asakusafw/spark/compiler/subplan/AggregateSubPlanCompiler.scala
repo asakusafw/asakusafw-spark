@@ -19,6 +19,7 @@ import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, Operato
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
+import com.asakusafw.spark.runtime.driver.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
@@ -57,6 +58,8 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
       override val shuffleKeyTypes = context.shuffleKeyTypes
 
+      override val branchKeys: BranchKeysClassBuilder = context.branchKeys
+
       override val dominantOperator = operator
 
       override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
@@ -68,8 +71,13 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
           import mb._
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-          val fragmentBuilder = new FragmentTreeBuilder(
-            mb, nextLocal)(OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes))
+          val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)(
+            OperatorCompiler.Context(
+              flowId = context.flowId,
+              jpContext = context.jpContext,
+              branchKeys = context.branchKeys,
+              broadcastIds = context.broadcastIds,
+              shuffleKeyTypes = context.shuffleKeyTypes))
           val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
           val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
@@ -141,7 +149,10 @@ object AggregateSubPlanCompiler {
                 context.rddsVar.push().invokeI(
                   "apply",
                   classOf[AnyRef].asType,
-                  ldc(sn).box().asType(classOf[AnyRef].asType)))
+                  getStatic(
+                    context.branchKeys.thisType,
+                    context.branchKeys.getField(sn),
+                    classOf[BranchKey].asType).asType(classOf[AnyRef].asType)))
             }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)

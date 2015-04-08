@@ -50,23 +50,23 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
 
     val outputs = driver.execute()
     outputs.mapValues(_.collect.toSeq).foreach {
-      case ("hogeResult", values) =>
+      case (HogeResult, values) =>
         val hogeResults = values.asInstanceOf[Seq[(ShuffleKey, Hoge)]]
         assert(hogeResults.size === 1)
         assert(hogeResults(0)._2.id.get === 1)
-      case ("fooResult", values) =>
+      case (FooResult, values) =>
         val fooResults = values.asInstanceOf[Seq[(ShuffleKey, Foo)]]
         assert(fooResults.size === 1)
         assert(fooResults(0)._2.id.get === 10)
         assert(fooResults(0)._2.hogeId.get === 1)
-      case ("hogeError", values) =>
+      case (HogeError, values) =>
         val hogeErrors = values.asInstanceOf[Seq[(ShuffleKey, Hoge)]].sortBy(_._2.id)
         assert(hogeErrors.size === 9)
         assert(hogeErrors(0)._2.id.get === 0)
         for (i <- 2 until 10) {
           assert(hogeErrors(i - 1)._2.id.get === i)
         }
-      case ("fooError", values) =>
+      case (FooError, values) =>
         val fooErrors = values.asInstanceOf[Seq[(ShuffleKey, Foo)]].sortBy(_._2.hogeId)
         assert(fooErrors.size === 44)
         for {
@@ -82,36 +82,41 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
 
 object CoGroupDriverSpec {
 
+  val HogeResult = BranchKey(0)
+  val FooResult = BranchKey(1)
+  val HogeError = BranchKey(2)
+  val FooError = BranchKey(3)
+
   class TestCoGroupDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient inputs: Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])],
     @transient part: Partitioner)
-      extends CoGroupDriver[String](sc, hadoopConf, Map.empty, inputs, part) {
+      extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, part) {
 
     override def name = "TestCoGroup"
 
-    override def branchKeys: Set[String] = {
-      Set("hogeResult", "fooResult", "hogeError", "fooError")
+    override def branchKeys: Set[BranchKey] = {
+      Set(HogeResult, FooResult, HogeError, FooError)
     }
 
-    override def partitioners: Map[String, Partitioner] = Map.empty
+    override def partitioners: Map[BranchKey, Partitioner] = Map.empty
 
-    override def orderings: Map[String, Ordering[ShuffleKey]] = Map.empty
+    override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-    override def aggregations: Map[String, Aggregation[ShuffleKey, _, _]] = Map.empty
+    override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Seq[Iterable[_]]], Map[String, OutputFragment[U]]) = {
+    override def fragments[U <: DataModel[U]]: (Fragment[Seq[Iterable[_]]], Map[BranchKey, OutputFragment[U]]) = {
       val outputs = Map(
-        "hogeResult" -> new HogeOutputFragment,
-        "fooResult" -> new FooOutputFragment,
-        "hogeError" -> new HogeOutputFragment,
-        "fooError" -> new FooOutputFragment)
+        HogeResult -> new HogeOutputFragment,
+        FooResult -> new FooOutputFragment,
+        HogeError -> new HogeOutputFragment,
+        FooError -> new FooOutputFragment)
       val fragment = new TestCoGroupFragment(outputs)
-      (fragment, outputs.asInstanceOf[Map[String, OutputFragment[U]]])
+      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
     }
 
-    override def shuffleKey(branch: String, value: Any): ShuffleKey = null
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] {
@@ -149,27 +154,18 @@ object CoGroupDriverSpec {
     override def newDataModel: Foo = new Foo()
   }
 
-  class GroupingPartitioner(val numPartitions: Int) extends Partitioner {
-
-    override def getPartition(key: Any): Int = {
-      val shuffleKey = key.asInstanceOf[ShuffleKey]
-      val part = shuffleKey.grouping.hashCode % numPartitions
-      if (part < 0) part + numPartitions else part
-    }
-  }
-
-  class TestCoGroupFragment(outputs: Map[String, Fragment[_]]) extends Fragment[Seq[Iterable[_]]] {
+  class TestCoGroupFragment(outputs: Map[BranchKey, Fragment[_]]) extends Fragment[Seq[Iterable[_]]] {
 
     override def add(groups: Seq[Iterable[_]]): Unit = {
       assert(groups.size == 2)
       val hogeList = groups(0).asInstanceOf[Iterable[Hoge]].toSeq
       val fooList = groups(1).asInstanceOf[Iterable[Foo]].toSeq
       if (hogeList.size == 1 && fooList.size == 1) {
-        outputs("hogeResult").asInstanceOf[HogeOutputFragment].add(hogeList(0))
-        outputs("fooResult").asInstanceOf[FooOutputFragment].add(fooList(0))
+        outputs(HogeResult).asInstanceOf[HogeOutputFragment].add(hogeList(0))
+        outputs(FooResult).asInstanceOf[FooOutputFragment].add(fooList(0))
       } else {
-        hogeList.foreach(outputs("hogeError").asInstanceOf[HogeOutputFragment].add)
-        fooList.foreach(outputs("fooError").asInstanceOf[FooOutputFragment].add)
+        hogeList.foreach(outputs(HogeError).asInstanceOf[HogeOutputFragment].add)
+        fooList.foreach(outputs(FooError).asInstanceOf[FooOutputFragment].add)
       }
     }
 

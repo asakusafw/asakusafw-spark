@@ -23,15 +23,15 @@ import com.asakusafw.runtime.util.VariableTable
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
-abstract class InputDriver[T: ClassTag, B](
+abstract class InputDriver[T: ClassTag](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[B, Broadcast[_]])
-    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, T] {
+  broadcasts: Map[BroadcastId, Broadcast[_]])
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[T] {
 
   def paths: Set[String]
 
-  override def execute(): Map[B, RDD[(ShuffleKey, _)]] = {
+  override def execute(): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
 
     val conf = sc.getConf

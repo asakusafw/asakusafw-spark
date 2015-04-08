@@ -18,8 +18,8 @@ import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, Partitioni
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
+import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.rdd
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -31,7 +31,12 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     OperatorCompiler.support(
       operator,
       OperatorType.CoGroupType)(
-        OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes))
+        OperatorCompiler.Context(
+          flowId = context.flowId,
+          jpContext = context.jpContext,
+          branchKeys = context.branchKeys,
+          broadcastIds = context.broadcastIds,
+          shuffleKeyTypes = context.shuffleKeyTypes))
   }
 
   override def instantiator: Instantiator = CoGroupSubPlanCompiler.CoGroupDriverInstantiator
@@ -48,6 +53,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
       override val shuffleKeyTypes = context.shuffleKeyTypes
 
+      override val branchKeys: BranchKeysClassBuilder = context.branchKeys
+
       override val dominantOperator = operator
 
       override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
@@ -59,14 +66,20 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
           import mb._
           val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-          implicit val compilerContext = OperatorCompiler.Context(context.flowId, context.jpContext, context.shuffleKeyTypes)
+          implicit val compilerContext =
+            OperatorCompiler.Context(
+              flowId = context.flowId,
+              jpContext = context.jpContext,
+              branchKeys = context.branchKeys,
+              broadcastIds = context.broadcastIds,
+              shuffleKeyTypes = context.shuffleKeyTypes)
           val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)
           val fragmentVar = {
             val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
             val outputs = operator.getOutputs.map(fragmentBuilder.build)
             val fragment = pushNew(t)
             fragment.dup().invokeInit(
-              thisVar.push().invokeV("broadcasts", classOf[Map[Long, Broadcast[_]]].asType)
+              thisVar.push().invokeV("broadcasts", classOf[Map[BroadcastId, Broadcast[_]]].asType)
                 +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
             fragment.store(nextLocal.getAndAdd(fragment.size))
           }
@@ -148,7 +161,10 @@ object CoGroupSubPlanCompiler {
                             context.rddsVar.push().invokeI(
                               "apply",
                               classOf[AnyRef].asType,
-                              ldc(sn).box().asType(classOf[AnyRef].asType)))
+                              getStatic(
+                                context.branchKeys.thisType,
+                                context.branchKeys.getField(sn),
+                                classOf[BranchKey].asType).asType(classOf[AnyRef].asType)))
                         }
 
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)

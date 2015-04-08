@@ -13,7 +13,7 @@ import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.{ AggregateDriver, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.{ AggregateDriver, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -25,29 +25,28 @@ abstract class AggregateDriverClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/AggregateDriver$$${AggregateDriverClassBuilder.nextId};"),
       new ClassSignatureBuilder()
         .newSuperclass {
-          _.newClassType(classOf[AggregateDriver[_, _, _]].asType) {
+          _.newClassType(classOf[AggregateDriver[_, _]].asType) {
             _
               .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
               .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
           }
         }
         .build(),
-      classOf[AggregateDriver[_, _, _]].asType)
+      classOf[AggregateDriver[_, _]].asType)
     with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
-      classOf[Map[Long, Broadcast[_]]].asType,
+      classOf[Map[BroadcastId, Broadcast[_]]].asType,
       classOf[Seq[RDD[(ShuffleKey, _)]]].asType,
       classOf[Seq[Boolean]].asType,
       classOf[Partitioner].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
       val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-      val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
+      val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
       val prevsVar = `var`(classOf[Seq[RDD[(ShuffleKey, _)]]].asType, broadcastsVar.nextLocal)
       val directionsVar = `var`(classOf[Seq[Boolean]].asType, prevsVar.nextLocal)
       val partVar = `var`(classOf[Partitioner].asType, directionsVar.nextLocal)

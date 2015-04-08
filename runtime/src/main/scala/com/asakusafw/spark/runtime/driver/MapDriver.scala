@@ -9,16 +9,16 @@ import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor.CallSite
 import com.asakusafw.runtime.model.DataModel
 
-abstract class MapDriver[T, B](
+abstract class MapDriver[T](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[B, Broadcast[_]],
+  broadcasts: Map[BroadcastId, Broadcast[_]],
   @transient prevs: Seq[RDD[(ShuffleKey, T)]])
-    extends SubPlanDriver[B](sc, hadoopConf, broadcasts) with Branch[B, T] {
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[T] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
-  override def execute(): Map[B, RDD[(ShuffleKey, _)]] = {
+  override def execute(): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     sc.clearCallSite()
     sc.setCallSite(name)
 

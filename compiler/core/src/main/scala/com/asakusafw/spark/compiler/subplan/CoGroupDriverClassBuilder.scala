@@ -14,7 +14,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.runtime.driver.{ CoGroupDriver, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, CoGroupDriver, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -23,27 +23,20 @@ abstract class CoGroupDriverClassBuilder(
   val groupingKeyType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${CoGroupDriverClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[CoGroupDriver[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE.boxed)
-          }
-        }
-        .build(),
-      classOf[CoGroupDriver[_]].asType)
+      classOf[CoGroupDriver].asType)
     with Branching with DriverName {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
-      classOf[Map[Long, Broadcast[_]]].asType,
+      classOf[Map[BroadcastId, Broadcast[_]]].asType,
       classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[Seq[Boolean]])]].asType,
       classOf[Partitioner].asType)) { mb =>
       import mb._
       val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
       val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-      val broadcastsVar = `var`(classOf[Map[Long, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
+      val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
       val inputsVar = `var`(classOf[Seq[_]].asType, broadcastsVar.nextLocal)
       val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
 
