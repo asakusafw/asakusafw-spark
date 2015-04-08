@@ -18,6 +18,8 @@ import org.apache.spark.SparkContext._
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
+import com.asakusafw.lang.compiler.common.Location
+import com.asakusafw.lang.compiler.inspection.driver.{ AbstractInspectionExtension, InspectionExtension }
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
@@ -93,6 +95,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
       classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+
     val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
 
     compiler.process(jpContext, jobflow)
@@ -191,6 +202,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
       classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+
     val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
 
     compiler.process(jpContext, jobflow)
@@ -362,6 +382,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
       classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+
     val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
 
     compiler.process(jpContext, jobflow)
@@ -558,6 +587,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
       classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+
     val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
 
     compiler.process(jpContext, jobflow)
@@ -702,6 +740,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
       classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+
     val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
 
     compiler.process(jpContext, jobflow)
@@ -822,6 +869,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
       classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+
     val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
 
     compiler.process(jpContext, jobflow)
@@ -957,6 +1013,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
       classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+
     val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
 
     compiler.process(jpContext, jobflow)
@@ -1085,6 +1150,15 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
       classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+
     val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
 
     compiler.process(jpContext, jobflow)
