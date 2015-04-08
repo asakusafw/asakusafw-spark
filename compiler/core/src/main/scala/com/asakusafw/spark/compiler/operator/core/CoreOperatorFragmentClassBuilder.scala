@@ -32,7 +32,7 @@ abstract class CoreOperatorFragmentClassBuilder(
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.LONG_TYPE)
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
               .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Broadcast[_]].asType)
           }
         }
