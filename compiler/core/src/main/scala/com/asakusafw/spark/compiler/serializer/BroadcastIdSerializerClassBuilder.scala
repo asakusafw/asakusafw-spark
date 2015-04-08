@@ -47,7 +47,7 @@ class BroadcastIdSerializerClassBuilder(
       val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
       val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
       val broadcastIdVar = `var`(classOf[BroadcastId].asType, outputVar.nextLocal)
-      outputVar.push().invokeV("writeLong", broadcastIdVar.push().invokeV("id", Type.LONG_TYPE))
+      outputVar.push().invokeV("writeInt", broadcastIdVar.push().invokeV("id", Type.INT_TYPE))
       `return`()
     }
 
@@ -69,7 +69,7 @@ class BroadcastIdSerializerClassBuilder(
         val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
         `return`(
           invokeStatic(broadcastIdsType, "valueOf", classOf[BroadcastId].asType,
-            inputVar.push().invokeV("readLong", Type.LONG_TYPE)))
+            inputVar.push().invokeV("readInt", Type.INT_TYPE)))
       }
   }
 }
