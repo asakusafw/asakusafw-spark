@@ -22,6 +22,7 @@ import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.CommandToken
 import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
 import com.asakusafw.lang.compiler.common.Location
+import com.asakusafw.lang.compiler.inspection.driver.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, TypeDescription }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
@@ -60,6 +61,7 @@ class SparkClientCompiler extends JobflowProcessor {
       val dot = dotGenerator.generate(plan, source.getFlowId)
       dotGenerator.save(dotOutputStream, dot)
     }
+    InspectionExtension.inspect(jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
 
     if (JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString)) == false) {
 

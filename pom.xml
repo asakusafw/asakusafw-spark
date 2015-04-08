@@ -207,6 +207,11 @@ encoding/<project>=UTF-8
 				<artifactId>asakusa-compiler-analyzer</artifactId>
 				<version>${asakusafw-lang.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>com.asakusafw.lang.compiler</groupId>
+				<artifactId>asakusa-compiler-inspection-driver</artifactId>
+				<version>${asakusafw-lang.version}</version>
+			</dependency>
 
 			<dependency>
 				<groupId>com.asakusafw.bridge</groupId>
