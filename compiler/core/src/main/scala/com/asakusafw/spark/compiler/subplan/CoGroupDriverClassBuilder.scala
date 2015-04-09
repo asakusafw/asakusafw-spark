@@ -32,24 +32,75 @@ abstract class CoGroupDriverClassBuilder(
       classOf[Broadcast[Configuration]].asType,
       classOf[Map[BroadcastId, Broadcast[_]]].asType,
       classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[Seq[Boolean]])]].asType,
-      classOf[Partitioner].asType)) { mb =>
-      import mb._
-      val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-      val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-      val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
-      val inputsVar = `var`(classOf[Seq[_]].asType, broadcastsVar.nextLocal)
-      val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
+      classOf[Partitioner].asType),
+      new MethodSignatureBuilder()
+        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType {
+          _.newClassType(classOf[Broadcast[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcast[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[Seq[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[(_, _)].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                  _.newClassType(classOf[Seq[_]].asType) {
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                      _.newClassType(classOf[RDD[_]].asType) {
+                        _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                          _.newClassType(classOf[(_, _)].asType) {
+                            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                              .newTypeArgument()
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Option[_]].asType) {
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                        _.newClassType(classOf[Seq[_]].asType) {
+                          _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.BOOLEAN_TYPE)
+                        }
+                      }
+                    }
+                  }
+              }
+            }
+          }
+        }
+        .newParameterType(classOf[Partitioner].asType)
+        .newVoidReturnType()
+        .build()) { mb =>
+        import mb._
+        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
+        val inputsVar = `var`(classOf[Seq[_]].asType, broadcastsVar.nextLocal)
+        val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
 
-      thisVar.push().invokeInit(
-        superType,
-        scVar.push(),
-        hadoopConfVar.push(),
-        broadcastsVar.push(),
-        inputsVar.push(),
-        partVar.push())
+        thisVar.push().invokeInit(
+          superType,
+          scVar.push(),
+          hadoopConfVar.push(),
+          broadcastsVar.push(),
+          inputsVar.push(),
+          partVar.push())
 
-      initFields(mb)
-    }
+        initFields(mb)
+      }
   }
 }
 

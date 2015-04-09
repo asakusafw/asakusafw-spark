@@ -11,6 +11,7 @@ import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
@@ -62,34 +63,63 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty) { mb =>
-          import mb._
-          val nextLocal = new AtomicInteger(thisVar.nextLocal)
+        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty,
+          new MethodSignatureBuilder()
+            .newReturnType {
+              _.newClassType(classOf[(_, _)].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                  _.newClassType(classOf[Fragment[_]].asType) {
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                      _.newClassType(classOf[Seq[_]].asType) {
+                        _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                          _.newClassType(classOf[Iterable[_]].asType) {
+                            _.newTypeArgument()
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Map[_, _]].asType) {
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+                        .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                          _.newClassType(classOf[OutputFragment[_]].asType) {
+                            _.newTypeArgument()
+                          }
+                        }
+                    }
+                  }
+              }
+            }
+            .build()) { mb =>
+            import mb._
+            val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-          implicit val compilerContext =
-            OperatorCompiler.Context(
-              flowId = context.flowId,
-              jpContext = context.jpContext,
-              branchKeys = context.branchKeys,
-              broadcastIds = context.broadcastIds,
-              shuffleKeyTypes = context.shuffleKeyTypes)
-          val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)
-          val fragmentVar = {
-            val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-            val outputs = operator.getOutputs.map(fragmentBuilder.build)
-            val fragment = pushNew(t)
-            fragment.dup().invokeInit(
-              thisVar.push().invokeV("broadcasts", classOf[Map[BroadcastId, Broadcast[_]]].asType)
-                +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
-            fragment.store(nextLocal.getAndAdd(fragment.size))
+            implicit val compilerContext =
+              OperatorCompiler.Context(
+                flowId = context.flowId,
+                jpContext = context.jpContext,
+                branchKeys = context.branchKeys,
+                broadcastIds = context.broadcastIds,
+                shuffleKeyTypes = context.shuffleKeyTypes)
+            val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)
+            val fragmentVar = {
+              val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+              val outputs = operator.getOutputs.map(fragmentBuilder.build)
+              val fragment = pushNew(t)
+              fragment.dup().invokeInit(
+                thisVar.push().invokeV("broadcasts", classOf[Map[BroadcastId, Broadcast[_]]].asType)
+                  +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
+              fragment.store(nextLocal.getAndAdd(fragment.size))
+            }
+            val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
+
+            `return`(
+              getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+                invokeV("apply", classOf[(_, _)].asType,
+                  fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
           }
-          val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
-
-          `return`(
-            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-              invokeV("apply", classOf[(_, _)].asType,
-                fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
-        }
 
         defName(methodDef)
       }

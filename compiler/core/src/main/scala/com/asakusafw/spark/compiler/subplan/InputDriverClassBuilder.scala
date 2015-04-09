@@ -35,22 +35,41 @@ abstract class InputDriverClassBuilder(
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
-      classOf[Map[BroadcastId, Broadcast[_]]].asType)) { mb =>
-      import mb._
-      val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-      val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-      val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
+      classOf[Map[BroadcastId, Broadcast[_]]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType {
+          _.newClassType(classOf[Broadcast[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcast[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
+          }
+        }
+        .newVoidReturnType()
+        .build()) { mb =>
+        import mb._
+        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
 
-      thisVar.push().invokeInit(
-        superType,
-        scVar.push(),
-        hadoopConfVar.push(),
-        broadcastsVar.push(),
-        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-          .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
+        thisVar.push().invokeInit(
+          superType,
+          scVar.push(),
+          hadoopConfVar.push(),
+          broadcastsVar.push(),
+          getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
 
-      initFields(mb)
-    }
+        initFields(mb)
+      }
   }
 }
 

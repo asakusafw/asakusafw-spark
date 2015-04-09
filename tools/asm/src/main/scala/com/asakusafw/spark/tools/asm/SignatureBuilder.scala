@@ -247,9 +247,8 @@ final class FormalTypeSignatureBuilder private[asm] (sv: SignatureVisitor)
 final class TypeArgumentSignatureBuilder private[asm] (sv: SignatureVisitor)
     extends SignatureBuilder(sv) {
 
-  def newTypeArgument(block: TypeSignatureBuilder => Unit): this.type = {
+  def newTypeArgument(): this.type = {
     sv.visitTypeArgument()
-    block(new TypeSignatureBuilder(sv))
     this
   }
 

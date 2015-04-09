@@ -11,6 +11,7 @@ import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
@@ -19,7 +20,8 @@ import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, Operato
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.BranchKey
+import com.asakusafw.spark.runtime.driver.{ BranchKey, ShuffleKey }
+import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
@@ -67,31 +69,61 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty) { mb =>
-          import mb._
-          val nextLocal = new AtomicInteger(thisVar.nextLocal)
+        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty,
+          new MethodSignatureBuilder()
+            .newReturnType {
+              _.newClassType(classOf[(_, _)].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                  _.newClassType(classOf[Fragment[_]].asType) {
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
+                  }
+                }
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Map[_, _]].asType) {
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+                        .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                          _.newClassType(classOf[OutputFragment[_]].asType) {
+                            _.newTypeArgument()
+                          }
+                        }
+                    }
+                  }
+              }
+            }
+            .build()) { mb =>
+            import mb._
+            val nextLocal = new AtomicInteger(thisVar.nextLocal)
 
-          val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)(
-            OperatorCompiler.Context(
-              flowId = context.flowId,
-              jpContext = context.jpContext,
-              branchKeys = context.branchKeys,
-              broadcastIds = context.broadcastIds,
-              shuffleKeyTypes = context.shuffleKeyTypes))
-          val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
-          val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
+            val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)(
+              OperatorCompiler.Context(
+                flowId = context.flowId,
+                jpContext = context.jpContext,
+                branchKeys = context.branchKeys,
+                broadcastIds = context.broadcastIds,
+                shuffleKeyTypes = context.shuffleKeyTypes))
+            val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
+            val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-          `return`(
-            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-              invokeV("apply", classOf[(_, _)].asType,
-                fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
-        }
+            `return`(
+              getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+                invokeV("apply", classOf[(_, _)].asType,
+                  fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
+          }
 
-        methodDef.newMethod("aggregation", classOf[Aggregation[_, _, _]].asType, Seq.empty) { mb =>
-          import mb._
-          val aggregationType = AggregationClassBuilder.getOrCompile(context.flowId, operator, context.jpContext)
-          `return`(pushNew0(aggregationType))
-        }
+        methodDef.newMethod("aggregation", classOf[Aggregation[_, _, _]].asType, Seq.empty,
+          new MethodSignatureBuilder()
+            .newReturnType {
+              _.newClassType(classOf[Aggregation[_, _, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
+              }
+            }
+            .build()) { mb =>
+            import mb._
+            val aggregationType = AggregationClassBuilder.getOrCompile(context.flowId, operator, context.jpContext)
+            `return`(pushNew0(aggregationType))
+          }
 
         defName(methodDef)
       }

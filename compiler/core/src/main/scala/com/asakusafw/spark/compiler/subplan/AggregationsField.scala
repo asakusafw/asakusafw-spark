@@ -13,7 +13,7 @@ import com.asakusafw.lang.compiler.planning.spark.NextDominantOperator
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.BranchKey
+import com.asakusafw.spark.runtime.driver.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -32,7 +32,13 @@ trait AggregationsField extends ClassBuilder {
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Aggregation[_, _, _]].asType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[Aggregation[_, _, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                  .newTypeArgument()
+                  .newTypeArgument()
+              }
+            }
         }
         .build())
   }
@@ -81,7 +87,13 @@ trait AggregationsField extends ClassBuilder {
         .newReturnType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Aggregation[_, _, _]].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Aggregation[_, _, _]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                    .newTypeArgument()
+                    .newTypeArgument()
+                }
+              }
           }
         }
         .build()) { mb =>
