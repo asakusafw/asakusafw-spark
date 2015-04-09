@@ -5,6 +5,8 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.lang.reflect.InvocationTargetException
+
 import scala.collection.mutable
 
 import com.asakusafw.spark.runtime.driver.BroadcastId
@@ -34,8 +36,25 @@ class BroadcastIdsClassBuilderSpec extends FlatSpec with LoadClassSugar {
     assert(broadcastIds(1).getName === branch1)
     assert(broadcastIds(1).get(null) === BroadcastId(1))
 
+    val valueOf = cls.getMethod("valueOf", classOf[Int])
+
     for (i <- 0 until broadcastIds.size) {
-      assert(cls.getMethod("valueOf", classOf[Int]).invoke(null, Int.box(i)) === BroadcastId(i))
+      assert(valueOf.invoke(null, Int.box(i)) === BroadcastId(i))
+    }
+
+    intercept[IllegalArgumentException] {
+      try {
+        valueOf.invoke(null, Int.box(-1))
+      } catch {
+        case e: InvocationTargetException => throw e.getCause
+      }
+    }
+    intercept[IllegalArgumentException] {
+      try {
+        valueOf.invoke(null, Int.box(broadcastIds.size))
+      } catch {
+        case e: InvocationTargetException => throw e.getCause
+      }
     }
   }
 }

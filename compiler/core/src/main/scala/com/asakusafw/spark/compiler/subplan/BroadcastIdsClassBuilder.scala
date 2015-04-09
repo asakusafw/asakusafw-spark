@@ -55,15 +55,28 @@ class BroadcastIdsClassBuilder(flowId: String)
           idVar.push().unlessNe(ldc(id)) {
             `return`(getStatic(thisType, field(id), classOf[BroadcastId].asType))
           }
-          idVar.push().unlessLessThanOrEqual(ldc(id)) {
-            bs(id + 1, max)
+          if (id + 1 < max) {
+            idVar.push().unlessLessThanOrEqual(ldc(id)) {
+              bs(id + 1, max)
+            }
           }
           bs(min, id)
         }
       }
       bs(0, curId.get)
 
-      `throw`(pushNew0(classOf[AssertionError].asType))
+      `throw` {
+        val error = pushNew(classOf[IllegalArgumentException].asType)
+        error.dup().invokeInit({
+          val builder = pushNew0(classOf[StringBuilder].asType)
+          builder.invokeV("append", classOf[StringBuilder].asType,
+            ldc("No BroadcastId constant for value ["))
+          builder.invokeV("append", classOf[StringBuilder].asType, idVar.push())
+          builder.invokeV("append", classOf[StringBuilder].asType, ldc("]."))
+          builder.invokeV("toString", classOf[String].asType)
+        })
+        error
+      }
     }
   }
 }
