@@ -80,10 +80,10 @@ object InputOutputDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[BranchKey, OutputFragment[U]]) = {
+    override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
       val fragment = new HogeOutputFragment
       val outputs = Map(HogeResult -> fragment)
-      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
+      (fragment, outputs)
     }
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null

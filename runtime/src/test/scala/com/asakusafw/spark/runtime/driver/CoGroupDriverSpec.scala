@@ -106,14 +106,14 @@ object CoGroupDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Seq[Iterable[_]]], Map[BranchKey, OutputFragment[U]]) = {
+    override def fragments: (Fragment[Seq[Iterable[_]]], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         HogeResult -> new HogeOutputFragment,
         FooResult -> new FooOutputFragment,
         HogeError -> new HogeOutputFragment,
         FooError -> new FooOutputFragment)
       val fragment = new TestCoGroupFragment(outputs)
-      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
+      (fragment, outputs)
     }
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null

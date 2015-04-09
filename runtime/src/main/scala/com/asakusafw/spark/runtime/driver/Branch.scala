@@ -27,7 +27,7 @@ trait Branch[T] {
 
   def shuffleKey(branch: BranchKey, value: Any): ShuffleKey
 
-  def fragments[U <: DataModel[U]]: (Fragment[T], Map[BranchKey, OutputFragment[U]])
+  def fragments: (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
   def branch(rdd: RDD[(ShuffleKey, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
@@ -80,11 +80,11 @@ trait Branch[T] {
           fragment.add(value)
           outputs.iterator.flatMap {
             case (key, output) =>
-              def prepare[V](buffer: mutable.ArrayBuffer[_]) = {
-                buffer.asInstanceOf[mutable.ArrayBuffer[V]]
+              def prepare[V](buffer: Iterator[_]) = {
+                buffer.asInstanceOf[Iterator[V]]
                   .map(out => ((key, shuffleKey(key, out)), out))
               }
-              prepare(output.buffer)
+              prepare(output.buffer.iterator)
           }
       })
   }

@@ -65,11 +65,11 @@ object ResourceBrokingIteratorSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments[U <: DataModel[U]]: (Fragment[Hoge], Map[BranchKey, OutputFragment[U]]) = {
+    override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         Result -> new HogeOutputFragment)
       val fragment = new TestFragment(outputs(Result))
-      (fragment, outputs.asInstanceOf[Map[BranchKey, OutputFragment[U]]])
+      (fragment, outputs)
     }
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
