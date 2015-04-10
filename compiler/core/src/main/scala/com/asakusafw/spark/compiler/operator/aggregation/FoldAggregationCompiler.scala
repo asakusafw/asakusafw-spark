@@ -77,7 +77,9 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
       override def defCreateCombiner(mb: MethodBuilder, valueVar: Var): Unit = {
         import mb._
-        `return`(valueVar.push())
+        val combinerVar = pushNew0(combinerType).store(valueVar.nextLocal)
+        combinerVar.push().invokeV("copyFrom", valueVar.push())
+        `return`(combinerVar.push())
       }
 
       override def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
