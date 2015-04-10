@@ -6,7 +6,7 @@ import scala.collection.JavaConversions._
 import scala.reflect.NameTransformer
 
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
-import org.objectweb.asm.Type
+import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
@@ -27,7 +27,10 @@ trait PartitionersField extends ClassBuilder {
   def subplanOutputs: Seq[SubPlan.Output]
 
   def defPartitionersField(fieldDef: FieldDef): Unit = {
-    fieldDef.newFinalField("partitioners", classOf[Map[_, _]].asType,
+    fieldDef.newField(
+      Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
+      "partitioners",
+      classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
@@ -36,12 +39,30 @@ trait PartitionersField extends ClassBuilder {
         .build())
   }
 
-  def initPartitionersField(mb: MethodBuilder): Unit = {
+  def getPartitionersField(mb: MethodBuilder): Stack = {
     import mb._
-    thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners(mb))
+    thisVar.push().invokeV("partitioners", classOf[Map[_, _]].asType)
   }
 
-  def initPartitioners(mb: MethodBuilder): Stack = {
+  def defPartitioners(methodDef: MethodDef): Unit = {
+    methodDef.newMethod("partitioners", classOf[Map[_, _]].asType, Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
+          }
+        }
+        build ()) { mb =>
+        import mb._
+        thisVar.push().getField("partitioners", classOf[Map[_, _]].asType).unlessNotNull {
+          thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners(mb))
+        }
+        `return`(thisVar.push().getField("partitioners", classOf[Map[_, _]].asType))
+      }
+  }
+
+  private def initPartitioners(mb: MethodBuilder): Stack = {
     import mb._
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
@@ -71,25 +92,5 @@ trait PartitionersField extends ClassBuilder {
       }
     }
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-  }
-
-  def getPartitionersField(mb: MethodBuilder): Stack = {
-    import mb._
-    thisVar.push().invokeV("partitioners", classOf[Map[_, _]].asType)
-  }
-
-  def defPartitioners(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("partitioners", classOf[Map[_, _]].asType, Seq.empty,
-      new MethodSignatureBuilder()
-        .newReturnType {
-          _.newClassType(classOf[Map[_, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
-          }
-        }
-        build ()) { mb =>
-        import mb._
-        `return`(thisVar.push().getField("partitioners", classOf[Map[_, _]].asType))
-      }
   }
 }

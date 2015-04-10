@@ -6,7 +6,7 @@ import scala.collection.JavaConversions._
 import scala.reflect.NameTransformer
 
 import org.apache.spark.Partitioner
-import org.objectweb.asm.Type
+import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
@@ -28,7 +28,10 @@ trait OrderingsField extends ClassBuilder {
   def subplanOutputs: Seq[SubPlan.Output]
 
   def defOrderingsField(fieldDef: FieldDef): Unit = {
-    fieldDef.newFinalField("orderings", classOf[Map[_, _]].asType,
+    fieldDef.newField(
+      Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
+      "orderings",
+      classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
@@ -41,12 +44,34 @@ trait OrderingsField extends ClassBuilder {
         .build())
   }
 
-  def initOrderingsField(mb: MethodBuilder): Unit = {
+  def getOrderingsField(mb: MethodBuilder): Stack = {
     import mb._
-    thisVar.push().putField("orderings", classOf[Map[_, _]].asType, initOrderings(mb))
+    thisVar.push().invokeV("orderings", classOf[Map[_, _]].asType)
   }
 
-  def initOrderings(mb: MethodBuilder): Stack = {
+  def defOrderings(methodDef: MethodDef): Unit = {
+    methodDef.newMethod("orderings", classOf[Map[_, _]].asType, Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Ordering[_]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                }
+              }
+          }
+        }
+        .build()) { mb =>
+        import mb._
+        thisVar.push().getField("orderings", classOf[Map[_, _]].asType).unlessNotNull {
+          thisVar.push().putField("orderings", classOf[Map[_, _]].asType, initOrderings(mb))
+        }
+        `return`(thisVar.push().getField("orderings", classOf[Map[_, _]].asType))
+      }
+  }
+
+  private def initOrderings(mb: MethodBuilder): Stack = {
     import mb._
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
@@ -82,29 +107,5 @@ trait OrderingsField extends ClassBuilder {
       }
     }
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-  }
-
-  def getOrderingsField(mb: MethodBuilder): Stack = {
-    import mb._
-    thisVar.push().invokeV("orderings", classOf[Map[_, _]].asType)
-  }
-
-  def defOrderings(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("orderings", classOf[Map[_, _]].asType, Seq.empty,
-      new MethodSignatureBuilder()
-        .newReturnType {
-          _.newClassType(classOf[Map[_, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                _.newClassType(classOf[Ordering[_]].asType) {
-                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-                }
-              }
-          }
-        }
-        .build()) { mb =>
-        import mb._
-        `return`(thisVar.push().getField("orderings", classOf[Map[_, _]].asType))
-      }
   }
 }

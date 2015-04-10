@@ -10,7 +10,7 @@ trait OperatorField extends ClassBuilder {
   def operatorType: Type
 
   def defOperatorField(fieldDef: FieldDef): Unit = {
-    fieldDef.newField(Opcodes.ACC_PUBLIC | Opcodes.ACC_TRANSIENT, "operator", operatorType)
+    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT, "operator", operatorType)
   }
 
   def getOperatorField(mb: MethodBuilder): Stack = {

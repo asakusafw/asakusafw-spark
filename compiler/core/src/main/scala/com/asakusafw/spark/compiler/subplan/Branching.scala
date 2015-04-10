@@ -23,13 +23,6 @@ trait Branching
     defAggregationsField(fieldDef)
   }
 
-  def initFields(mb: MethodBuilder): Unit = {
-    initBranchKeysField(mb)
-    initPartitionersField(mb)
-    initOrderingsField(mb)
-    initAggregationsField(mb)
-  }
-
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 

@@ -98,8 +98,6 @@ abstract class AggregateDriverClassBuilder(
           prevsVar.push(),
           directionsVar.push(),
           partVar.push())
-
-        initFields(mb)
       }
   }
 }
