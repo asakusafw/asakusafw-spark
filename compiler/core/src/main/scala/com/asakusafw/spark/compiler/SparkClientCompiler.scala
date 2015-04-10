@@ -15,6 +15,7 @@ import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 import org.slf4j.LoggerFactory
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor
@@ -86,28 +87,52 @@ class SparkClientCompiler extends JobflowProcessor {
 
         override def defFields(fieldDef: FieldDef): Unit = {
           fieldDef.newField("sc", classOf[SparkContext].asType)
-          fieldDef.newField("hadoopConf", classOf[Broadcast[Configuration]].asType)
-          fieldDef.newField("rdds", classOf[mutable.Map[BranchKey, RDD[_]]].asType)
+          fieldDef.newField("hadoopConf", classOf[Broadcast[Configuration]].asType,
+            new TypeSignatureBuilder()
+              .newClassType(classOf[Broadcast[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
+              }
+              .build())
+          fieldDef.newField("rdds", classOf[mutable.Map[BranchKey, RDD[_]]].asType,
+            new TypeSignatureBuilder()
+              .newClassType(classOf[mutable.Map[_, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[RDD[_]].asType) {
+                      _.newTypeArgument()
+                    }
+                  }
+              }
+              .build())
         }
 
         override def defMethods(methodDef: MethodDef): Unit = {
-          methodDef.newMethod("execute", Type.INT_TYPE, Seq(classOf[SparkContext].asType, classOf[Broadcast[Configuration]].asType)) { mb =>
-            import mb._
-            val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-            val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-            thisVar.push().putField("sc", classOf[SparkContext].asType, scVar.push())
-            thisVar.push().putField("hadoopConf", classOf[Broadcast[Configuration]].asType, hadoopConfVar.push())
-            thisVar.push().putField("rdds", classOf[mutable.Map[BranchKey, RDD[_]]].asType,
-              getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
-                .invokeV("empty", classOf[mutable.Map[BranchKey, RDD[_]]].asType))
+          methodDef.newMethod("execute", Type.INT_TYPE, Seq(classOf[SparkContext].asType, classOf[Broadcast[Configuration]].asType),
+            new MethodSignatureBuilder()
+              .newParameterType(classOf[SparkContext].asType)
+              .newParameterType {
+                _.newClassType(classOf[Broadcast[_]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
+                }
+              }
+              .newReturnType(Type.INT_TYPE)
+              .build()) { mb =>
+              import mb._
+              val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+              val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+              thisVar.push().putField("sc", classOf[SparkContext].asType, scVar.push())
+              thisVar.push().putField("hadoopConf", classOf[Broadcast[Configuration]].asType, hadoopConfVar.push())
+              thisVar.push().putField("rdds", classOf[mutable.Map[BranchKey, RDD[_]]].asType,
+                getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
+                  .invokeV("empty", classOf[mutable.Map[BranchKey, RDD[_]]].asType))
 
-            subplans.zipWithIndex.foreach {
-              case (_, i) =>
-                thisVar.push().invokeV(s"execute${i}")
+              subplans.zipWithIndex.foreach {
+                case (_, i) =>
+                  thisVar.push().invokeV(s"execute${i}")
+              }
+
+              `return`(ldc(0))
             }
-
-            `return`(ldc(0))
-          }
 
           subplans.zipWithIndex.foreach {
             case (subplan, i) =>
