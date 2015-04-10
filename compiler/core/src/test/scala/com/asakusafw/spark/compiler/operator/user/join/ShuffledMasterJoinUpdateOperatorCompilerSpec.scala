@@ -86,14 +86,14 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(updated.buffer.size === 1)
-      assert(updated.buffer(0).id.get === 10)
-      assert(missed.buffer.size === 0)
+      assert(updated.size === 1)
+      assert(updated.head.id.get === 10)
+      assert(missed.size === 0)
     }
 
     fragment.reset()
-    assert(updated.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(updated.size === 0)
+    assert(missed.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -102,14 +102,14 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(updated.buffer.size === 0)
-      assert(missed.buffer.size === 1)
-      assert(missed.buffer(0).id.get === 10)
+      assert(updated.size === 0)
+      assert(missed.size === 1)
+      assert(missed.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(updated.size === 0)
+    assert(missed.size === 0)
   }
 
   it should "compile MasterJoinUpdate operator with master selection" in {
@@ -162,15 +162,15 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         foo
       }
       fragment.add(Seq(hoges, foos))
-      assert(updated.buffer.size === 5)
-      assert(updated.buffer.map(_.id.get) === (0 until 10 by 2))
-      assert(missed.buffer.size === 5)
-      assert(missed.buffer.map(_.id.get) === (1 until 10 by 2))
+      assert(updated.size === 5)
+      assert(updated.map(_.id.get) === (0 until 10 by 2))
+      assert(missed.size === 5)
+      assert(missed.map(_.id.get) === (1 until 10 by 2))
     }
 
     fragment.reset()
-    assert(updated.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(updated.size === 0)
+    assert(missed.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -179,14 +179,14 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(updated.buffer.size === 0)
-      assert(missed.buffer.size === 1)
-      assert(missed.buffer(0).id.get === 10)
+      assert(updated.size === 0)
+      assert(missed.size === 1)
+      assert(missed.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(updated.size === 0)
+    assert(missed.size === 0)
   }
 
   it should "compile MasterJoinUpdate operator without master selection with projective model" in {
@@ -237,14 +237,14 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(updated.buffer.size === 1)
-      assert(updated.buffer(0).id.get === 10)
-      assert(missed.buffer.size === 0)
+      assert(updated.size === 1)
+      assert(updated.head.id.get === 10)
+      assert(missed.size === 0)
     }
 
     fragment.reset()
-    assert(updated.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(updated.size === 0)
+    assert(missed.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -253,14 +253,14 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(updated.buffer.size === 0)
-      assert(missed.buffer.size === 1)
-      assert(missed.buffer(0).id.get === 10)
+      assert(updated.size === 0)
+      assert(missed.size === 1)
+      assert(missed.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(updated.size === 0)
+    assert(missed.size === 0)
   }
 
   it should "compile MasterJoinUpdate operator with master selection with projective model" in {
@@ -313,15 +313,15 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         foo
       }
       fragment.add(Seq(hoges, foos))
-      assert(updated.buffer.size === 5)
-      assert(updated.buffer.map(_.id.get) === (0 until 10 by 2))
-      assert(missed.buffer.size === 5)
-      assert(missed.buffer.map(_.id.get) === (1 until 10 by 2))
+      assert(updated.size === 5)
+      assert(updated.map(_.id.get) === (0 until 10 by 2))
+      assert(missed.size === 5)
+      assert(missed.map(_.id.get) === (1 until 10 by 2))
     }
 
     fragment.reset()
-    assert(updated.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(updated.size === 0)
+    assert(missed.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -330,14 +330,14 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(updated.buffer.size === 0)
-      assert(missed.buffer.size === 1)
-      assert(missed.buffer(0).id.get === 10)
+      assert(updated.size === 0)
+      assert(missed.size === 1)
+      assert(missed.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(updated.size === 0)
+    assert(missed.size === 0)
   }
 }
 

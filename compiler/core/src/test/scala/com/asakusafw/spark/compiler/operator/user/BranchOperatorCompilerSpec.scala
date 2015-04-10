@@ -76,18 +76,18 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size === 5)
-    assert(out2.buffer.size === 5)
-    out1.buffer.zipWithIndex.foreach {
+    assert(out1.size === 5)
+    assert(out2.size === 5)
+    out1.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.buffer.zipWithIndex.foreach {
+    out2.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i + 5)
     }
     fragment.reset()
-    assert(out1.buffer.size === 0)
+    assert(out1.size === 0)
   }
 
   it should "compile Branch operator with projective model" in {
@@ -131,18 +131,18 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size === 5)
-    assert(out2.buffer.size === 5)
-    out1.buffer.zipWithIndex.foreach {
+    assert(out1.size === 5)
+    assert(out2.size === 5)
+    out1.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.buffer.zipWithIndex.foreach {
+    out2.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i + 5)
     }
     fragment.reset()
-    assert(out1.buffer.size === 0)
+    assert(out1.size === 0)
   }
 }
 

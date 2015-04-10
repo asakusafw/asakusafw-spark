@@ -83,18 +83,18 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size === 10)
-    assert(out2.buffer.size === 100)
-    out1.buffer.zipWithIndex.foreach {
+    assert(out1.size === 10)
+    assert(out2.size === 100)
+    out1.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.buffer.zipWithIndex.foreach {
+    out2.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.l.get === i / 10)
     }
     fragment.reset()
-    assert(out1.buffer.size === 0)
+    assert(out1.size === 0)
   }
 
   it should "compile Extract operator with projective model" in {
@@ -145,18 +145,18 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size === 10)
-    assert(out2.buffer.size === 100)
-    out1.buffer.zipWithIndex.foreach {
+    assert(out1.size === 10)
+    assert(out2.size === 100)
+    out1.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.buffer.zipWithIndex.foreach {
+    out2.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.l.get === i / 10)
     }
     fragment.reset()
-    assert(out1.buffer.size === 0)
+    assert(out1.size === 0)
   }
 }
 

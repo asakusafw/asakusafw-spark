@@ -27,20 +27,20 @@ class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
 
     val fragment = cls.newInstance()
 
-    assert(fragment.buffer.size === 0)
+    assert(fragment.size === 0)
 
     val dm = new TestModel()
     for (i <- 0 until 10) {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(fragment.buffer.size === 10)
-    fragment.buffer.zipWithIndex.foreach {
+    assert(fragment.size === 10)
+    fragment.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
     fragment.reset()
-    assert(fragment.buffer.size === 0)
+    assert(fragment.size === 0)
   }
 }
 

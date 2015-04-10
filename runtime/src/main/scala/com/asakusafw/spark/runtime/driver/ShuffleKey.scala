@@ -83,7 +83,7 @@ object ShuffleKey {
           y.grouping.map(_.getClass).mkString("(", ",", ")")
         })")
       assert(directions.size == x.ordering.size,
-        s"The side of directions should be the same as ordering keys: (${directions.size}, ${x.ordering.size})")
+        s"The size of directions should be the same as ordering keys: (${directions.size}, ${x.ordering.size})")
 
       val cmp = GroupingOrdering.compare(x, y)
       if (cmp == 0) {
