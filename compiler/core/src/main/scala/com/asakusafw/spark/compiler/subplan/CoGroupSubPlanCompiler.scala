@@ -120,8 +120,6 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
                 invokeV("apply", classOf[(_, _)].asType,
                   fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
           }
-
-        defName(methodDef)
       }
     }
 

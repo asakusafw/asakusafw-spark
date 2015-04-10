@@ -45,8 +45,6 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
           import mb._
           `return`(ldc(context.jpContext.getOptions.getRuntimeWorkingPath(operator.getName)))
         }
-
-        defName(methodDef)
       }
     }
 

@@ -7,7 +7,9 @@ trait DriverName extends ClassBuilder {
 
   def dominantOperator: Operator
 
-  def defName(methodDef: MethodDef): Unit = {
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
     methodDef.newMethod("name", classOf[String].asType, Seq.empty) { mb =>
       import mb._
       `return`(ldc(dominantOperator.toString))

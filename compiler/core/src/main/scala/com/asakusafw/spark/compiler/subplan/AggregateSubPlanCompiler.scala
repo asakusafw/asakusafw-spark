@@ -124,8 +124,6 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
             val aggregationType = AggregationClassBuilder.getOrCompile(context.flowId, operator, context.jpContext)
             `return`(pushNew0(aggregationType))
           }
-
-        defName(methodDef)
       }
     }
 
