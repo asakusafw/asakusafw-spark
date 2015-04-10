@@ -35,12 +35,17 @@ abstract class SparkClient {
     part: Partitioner): Broadcast[Map[ShuffleKey, Seq[V]]] = {
 
     val ordering = Option(new ShuffleKey.SortOrdering(directions))
-    sc.broadcast(
-      smcogroup(
-        Seq((confluent(rdds, part, ordering).asInstanceOf[RDD[(ShuffleKey, _)]], ordering)),
-        part,
-        ShuffleKey.GroupingOrdering)
-        .map { case (k, vs) => (k.dropOrdering, vs(0).toSeq.asInstanceOf[Seq[V]]) }
-        .collect.toMap)
+    val rdd = smcogroup(
+      Seq((confluent(rdds, part, ordering).asInstanceOf[RDD[(ShuffleKey, _)]], ordering)),
+      part,
+      ShuffleKey.GroupingOrdering)
+      .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[V]]) }
+    val results =
+      sc.runJob(
+        rdd,
+        (iter: Iterator[(ShuffleKey, Seq[V])]) => iter.toVector,
+        0 until rdd.partitions.size,
+        allowLocal = true)
+    sc.broadcast(results.flatten.toMap)
   }
 }

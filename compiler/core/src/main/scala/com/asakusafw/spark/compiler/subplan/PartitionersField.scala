@@ -10,7 +10,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.spark.runtime.driver.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -59,8 +59,12 @@ trait PartitionersField extends ClassBuilder {
                 classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
                 val partitioner = pushNew(classOf[HashPartitioner].asType)
                 partitioner.dup().invokeInit(
-                  thisVar.push().invokeV("sc", classOf[SparkContext].asType)
-                    .invokeV("defaultParallelism", Type.INT_TYPE))
+                  if (op.getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST) {
+                    ldc(1)
+                  } else {
+                    thisVar.push().invokeV("sc", classOf[SparkContext].asType)
+                      .invokeV("defaultParallelism", Type.INT_TYPE)
+                  })
                 partitioner.asType(classOf[AnyRef].asType)
               })
             .asType(classOf[AnyRef].asType))

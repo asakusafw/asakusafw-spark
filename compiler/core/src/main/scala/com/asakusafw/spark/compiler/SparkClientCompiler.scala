@@ -211,7 +211,7 @@ class SparkClientCompiler extends JobflowProcessor {
                               },
                               {
                                 val partitioner = pushNew(classOf[HashPartitioner].asType)
-                                partitioner.dup().invokeInit(scVar.push().invokeV("defaultParallelism", Type.INT_TYPE))
+                                partitioner.dup().invokeInit(ldc(1))
                                 partitioner.asType(classOf[Partitioner].asType)
                               })
                               .asType(classOf[AnyRef].asType))

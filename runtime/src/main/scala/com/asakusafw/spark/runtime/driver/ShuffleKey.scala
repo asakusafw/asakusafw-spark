@@ -24,7 +24,7 @@ class ShuffleKey(
     obj.isInstanceOf[ShuffleKey]
   }
 
-  def dropOrdering: ShuffleKey = new ShuffleKey(grouping, Seq.empty)
+  def dropOrdering: ShuffleKey = new ShuffleKey(grouping, Vector.empty)
 }
 
 object ShuffleKey {

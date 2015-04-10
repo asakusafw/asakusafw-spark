@@ -38,6 +38,7 @@ class KryoRegistrator extends SparkKryoRegistrator {
     }
 
     kryo.addDefaultSerializer(classOf[ShuffleKey], new ShuffleKeySerializer)
+    kryo.register(classOf[ShuffleKey])
 
     kryo.register(
       classOf[BooleanOption],
