@@ -239,23 +239,29 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
     mv.visitLabel(label)
   }
 
-  def loop(block: LoopControl => Unit): Unit = {
+  def block(b: FlowControl => Unit): Unit = {
     val start = new Label()
     val end = new Label()
     mv.visitLabel(start)
-    block(new LoopControl(this, start, end))
-    mv.visitJumpInsn(GOTO, start)
+    b(new FlowControl(this, start, end))
     mv.visitLabel(end)
   }
 
-  def whileLoop(cond: => Stack)(block: LoopControl => Unit): Unit = {
+  def loop(b: FlowControl => Unit): Unit = {
+    block { ctrl =>
+      b(ctrl)
+      ctrl.continue()
+    }
+  }
+
+  def whileLoop(cond: => Stack)(block: FlowControl => Unit): Unit = {
     loop { ctrl =>
       cond.unlessTrue(ctrl.break())
       block(ctrl)
     }
   }
 
-  def doWhile(block: LoopControl => Unit)(cond: => Stack): Unit = {
+  def doWhile(block: FlowControl => Unit)(cond: => Stack): Unit = {
     loop { ctrl =>
       block(ctrl)
       cond.unlessTrue(ctrl.break())
@@ -284,7 +290,7 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
 
 object MethodBuilder {
 
-  class LoopControl private[MethodBuilder] (mb: MethodBuilder, start: Label, end: Label) {
+  class FlowControl private[MethodBuilder] (mb: MethodBuilder, start: Label, end: Label) {
     import mb._
 
     def continue(): Unit = {

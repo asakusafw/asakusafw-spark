@@ -33,38 +33,40 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
       pushNew0(outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType))
   }
 
-  override def join(mb: MethodBuilder, ctrl: LoopControl, masterVar: Var, txVar: Var): Unit = {
+  override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
     import mb._
-    masterVar.push().unlessNotNull {
-      getOutputField(mb, outputs(MasterJoinOp.ID_OUTPUT_MISSED))
-        .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
-      ctrl.continue()
-    }
+    block { ctrl =>
+      masterVar.push().unlessNotNull {
+        getOutputField(mb, outputs(MasterJoinOp.ID_OUTPUT_MISSED))
+          .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
+        ctrl.break()
+      }
 
-    val vars = Seq(masterVar, txVar)
+      val vars = Seq(masterVar, txVar)
 
-    thisVar.push().getField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType).invokeV("reset")
+      thisVar.push().getField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType).invokeV("reset")
 
-    mappings.foreach { mapping =>
-      val src = inputs.indexOf(mapping.getSourcePort)
-      val srcVar = vars(src)
-      val srcProperty = inputs(src).dataModelRef.findProperty(mapping.getSourceProperty)
-      val destProperty = outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelRef.findProperty(mapping.getDestinationProperty)
-      assert(srcProperty.getType.asType == destProperty.getType.asType,
-        s"The source and destination types should be the same: (${srcProperty.getType}, ${destProperty.getType}")
+      mappings.foreach { mapping =>
+        val src = inputs.indexOf(mapping.getSourcePort)
+        val srcVar = vars(src)
+        val srcProperty = inputs(src).dataModelRef.findProperty(mapping.getSourceProperty)
+        val destProperty = outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelRef.findProperty(mapping.getDestinationProperty)
+        assert(srcProperty.getType.asType == destProperty.getType.asType,
+          s"The source and destination types should be the same: (${srcProperty.getType}, ${destProperty.getType}")
 
-      getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
-        .invokeV(
-          "copy",
-          srcVar.push()
-            .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
+        getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          .invokeV(
+            "copy",
+            srcVar.push()
+              .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
+            thisVar.push().getField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
+              .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
+      }
+
+      getOutputField(mb, outputs(MasterJoinOp.ID_OUTPUT_JOINED))
+        .invokeV("add",
           thisVar.push().getField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
-            .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
+            .asType(classOf[AnyRef].asType))
     }
-
-    getOutputField(mb, outputs(MasterJoinOp.ID_OUTPUT_JOINED))
-      .invokeV("add",
-        thisVar.push().getField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
-          .asType(classOf[AnyRef].asType))
   }
 }

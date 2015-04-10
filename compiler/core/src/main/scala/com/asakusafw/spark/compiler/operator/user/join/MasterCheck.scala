@@ -16,7 +16,7 @@ trait MasterCheck extends JoinOperatorFragmentClassBuilder {
   val opInfo: OperatorInfo
   import opInfo._
 
-  override def join(mb: MethodBuilder, ctrl: LoopControl, masterVar: Var, txVar: Var): Unit = {
+  override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
     import mb._
     masterVar.push().ifNull({
       getOutputField(mb, outputs(MasterCheckOp.ID_OUTPUT_MISSED))

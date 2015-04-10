@@ -30,8 +30,7 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
       .cast(classOf[Iterable[_]].asType)
       .invokeI("iterator", classOf[Iterator[_]].asType)
       .store(mastersVar.nextLocal)
-    loop { ctrl =>
-      txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE).unlessTrue(ctrl.break())
+    whileLoop(txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
       val txVar = txIterVar.push().invokeI("next", classOf[AnyRef].asType)
         .cast(txType).store(txIterVar.nextLocal)
       val selectedVar = (masterSelection match {
@@ -47,7 +46,7 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
             .invokeV("select", classOf[AnyRef].asType, mastersVar.push(), txVar.push().asType(classOf[AnyRef].asType))
             .cast(masterType)
       }).store(txVar.nextLocal)
-      join(mb, ctrl, selectedVar, txVar)
+      join(mb, selectedVar, txVar)
     }
     `return`()
   }

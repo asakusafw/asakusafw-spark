@@ -127,12 +127,8 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
           .cast(masterType)
     }).store(mastersVar.nextLocal)
 
-    val bVar = ldc(false).store(selectedVar.nextLocal)
-    loop { ctrl =>
-      bVar.push().unlessFalse(ctrl.break)
-      ldc(true).store(bVar.local)
-      join(mb, ctrl, selectedVar, dataModelVar)
-    }
+    join(mb, selectedVar, dataModelVar)
+
     `return`()
   }
 }
