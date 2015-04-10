@@ -11,7 +11,7 @@ import com.asakusafw.spark.runtime.driver.ShuffleKey
 
 class KryoRegistrator extends SparkKryoRegistrator {
 
-  val Logger = LoggerFactory.getLogger(getClass)
+  import KryoRegistrator._
 
   override def registerClasses(kryo: Kryo): Unit = {
     kryo.register(
@@ -19,22 +19,12 @@ class KryoRegistrator extends SparkKryoRegistrator {
       new WritableSerializer[Configuration] {
         override def newInstance: Configuration = new Configuration()
       })
-    try {
-      val yarnConfClass = Class.forName("org.apache.hadoop.yarn.conf.YarnConfiguration")
-        .asSubclass(classOf[Configuration])
-      if (Logger.isDebugEnabled) {
-        Logger.debug(s"${yarnConfClass} is found.")
-      }
+    yarnConf.foreach { yarnConfClass =>
       kryo.register(
         yarnConfClass,
         new WritableSerializer[Configuration] {
           override def newInstance: Configuration = yarnConfClass.newInstance()
         })
-    } catch {
-      case e: ClassNotFoundException =>
-        if (Logger.isDebugEnabled) {
-          Logger.debug(e.getMessage, e)
-        }
     }
 
     kryo.addDefaultSerializer(classOf[ShuffleKey], new ShuffleKeySerializer)
@@ -95,5 +85,28 @@ class KryoRegistrator extends SparkKryoRegistrator {
       new ValueOptionSerializer[DateTimeOption] {
         override def newInstance: DateTimeOption = new DateTimeOption()
       })
+  }
+}
+
+object KryoRegistrator {
+
+  val Logger = LoggerFactory.getLogger(getClass)
+
+  val yarnConf: Option[Class[_ <: Configuration]] = {
+    try {
+      val yarnConfClass =
+        Class.forName("org.apache.hadoop.yarn.conf.YarnConfiguration")
+          .asSubclass(classOf[Configuration])
+      if (Logger.isDebugEnabled) {
+        Logger.debug(s"${yarnConfClass} is found.")
+      }
+      Some(yarnConfClass)
+    } catch {
+      case e: ClassNotFoundException =>
+        if (Logger.isDebugEnabled) {
+          Logger.debug(e.getMessage, e)
+        }
+        None
+    }
   }
 }
