@@ -64,14 +64,14 @@ class ShuffleKeyClassBuilder(
       import mb._
       val dataModelVar = `var`(dataModelType, thisVar.nextLocal)
       thisVar.push().invokeInit()
-      thisVar.push().invokeV("copyFrom", thisType, dataModelVar.push()).pop()
+      thisVar.push().invokeV("copyFrom", dataModelVar.push())
     }
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("copyFrom", thisType, Seq(dataModelType)) { mb =>
+    methodDef.newMethod("copyFrom", Seq(dataModelType)) { mb =>
       import mb._
       val dataModelVar = `var`(dataModelType, thisVar.nextLocal)
 
@@ -97,7 +97,7 @@ class ShuffleKeyClassBuilder(
               orderingIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(t))
       }
 
-      `return`(thisVar.push())
+      `return`()
     }
   }
 }

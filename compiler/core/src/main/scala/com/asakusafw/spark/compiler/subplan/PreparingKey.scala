@@ -164,7 +164,8 @@ trait PreparingKey extends ClassBuilder {
                           shuffleKeyVar.push().asType(classOf[AnyRef].asType)))
                     .pop()
                 }
-                `return`(shuffleKeyVar.push().invokeV("copyFrom", shuffleKeyType, valueVar.push().cast(dataModelType)))
+                shuffleKeyVar.push().invokeV("copyFrom", valueVar.push().cast(dataModelType))
+                `return`(shuffleKeyVar.push())
               }
         }
         `return`(pushNull(classOf[ShuffleKey].asType))
