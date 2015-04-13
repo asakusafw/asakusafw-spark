@@ -86,14 +86,14 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.hogeId.modify(10)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 0)
-      assert(high.buffer.size === 1)
-      assert(high.buffer(0).id.get === 10)
+      assert(low.size === 0)
+      assert(high.size === 1)
+      assert(high.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(low.size === 0)
+    assert(high.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -102,14 +102,14 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 1)
-      assert(low.buffer(0).id.get === 10)
-      assert(high.buffer.size === 0)
+      assert(low.size === 1)
+      assert(low.head.id.get === 10)
+      assert(high.size === 0)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(low.size === 0)
+    assert(high.size === 0)
   }
 
   it should "compile MasterBranch operator with master selection" in {
@@ -161,15 +161,15 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         foo
       }
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 5)
-      assert(low.buffer.map(_.id.get) === (1 until 10 by 2))
-      assert(high.buffer.size === 5)
-      assert(high.buffer.map(_.id.get) === (0 until 10 by 2))
+      assert(low.size === 5)
+      assert(low.map(_.id.get) === (1 until 10 by 2))
+      assert(high.size === 5)
+      assert(high.map(_.id.get) === (0 until 10 by 2))
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(low.size === 0)
+    assert(high.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -178,14 +178,14 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 1)
-      assert(low.buffer(0).id.get === 10)
-      assert(high.buffer.size === 0)
+      assert(low.size === 1)
+      assert(low.head.id.get === 10)
+      assert(high.size === 0)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(low.size === 0)
+    assert(high.size === 0)
   }
 
   it should "compile MasterBranch operator without master selection with projective model" in {
@@ -235,14 +235,14 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.hogeId.modify(10)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 0)
-      assert(high.buffer.size === 1)
-      assert(high.buffer(0).id.get === 10)
+      assert(low.size === 0)
+      assert(high.size === 1)
+      assert(high.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(low.size === 0)
+    assert(high.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -251,14 +251,14 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 1)
-      assert(low.buffer(0).id.get === 10)
-      assert(high.buffer.size === 0)
+      assert(low.size === 1)
+      assert(low.head.id.get === 10)
+      assert(high.size === 0)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(low.size === 0)
+    assert(high.size === 0)
   }
 
   it should "compile MasterBranch operator with master selection with projective model" in {
@@ -310,15 +310,15 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         foo
       }
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 5)
-      assert(low.buffer.map(_.id.get) === (1 until 10 by 2))
-      assert(high.buffer.size === 5)
-      assert(high.buffer.map(_.id.get) === (0 until 10 by 2))
+      assert(low.size === 5)
+      assert(low.map(_.id.get) === (1 until 10 by 2))
+      assert(high.size === 5)
+      assert(high.map(_.id.get) === (0 until 10 by 2))
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(low.size === 0)
+    assert(high.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -327,14 +327,14 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(low.buffer.size === 1)
-      assert(low.buffer(0).id.get === 10)
-      assert(high.buffer.size === 0)
+      assert(low.size === 1)
+      assert(low.head.id.get === 10)
+      assert(high.size === 0)
     }
 
     fragment.reset()
-    assert(low.buffer.size === 0)
-    assert(high.buffer.size === 0)
+    assert(low.size === 0)
+    assert(high.size === 0)
   }
 }
 

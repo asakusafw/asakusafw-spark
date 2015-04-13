@@ -98,8 +98,6 @@ abstract class CoGroupDriverClassBuilder(
           broadcastsVar.push(),
           inputsVar.push(),
           partVar.push())
-
-        initFields(mb)
       }
   }
 }

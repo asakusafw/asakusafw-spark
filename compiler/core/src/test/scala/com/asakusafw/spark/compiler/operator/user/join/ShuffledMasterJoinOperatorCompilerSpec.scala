@@ -95,16 +95,16 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       foo.foo.modify("foo")
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(joined.buffer.size === 1)
-      assert(joined.buffer(0).id.get === 1)
-      assert(joined.buffer(0).hoge.getAsString === "hoge")
-      assert(joined.buffer(0).foo.getAsString === "foo")
-      assert(missed.buffer.size === 0)
+      assert(joined.size === 1)
+      assert(joined.head.id.get === 1)
+      assert(joined.head.hoge.getAsString === "hoge")
+      assert(joined.head.foo.getAsString === "foo")
+      assert(missed.size === 0)
     }
 
     fragment.reset()
-    assert(joined.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(joined.size === 0)
+    assert(missed.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -114,14 +114,14 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       foo.foo.modify("foo")
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(joined.buffer.size === 0)
-      assert(missed.buffer.size === 1)
-      assert(missed.buffer(0).id.get === 10)
+      assert(joined.size === 0)
+      assert(missed.size === 1)
+      assert(missed.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(joined.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(joined.size === 0)
+    assert(missed.size === 0)
   }
 
   it should "compile MasterJoin operator with master selection" in {
@@ -182,18 +182,18 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
         foo
       }
       fragment.add(Seq(hoges, foos))
-      assert(joined.buffer.size === 5)
-      assert(joined.buffer.map(_.id.get) === (0 until 10 by 2).map(_ => 0))
-      assert(joined.buffer.map(_.hoge.getAsString) === (0 until 10 by 2).map(_ => "hoge"))
-      assert(joined.buffer.map(_.foo.getAsString) === (0 until 10 by 2).map(i => s"foo ${i}"))
-      assert(missed.buffer.size === 5)
-      assert(missed.buffer.map(_.id.get) === (1 until 10 by 2))
-      assert(missed.buffer.map(_.foo.getAsString) === (1 until 10 by 2).map(i => s"foo ${i}"))
+      assert(joined.size === 5)
+      assert(joined.map(_.id.get) === (0 until 10 by 2).map(_ => 0))
+      assert(joined.map(_.hoge.getAsString) === (0 until 10 by 2).map(_ => "hoge"))
+      assert(joined.map(_.foo.getAsString) === (0 until 10 by 2).map(i => s"foo ${i}"))
+      assert(missed.size === 5)
+      assert(missed.map(_.id.get) === (1 until 10 by 2))
+      assert(missed.map(_.foo.getAsString) === (1 until 10 by 2).map(i => s"foo ${i}"))
     }
 
     fragment.reset()
-    assert(joined.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(joined.size === 0)
+    assert(missed.size === 0)
 
     {
       val hoges = Seq.empty[Hoge]
@@ -203,14 +203,14 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       foo.foo.modify("foo")
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(joined.buffer.size === 0)
-      assert(missed.buffer.size === 1)
-      assert(missed.buffer(0).id.get === 10)
+      assert(joined.size === 0)
+      assert(missed.size === 1)
+      assert(missed.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(joined.buffer.size === 0)
-    assert(missed.buffer.size === 0)
+    assert(joined.size === 0)
+    assert(missed.size === 0)
   }
 }
 

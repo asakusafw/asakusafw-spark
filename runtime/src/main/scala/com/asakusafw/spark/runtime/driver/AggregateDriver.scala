@@ -64,7 +64,7 @@ abstract class AggregateDriver[V, C](
     }
 
     sc.setCallSite(CallSite(name, aggregated.toDebugString))
-    branch(aggregated.asInstanceOf[RDD[(ShuffleKey, C)]])
+    branch(aggregated.asInstanceOf[RDD[(_, C)]])
   }
 
   def aggregation: Aggregation[ShuffleKey, V, C]

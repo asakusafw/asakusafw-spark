@@ -81,20 +81,20 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size === 10)
-    assert(out2.buffer.size === 10)
-    out1.buffer.zipWithIndex.foreach {
+    assert(out1.size === 10)
+    assert(out2.size === 10)
+    out1.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.get === i)
     }
-    out2.buffer.zipWithIndex.foreach {
+    out2.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.l.get === 10 * i)
     }
     fragment.reset()
-    assert(out1.buffer.size === 0)
-    assert(out2.buffer.size === 0)
+    assert(out1.size === 0)
+    assert(out2.size === 0)
   }
 
   it should "compile Convert operator with projective model" in {
@@ -143,20 +143,20 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.buffer.size === 10)
-    assert(out2.buffer.size === 10)
-    out1.buffer.zipWithIndex.foreach {
+    assert(out1.size === 10)
+    assert(out2.size === 10)
+    out1.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.get === i)
     }
-    out2.buffer.zipWithIndex.foreach {
+    out2.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.l.get === 10 * i)
     }
     fragment.reset()
-    assert(out1.buffer.size === 0)
-    assert(out2.buffer.size === 0)
+    assert(out1.size === 0)
+    assert(out2.size === 0)
   }
 }
 

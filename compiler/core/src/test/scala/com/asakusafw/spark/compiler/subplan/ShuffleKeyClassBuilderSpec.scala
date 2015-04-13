@@ -32,15 +32,33 @@ class ShuffleKeyClassBuilderSpec extends FlatSpec with LoadClassSugar {
     hoge.l.modify(100)
     hoge.s.modify("hoge")
 
-    val shuffleKey = cls.getConstructor(classOf[Hoge]).newInstance(hoge)
+    {
+      val shuffleKey = cls.newInstance()
+      assert(shuffleKey.grouping.size === 1)
+      assert(shuffleKey.grouping(0).getClass === classOf[IntOption])
+      assert(shuffleKey.grouping(0).isNull)
 
-    assert(shuffleKey.grouping.size === 1)
-    assert(shuffleKey.grouping(0).getClass === classOf[IntOption])
-    assert(shuffleKey.grouping(0).asInstanceOf[IntOption].get === 10)
+      assert(shuffleKey.ordering.size === 1)
+      assert(shuffleKey.ordering(0).getClass === classOf[LongOption])
+      assert(shuffleKey.ordering(0).isNull)
 
-    assert(shuffleKey.ordering.size === 1)
-    assert(shuffleKey.ordering(0).getClass === classOf[LongOption])
-    assert(shuffleKey.ordering(0).asInstanceOf[LongOption].get === 100)
+      cls.getMethod("copyFrom", classOf[Hoge]).invoke(shuffleKey, hoge)
+
+      assert(shuffleKey.grouping(0).asInstanceOf[IntOption].get === 10)
+      assert(shuffleKey.ordering(0).asInstanceOf[LongOption].get === 100)
+    }
+
+    {
+      val shuffleKey = cls.getConstructor(classOf[Hoge]).newInstance(hoge)
+
+      assert(shuffleKey.grouping.size === 1)
+      assert(shuffleKey.grouping(0).getClass === classOf[IntOption])
+      assert(shuffleKey.grouping(0).asInstanceOf[IntOption].get === 10)
+
+      assert(shuffleKey.ordering.size === 1)
+      assert(shuffleKey.ordering(0).getClass === classOf[LongOption])
+      assert(shuffleKey.ordering(0).asInstanceOf[LongOption].get === 100)
+    }
   }
 }
 

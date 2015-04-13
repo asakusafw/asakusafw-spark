@@ -13,7 +13,7 @@ abstract class MapDriver[T](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Broadcast[_]],
-  @transient prevs: Seq[RDD[(ShuffleKey, T)]])
+  @transient prevs: Seq[RDD[(_, T)]])
     extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[T] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")

@@ -35,11 +35,21 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
     tmpDir.delete
     val path = tmpDir.getAbsolutePath
 
-    val hoges = sc.parallelize(0 until 10).map { i =>
-      val hoge = new Hoge()
-      hoge.id.modify(i)
-      (hoge, hoge)
+    val f = new Function1[Int, (_, Hoge)] with Serializable {
+      @transient var h: Hoge = _
+      def hoge: Hoge = {
+        if (h == null) {
+          h = new Hoge()
+        }
+        h
+      }
+      override def apply(i: Int): (_, Hoge) = {
+        hoge.id.modify(i)
+        (null, hoge)
+      }
     }
+
+    val hoges = sc.parallelize(0 until 10).map(f)
 
     new TestOutputDriver(sc, hadoopConf, hoges.asInstanceOf[RDD[(_, Hoge)]], path).execute()
 

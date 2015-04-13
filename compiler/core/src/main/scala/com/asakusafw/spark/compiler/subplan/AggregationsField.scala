@@ -3,7 +3,7 @@ package com.asakusafw.spark.compiler.subplan
 import scala.collection.mutable
 import scala.reflect.NameTransformer
 
-import org.objectweb.asm.Type
+import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
@@ -28,7 +28,9 @@ trait AggregationsField extends ClassBuilder {
   def subplanOutputs: Seq[SubPlan.Output]
 
   def defAggregationsField(fieldDef: FieldDef): Unit = {
-    fieldDef.newFinalField("aggregations", classOf[Map[_, _]].asType,
+    fieldDef.newField(
+      Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
+      "aggregations", classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
@@ -43,12 +45,36 @@ trait AggregationsField extends ClassBuilder {
         .build())
   }
 
-  def initAggregationsField(mb: MethodBuilder): Unit = {
+  def getAggregationsField(mb: MethodBuilder): Stack = {
     import mb._
-    thisVar.push().putField("aggregations", classOf[Map[_, _]].asType, initAggregations(mb))
+    thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
   }
 
-  def initAggregations(mb: MethodBuilder): Stack = {
+  def defAggregations(methodDef: MethodDef): Unit = {
+    methodDef.newMethod("aggregations", classOf[Map[_, _]].asType, Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Aggregation[_, _, _]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                    .newTypeArgument()
+                    .newTypeArgument()
+                }
+              }
+          }
+        }
+        .build()) { mb =>
+        import mb._
+        thisVar.push().getField("aggregations", classOf[Map[_, _]].asType).unlessNotNull {
+          thisVar.push().putField("aggregations", classOf[Map[_, _]].asType, initAggregations(mb))
+        }
+        `return`(thisVar.push().getField("aggregations", classOf[Map[_, _]].asType))
+      }
+  }
+
+  private def initAggregations(mb: MethodBuilder): Stack = {
     import mb._
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
@@ -74,31 +100,5 @@ trait AggregationsField extends ClassBuilder {
       }
     }
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-  }
-
-  def getAggregationsField(mb: MethodBuilder): Stack = {
-    import mb._
-    thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
-  }
-
-  def defAggregations(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("aggregations", classOf[Map[_, _]].asType, Seq.empty,
-      new MethodSignatureBuilder()
-        .newReturnType {
-          _.newClassType(classOf[Map[_, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                _.newClassType(classOf[Aggregation[_, _, _]].asType) {
-                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-                    .newTypeArgument()
-                    .newTypeArgument()
-                }
-              }
-          }
-        }
-        .build()) { mb =>
-        import mb._
-        `return`(thisVar.push().getField("aggregations", classOf[Map[_, _]].asType))
-      }
   }
 }

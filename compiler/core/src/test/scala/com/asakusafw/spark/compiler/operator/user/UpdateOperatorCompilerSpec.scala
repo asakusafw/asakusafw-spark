@@ -75,14 +75,14 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out.buffer.size === 10)
-    out.buffer.zipWithIndex.foreach {
+    assert(out.size === 10)
+    out.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.get === i * 100)
     }
     fragment.reset()
-    assert(out.buffer.size === 0)
+    assert(out.size === 0)
   }
 
   it should "compile Update operator with projective model" in {
@@ -126,14 +126,14 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out.buffer.size === 10)
-    out.buffer.zipWithIndex.foreach {
+    assert(out.size === 10)
+    out.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.get === i * 100)
     }
     fragment.reset()
-    assert(out.buffer.size === 0)
+    assert(out.size === 0)
   }
 }
 

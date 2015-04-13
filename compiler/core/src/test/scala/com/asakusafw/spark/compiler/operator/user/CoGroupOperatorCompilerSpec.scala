@@ -98,20 +98,20 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       val hoges = Seq.empty[Hoge]
       val foos = Seq.empty[Foo]
       fragment.add(Seq(hoges, foos))
-      assert(hogeResult.buffer.size === 0)
-      assert(fooResult.buffer.size === 0)
-      assert(hogeError.buffer.size === 0)
-      assert(fooError.buffer.size === 0)
-      assert(nResult.buffer.size === 1)
-      assert(nResult.buffer(0).n.get === 10)
+      assert(hogeResult.size === 0)
+      assert(fooResult.size === 0)
+      assert(hogeError.size === 0)
+      assert(fooError.size === 0)
+      assert(nResult.size === 1)
+      assert(nResult.head.n.get === 10)
     }
 
     fragment.reset()
-    assert(hogeResult.buffer.size === 0)
-    assert(fooResult.buffer.size === 0)
-    assert(hogeError.buffer.size === 0)
-    assert(fooError.buffer.size === 0)
-    assert(nResult.buffer.size === 0)
+    assert(hogeResult.size === 0)
+    assert(fooResult.size === 0)
+    assert(hogeError.size === 0)
+    assert(fooError.size === 0)
+    assert(nResult.size === 0)
 
     {
       val hoge = new Hoge()
@@ -122,23 +122,23 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges, foos))
-      assert(hogeResult.buffer.size === 1)
-      assert(hogeResult.buffer(0).id.get === hoge.id.get)
-      assert(fooResult.buffer.size === 1)
-      assert(fooResult.buffer(0).id.get === foo.id.get)
-      assert(fooResult.buffer(0).hogeId.get === foo.hogeId.get)
-      assert(hogeError.buffer.size === 0)
-      assert(fooError.buffer.size === 0)
-      assert(nResult.buffer.size === 1)
-      assert(nResult.buffer(0).n.get === 10)
+      assert(hogeResult.size === 1)
+      assert(hogeResult.head.id.get === hoge.id.get)
+      assert(fooResult.size === 1)
+      assert(fooResult.head.id.get === foo.id.get)
+      assert(fooResult.head.hogeId.get === foo.hogeId.get)
+      assert(hogeError.size === 0)
+      assert(fooError.size === 0)
+      assert(nResult.size === 1)
+      assert(nResult.head.n.get === 10)
     }
 
     fragment.reset()
-    assert(hogeResult.buffer.size === 0)
-    assert(fooResult.buffer.size === 0)
-    assert(hogeError.buffer.size === 0)
-    assert(fooError.buffer.size === 0)
-    assert(nResult.buffer.size === 0)
+    assert(hogeResult.size === 0)
+    assert(fooResult.size === 0)
+    assert(hogeError.size === 0)
+    assert(fooError.size === 0)
+    assert(nResult.size === 0)
 
     {
       val hoge = new Hoge()
@@ -151,26 +151,26 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
         foo
       }
       fragment.add(Seq(hoges, foos))
-      assert(hogeResult.buffer.size === 0)
-      assert(fooResult.buffer.size === 0)
-      assert(hogeError.buffer.size === 1)
-      assert(hogeError.buffer(0).id.get === hoge.id.get)
-      assert(fooError.buffer.size === 10)
-      fooError.buffer.zip(foos).foreach {
+      assert(hogeResult.size === 0)
+      assert(fooResult.size === 0)
+      assert(hogeError.size === 1)
+      assert(hogeError.head.id.get === hoge.id.get)
+      assert(fooError.size === 10)
+      fooError.zip(foos).foreach {
         case (actual, expected) =>
           assert(actual.id.get === expected.id.get)
           assert(actual.hogeId.get === expected.hogeId.get)
       }
-      assert(nResult.buffer.size === 1)
-      assert(nResult.buffer(0).n.get === 10)
+      assert(nResult.size === 1)
+      assert(nResult.head.n.get === 10)
     }
 
     fragment.reset()
-    assert(hogeResult.buffer.size === 0)
-    assert(fooResult.buffer.size === 0)
-    assert(hogeError.buffer.size === 0)
-    assert(fooError.buffer.size === 0)
-    assert(nResult.buffer.size === 0)
+    assert(hogeResult.size === 0)
+    assert(fooResult.size === 0)
+    assert(hogeError.size === 0)
+    assert(fooError.size === 0)
+    assert(nResult.size === 0)
   }
 }
 

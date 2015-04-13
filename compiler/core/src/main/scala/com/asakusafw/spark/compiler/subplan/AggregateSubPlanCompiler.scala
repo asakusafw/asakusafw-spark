@@ -58,8 +58,6 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
-      override val shuffleKeyTypes = context.shuffleKeyTypes
-
       override val branchKeys: BranchKeysClassBuilder = context.branchKeys
 
       override val dominantOperator = operator
@@ -124,11 +122,10 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
             val aggregationType = AggregationClassBuilder.getOrCompile(context.flowId, operator, context.jpContext)
             `return`(pushNew0(aggregationType))
           }
-
-        defName(methodDef)
       }
     }
 
+    context.shuffleKeyTypes ++= builder.shuffleKeyTypes.values
     context.jpContext.addClass(builder)
   }
 }

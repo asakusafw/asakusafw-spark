@@ -67,8 +67,6 @@ abstract class InputDriverClassBuilder(
           broadcastsVar.push(),
           getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
             .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
-
-        initFields(mb)
       }
   }
 }

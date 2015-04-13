@@ -32,16 +32,17 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkSugar {
       val hoge = new Hoge()
       hoge.id.modify(i)
       ((), hoge)
-    }.asInstanceOf[RDD[(ShuffleKey, Hoge)]]
+    }.asInstanceOf[RDD[(_, Hoge)]]
 
     val driver = new TestDriver(sc, hadoopConf, hoges)
 
     val outputs = driver.execute()
 
-    val result = outputs(Result).map(_._2.asInstanceOf[Hoge]).collect.toSeq
+    val result = outputs(Result).map(_._2.asInstanceOf[Hoge])
+      .map(hoge => (hoge.id.get, hoge.str.getAsString)).collect.toSeq
     assert(result.size === 10)
-    assert(result.map(_.id.get) === (0 until 10))
-    assert(result.map(_.str.getAsString) === (0 until 10).map(i => s"test_${i}"))
+    assert(result.map(_._1) === (0 until 10))
+    assert(result.map(_._2) === (0 until 10).map(i => s"test_${i}"))
   }
 }
 
@@ -52,7 +53,7 @@ object ResourceBrokingIteratorSpec {
   class TestDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient prev: RDD[(ShuffleKey, Hoge)])
+    @transient prev: RDD[(_, Hoge)])
       extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def name = "TestMap"

@@ -72,13 +72,13 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out.buffer.size === 10)
-    out.buffer.zipWithIndex.foreach {
+    assert(out.size === 10)
+    out.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
     fragment.reset()
-    assert(out.buffer.size === 0)
+    assert(out.size === 0)
   }
 
   it should "compile Extend operator" in {
@@ -117,14 +117,14 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out.buffer.size === 10)
-    out.buffer.zipWithIndex.foreach {
+    assert(out.size === 10)
+    out.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.isNull)
     }
     fragment.reset()
-    assert(out.buffer.size === 0)
+    assert(out.size === 0)
   }
 
   it should "compile Restructure operator" in {
@@ -163,14 +163,14 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out.buffer.size === 10)
-    out.buffer.zipWithIndex.foreach {
+    assert(out.size === 10)
+    out.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.d.isNull)
     }
     fragment.reset()
-    assert(out.buffer.size === 0)
+    assert(out.size === 0)
   }
 }
 

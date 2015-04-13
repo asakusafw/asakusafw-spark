@@ -29,7 +29,7 @@ trait Branch[T] {
 
   def fragments: (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
-  def branch(rdd: RDD[(ShuffleKey, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
+  def branch(rdd: RDD[(_, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
         rdd.mapPartitions({ iter =>
@@ -45,16 +45,21 @@ trait Branch[T] {
             case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
           }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]
 
-          f(iter).flatMap {
-            case ((b, k), v) if combiners.contains(b) =>
-              combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]].insert(k, v)
-              Iterator.empty
-            case otherwise => Iterator(otherwise)
-          } ++ combiners.iterator.flatMap {
-            case (b, combiner) =>
-              combiner.iterator.map {
-                case (k, v) => ((b, k), v)
-              }
+          if (combiners.isEmpty) {
+            f(iter)
+          } else {
+            f(iter).flatMap {
+              case ((b, k), v) if combiners.contains(b) =>
+                combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]]
+                  .insert(k, v)
+                Iterator.empty
+              case otherwise => Iterator(otherwise)
+            } ++ combiners.iterator.flatMap {
+              case (b, combiner) =>
+                combiner.iterator.map {
+                  case (k, v) => ((b, k), v)
+                }
+            }
           }
         },
         partitioners = partitioners,
@@ -63,7 +68,7 @@ trait Branch[T] {
     }
   }
 
-  private def f(iter: Iterator[(ShuffleKey, T)]): Iterator[((BranchKey, ShuffleKey), _)] = {
+  private def f(iter: Iterator[(_, T)]): Iterator[((BranchKey, ShuffleKey), _)] = {
     val (fragment, outputs) = fragments
     assert(outputs.keys.toSet == branchKeys,
       s"The branch keys of outputs and branch keys field should be the same: (${
@@ -80,11 +85,11 @@ trait Branch[T] {
           fragment.add(value)
           outputs.iterator.flatMap {
             case (key, output) =>
-              def prepare[V](buffer: Iterator[_]) = {
-                buffer.asInstanceOf[Iterator[V]]
-                  .map(out => ((key, shuffleKey(key, out)), out))
+              def prepare[V](iter: Iterator[_]) = {
+                iter.asInstanceOf[Iterator[V]]
+                  .map(value => ((key, shuffleKey(key, value)), value))
               }
-              prepare(output.buffer.iterator)
+              prepare(output.iterator)
           }
       })
   }

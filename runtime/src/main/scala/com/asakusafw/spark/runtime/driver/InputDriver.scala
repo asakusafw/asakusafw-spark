@@ -51,6 +51,6 @@ abstract class InputDriver[T: ClassTag](
         classTag[T].runtimeClass.asInstanceOf[Class[T]])
 
     sc.setCallSite(CallSite(name, rdd.toDebugString))
-    branch(rdd.asInstanceOf[RDD[(ShuffleKey, T)]])
+    branch(rdd.asInstanceOf[RDD[(_, T)]])
   }
 }
