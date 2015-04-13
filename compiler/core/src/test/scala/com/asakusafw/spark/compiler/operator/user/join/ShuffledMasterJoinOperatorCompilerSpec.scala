@@ -66,17 +66,8 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val joined = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Baa].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Baa]])
-      cls.newInstance()
-    }
-
-    val missed = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      cls.newInstance()
-    }
+    val joined = new GenericOutputFragment[Baa]
+    val missed = new GenericOutputFragment[Foo]
 
     val fragment = cls
       .getConstructor(
@@ -151,17 +142,8 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val joined = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Baa].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Baa]])
-      cls.newInstance()
-    }
-
-    val missed = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      cls.newInstance()
-    }
+    val joined = new GenericOutputFragment[Baa]
+    val missed = new GenericOutputFragment[Foo]
 
     val fragment = cls
       .getConstructor(

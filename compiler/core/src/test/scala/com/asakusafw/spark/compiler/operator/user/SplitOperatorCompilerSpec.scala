@@ -58,18 +58,8 @@ class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Baa]])
 
-    val hoges = {
-      val builder = new OutputFragmentClassBuilder(
-        context.flowId, classOf[Hoge].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Hoge]])
-      cls.newInstance()
-    }
-
-    val foos = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      cls.newInstance()
-    }
+    val hoges = new GenericOutputFragment[Hoge]
+    val foos = new GenericOutputFragment[Foo]
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],

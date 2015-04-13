@@ -65,11 +65,8 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (updated, missed) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val updated = new GenericOutputFragment[Foo]
+    val missed = new GenericOutputFragment[Foo]
 
     val fragment = cls
       .getConstructor(
@@ -139,11 +136,8 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (updated, missed) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val updated = new GenericOutputFragment[Foo]
+    val missed = new GenericOutputFragment[Foo]
 
     val fragment = cls
       .getConstructor(
@@ -216,11 +210,8 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (updated, missed) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val updated = new GenericOutputFragment[Foo]
+    val missed = new GenericOutputFragment[Foo]
 
     val fragment = cls
       .getConstructor(
@@ -290,11 +281,8 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (updated, missed) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val updated = new GenericOutputFragment[Foo]
+    val missed = new GenericOutputFragment[Foo]
 
     val fragment = cls
       .getConstructor(

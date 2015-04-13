@@ -69,23 +69,13 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (hogeResult, hogeError) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Hoge].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Hoge]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val hogeResult = new GenericOutputFragment[Hoge]
+    val hogeError = new GenericOutputFragment[Hoge]
 
-    val (fooResult, fooError) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val fooResult = new GenericOutputFragment[Foo]
+    val fooError = new GenericOutputFragment[Foo]
 
-    val nResult = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[N].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[N]])
-      cls.newInstance()
-    }
+    val nResult = new GenericOutputFragment[N]
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],

@@ -65,11 +65,8 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (found, missed) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val found = new GenericOutputFragment[Foo]
+    val missed = new GenericOutputFragment[Foo]
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
@@ -138,11 +135,8 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (found, missed) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val found = new GenericOutputFragment[Foo]
+    val missed = new GenericOutputFragment[Foo]
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],

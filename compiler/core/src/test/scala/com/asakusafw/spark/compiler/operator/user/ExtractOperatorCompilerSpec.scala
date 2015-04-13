@@ -58,18 +58,8 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
-    val out1 = {
-      val builder = new OutputFragmentClassBuilder(
-        context.flowId, classOf[IntOutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[IntOutputModel]])
-      cls.newInstance()
-    }
-
-    val out2 = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[LongOutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[LongOutputModel]])
-      cls.newInstance()
-    }
+    val out1 = new GenericOutputFragment[IntOutputModel]
+    val out2 = new GenericOutputFragment[LongOutputModel]
 
     val fragment = cls
       .getConstructor(
@@ -120,18 +110,8 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
-    val out1 = {
-      val builder = new OutputFragmentClassBuilder(
-        context.flowId, classOf[IntOutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[IntOutputModel]])
-      cls.newInstance()
-    }
-
-    val out2 = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[LongOutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[LongOutputModel]])
-      cls.newInstance()
-    }
+    val out1 = new GenericOutputFragment[IntOutputModel]
+    val out2 = new GenericOutputFragment[LongOutputModel]
 
     val fragment = cls
       .getConstructor(
