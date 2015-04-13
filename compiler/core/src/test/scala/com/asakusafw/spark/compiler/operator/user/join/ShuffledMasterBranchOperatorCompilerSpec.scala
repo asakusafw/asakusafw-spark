@@ -18,7 +18,7 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.Group
+import com.asakusafw.lang.compiler.model.graph.Groups
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
@@ -43,11 +43,9 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
     val operator = OperatorExtractor
       .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branch")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
-        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+        Groups.parse(Seq("hogeId"), Seq("+id")))
       .output("low", ClassDescription.of(classOf[Foo]))
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
@@ -113,11 +111,9 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
     val operator = OperatorExtractor
       .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchWithSelection")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
-        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+        Groups.parse(Seq("hogeId"), Seq("+id")))
       .output("low", ClassDescription.of(classOf[Foo]))
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
@@ -186,11 +182,9 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
     val operator = OperatorExtractor
       .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchp")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
-        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+        Groups.parse(Seq("hogeId"), Seq("+id")))
       .output("low", ClassDescription.of(classOf[Foo]))
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
@@ -256,11 +250,9 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
     val operator = OperatorExtractor
       .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchWithSelectionp")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
-        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+        Groups.parse(Seq("hogeId"), Seq("+id")))
       .output("low", ClassDescription.of(classOf[Foo]))
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()

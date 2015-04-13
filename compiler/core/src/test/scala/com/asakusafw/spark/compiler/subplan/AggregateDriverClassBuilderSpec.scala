@@ -17,7 +17,7 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, Group, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, Groups, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
@@ -67,8 +67,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
     subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == resultMarker.getOriginalSerialNumber)
       .get
       .putAttribute(classOf[PartitioningParameters],
-        new PartitioningParameters(
-          new Group(Seq(PropertyName.of("i")), Seq.empty[Group.Ordering])))
+        new PartitioningParameters(Groups.parse(Seq("i"))))
 
     implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",
