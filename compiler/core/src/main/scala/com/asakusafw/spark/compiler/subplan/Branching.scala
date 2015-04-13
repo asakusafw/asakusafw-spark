@@ -21,14 +21,14 @@ trait Branching
     defPartitionersField(fieldDef)
     defOrderingsField(fieldDef)
     defAggregationsField(fieldDef)
+    defShuffleKeyFields(fieldDef)
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
-    super.defMethods(methodDef)
-
     defBranchKeys(methodDef)
     defPartitioners(methodDef)
     defOrderings(methodDef)
     defAggregations(methodDef)
+    defShuffleKey(methodDef)
   }
 }

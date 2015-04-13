@@ -44,8 +44,6 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
-      override val shuffleKeyTypes = context.shuffleKeyTypes
-
       override val branchKeys: BranchKeysClassBuilder = context.branchKeys
 
       override val dominantOperator = operator
@@ -116,6 +114,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       }
     }
 
+    context.shuffleKeyTypes ++= builder.shuffleKeyTypes.values
     context.jpContext.addClass(builder)
   }
 }

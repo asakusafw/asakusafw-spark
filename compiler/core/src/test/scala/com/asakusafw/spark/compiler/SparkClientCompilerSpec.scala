@@ -937,7 +937,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
 
     spark { sc =>
       {
-        val baa1 = sc.parallelize(0 until 5).map { i =>
+        val baa1 = sc.parallelize(0 until 50).map { i =>
           val baa = new Baa()
           baa.id.modify(i % 2)
           baa.price.modify(100 * i)
@@ -951,7 +951,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         baa1.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
-        val baa2 = sc.parallelize(5 until 10).map { i =>
+        val baa2 = sc.parallelize(50 until 100).map { i =>
           val baa = new Baa()
           baa.id.modify(i % 2)
           baa.price.modify(100 * i)
@@ -1058,9 +1058,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
           classOf[Baa]).map { case (_, baa) => (baa.id.get, baa.price.get) }.collect.toSeq.sortBy(_._1)
         assert(result.size === 2)
         assert(result(0)._1 === 0)
-        assert(result(0)._2 === (0 until 10 by 2).map(_ * 100).sum)
+        assert(result(0)._2 === (0 until 100 by 2).map(_ * 100).sum)
         assert(result(1)._1 === 1)
-        assert(result(1)._2 === (1 until 10 by 2).map(_ * 100).sum)
+        assert(result(1)._2 === (1 until 100 by 2).map(_ * 100).sum)
       }
     }
   }
