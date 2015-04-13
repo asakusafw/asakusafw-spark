@@ -75,8 +75,7 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
             case _ => // NoOP
           }
         }
-        thisVar.push().invokeV("mergeValue", combinerType, combinerVar.push(), valueVar.push()).pop()
-        `return`(combinerVar.push())
+        `return`(thisVar.push().invokeV("mergeValue", combinerType, combinerVar.push(), valueVar.push()))
       }
 
       override def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
