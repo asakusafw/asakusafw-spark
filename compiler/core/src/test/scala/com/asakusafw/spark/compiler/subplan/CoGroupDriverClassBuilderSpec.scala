@@ -20,7 +20,7 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.lang.compiler.planning.spark.DominantOperator
@@ -53,12 +53,10 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     val operator = OperatorExtractor
       .extract(classOf[CoGroup], classOf[CoGroupOperator], "cogroup")
       .input("hogeList", ClassDescription.of(classOf[Hoge]),
-        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]),
+        Groups.parse(Seq("id")),
         hogeListMarker.getOutput)
       .input("fooList", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))),
+        Groups.parse(Seq("hogeId"), Seq("+id")),
         fooListMarker.getOutput)
       .output("hogeResult", ClassDescription.of(classOf[Hoge]))
       .output("fooResult", ClassDescription.of(classOf[Foo]))

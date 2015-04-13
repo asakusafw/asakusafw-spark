@@ -337,14 +337,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     val cogroupOperator = OperatorExtractor
       .extract(classOf[CoGroup], classOf[Ops], "cogroup")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
-        new Group(
-          Seq(PropertyName.of("id")),
-          Seq.empty[Group.Ordering]),
+        Groups.parse(Seq("id")),
         hoge1InputOperator.getOperatorPort, hoge2InputOperator.getOperatorPort)
       .input("foos", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))),
+        Groups.parse(Seq("hogeId"), Seq("+id")),
         fooInputOperator.getOperatorPort)
       .output("hogeResult", ClassDescription.of(classOf[Hoge]))
       .output("fooResult", ClassDescription.of(classOf[Foo]))
@@ -550,14 +546,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     val masterCheckOperator = OperatorExtractor
       .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
-        new Group(
-          Seq(PropertyName.of("id")),
-          Seq.empty[Group.Ordering]),
+        Groups.parse(Seq("id")),
         hoge1InputOperator.getOperatorPort, hoge2InputOperator.getOperatorPort)
       .input("foos", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))),
+        Groups.parse(Seq("hogeId"), Seq("+id")),
         fooInputOperator.getOperatorPort)
       .output("found", ClassDescription.of(classOf[Foo]))
       .output("missed", ClassDescription.of(classOf[Foo]))
@@ -703,14 +695,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     val masterCheckOperator = OperatorExtractor
       .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
       .input("hoges", ClassDescription.of(classOf[Hoge]),
-        new Group(
-          Seq(PropertyName.of("id")),
-          Seq.empty[Group.Ordering]),
+        Groups.parse(Seq("id")),
         hogeInputOperator.getOperatorPort)
       .input("foos", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))),
+        Groups.parse(Seq("hogeId"), Seq("+id")),
         fooInputOperator.getOperatorPort)
       .output("found", ClassDescription.of(classOf[Foo]))
       .output("missed", ClassDescription.of(classOf[Foo]))
@@ -832,14 +820,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     val masterCheckOperator = OperatorExtractor
       .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
       .input("hogems", ClassDescription.of(classOf[Hoge]),
-        new Group(
-          Seq(PropertyName.of("id")),
-          Seq.empty[Group.Ordering]),
+        Groups.parse(Seq("id")),
         hogeInputOperator.getOperatorPort)
       .input("hogets", ClassDescription.of(classOf[Hoge]),
-        new Group(
-          Seq(PropertyName.of("id")),
-          Seq.empty[Group.Ordering]),
+        Groups.parse(Seq("id")),
         hogeInputOperator.getOperatorPort)
       .output("found", ClassDescription.of(classOf[Hoge]))
       .output("missed", ClassDescription.of(classOf[Hoge]))
@@ -985,9 +969,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     val foldOperator = OperatorExtractor
       .extract(classOf[Fold], classOf[Ops], "fold")
       .input("baas", ClassDescription.of(classOf[Baa]),
-        new Group(
-          Seq(PropertyName.of("id")),
-          Seq.empty[Group.Ordering]),
+        Groups.parse(Seq("id")),
         baa1InputOperator.getOperatorPort, baa2InputOperator.getOperatorPort)
       .output("result", ClassDescription.of(classOf[Baa]))
       .build()
@@ -1122,9 +1104,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
     val summarizeOperator = OperatorExtractor
       .extract(classOf[Summarize], classOf[Ops], "summarize")
       .input("baas", ClassDescription.of(classOf[Baa]),
-        new Group(
-          Seq(PropertyName.of("id")),
-          Seq.empty[Group.Ordering]),
+        Groups.parse(Seq("id")),
         baa1InputOperator.getOperatorPort, baa2InputOperator.getOperatorPort)
       .output("result", ClassDescription.of(classOf[SummarizedBaa]))
       .build()

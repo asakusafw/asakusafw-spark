@@ -55,12 +55,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ProjectInputModel]])
 
-    val out = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[ProjectOutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OutputFragment[ProjectOutputModel]])
-      cls.newInstance()
-    }
+    val out = new GenericOutputFragment[ProjectOutputModel]
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
@@ -101,12 +96,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ExtendInputModel]])
 
-    val out = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[ExtendOutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OutputFragment[ExtendOutputModel]])
-      cls.newInstance()
-    }
+    val out = new GenericOutputFragment[ExtendOutputModel]
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
@@ -147,12 +137,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[RestructureInputModel]])
 
-    val out = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[RestructureOutputModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OutputFragment[RestructureOutputModel]])
-      cls.newInstance()
-    }
+    val out = new GenericOutputFragment[RestructureOutputModel]
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])

@@ -17,7 +17,7 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.Group
+import com.asakusafw.lang.compiler.model.graph.Groups
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
@@ -42,11 +42,9 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val operator = OperatorExtractor
       .extract(classOf[CoGroup], classOf[CoGroupOperator], "cogroup")
       .input("hogeList", ClassDescription.of(classOf[Hoge]),
-        new Group(Seq(PropertyName.of("id")), Seq.empty[Group.Ordering]))
+        Groups.parse(Seq("id")))
       .input("fooList", ClassDescription.of(classOf[Foo]),
-        new Group(
-          Seq(PropertyName.of("hogeId")),
-          Seq(new Group.Ordering(PropertyName.of("id"), Group.Direction.ASCENDANT))))
+        Groups.parse(Seq("hogeId"), Seq("+id")))
       .output("hogeResult", ClassDescription.of(classOf[Hoge]))
       .output("fooResult", ClassDescription.of(classOf[Foo]))
       .output("hogeError", ClassDescription.of(classOf[Hoge]))
@@ -69,23 +67,13 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
 
-    val (hogeResult, hogeError) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Hoge].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Hoge]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val hogeResult = new GenericOutputFragment[Hoge]
+    val hogeError = new GenericOutputFragment[Hoge]
 
-    val (fooResult, fooError) = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[Foo].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[Foo]])
-      (cls.newInstance(), cls.newInstance())
-    }
+    val fooResult = new GenericOutputFragment[Foo]
+    val fooError = new GenericOutputFragment[Foo]
 
-    val nResult = {
-      val builder = new OutputFragmentClassBuilder(context.flowId, classOf[N].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[OutputFragment[N]])
-      cls.newInstance()
-    }
+    val nResult = new GenericOutputFragment[N]
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],

@@ -57,13 +57,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val cls = loadClass(thisType.getClassName, classpath)
       .asSubclass(classOf[Fragment[TestModel]])
 
-    val out = {
-      val builder = new OutputFragmentClassBuilder(
-        context.flowId, classOf[TestModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OutputFragment[TestModel]])
-      cls.newInstance()
-    }
+    val out = new GenericOutputFragment[TestModel]
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
@@ -108,13 +102,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
     val cls = loadClass(thisType.getClassName, classpath)
       .asSubclass(classOf[Fragment[TestModel]])
 
-    val out = {
-      val builder = new OutputFragmentClassBuilder(
-        context.flowId, classOf[TestModel].asType)
-      val cls = loadClass(builder.thisType.getClassName, builder.build())
-        .asSubclass(classOf[OutputFragment[TestModel]])
-      cls.newInstance
-    }
+    val out = new GenericOutputFragment[TestModel]
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
