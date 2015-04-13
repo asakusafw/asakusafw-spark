@@ -50,7 +50,12 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
         val src = inputs.indexOf(mapping.getSourcePort)
         val srcVar = vars(src)
         val srcProperty = inputs(src).dataModelRef.findProperty(mapping.getSourceProperty)
+
+        assert(mapping.getDestinationPort == outputs(MasterJoinOp.ID_OUTPUT_JOINED),
+          "The destination port should be the same as the port for MasterJoinOp.ID_OUTPUT_JOINED: " +
+            s"(${mapping.getDestinationPort}, ${outputs(MasterJoinOp.ID_OUTPUT_JOINED)})")
         val destProperty = outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelRef.findProperty(mapping.getDestinationProperty)
+
         assert(srcProperty.getType.asType == destProperty.getType.asType,
           s"The source and destination types should be the same: (${srcProperty.getType}, ${destProperty.getType}")
 
