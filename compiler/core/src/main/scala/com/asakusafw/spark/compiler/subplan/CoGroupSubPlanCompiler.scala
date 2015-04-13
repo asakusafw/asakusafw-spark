@@ -121,7 +121,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       }
     }
 
-    context.shuffleKeyTypes ++= builder.shuffleKeyTypes.values
+    context.shuffleKeyTypes ++= builder.shuffleKeyTypes.map(_._2._1)
     context.jpContext.addClass(builder)
   }
 }

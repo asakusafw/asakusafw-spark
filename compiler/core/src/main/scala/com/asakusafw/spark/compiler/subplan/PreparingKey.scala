@@ -11,8 +11,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
+import com.asakusafw.lang.compiler.planning.spark.{ NextDominantOperator, PartitioningParameters }
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
@@ -29,7 +30,7 @@ trait PreparingKey extends ClassBuilder {
 
   def subplanOutputs: Seq[SubPlan.Output]
 
-  lazy val shuffleKeyTypes: Map[Long, Type] = {
+  lazy val shuffleKeyTypes: Map[Long, (Type, Boolean)] = {
     subplanOutputs.collect {
       case output if Option(output.getAttribute(classOf[PartitioningParameters])).isDefined =>
         val op = output.getOperator
@@ -49,7 +50,11 @@ trait PreparingKey extends ClassBuilder {
             (property.getDeclaration.getName, property.getType.asType)
           })
 
-        op.getOriginalSerialNumber -> shuffleKeyType
+        val aggregation =
+          Option(output.getAttribute(classOf[NextDominantOperator])).exists { dominant =>
+            AggregationCompiler.support(dominant.getNextDominantOperator)(AggregationCompiler.Context(flowId, jpContext))
+          }
+        op.getOriginalSerialNumber -> (shuffleKeyType, aggregation)
     }.toMap
   }
 
@@ -90,7 +95,7 @@ trait PreparingKey extends ClassBuilder {
             val op = output.getOperator
             (op, shuffleKeyTypes(op.getOriginalSerialNumber))
         }.sortBy(_._1.getOriginalSerialNumber).foreach {
-          case (op, shuffleKeyType) =>
+          case (op, (shuffleKeyType, aggregation)) =>
 
             val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
             val dataModelType = dataModelRef.getDeclaration.asType
@@ -101,25 +106,27 @@ trait PreparingKey extends ClassBuilder {
                 branchKeys.getField(op.getOriginalSerialNumber),
                 classOf[BranchKey].asType)) {
 
-                val aggregationVar = getAggregationsField(mb)
-                  .invokeI(
-                    "get",
-                    classOf[Option[_]].asType,
-                    getStatic(
-                      branchKeys.thisType,
-                      branchKeys.getField(op.getOriginalSerialNumber),
-                      classOf[BranchKey].asType)
-                      .asType(classOf[AnyRef].asType))
-                  .invokeV("orNull", classOf[AnyRef].asType,
-                    getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
-                      .invokeV("conforms", classOf[<:<[_, _]].asType))
-                  .cast(classOf[Aggregation[_, _, _]].asType)
-                  .store(valueVar.nextLocal)
-                aggregationVar.push().unlessNull {
-                  aggregationVar.push().invokeV("mapSideCombine", Type.BOOLEAN_TYPE).unlessFalse {
-                    val shuffleKey = pushNew(shuffleKeyType)
-                    shuffleKey.dup().invokeInit(valueVar.push().cast(dataModelType))
-                    `return`(shuffleKey)
+                if (aggregation) {
+                  val aggregationVar = getAggregationsField(mb)
+                    .invokeI(
+                      "get",
+                      classOf[Option[_]].asType,
+                      getStatic(
+                        branchKeys.thisType,
+                        branchKeys.getField(op.getOriginalSerialNumber),
+                        classOf[BranchKey].asType)
+                        .asType(classOf[AnyRef].asType))
+                    .invokeV("orNull", classOf[AnyRef].asType,
+                      getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
+                        .invokeV("conforms", classOf[<:<[_, _]].asType))
+                    .cast(classOf[Aggregation[_, _, _]].asType)
+                    .store(valueVar.nextLocal)
+                  aggregationVar.push().unlessNull {
+                    aggregationVar.push().invokeV("mapSideCombine", Type.BOOLEAN_TYPE).unlessFalse {
+                      val shuffleKey = pushNew(shuffleKeyType)
+                      shuffleKey.dup().invokeInit(valueVar.push().cast(dataModelType))
+                      `return`(shuffleKey)
+                    }
                   }
                 }
                 thisVar.push().getField("shuffleKeys", classOf[mutable.Map[_, _]].asType).unlessNotNull {
@@ -140,7 +147,7 @@ trait PreparingKey extends ClassBuilder {
                     getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
                       .invokeV("conforms", classOf[<:<[_, _]].asType))
                   .cast(shuffleKeyType)
-                  .store(aggregationVar.nextLocal)
+                  .store(valueVar.nextLocal)
                 shuffleKeyVar.push().unlessNotNull {
                   pushNew0(shuffleKeyType).store(shuffleKeyVar.local)
                   thisVar.push().getField("shuffleKeys", classOf[mutable.Map[_, _]].asType)
