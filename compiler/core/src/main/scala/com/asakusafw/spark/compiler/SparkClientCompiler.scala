@@ -18,7 +18,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 import org.slf4j.LoggerFactory
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor
+import com.asakusafw.lang.compiler.api.{ Exclusive, JobflowProcessor }
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.CommandToken
 import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
@@ -43,6 +43,7 @@ import com.asakusafw.utils.graph.Graphs
 
 import resource._
 
+@Exclusive
 class SparkClientCompiler extends JobflowProcessor {
 
   private val Logger = LoggerFactory.getLogger(getClass)
