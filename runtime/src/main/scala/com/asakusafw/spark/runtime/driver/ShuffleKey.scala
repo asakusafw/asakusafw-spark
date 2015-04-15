@@ -4,11 +4,23 @@ import java.io.{ DataInput, DataOutput }
 
 import scala.annotation.tailrec
 
+import org.apache.hadoop.io.Writable
+
 import com.asakusafw.runtime.value.ValueOption
 
 class ShuffleKey(
     val grouping: Seq[ValueOption[_]],
-    val ordering: Seq[ValueOption[_]]) extends Equals {
+    val ordering: Seq[ValueOption[_]]) extends Writable with Equals {
+
+  override def write(out: DataOutput): Unit = {
+    grouping.foreach(_.write(out))
+    ordering.foreach(_.write(out))
+  }
+
+  override def readFields(in: DataInput): Unit = {
+    grouping.foreach(_.readFields(in))
+    ordering.foreach(_.readFields(in))
+  }
 
   override def hashCode: Int = grouping.hashCode
 
