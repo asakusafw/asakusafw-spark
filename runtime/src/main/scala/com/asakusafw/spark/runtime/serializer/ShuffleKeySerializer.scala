@@ -19,3 +19,5 @@ class ShuffleKeySerializer extends Serializer[ShuffleKey](false, false) {
       kryo.readClassAndObject(input).asInstanceOf[Seq[_ <: ValueOption[_]]])
   }
 }
+
+object ShuffleKeySerializer extends ShuffleKeySerializer

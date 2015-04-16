@@ -266,8 +266,8 @@ class SparkClientCompiler extends JobflowProcessor {
             OperatorUtil.collectDataTypes(
               plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
               .toSet[TypeDescription]
-              .map(_.asType),
-            context.shuffleKeyTypes.toSet,
+              .map(_.asType) ++
+              context.shuffleKeyTypes,
             jpContext.addClass(new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)),
             jpContext.addClass(new BroadcastIdSerializerClassBuilder(context.flowId, broadcastIdsType)))(
               KryoRegistratorCompiler.Context(source.getFlowId, jpContext))

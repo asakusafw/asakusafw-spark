@@ -14,77 +14,26 @@ class KryoRegistrator extends SparkKryoRegistrator {
   import KryoRegistrator._
 
   override def registerClasses(kryo: Kryo): Unit = {
-    kryo.register(
-      classOf[Configuration],
-      new WritableSerializer[Configuration] {
-        override def newInstance: Configuration = new Configuration()
-      })
-    yarnConf.foreach { yarnConfClass =>
-      kryo.register(
-        yarnConfClass,
-        new WritableSerializer[Configuration] {
-          override def newInstance: Configuration = yarnConfClass.newInstance()
-        })
+    kryo.register(classOf[Configuration], WritableSerializer.ConfigurationSerializer)
+
+    yarnConfSerializer.foreach {
+      case (yarnConfClass, serializer) =>
+        kryo.register(yarnConfClass, serializer)
     }
 
-    kryo.addDefaultSerializer(classOf[ShuffleKey], new ShuffleKeySerializer)
-    kryo.register(classOf[ShuffleKey])
+    kryo.register(classOf[ShuffleKey], ShuffleKeySerializer)
 
-    kryo.register(
-      classOf[BooleanOption],
-      new ValueOptionSerializer[BooleanOption] {
-        override def newInstance: BooleanOption = new BooleanOption()
-      })
-    kryo.register(
-      classOf[ByteOption],
-      new ValueOptionSerializer[ByteOption] {
-        override def newInstance: ByteOption = new ByteOption()
-      })
-    kryo.register(
-      classOf[ShortOption],
-      new ValueOptionSerializer[ShortOption] {
-        override def newInstance: ShortOption = new ShortOption()
-      })
-    kryo.register(
-      classOf[IntOption],
-      new ValueOptionSerializer[IntOption] {
-        override def newInstance: IntOption = new IntOption()
-      })
-    kryo.register(
-      classOf[LongOption],
-      new ValueOptionSerializer[LongOption] {
-        override def newInstance: LongOption = new LongOption()
-      })
-    kryo.register(
-      classOf[FloatOption],
-      new ValueOptionSerializer[FloatOption] {
-        override def newInstance: FloatOption = new FloatOption()
-      })
-    kryo.register(
-      classOf[DoubleOption],
-      new ValueOptionSerializer[DoubleOption] {
-        override def newInstance: DoubleOption = new DoubleOption()
-      })
-    kryo.register(
-      classOf[DecimalOption],
-      new ValueOptionSerializer[DecimalOption] {
-        override def newInstance: DecimalOption = new DecimalOption()
-      })
-    kryo.register(
-      classOf[StringOption],
-      new ValueOptionSerializer[StringOption] {
-        override def newInstance: StringOption = new StringOption()
-      })
-    kryo.register(
-      classOf[DateOption],
-      new ValueOptionSerializer[DateOption] {
-        override def newInstance: DateOption = new DateOption()
-      })
-    kryo.register(
-      classOf[DateTimeOption],
-      new ValueOptionSerializer[DateTimeOption] {
-        override def newInstance: DateTimeOption = new DateTimeOption()
-      })
+    kryo.register(classOf[BooleanOption], WritableSerializer.BooleanOptionSerializer)
+    kryo.register(classOf[ByteOption], WritableSerializer.ByteOptionSerializer)
+    kryo.register(classOf[ShortOption], WritableSerializer.ShortOptionSerializer)
+    kryo.register(classOf[IntOption], WritableSerializer.IntOptionSerializer)
+    kryo.register(classOf[LongOption], WritableSerializer.LongOptionSerializer)
+    kryo.register(classOf[FloatOption], WritableSerializer.FloatOptionSerializer)
+    kryo.register(classOf[DoubleOption], WritableSerializer.DoubleOptionSerializer)
+    kryo.register(classOf[DecimalOption], WritableSerializer.DecimalOptionSerializer)
+    kryo.register(classOf[StringOption], WritableSerializer.StringOptionSerializer)
+    kryo.register(classOf[DateOption], WritableSerializer.DateOptionSerializer)
+    kryo.register(classOf[DateTimeOption], WritableSerializer.DateTimeOptionSerializer)
   }
 }
 
@@ -92,15 +41,22 @@ object KryoRegistrator {
 
   val Logger = LoggerFactory.getLogger(getClass)
 
-  val yarnConf: Option[Class[_ <: Configuration]] = {
+  val yarnConfSerializer: Option[(Class[_ <: Configuration], WritableSerializer[Configuration])] = {
     try {
       val yarnConfClass =
-        Class.forName("org.apache.hadoop.yarn.conf.YarnConfiguration")
+        Class.forName(
+          "org.apache.hadoop.yarn.conf.YarnConfiguration",
+          false,
+          Option(Thread.currentThread.getContextClassLoader).getOrElse(getClass.getClassLoader))
           .asSubclass(classOf[Configuration])
       if (Logger.isDebugEnabled) {
         Logger.debug(s"${yarnConfClass} is found.")
       }
-      Some(yarnConfClass)
+      Some(
+        yarnConfClass,
+        new WritableSerializer[Configuration] {
+          override def newInstance(): Configuration = yarnConfClass.newInstance()
+        })
     } catch {
       case e: ClassNotFoundException =>
         if (Logger.isDebugEnabled) {
