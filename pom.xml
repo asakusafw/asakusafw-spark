@@ -8,6 +8,10 @@
 	<version>0.1.0-SNAPSHOT</version>
 
 	<properties>
+		<artifact.name>${project.artifactId}</artifact.name>
+		<artifact.version>${project.version}</artifact.version>
+		<artifact.id>${artifact.name}-${artifact.version}</artifact.id>
+
 		<asakusafw.version>0.7.2-hadoop1</asakusafw.version>
 		<asakusafw-lang.version>0.1-SNAPSHOT</asakusafw-lang.version>
 		<asakusafw-bridge.version>0.1-SNAPSHOT</asakusafw-bridge.version>
@@ -69,6 +73,13 @@
 							</goals>
 						</execution>
 					</executions>
+					<configuration>
+						<archive>
+							<manifestEntries>
+								<Artifact-Id>${artifact.id}</Artifact-Id>
+							</manifestEntries>
+						</archive>
+					</configuration>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
