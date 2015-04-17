@@ -56,10 +56,7 @@ class SparkClientCompiler extends JobflowProcessor {
       Logger.debug("Start Asakusafw Spark compiler.")
     }
 
-    val plan = preparePlan(
-      source.getOperatorGraph.copy,
-      source.getFlowId,
-      JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanDump, false.toString)))
+    val plan = preparePlan(source.getOperatorGraph.copy)
 
     for {
       dotOutputStream <- managed(new PrintStream(
@@ -287,29 +284,8 @@ class SparkClientCompiler extends JobflowProcessor {
     }
   }
 
-  def preparePlan(graph: OperatorGraph, flowId: String, dump: Boolean): Plan = {
-    if (dump) {
-      val dir = Files.createTempDirectory("spark.plan.dump-").toFile.getAbsolutePath
-      if (Logger.isDebugEnabled) {
-        Logger.debug(s"spark.plan.dump: dot files to ${dir}")
-      }
-      var plan: Plan = null
-      for {
-        given <- managed(new FileOutputStream(new File(dir, s"${flowId}-0_given.dot")))
-        normalized <- managed(new FileOutputStream(new File(dir, s"${flowId}-1_normalized.dot")))
-        optimized <- managed(new FileOutputStream(new File(dir, s"${flowId}-2_optimized.dot")))
-        marked <- managed(new FileOutputStream(new File(dir, s"${flowId}-3_marked.dot")))
-        primitive <- managed(new FileOutputStream(new File(dir, s"${flowId}-4_primitive.dot")))
-        unified <- managed(new FileOutputStream(new File(dir, s"${flowId}-5_unified.dot")))
-      } {
-        plan = new LogicalSparkPlanner().createPlanWithDumpStepByStep(
-          graph,
-          given, normalized, optimized, marked, primitive, unified).getPlan
-      }
-      plan
-    } else {
-      new LogicalSparkPlanner().createPlan(graph).getPlan
-    }
+  def preparePlan(graph: OperatorGraph): Plan = {
+    new LogicalSparkPlanner().createPlan(graph).getPlan
   }
 }
 
