@@ -65,7 +65,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       job.setOutputKeyClass(classOf[NullWritable])
       job.setOutputValueClass(classOf[Hoge])
       job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-      TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge"))
+      TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}hoge"))
       hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
     }
 
@@ -158,7 +158,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       job.setOutputKeyClass(classOf[NullWritable])
       job.setOutputValueClass(classOf[Hoge])
       job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-      TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge"))
+      TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}hoge"))
       hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
     }
 
@@ -278,7 +278,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Hoge])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge1"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}hoge1"))
         hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
@@ -291,7 +291,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Hoge])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge2"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}hoge2"))
         hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
@@ -305,7 +305,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Foo])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/foo"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foo"))
         foos.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
     }
@@ -487,7 +487,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Hoge])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge1"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}hoge1"))
         hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
@@ -500,7 +500,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Hoge])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge2"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}hoge2"))
         hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
@@ -514,7 +514,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Foo])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/foo"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foo"))
         foos.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
     }
@@ -657,7 +657,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Hoge])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}hoge"))
         hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
@@ -671,7 +671,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Foo])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/foo"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foo"))
         foos.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
     }
@@ -805,7 +805,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
       job.setOutputKeyClass(classOf[NullWritable])
       job.setOutputValueClass(classOf[Hoge])
       job.setOutputFormatClass(classOf[TemporaryOutputFormat[Hoge]])
-      TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/hoge"))
+      TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}hoge"))
       hoges.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
     }
 
@@ -931,7 +931,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Baa])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Baa]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/baa1"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}baa1"))
         baa1.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
@@ -945,7 +945,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Baa])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Baa]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/baa2"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}baa2"))
         baa2.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
     }
@@ -1066,7 +1066,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Baa])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Baa]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/baa1"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}baa1"))
         baa1.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
       {
@@ -1080,7 +1080,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
         job.setOutputKeyClass(classOf[NullWritable])
         job.setOutputValueClass(classOf[Baa])
         job.setOutputFormatClass(classOf[TemporaryOutputFormat[Baa]])
-        TemporaryOutputFormat.setOutputPath(job, new Path(path, "extenal/input/baa2"))
+        TemporaryOutputFormat.setOutputPath(job, new Path(path, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}baa2"))
         baa2.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
     }
