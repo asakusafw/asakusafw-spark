@@ -1,9 +1,6 @@
 package com.asakusafw.spark.compiler
 
-import java.io.{ File, FileOutputStream, PrintStream }
 import java.lang.{ Boolean => JBoolean }
-import java.nio.file.Files
-import java.util.{ List => JList }
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable
@@ -28,7 +25,6 @@ import com.asakusafw.lang.compiler.model.description.{ ClassDescription, TypeDes
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSparkPlanner, PartitioningParameters }
-import com.asakusafw.lang.compiler.planning.util.DotGenerator
 import com.asakusafw.spark.compiler.serializer.{
   BranchKeySerializerClassBuilder,
   BroadcastIdSerializerClassBuilder,
@@ -40,8 +36,6 @@ import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.utils.graph.Graphs
-
-import resource._
 
 @Exclusive
 class SparkClientCompiler extends JobflowProcessor {
@@ -58,12 +52,6 @@ class SparkClientCompiler extends JobflowProcessor {
 
     val plan = preparePlan(source.getOperatorGraph.copy)
 
-    for {
-      dotOutputStream <- managed(
-        jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/plan.dot")))
-    } {
-      new DotGenerator().dump(dotOutputStream, source.getFlowId, plan)
-    }
     InspectionExtension.inspect(jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
 
     if (JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString)) == false) {
