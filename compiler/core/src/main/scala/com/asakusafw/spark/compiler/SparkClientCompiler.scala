@@ -59,12 +59,10 @@ class SparkClientCompiler extends JobflowProcessor {
     val plan = preparePlan(source.getOperatorGraph.copy)
 
     for {
-      dotOutputStream <- managed(new PrintStream(
-        jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/plan.dot", '/'))))
+      dotOutputStream <- managed(
+        jpContext.addResourceFile(Location.of("META-INF/asakusa-spark/plan.dot")))
     } {
-      val dotGenerator = new DotGenerator
-      val dot = dotGenerator.generate(plan, source.getFlowId)
-      dotGenerator.save(dotOutputStream, dot)
+      new DotGenerator().dump(dotOutputStream, source.getFlowId, plan)
     }
     InspectionExtension.inspect(jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
 
@@ -299,6 +297,5 @@ object SparkClientCompiler {
 
   object Options {
     val SparkPlanVerify = "spark.plan.verify"
-    val SparkPlanDump = "spark.plan.dump"
   }
 }
