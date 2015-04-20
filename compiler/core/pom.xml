@@ -62,8 +62,8 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.asakusafw.planner.spark</groupId>
-			<artifactId>asakusafw-planner-spark</artifactId>
+			<groupId>com.asakusafw.spark</groupId>
+			<artifactId>asakusa-spark-planner</artifactId>
 		</dependency>
 
 		<dependency>
