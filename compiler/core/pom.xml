@@ -32,6 +32,10 @@
 			<artifactId>asakusa-dsl-vocabulary</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>com.asakusafw</groupId>
+			<artifactId>simple-graph</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>com.asakusafw.bridge</groupId>
 			<artifactId>asakusa-bridge-runtime</artifactId>
 		</dependency>
