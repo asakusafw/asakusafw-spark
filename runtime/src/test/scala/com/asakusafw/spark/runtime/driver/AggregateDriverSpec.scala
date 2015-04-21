@@ -252,7 +252,7 @@ object AggregateDriverSpec {
       override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val fragment1 = new HogeOutputFragment
         val fragment2 = new HogeOutputFragment
-        (new EdgeFragment[Hoge](Seq(fragment1, fragment2)) {
+        (new EdgeFragment[Hoge](Array(fragment1, fragment2)) {
           override def newDataModel(): Hoge = new Hoge()
         }, Map(
           Result1 -> fragment1,

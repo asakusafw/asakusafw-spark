@@ -69,14 +69,12 @@ class FragmentTreeBuilder(
             EdgeFragmentClassBuilder.getOrCompile(context.flowId, output.getDataType.asType, context.jpContext)
           }))
       fragment.dup().invokeInit({
-        val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-        opposites.foreach { opposite =>
-          builder.invokeI(NameTransformer.encode("+="),
-            classOf[mutable.Builder[_, _]].asType,
-            opposite.push().asType(classOf[AnyRef].asType))
+        val arr = pushNewArray(classOf[Fragment[_]].asType, output.getOpposites.size)
+        opposites.zipWithIndex.foreach {
+          case (opposite, i) =>
+            arr.dup().astore(ldc(i), opposite.push())
         }
-        builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+        arr
       })
       fragment.store(nextLocal.getAndAdd(fragment.size))
     } else {

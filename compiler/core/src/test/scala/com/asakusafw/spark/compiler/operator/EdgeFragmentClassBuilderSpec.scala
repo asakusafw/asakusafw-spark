@@ -26,7 +26,7 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
     val cls = loadClass(builder.thisType.getClassName, builder.build())
       .asSubclass(classOf[EdgeFragment[TestModel]])
 
-    val fragment = cls.getConstructor(classOf[Seq[Fragment[_]]]).newInstance(Seq(out1, out2))
+    val fragment = cls.getConstructor(classOf[Array[Fragment[_]]]).newInstance(Array(out1, out2))
 
     val dm = new TestModel()
     for (i <- 0 until 10) {
