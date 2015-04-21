@@ -9,6 +9,7 @@ import scala.reflect.NameTransformer
 
 import org.objectweb.asm.Type
 
+import org.apache.spark.util.collection.backdoor.CompactBuffer
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.description.TypeDescription
 import com.asakusafw.lang.compiler.model.graph.Group
@@ -32,31 +33,29 @@ class ShuffleKeyClassBuilder(
 
       thisVar.push().invokeInit(
         superType, {
-          val builder = getStatic(Vector.getClass.asType, "MODULE$", Vector.getClass.asType)
-            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+          val buffer = pushNew0(classOf[CompactBuffer[_]].asType)
 
           grouping.foreach {
             case (_, t) =>
-              builder.invokeI(
+              buffer.invokeV(
                 NameTransformer.encode("+="),
-                classOf[mutable.Builder[_, _]].asType,
+                classOf[CompactBuffer[_]].asType,
                 pushNew0(t).asType(classOf[AnyRef].asType))
           }
 
-          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+          buffer.asType(classOf[Seq[_]].asType)
         }, {
-          val builder = getStatic(Vector.getClass.asType, "MODULE$", Vector.getClass.asType)
-            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+          val buffer = pushNew0(classOf[CompactBuffer[_]].asType)
 
           ordering.foreach {
             case (_, t) =>
-              builder.invokeI(
+              buffer.invokeV(
                 NameTransformer.encode("+="),
-                classOf[mutable.Builder[_, _]].asType,
+                classOf[CompactBuffer[_]].asType,
                 pushNew0(t).asType(classOf[AnyRef].asType))
           }
 
-          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+          buffer.asType(classOf[Seq[_]].asType)
         })
     }
 
