@@ -17,6 +17,7 @@ import org.apache.spark.SparkContext._
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.common.Location
 import com.asakusafw.lang.compiler.inspection.driver.{ AbstractInspectionExtension, InspectionExtension }
@@ -83,8 +84,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
         assert(plan.getElements.size === 2)
         plan
       }
@@ -189,8 +190,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
         assert(plan.getElements.size === 3)
         plan
       }
@@ -364,8 +365,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
         assert(plan.getElements.size === 8)
         plan
       }
@@ -564,8 +565,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
         assert(plan.getElements.size === 6)
         plan
       }
@@ -712,8 +713,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
         assert(plan.getElements.size === 4)
         plan
       }
@@ -836,8 +837,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
         assert(plan.getElements.size === 4)
         plan
       }
@@ -977,8 +978,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
         assert(plan.getElements.size === 4)
         plan
       }
@@ -1111,8 +1112,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
     val compiler = new SparkClientCompiler {
 
-      override def preparePlan(graph: OperatorGraph): Plan = {
-        val plan = super.preparePlan(graph)
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
         assert(plan.getElements.size === 4)
         plan
       }

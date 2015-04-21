@@ -24,7 +24,8 @@ import com.asakusafw.lang.compiler.inspection.driver.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, TypeDescription }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
-import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, LogicalSparkPlanner, PartitioningParameters }
+import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
+import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.compiler.serializer.{
   BranchKeySerializerClassBuilder,
   BroadcastIdSerializerClassBuilder,
@@ -50,7 +51,7 @@ class SparkClientCompiler extends JobflowProcessor {
       Logger.debug("Start Asakusafw Spark compiler.")
     }
 
-    val plan = preparePlan(source.getOperatorGraph.copy)
+    val plan = preparePlan(jpContext, source)
 
     InspectionExtension.inspect(jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
 
@@ -270,8 +271,8 @@ class SparkClientCompiler extends JobflowProcessor {
     }
   }
 
-  def preparePlan(graph: OperatorGraph): Plan = {
-    new LogicalSparkPlanner().createPlan(graph).getPlan
+  def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+    SparkPlanning.plan(jpContext, source, source.getOperatorGraph.copy).getPlan
   }
 }
 
