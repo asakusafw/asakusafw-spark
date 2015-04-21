@@ -1,4 +1,5 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user
 package join
 
@@ -6,7 +7,6 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import java.nio.file.Files
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
@@ -33,7 +33,7 @@ import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp, Maste
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterBranchOperatorCompilerSpecTest extends ShuffledMasterBranchOperatorCompilerSpec
 
-class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import ShuffledMasterBranchOperatorCompilerSpec._
 
@@ -50,7 +50,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -118,7 +118,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -189,7 +189,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -257,7 +257,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

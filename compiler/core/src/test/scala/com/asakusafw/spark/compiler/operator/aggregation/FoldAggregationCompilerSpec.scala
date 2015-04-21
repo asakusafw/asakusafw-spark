@@ -1,10 +1,9 @@
-package com.asakusafw.spark.compiler.operator.aggregation
+package com.asakusafw.spark.compiler
+package operator.aggregation
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 
@@ -23,7 +22,7 @@ import com.asakusafw.vocabulary.operator.Fold
 @RunWith(classOf[JUnitRunner])
 class FoldAggregationCompilerSpecTest extends FoldAggregationCompilerSpec
 
-class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
+class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import FoldAggregationCompilerSpec._
 
@@ -37,7 +36,7 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = Files.createTempDirectory("FoldAggregationCompilerSpec").toFile
+    val classpath = createTempDirectory("FoldAggregationCompilerSpec").toFile
     implicit val context = AggregationCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -78,7 +77,7 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = Files.createTempDirectory("FoldAggregationCompilerSpec").toFile
+    val classpath = createTempDirectory("FoldAggregationCompilerSpec").toFile
     implicit val context = AggregationCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

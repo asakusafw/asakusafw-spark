@@ -33,15 +33,14 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverClassBuilderSpecTest extends InputOutputDriverClassBuilderSpec
 
-class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar {
+class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with TempDir {
 
   import InputOutputDriverClassBuilderSpec._
 
   behavior of "Input/OutputDriverClassBuilder"
 
   it should "build input and output driver class" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = new File(createTempDirectory("test-").toFile, "tmp")
     val path = tmpDir.getAbsolutePath
 
     val resolvers = SubPlanCompiler(Thread.currentThread.getContextClassLoader)

@@ -1,10 +1,9 @@
-package com.asakusafw.spark.compiler.operator.aggregation
+package com.asakusafw.spark.compiler
+package operator.aggregation
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 
@@ -24,7 +23,7 @@ import com.asakusafw.vocabulary.operator.Summarize
 @RunWith(classOf[JUnitRunner])
 class SummarizeAggregationCompilerSpecTest extends SummarizeAggregationCompilerSpec
 
-class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
+class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import SummarizeAggregationCompilerSpec._
 
@@ -37,7 +36,7 @@ class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar {
       .output("output", ClassDescription.of(classOf[SummarizedValue]))
       .build()
 
-    val classpath = Files.createTempDirectory("SummarizeAggregationCompilerSpec").toFile
+    val classpath = createTempDirectory("SummarizeAggregationCompilerSpec").toFile
     implicit val context = AggregationCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

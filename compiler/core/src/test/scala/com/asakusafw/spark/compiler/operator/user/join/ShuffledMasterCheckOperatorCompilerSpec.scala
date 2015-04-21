@@ -1,11 +1,11 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user.join
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import java.nio.file.Files
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
@@ -32,7 +32,7 @@ import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp, MasterS
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterCheckOperatorCompilerSpecTest extends ShuffledMasterCheckOperatorCompilerSpec
 
-class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import ShuffledMasterCheckOperatorCompilerSpec._
 
@@ -49,7 +49,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterCheckOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterCheckOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -117,7 +117,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterCheckOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterCheckOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

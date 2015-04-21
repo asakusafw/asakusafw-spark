@@ -1,11 +1,10 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package core
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -29,7 +28,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class ProjectionOperatorsCompilerSpecTest extends ProjectionOperatorsCompilerSpec
 
-class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
+class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import ProjectionOperatorsCompilerSpec._
 
@@ -41,7 +40,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       .output("output", ClassDescription.of(classOf[ProjectOutputModel]))
       .build()
 
-    val classpath = Files.createTempDirectory("ProjectionOperatorsCompilerSpec").toFile
+    val classpath = createTempDirectory("ProjectionOperatorsCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -82,7 +81,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       .output("output", ClassDescription.of(classOf[ExtendOutputModel]))
       .build()
 
-    val classpath = Files.createTempDirectory("ExtendOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("ExtendOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -123,7 +122,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar {
       .output("output", ClassDescription.of(classOf[RestructureOutputModel]))
       .build()
 
-    val classpath = Files.createTempDirectory("RestructureOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("RestructureOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

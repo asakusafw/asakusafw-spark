@@ -6,7 +6,9 @@ import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
+import java.nio.file.{ Files, Path }
 
+import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
@@ -31,9 +33,8 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
   behavior of "Input/OutputDriver"
 
   it should "output and input" in {
-    val tmpDir = File.createTempFile(s"test-${EXPR_EXECUTION_ID}-", null)
-    tmpDir.delete
-    val path = tmpDir.getAbsolutePath
+    val tmpDir = createTempDirectory().toFile
+    val path = new File(tmpDir, s"output-${EXPR_EXECUTION_ID}").getAbsolutePath
 
     val f = new Function1[Int, (_, Hoge)] with Serializable {
       @transient var h: Hoge = _
@@ -55,6 +56,20 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
 
     val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
     assert(inputs(HogeResult).map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
+  }
+
+  private def createTempDirectory(): Path = {
+    val tmpDir = Files.createTempDirectory(s"test-")
+    sys.addShutdownHook {
+      def deleteRecursively(path: Path): Unit = {
+        if (Files.isDirectory(path)) {
+          Files.newDirectoryStream(path).foreach(deleteRecursively)
+        }
+        Files.delete(path)
+      }
+      deleteRecursively(tmpDir)
+    }
+    tmpDir
   }
 }
 

@@ -1,11 +1,11 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import java.nio.file.Files
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
@@ -32,7 +32,7 @@ import com.asakusafw.vocabulary.operator.CoGroup
 @RunWith(classOf[JUnitRunner])
 class CoGroupOperatorCompilerSpecTest extends CoGroupOperatorCompilerSpec
 
-class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import CoGroupOperatorCompilerSpec._
 
@@ -53,7 +53,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = Files.createTempDirectory("CoGroupOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("CoGroupOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

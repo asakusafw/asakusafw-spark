@@ -1,11 +1,10 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -28,7 +27,7 @@ import com.asakusafw.vocabulary.operator.Update
 @RunWith(classOf[JUnitRunner])
 class UpdateOperatorCompilerSpecTest extends UpdateOperatorCompilerSpec
 
-class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import UpdateOperatorCompilerSpec._
 
@@ -42,7 +41,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("rate", ImmediateDescription.of(100))
       .build();
 
-    val classpath = Files.createTempDirectory("UpdateOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("UpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -87,7 +86,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("rate", ImmediateDescription.of(100))
       .build();
 
-    val classpath = Files.createTempDirectory("UpdateOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("UpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

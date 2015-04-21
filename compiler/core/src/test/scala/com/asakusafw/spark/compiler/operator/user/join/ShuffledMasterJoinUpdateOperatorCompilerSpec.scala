@@ -1,11 +1,11 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user.join
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import java.nio.file.Files
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
@@ -32,7 +32,7 @@ import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateO
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterJoinUpdateOperatorCompilerSpecTest extends ShuffledMasterJoinUpdateOperatorCompilerSpec
 
-class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import ShuffledMasterJoinUpdateOperatorCompilerSpec._
 
@@ -49,7 +49,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -118,7 +118,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -190,7 +190,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -259,7 +259,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

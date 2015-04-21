@@ -1,11 +1,10 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -30,7 +29,7 @@ import com.asakusafw.vocabulary.operator.Split
 @RunWith(classOf[JUnitRunner])
 class SplitOperatorCompilerSpecTest extends SplitOperatorCompilerSpec
 
-class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import SplitOperatorCompilerSpec._
 
@@ -44,7 +43,7 @@ class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .output("right", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = Files.createTempDirectory("SplitOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("SplitOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

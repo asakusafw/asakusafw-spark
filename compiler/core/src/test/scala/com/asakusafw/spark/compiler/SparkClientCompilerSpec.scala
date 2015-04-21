@@ -42,15 +42,14 @@ import com.asakusafw.vocabulary.operator._
 @RunWith(classOf[JUnitRunner])
 class SparkClientCompilerSpecTest extends SparkClientCompilerSpec
 
-class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
+class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import SparkClientCompilerSpec._
 
   behavior of classOf[SparkClientCompiler].getSimpleName
 
   it should "compile Spark client from simple plan" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = createTempDirectory("test-").toFile
     val classpath = new File(tmpDir, "classes").getAbsoluteFile
     classpath.mkdirs()
     val path = new File(tmpDir, "tmp").getAbsolutePath
@@ -142,8 +141,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 
   it should "compile Spark client with Extract" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = createTempDirectory("test-").toFile
     val classpath = new File(tmpDir, "classes").getAbsoluteFile
     classpath.mkdirs()
     val path = new File(tmpDir, "tmp").getAbsolutePath
@@ -261,8 +259,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 
   it should "compile Spark client with CoGroup" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = createTempDirectory("test-").toFile
     val classpath = new File(tmpDir, "classes").getAbsoluteFile
     classpath.mkdirs()
     val path = new File(tmpDir, "tmp").getAbsolutePath
@@ -470,8 +467,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 
   it should "compile Spark client with MasterCheck" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = createTempDirectory("test-").toFile
     val classpath = new File(tmpDir, "classes").getAbsoluteFile
     classpath.mkdirs()
     val path = new File(tmpDir, "tmp").getAbsolutePath
@@ -640,8 +636,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 
   it should "compile Spark client with broadcast MasterCheck" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = createTempDirectory("test-").toFile
     val classpath = new File(tmpDir, "classes").getAbsoluteFile
     classpath.mkdirs()
     val path = new File(tmpDir, "tmp").getAbsolutePath
@@ -789,8 +784,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 
   it should "compile Spark client with broadcast self MasterCheck" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = createTempDirectory("test-").toFile
     val classpath = new File(tmpDir, "classes").getAbsoluteFile
     classpath.mkdirs()
     val path = new File(tmpDir, "tmp").getAbsolutePath
@@ -913,8 +907,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 
   it should "compile Spark client with Fold" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = createTempDirectory("test-").toFile
     val classpath = new File(tmpDir, "classes").getAbsoluteFile
     classpath.mkdirs()
     val path = new File(tmpDir, "tmp").getAbsolutePath
@@ -1048,8 +1041,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar {
   }
 
   it should "compile Spark client with Summarize" in {
-    val tmpDir = File.createTempFile("test-", null)
-    tmpDir.delete
+    val tmpDir = createTempDirectory("test-").toFile
     val classpath = new File(tmpDir, "classes").getAbsoluteFile
     classpath.mkdirs()
     val path = new File(tmpDir, "tmp").getAbsolutePath

@@ -1,11 +1,10 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -29,7 +28,7 @@ import com.asakusafw.vocabulary.operator.Branch
 @RunWith(classOf[JUnitRunner])
 class BranchOperatorCompilerSpecTest extends BranchOperatorCompilerSpec
 
-class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import BranchOperatorCompilerSpec._
 
@@ -44,7 +43,7 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = Files.createTempDirectory("BranchOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("BranchOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -95,7 +94,7 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = Files.createTempDirectory("BranchOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("BranchOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

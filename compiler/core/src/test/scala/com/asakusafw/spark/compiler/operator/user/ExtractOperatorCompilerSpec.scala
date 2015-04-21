@@ -1,11 +1,10 @@
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package user
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.nio.file.Files
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -29,7 +28,7 @@ import com.asakusafw.vocabulary.operator.Extract
 @RunWith(classOf[JUnitRunner])
 class ExtractOperatorCompilerSpecTest extends ExtractOperatorCompilerSpec
 
-class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
+class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
 
   import ExtractOperatorCompilerSpec._
 
@@ -44,7 +43,7 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = Files.createTempDirectory("ExtractOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("ExtractOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -96,7 +95,7 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar {
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = Files.createTempDirectory("ExtractOperatorCompilerSpec").toFile
+    val classpath = createTempDirectory("ExtractOperatorCompilerSpec").toFile
     implicit val context = OperatorCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(

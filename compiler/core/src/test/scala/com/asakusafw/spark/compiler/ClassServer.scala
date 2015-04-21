@@ -21,11 +21,10 @@ import resource._
 
 class ClassServer(val root: Path, val parent: ClassLoader, conf: SparkConf, securityManager: SecurityManager) {
 
-  val logger = LoggerFactory.getLogger(getClass)
+  val Logger = LoggerFactory.getLogger(getClass)
 
   def this(parent: ClassLoader, conf: SparkConf, securityManager: SecurityManager) = {
-    this(Files.createTempDirectory("classserver-"), parent, conf, securityManager)
-    addShutdownHook()
+    this(TempDir.createTempDirectory("classserver-"), parent, conf, securityManager)
   }
 
   def this(parent: ClassLoader, conf: SparkConf) = {
@@ -39,22 +38,22 @@ class ClassServer(val root: Path, val parent: ClassLoader, conf: SparkConf, secu
 
   def start(): String = {
     httpServer.start()
-    logger.info(s"Class server started at ${httpServer.uri}")
+    Logger.info(s"Class server started at ${httpServer.uri}")
     httpServer.uri
   }
 
   def stop(): Unit = {
     httpServer.stop()
-    logger.info("Class server stopped")
+    Logger.info("Class server stopped")
   }
 
   def register(`type`: Type, bytes: => Array[Byte]): Unit = {
     if (registered(`type`)) {
-      logger.warn(s"Class[${`type`.getClassName()}] was already registered.")
+      Logger.warn(s"Class[${`type`.getClassName()}] was already registered.")
     } else {
       val bs = bytes
-      if (logger.isInfoEnabled) {
-        logger.info {
+      if (Logger.isInfoEnabled) {
+        Logger.info {
           val writer = new StringWriter
           val cr = new ClassReader(bs)
           cr.accept(new TraceClassVisitor(new PrintWriter(writer)), 0)
@@ -67,7 +66,7 @@ class ClassServer(val root: Path, val parent: ClassLoader, conf: SparkConf, secu
         os.write(bs)
       }
       registered += `type`
-      logger.info(s"Class[${`type`.getClassName()}] was registered.")
+      Logger.info(s"Class[${`type`.getClassName()}] was registered.")
     }
   }
 
@@ -82,21 +81,5 @@ class ClassServer(val root: Path, val parent: ClassLoader, conf: SparkConf, secu
 
   def loadClass(name: String): Class[_] = {
     classLoader.loadClass(name)
-  }
-
-  private def addShutdownHook() = {
-    Runtime.getRuntime.addShutdownHook(
-      new Thread("delete temp dir " + root) {
-
-        override def run() {
-          def deleteRecursively(path: Path): Unit = {
-            if (Files.isDirectory(path)) {
-              Files.newDirectoryStream(path).foreach(deleteRecursively)
-            }
-            Files.delete(path)
-          }
-          deleteRecursively(root)
-        }
-      })
   }
 }
