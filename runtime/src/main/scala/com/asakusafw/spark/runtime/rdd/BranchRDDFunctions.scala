@@ -48,20 +48,18 @@ private class BranchPartitioner[B](branchKeys: Set[B], partitioners: Map[B, Part
 
   private[this] val offsets = branches.scanLeft(0)(_ + numPartitionsOf(_))
 
-  override def numPartitions: Int = offsets.last
+  override val numPartitions: Int = offsets.last
 
   override def getPartition(key: Any): Int = {
     assert(key.isInstanceOf[(_, _)],
       s"The key used for branch should be the form (branchKey, actualKey): ${key}")
-    val (branch, origKey) = key.asInstanceOf[(B, Any)]
-    offsetOf(branch) + getPartitionOf(branch, origKey)
+    val (branch, actualKey) = key.asInstanceOf[(B, Any)]
+    offsetOf(branch) + partitioners(branch).getPartition(actualKey)
   }
 
+  val offsetOf: Map[B, Int] = branches.zip(offsets).toMap
+
   def numPartitionsOf(branch: B): Int = partitioners(branch).numPartitions
-
-  def getPartitionOf(branch: B, key: Any): Int = partitioners(branch).getPartition(key)
-
-  def offsetOf(branch: B): Int = offsets(branches.indexOf(branch))
 }
 
 private class BranchKeyOrdering[B, K](orderings: Map[B, Ordering[K]])
