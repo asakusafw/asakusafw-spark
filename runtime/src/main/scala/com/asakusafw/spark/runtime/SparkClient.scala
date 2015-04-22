@@ -16,6 +16,7 @@ abstract class SparkClient {
   def execute(conf: SparkConf): Int = {
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     conf.set("spark.kryo.registrator", kryoRegistrator)
+    conf.set("spark.kryo.referenceTracking", false.toString)
 
     val sc = new SparkContext(conf)
     try {

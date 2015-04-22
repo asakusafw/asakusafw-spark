@@ -3,7 +3,7 @@ package com.asakusafw.spark.runtime.fragment
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 
-abstract class EdgeFragment[T <: DataModel[T]](children: Seq[Fragment[T]]) extends Fragment[T] {
+abstract class EdgeFragment[T <: DataModel[T]](children: Array[Fragment[T]]) extends Fragment[T] {
   assert(children.size > 1,
     s"The size of children should be greater than 1: ${children.size}")
 
@@ -11,17 +11,24 @@ abstract class EdgeFragment[T <: DataModel[T]](children: Seq[Fragment[T]]) exten
 
   private[this] val dataModel: T = newDataModel()
 
+  private[this] val size = children.size
+
   override def add(result: T): Unit = {
-    children.tail.foreach {
-      case output =>
-        dataModel.reset()
-        dataModel.copyFrom(result)
-        output.add(dataModel)
+    var i = 0
+    while (i < size - 1) {
+      dataModel.reset()
+      dataModel.copyFrom(result)
+      children(i).add(dataModel)
+      i += 1
     }
-    children.head.add(result)
+    children(i).add(result)
   }
 
   override def reset(): Unit = {
-    children.foreach(_.reset())
+    var i = 0
+    while (i < size) {
+      children(i).reset()
+      i += 1
+    }
   }
 }

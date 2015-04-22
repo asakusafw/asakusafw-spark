@@ -15,7 +15,8 @@ import com.asakusafw.lang.compiler.planning.spark.{ NextDominantOperator, Partit
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.{ BranchKey, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

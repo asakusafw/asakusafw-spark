@@ -13,7 +13,7 @@ import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
-trait Branch[T] {
+trait Branching[T] {
 
   def hadoopConf: Broadcast[Configuration]
 
@@ -34,11 +34,11 @@ trait Branch[T] {
       Map(branchKeys.head ->
         rdd.mapPartitions({ iter =>
           f(iter).map {
-            case ((_, k), v) => (k, v)
+            case (Branch(_, k), v) => (k, v)
           }
         }, preservesPartitioning = true))
     } else {
-      rdd.branch[BranchKey, ShuffleKey, Any](
+      rdd.branch[ShuffleKey, Any](
         branchKeys,
         { iter =>
           val combiners = aggregations.collect {
@@ -49,7 +49,7 @@ trait Branch[T] {
             f(iter)
           } else {
             f(iter).flatMap {
-              case ((b, k), v) if combiners.contains(b) =>
+              case (Branch(b, k), v) if combiners.contains(b) =>
                 combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]]
                   .insert(k, v)
                 Iterator.empty
@@ -57,7 +57,7 @@ trait Branch[T] {
             } ++ combiners.iterator.flatMap {
               case (b, combiner) =>
                 combiner.iterator.map {
-                  case (k, v) => ((b, k), v)
+                  case (k, v) => (Branch(b, k), v)
                 }
             }
           }
@@ -68,7 +68,7 @@ trait Branch[T] {
     }
   }
 
-  private def f(iter: Iterator[(_, T)]): Iterator[((BranchKey, ShuffleKey), _)] = {
+  private def f(iter: Iterator[(_, T)]): Iterator[(Branch[ShuffleKey], _)] = {
     val (fragment, outputs) = fragments
     assert(outputs.keys.toSet == branchKeys,
       s"The branch keys of outputs and branch keys field should be the same: (${
@@ -76,6 +76,7 @@ trait Branch[T] {
       }, ${
         branchKeys.mkString("(", ",", ")")
       })")
+    val branchOutputs = outputs.toArray
 
     new ResourceBrokingIterator(
       hadoopConf.value,
@@ -83,13 +84,9 @@ trait Branch[T] {
         case (_, value) =>
           fragment.reset()
           fragment.add(value)
-          outputs.iterator.flatMap {
+          branchOutputs.iterator.flatMap {
             case (key, output) =>
-              def prepare[V](iter: Iterator[_]) = {
-                iter.asInstanceOf[Iterator[V]]
-                  .map(value => ((key, shuffleKey(key, value)), value))
-              }
-              prepare(output.iterator)
+              output.iterator.map(value => (Branch(key, shuffleKey(key, value)), value))
           }
       })
   }

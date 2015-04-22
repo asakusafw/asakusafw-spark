@@ -8,13 +8,14 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor.CallSite
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class MapDriver[T](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Broadcast[_]],
   @transient prevs: Seq[RDD[(_, T)]])
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[T] {
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[T] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 

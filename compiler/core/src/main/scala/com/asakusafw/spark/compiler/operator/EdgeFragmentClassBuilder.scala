@@ -16,13 +16,21 @@ import com.asakusafw.spark.tools.asm._
 class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${EdgeFragmentClassBuilder.nextId};"),
-      Some(EdgeFragmentClassBuilder.signature(dataModelType)),
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[EdgeFragment[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(dataModelType)
+            }
+          }
+        }
+        .build(),
       classOf[EdgeFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(classOf[Seq[Fragment[_]]].asType)) { mb =>
+    ctorDef.newInit(Seq(classOf[Array[Fragment[_]]].asType)) { mb =>
       import mb._
-      val childrenVar = `var`(classOf[Seq[Fragment[_]]].asType, thisVar.nextLocal)
+      val childrenVar = `var`(classOf[Array[Fragment[_]]].asType, thisVar.nextLocal)
       thisVar.push().invokeInit(superType, childrenVar.push())
     }
   }
@@ -47,18 +55,6 @@ object EdgeFragmentClassBuilder {
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 
   def nextId: Long = curId.getAndIncrement
-
-  def signature(dataModelType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[EdgeFragment[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-            _.newClassType(dataModelType)
-          }
-        }
-      }
-      .build()
-  }
 
   private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Type), Type]] =
     mutable.WeakHashMap.empty

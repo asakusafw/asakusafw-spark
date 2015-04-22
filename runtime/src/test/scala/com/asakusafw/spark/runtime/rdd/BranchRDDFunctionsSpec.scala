@@ -17,92 +17,92 @@ class BranchRDDFunctionsSpec extends FlatSpec with SparkSugar {
 
   it should "branch by odd or even" in {
     val rdd = sc.parallelize(0 until 100)
-    val branched = rdd.branch(Set(true, false), iter => {
-      iter.map(i => ((i % 2 == 0, null), (i, TaskContext.get.partitionId)))
+    val branched = rdd.branch(Set(BranchKey(0), BranchKey(1)), iter => {
+      iter.map(i => (Branch(BranchKey(if (i % 2 == 0) 1 else 0), null), (i, TaskContext.get.partitionId)))
     })
 
-    assert(branched(true).map(_._2._1).collect.toSeq === (0 until 100 by 2))
-    assert(branched(true).partitioner.isEmpty)
-    assert(branched(true).partitions.length === rdd.partitions.length)
-    assert(branched(true).map {
+    assert(branched(BranchKey(1)).map(_._2._1).collect.toSeq === (0 until 100 by 2))
+    assert(branched(BranchKey(1)).partitioner.isEmpty)
+    assert(branched(BranchKey(1)).partitions.length === rdd.partitions.length)
+    assert(branched(BranchKey(1)).map {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.forall(_ == true))
 
-    assert(branched(false).map(_._2._1).collect.toSeq === (1 until 100 by 2))
-    assert(branched(false).partitioner.isEmpty)
-    assert(branched(false).partitions.length === rdd.partitions.length)
-    assert(branched(false).map {
+    assert(branched(BranchKey(0)).map(_._2._1).collect.toSeq === (1 until 100 by 2))
+    assert(branched(BranchKey(0)).partitioner.isEmpty)
+    assert(branched(BranchKey(0)).partitions.length === rdd.partitions.length)
+    assert(branched(BranchKey(0)).map {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.forall(_ == true))
   }
 
   it should "branch and shuffle by odd or even" in {
     val rdd = sc.parallelize(0 until 100)
-    val branched = rdd.branch(Set(true, false), iter => {
-      iter.map(i => ((i % 2 == 0, i), (i, TaskContext.get.partitionId)))
+    val branched = rdd.branch(Set(BranchKey(0), BranchKey(1)), iter => {
+      iter.map(i => (Branch(BranchKey(if (i % 2 == 0) 1 else 0), i), (i, TaskContext.get.partitionId)))
     },
-      partitioners = Map(true -> new HashPartitioner(3)))
+      partitioners = Map(BranchKey(1) -> new HashPartitioner(3)))
 
-    assert(branched(true).map(_._2._1).collect.toSeq ===
+    assert(branched(BranchKey(1)).map(_._2._1).collect.toSeq ===
       rdd.filter(_ % 2 == 0).map(i => (i, i)).partitionBy(new HashPartitioner(3)).map(_._2).collect.toSeq)
-    assert(branched(true).partitioner.isDefined)
-    assert(branched(true).partitions.length === 3)
-    assert(branched(true).map {
+    assert(branched(BranchKey(1)).partitioner.isDefined)
+    assert(branched(BranchKey(1)).partitions.length === 3)
+    assert(branched(BranchKey(1)).map {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.exists(_ == false))
 
-    assert(branched(false).map(_._2._1).collect.toSeq === (1 until 100 by 2))
-    assert(branched(false).partitioner.isEmpty)
-    assert(branched(false).partitions.length === rdd.partitions.length)
-    assert(branched(false).map {
+    assert(branched(BranchKey(0)).map(_._2._1).collect.toSeq === (1 until 100 by 2))
+    assert(branched(BranchKey(0)).partitioner.isEmpty)
+    assert(branched(BranchKey(0)).partitions.length === rdd.partitions.length)
+    assert(branched(BranchKey(0)).map {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.forall(_ == true))
   }
 
   it should "branch by odd or even preserving partitioning" in {
     val rdd = sc.parallelize(0 until 100).map(i => (i, i)).partitionBy(new HashPartitioner(4))
-    val branched = rdd.branch(Set(true, false), iter => {
-      iter.map(ii => ((ii._2 % 2 == 0, ii._1), (ii._2, TaskContext.get.partitionId)))
+    val branched = rdd.branch(Set(BranchKey(0), BranchKey(1)), iter => {
+      iter.map(ii => (Branch(BranchKey(if (ii._2 % 2 == 0) 1 else 0), ii._1), (ii._2, TaskContext.get.partitionId)))
     },
-      partitioners = Map(true -> new HashPartitioner(3)),
+      partitioners = Map(BranchKey(1) -> new HashPartitioner(3)),
       preservesPartitioning = true)
 
-    assert(branched(true).map(_._2._1).collect.toSeq ===
+    assert(branched(BranchKey(1)).map(_._2._1).collect.toSeq ===
       rdd.filter(_._2 % 2 == 0).partitionBy(new HashPartitioner(3)).map(_._2).collect.toSeq)
-    assert(branched(true).partitioner.isDefined)
-    assert(branched(true).partitions.length === 3)
-    assert(branched(true).map {
+    assert(branched(BranchKey(1)).partitioner.isDefined)
+    assert(branched(BranchKey(1)).partitions.length === 3)
+    assert(branched(BranchKey(1)).map {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.exists(_ == false))
 
-    assert(branched(false).map(_._2._1).collect.toSeq ===
+    assert(branched(BranchKey(0)).map(_._2._1).collect.toSeq ===
       rdd.filter(_._2 % 2 != 0).map(_._2).collect.toSeq)
-    assert(branched(false).partitioner.isDefined)
-    assert(branched(false).partitions.length === 4)
-    assert(branched(false).map {
+    assert(branched(BranchKey(0)).partitioner.isDefined)
+    assert(branched(BranchKey(0)).partitions.length === 4)
+    assert(branched(BranchKey(0)).map {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.forall(_ == true))
   }
 
   it should "branch by odd or even ordering desc" in {
     val rdd = sc.parallelize(0 until 100)
-    val branched = rdd.branch(Set(true, false), iter => {
-      iter.map(i => ((i % 2 == 0, i), (i, TaskContext.get.partitionId)))
+    val branched = rdd.branch(Set(BranchKey(0), BranchKey(1)), iter => {
+      iter.map(i => (Branch(BranchKey(if (i % 2 == 0) 1 else 0), i), (i, TaskContext.get.partitionId)))
     },
-      keyOrderings = Map(true -> implicitly[Ordering[Int]].reverse))
+      keyOrderings = Map(BranchKey(1) -> implicitly[Ordering[Int]].reverse))
 
-    assert(branched(true).map(_._2._1).collect.toSeq ===
+    assert(branched(BranchKey(1)).map(_._2._1).collect.toSeq ===
       rdd.mapPartitions(iter => iter.toSeq.filter(_ % 2 == 0).reverse.iterator).collect.toSeq)
-    assert(branched(true).partitioner.isEmpty)
-    assert(branched(true).partitions.length === rdd.partitions.length)
-    assert(branched(true).map {
+    assert(branched(BranchKey(1)).partitioner.isEmpty)
+    assert(branched(BranchKey(1)).partitions.length === rdd.partitions.length)
+    assert(branched(BranchKey(1)).map {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.forall(_ == true))
 
-    assert(branched(false).map(_._2._1).collect.toSeq === (1 until 100 by 2))
-    assert(branched(false).partitioner.isEmpty)
-    assert(branched(false).partitions.length === rdd.partitions.length)
-    assert(branched(false).map {
+    assert(branched(BranchKey(0)).map(_._2._1).collect.toSeq === (1 until 100 by 2))
+    assert(branched(BranchKey(0)).partitioner.isEmpty)
+    assert(branched(BranchKey(0)).partitions.length === rdd.partitions.length)
+    assert(branched(BranchKey(0)).map {
       case (_, (_, partid)) => partid == TaskContext.get.partitionId
     }.collect.forall(_ == true))
   }

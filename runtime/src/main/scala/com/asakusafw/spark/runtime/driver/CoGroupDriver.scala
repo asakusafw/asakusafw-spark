@@ -16,7 +16,7 @@ abstract class CoGroupDriver(
   broadcasts: Map[BroadcastId, Broadcast[_]],
   @transient prevs: Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])],
   @transient part: Partitioner)
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[Seq[Iterable[_]]] {
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[Seq[Iterable[_]]] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 

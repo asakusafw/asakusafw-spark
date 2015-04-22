@@ -13,8 +13,17 @@ import com.asakusafw.runtime.value._
 
 abstract class WritableSerializer[W <: Writable] extends Serializer[W](false, false) {
 
+  private[this] val outputs = new ThreadLocal[(Output, DataOutputStream)]
+
   override def write(kryo: Kryo, output: Output, obj: W) = {
-    val dos = new DataOutputStream(output)
+    val dos = outputs.get match {
+      case (lastOutput, dos) if output == lastOutput =>
+        dos
+      case _ =>
+        val dos = new DataOutputStream(output)
+        outputs.set((output, dos))
+        dos
+    }
     try {
       obj.write(dos)
     } finally {
@@ -22,9 +31,19 @@ abstract class WritableSerializer[W <: Writable] extends Serializer[W](false, fa
     }
   }
 
+  private[this] val inputs = new ThreadLocal[(Input, DataInputStream)]
+
   override def read(kryo: Kryo, input: Input, t: Class[W]): W = {
+    val dis = inputs.get match {
+      case (lastInput, dis) if input == lastInput =>
+        dis
+      case _ =>
+        val dis = new DataInputStream(input)
+        inputs.set((input, dis))
+        dis
+    }
     val obj = newInstance()
-    obj.readFields(new DataInputStream(input))
+    obj.readFields(dis)
     obj
   }
 

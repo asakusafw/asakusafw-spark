@@ -20,6 +20,7 @@ import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.util.VariableTable
+import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class OutputDriver[T: ClassTag](
   sc: SparkContext,

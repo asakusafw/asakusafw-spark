@@ -33,7 +33,8 @@ import com.asakusafw.spark.compiler.serializer.{
 }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
-import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
+import com.asakusafw.spark.runtime.driver.BroadcastId
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.utils.graph.Graphs

@@ -6,6 +6,7 @@ import scala.annotation.tailrec
 
 import org.apache.hadoop.io.Writable
 
+import org.apache.spark.util.collection.backdoor.CompactBuffer
 import com.asakusafw.runtime.value.ValueOption
 
 class ShuffleKey(
@@ -36,7 +37,7 @@ class ShuffleKey(
     obj.isInstanceOf[ShuffleKey]
   }
 
-  def dropOrdering: ShuffleKey = new ShuffleKey(grouping, Vector.empty)
+  def dropOrdering: ShuffleKey = new ShuffleKey(grouping, CompactBuffer())
 }
 
 object ShuffleKey {

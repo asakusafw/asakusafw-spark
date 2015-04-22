@@ -14,8 +14,9 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -69,14 +70,12 @@ class FragmentTreeBuilder(
             EdgeFragmentClassBuilder.getOrCompile(context.flowId, output.getDataType.asType, context.jpContext)
           }))
       fragment.dup().invokeInit({
-        val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-        opposites.foreach { opposite =>
-          builder.invokeI(NameTransformer.encode("+="),
-            classOf[mutable.Builder[_, _]].asType,
-            opposite.push().asType(classOf[AnyRef].asType))
+        val arr = pushNewArray(classOf[Fragment[_]].asType, output.getOpposites.size)
+        opposites.zipWithIndex.foreach {
+          case (opposite, i) =>
+            arr.dup().astore(ldc(i), opposite.push())
         }
-        builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+        arr
       })
       fragment.store(nextLocal.getAndAdd(fragment.size))
     } else {
