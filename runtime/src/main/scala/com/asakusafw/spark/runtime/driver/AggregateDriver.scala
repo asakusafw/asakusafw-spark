@@ -20,7 +20,7 @@ abstract class AggregateDriver[V, C](
   @transient prevs: Seq[RDD[(ShuffleKey, V)]],
   @transient directions: Seq[Boolean],
   @transient partitioner: Partitioner)
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[C] {
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[C] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 

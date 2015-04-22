@@ -13,7 +13,8 @@ import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.Group
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
-import com.asakusafw.spark.runtime.driver.{ BranchKey, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

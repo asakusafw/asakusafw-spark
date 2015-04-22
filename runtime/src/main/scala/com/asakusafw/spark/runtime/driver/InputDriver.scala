@@ -17,17 +17,14 @@ import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor._
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
-import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
-import com.asakusafw.runtime.util.VariableTable
-import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.rdd._
+import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class InputDriver[T: ClassTag](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Broadcast[_]])
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branch[T] {
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[T] {
 
   def paths: Set[String]
 

@@ -7,26 +7,29 @@ import org.apache.spark.rdd._
 
 import com.asakusafw.spark.runtime.orderings.NoOrdering
 
+case class BranchKey(id: Int)
+case class Branch[K](branchKey: BranchKey, actualKey: K)
+
 class BranchRDDFunctions[T: ClassTag](self: RDD[T]) extends Serializable {
 
-  def branch[B, K, U](
-    branchKeys: Set[B],
-    f: Iterator[T] => Iterator[((B, K), U)],
-    partitioners: Map[B, Partitioner] = Map.empty[B, Partitioner],
-    keyOrderings: Map[B, Ordering[K]] = Map.empty[B, Ordering[K]],
-    preservesPartitioning: Boolean = false): Map[B, RDD[(K, U)]] = {
+  def branch[K, U](
+    branchKeys: Set[BranchKey],
+    f: Iterator[T] => Iterator[(Branch[K], U)],
+    partitioners: Map[BranchKey, Partitioner] = Map.empty[BranchKey, Partitioner],
+    keyOrderings: Map[BranchKey, Ordering[K]] = Map.empty[BranchKey, Ordering[K]],
+    preservesPartitioning: Boolean = false): Map[BranchKey, RDD[(K, U)]] = {
 
     val prepared = self.mapPartitions(f, preservesPartitioning)
 
     val branchPartitioner = new BranchPartitioner(
       branchKeys,
       partitioners.withDefaultValue(IdentityPartitioner(prepared.partitions.size)))
-    val shuffled = new ShuffledRDD[(B, K), U, U](prepared, branchPartitioner)
+    val shuffled = new ShuffledRDD[Branch[K], U, U](prepared, branchPartitioner)
     if (keyOrderings.nonEmpty) {
       shuffled.setKeyOrdering(
         new BranchKeyOrdering(keyOrderings.withDefaultValue(new NoOrdering[K])))
     }
-    val branched = shuffled.map { case ((_, k), u) => (k, u) }
+    val branched = shuffled.map { case (Branch(_, k), u) => (k, u) }
     branchKeys.map {
       case branch =>
         branch -> new BranchedRDD[(K, U)](
@@ -41,7 +44,7 @@ class BranchRDDFunctions[T: ClassTag](self: RDD[T]) extends Serializable {
   }
 }
 
-private class BranchPartitioner[B](branchKeys: Set[B], partitioners: Map[B, Partitioner])
+private class BranchPartitioner(branchKeys: Set[BranchKey], partitioners: Map[BranchKey, Partitioner])
     extends Partitioner {
 
   private[this] val branches = branchKeys.toSeq.sortBy(_.hashCode)
@@ -53,20 +56,20 @@ private class BranchPartitioner[B](branchKeys: Set[B], partitioners: Map[B, Part
   override def getPartition(key: Any): Int = {
     assert(key.isInstanceOf[(_, _)],
       s"The key used for branch should be the form (branchKey, actualKey): ${key}")
-    val (branch, actualKey) = key.asInstanceOf[(B, Any)]
-    offsetOf(branch) + partitioners(branch).getPartition(actualKey)
+    val Branch(branchKey, actualKey) = key.asInstanceOf[Branch[Any]]
+    offsetOf(branchKey) + partitioners(branchKey).getPartition(actualKey)
   }
 
-  val offsetOf: Map[B, Int] = branches.zip(offsets).toMap
+  val offsetOf: Map[BranchKey, Int] = branches.zip(offsets).toMap
 
-  def numPartitionsOf(branch: B): Int = partitioners(branch).numPartitions
+  def numPartitionsOf(branch: BranchKey): Int = partitioners(branch).numPartitions
 }
 
-private class BranchKeyOrdering[B, K](orderings: Map[B, Ordering[K]])
-    extends Ordering[(B, K)] {
+private class BranchKeyOrdering[K](orderings: Map[BranchKey, Ordering[K]])
+    extends Ordering[Branch[K]] {
 
-  override def compare(left: (B, K), right: (B, K)): Int = {
-    orderings(left._1).compare(left._2, right._2)
+  override def compare(left: Branch[K], right: Branch[K]): Int = {
+    orderings(left.branchKey).compare(left.actualKey, right.actualKey)
   }
 }
 

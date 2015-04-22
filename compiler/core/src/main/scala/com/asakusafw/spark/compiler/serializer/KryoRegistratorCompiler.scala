@@ -6,7 +6,8 @@ import com.esotericsoftware.kryo.{ Kryo, Registration, Serializer }
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.spark.runtime.driver.{ BranchKey, BroadcastId }
+import com.asakusafw.spark.runtime.driver.BroadcastId
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.serializer.KryoRegistrator
 import com.asakusafw.spark.tools.asm._
 

@@ -9,7 +9,7 @@ import java.lang.reflect.InvocationTargetException
 
 import scala.collection.mutable
 
-import com.asakusafw.spark.runtime.driver.BranchKey
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])

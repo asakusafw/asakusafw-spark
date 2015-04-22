@@ -18,8 +18,8 @@ import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, Partitioni
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
-import com.asakusafw.spark.runtime.driver.BranchKey
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

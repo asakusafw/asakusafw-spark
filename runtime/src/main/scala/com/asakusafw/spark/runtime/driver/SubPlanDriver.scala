@@ -7,6 +7,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class SubPlanDriver(
     @transient val sc: SparkContext,
