@@ -28,7 +28,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
   behavior of "CoGroupDriver"
 
   it should "cogroup" in {
-    val hogeOrd = Array(true)
+    val hogeOrd = new ShuffleKey.SortOrdering(1, Array(true))
     val fHoge = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
       @transient var h: Hoge = _
       def hoge: Hoge = {
@@ -53,7 +53,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 100).map(fHoge).asInstanceOf[RDD[(ShuffleKey, _)]]
 
-    val fooOrd = Array(true)
+    val fooOrd = new ShuffleKey.SortOrdering(1, Array(true))
     val fFoo = new Function2[Int, Int, (ShuffleKey, Foo)] with Serializable {
       @transient var f: Foo = _
       def foo: Foo = {
@@ -80,9 +80,10 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
     val foos = sc.parallelize(0 until 100).flatMap(i => (0 until i).iterator.map(fFoo(i, _)))
       .asInstanceOf[RDD[(ShuffleKey, _)]]
 
+    val grouping = new ShuffleKey.GroupingOrdering(1)
     val part = new HashPartitioner(2)
     val driver = new TestCoGroupDriver(
-      sc, hadoopConf, Seq((Seq(hoges), hogeOrd), (Seq(foos), fooOrd)), part)
+      sc, hadoopConf, Seq((Seq(hoges), Option(hogeOrd)), (Seq(foos), Option(fooOrd))), grouping, part)
 
     val outputs = driver.execute()
     outputs.mapValues(_.collect.toSeq).foreach {
@@ -126,9 +127,10 @@ object CoGroupDriverSpec {
   class TestCoGroupDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient inputs: Seq[(Seq[RDD[(ShuffleKey, _)]], Array[Boolean])],
+    @transient inputs: Seq[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])],
+    @transient grouping: ShuffleKey.GroupingOrdering,
     @transient part: Partitioner)
-      extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, part) {
+      extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, grouping, part) {
 
     override def name = "TestCoGroup"
 

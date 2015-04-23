@@ -89,18 +89,17 @@ trait OrderingsField extends ClassBuilder {
                 branchKeys.getField(op.getOriginalSerialNumber),
                 classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
                 val ordering = pushNew(classOf[ShuffleKey.SortOrdering].asType)
-                ordering.dup().invokeInit({
-                  val arr = pushNewArray(Type.BOOLEAN_TYPE, params.getKey.getOrdering.size)
-
-                  params.getKey.getOrdering.zipWithIndex.foreach {
-                    case (ordering, i) =>
-                      arr.dup().astore(
-                        ldc(i),
-                        ldc(ordering.getDirection == Group.Direction.ASCENDANT))
-                  }
-
-                  arr
-                })
+                ordering.dup().invokeInit(
+                  ldc(params.getKey.getGrouping.size), {
+                    val arr = pushNewArray(Type.BOOLEAN_TYPE, params.getKey.getOrdering.size)
+                    params.getKey.getOrdering.zipWithIndex.foreach {
+                      case (ordering, i) =>
+                        arr.dup().astore(
+                          ldc(i),
+                          ldc(ordering.getDirection == Group.Direction.ASCENDANT))
+                    }
+                    arr
+                  })
                 ordering.asType(classOf[AnyRef].asType)
               })
             .asType(classOf[AnyRef].asType))

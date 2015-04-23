@@ -124,31 +124,34 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     context.jpContext.addClass(context.branchKeys)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
-    val hogeOrd = Array(true)
+    val hogeOrd = new ShuffleKey.SortOrdering(1, Array(true))
     val hogeList = sc.parallelize(0 until 10).map { i =>
       val hoge = new Hoge()
       hoge.id.modify(i)
       (new ShuffleKey(Seq(hoge.id), Seq(new BooleanOption().modify(hoge.id.get % 3 == 0))) {}, hoge)
     }
-    val fooOrd = Array(true)
+    val fooOrd = new ShuffleKey.SortOrdering(1, Array(true))
     val fooList = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
       val foo = new Foo()
       foo.id.modify(10 + j)
       foo.hogeId.modify(i)
       (new ShuffleKey(Seq(foo.hogeId), Seq(new IntOption().modify(foo.id.toString.hashCode))) {}, foo)
     })
+    val grouping = new ShuffleKey.GroupingOrdering(1)
     val part = new HashPartitioner(2)
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
       classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Array[Boolean])]],
+      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])]],
+      classOf[ShuffleKey.GroupingOrdering],
       classOf[Partitioner])
       .newInstance(
         sc,
         hadoopConf,
         Map.empty,
-        Seq((Seq(hogeList), hogeOrd), (Seq(fooList), fooOrd)),
+        Seq((Seq(hogeList), Option(hogeOrd)), (Seq(fooList), Option(fooOrd))),
+        grouping,
         part)
     val results = driver.execute()
 

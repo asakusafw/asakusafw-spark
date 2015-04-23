@@ -51,7 +51,8 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val part = new HashPartitioner(2)
     val aggregation = new TestAggregation(true)
 
-    val driver = new TestAggregateDriver(sc, hadoopConf, hoges, Array(false), part, aggregation)
+    val driver = new TestAggregateDriver(
+      sc, hadoopConf, hoges, new ShuffleKey.SortOrdering(1, Array(false)), part, aggregation)
 
     val outputs = driver.execute()
     assert(outputs(Result).map {
@@ -90,7 +91,8 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val part = new HashPartitioner(2)
     val aggregation = new TestAggregation(false)
 
-    val driver = new TestAggregateDriver(sc, hadoopConf, hoges, Array(false), part, aggregation)
+    val driver = new TestAggregateDriver(
+      sc, hadoopConf, hoges, new ShuffleKey.SortOrdering(1, Array(false)), part, aggregation)
 
     val outputs = driver.execute()
     assert(outputs(Result).map {
@@ -189,10 +191,10 @@ object AggregateDriverSpec {
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: RDD[(ShuffleKey, Hoge)],
-      @transient directions: Array[Boolean],
+      @transient sort: ShuffleKey.SortOrdering,
       @transient part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
-        extends AggregateDriver[Hoge, Hoge](sc, hadoopConf, Map.empty, Seq(prev), directions, part) {
+        extends AggregateDriver[Hoge, Hoge](sc, hadoopConf, Map.empty, Seq(prev), sort, part) {
 
       override def name = "TestAggregation"
 

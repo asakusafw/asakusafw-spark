@@ -14,13 +14,15 @@ class ShuffleKey(
     val ordering: Seq[ValueOption[_]]) extends Writable with Equals {
 
   override def write(out: DataOutput): Unit = {
-    grouping.foreach(_.write(out))
-    ordering.foreach(_.write(out))
+    val write = (_: ValueOption[_]).write(out)
+    grouping.foreach(write)
+    ordering.foreach(write)
   }
 
   override def readFields(in: DataInput): Unit = {
-    grouping.foreach(_.readFields(in))
-    ordering.foreach(_.readFields(in))
+    val read = (_: ValueOption[_]).readFields(in)
+    grouping.foreach(read)
+    ordering.foreach(read)
   }
 
   override def hashCode: Int = grouping.hashCode
@@ -59,11 +61,15 @@ object ShuffleKey {
     0
   }
 
-  object GroupingOrdering extends Ordering[ShuffleKey] {
+  class GroupingOrdering(groupSize: Int) extends Ordering[ShuffleKey] {
+
+    val directions = Array.fill(groupSize)(true)
 
     override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      assert(x.grouping.size == y.grouping.size,
-        s"The size of grouping keys should be the same: (${x.grouping.size}, ${y.grouping.size})")
+      assert(x.grouping.size == groupSize,
+        s"The size of grouping keys of left should be ${groupSize}: ${x.grouping.size}")
+      assert(y.grouping.size == groupSize,
+        s"The size of grouping keys of right should be ${groupSize}: ${y.grouping.size}")
       assert(x.grouping.zip(y.grouping).forall { case (x, y) => x.getClass == y.getClass },
         s"The all of types of grouping keys should be the same: (${
           x.grouping.map(_.getClass).mkString("(", ",", ")")
@@ -71,33 +77,37 @@ object ShuffleKey {
           y.grouping.map(_.getClass).mkString("(", ",", ")")
         })")
 
-      compare0(x.grouping, y.grouping, Array.fill(x.grouping.size)(true))
+      compare0(x.grouping, y.grouping, directions)
     }
   }
 
-  class SortOrdering(directions: Array[Boolean]) extends Ordering[ShuffleKey] {
+  class SortOrdering(groupSize: Int, directions: Array[Boolean]) extends Ordering[ShuffleKey] {
+
+    val groupingOrdering = new GroupingOrdering(groupSize)
 
     override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      assert(x.grouping.size == y.grouping.size,
-        s"The size of grouping keys should be the same: (${x.grouping.size}, ${y.grouping.size})")
+      assert(x.grouping.size == groupSize,
+        s"The size of grouping keys of left should be ${groupSize}: ${x.grouping.size}")
+      assert(y.grouping.size == groupSize,
+        s"The size of grouping keys of right should be ${groupSize}: ${y.grouping.size}")
       assert(x.grouping.zip(y.grouping).forall { case (x, y) => x.getClass == y.getClass },
         s"The all of types of grouping keys should be the same: (${
           x.grouping.map(_.getClass).mkString("(", ",", ")")
         }, ${
           y.grouping.map(_.getClass).mkString("(", ",", ")")
         })")
-      assert(x.ordering.size == y.ordering.size,
-        s"The size of ordering keys should be the same: (${x.grouping.size}, ${y.grouping.size})")
+      assert(x.ordering.size == directions.size,
+        s"The size of ordering keys of left should be ${directions.size}: ${x.grouping.size}")
+      assert(y.ordering.size == directions.size,
+        s"The size of ordering keys of right should be ${directions.size}: ${y.grouping.size}")
       assert(x.ordering.zip(y.ordering).forall { case (x, y) => x.getClass == y.getClass },
         s"The all of types of ordering keys should be the same: (${
           x.grouping.map(_.getClass).mkString("(", ",", ")")
         }, ${
           y.grouping.map(_.getClass).mkString("(", ",", ")")
         })")
-      assert(directions.length == x.ordering.size,
-        s"The size of directions should be the same as ordering keys: (${directions.length}, ${x.ordering.size})")
 
-      val cmp = GroupingOrdering.compare(x, y)
+      val cmp = groupingOrdering.compare(x, y)
       if (cmp == 0) {
         compare0(x.ordering, y.ordering, directions)
       } else {

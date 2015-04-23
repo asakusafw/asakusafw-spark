@@ -14,7 +14,8 @@ abstract class CoGroupDriver(
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Broadcast[_]],
-  @transient prevs: Seq[(Seq[RDD[(ShuffleKey, _)]], Array[Boolean])],
+  @transient prevs: Seq[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])],
+  @transient grouping: ShuffleKey.GroupingOrdering,
   @transient part: Partitioner)
     extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[Seq[Iterable[_]]] {
   assert(prevs.size > 0,
@@ -27,12 +28,11 @@ abstract class CoGroupDriver(
     val cogrouped =
       smcogroup[ShuffleKey](
         prevs.map {
-          case (rdds, directions) =>
-            val ordering = Option(new ShuffleKey.SortOrdering(directions))
-            (confluent[ShuffleKey, Any](rdds, part, ordering), ordering)
+          case (rdds, sort) =>
+            (confluent[ShuffleKey, Any](rdds, part, sort), sort)
         },
         part,
-        ShuffleKey.GroupingOrdering)
+        grouping)
         .mapValues(_.toSeq).asInstanceOf[RDD[(ShuffleKey, Seq[Iterable[_]])]]
 
     sc.setCallSite(CallSite(name, cogrouped.toDebugString))

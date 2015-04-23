@@ -19,7 +19,7 @@ import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, Partitioni
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
-import com.asakusafw.spark.runtime.driver.BroadcastId
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -163,7 +163,7 @@ object CoGroupSubPlanCompiler {
         context.scVar.push(),
         context.hadoopConfVar.push(),
         context.broadcastsVar.push(), {
-          // Seq[(Seq[RDD[(K, _)]], Seq[Boolean])]
+          // Seq[(Seq[RDD[(K, _)]], Option[ShuffleKey.SortOrdering])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
           dominant.getInputs.foreach { input =>
@@ -198,20 +198,31 @@ object CoGroupSubPlanCompiler {
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                     }.asType(classOf[AnyRef].asType),
                     {
-                      val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
-
-                      input.getGroup.getOrdering.zipWithIndex.foreach {
-                        case (ordering, i) =>
-                          arr.dup().astore(
-                            ldc(i),
-                            ldc(ordering.getDirection == Group.Direction.ASCENDANT))
-                      }
-
-                      arr.asType(classOf[AnyRef].asType)
-                    }).asType(classOf[AnyRef].asType)
+                      getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                        .invokeV("apply", classOf[Option[_]].asType, {
+                          val sort = pushNew(classOf[ShuffleKey.SortOrdering].asType)
+                          sort.dup().invokeInit(
+                            ldc(input.getGroup.getGrouping.size), {
+                              val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
+                              input.getGroup.getOrdering.zipWithIndex.foreach {
+                                case (ordering, i) =>
+                                  arr.dup().astore(
+                                    ldc(i),
+                                    ldc(ordering.getDirection == Group.Direction.ASCENDANT))
+                              }
+                              arr
+                            })
+                          sort
+                        }.asType(classOf[AnyRef].asType))
+                    }.asType(classOf[AnyRef].asType)).asType(classOf[AnyRef].asType)
               })
           }
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+        }, {
+          // ShuffleKey.GroupingOrdering
+          val grouping = pushNew(classOf[ShuffleKey.GroupingOrdering].asType)
+          grouping.dup().invokeInit(ldc(properties.head.size))
+          grouping
         }, {
           // Partitioner
           partitionerVar.push().asType(classOf[Partitioner].asType)

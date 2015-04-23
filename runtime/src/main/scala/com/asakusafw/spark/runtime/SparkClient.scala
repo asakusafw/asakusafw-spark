@@ -34,18 +34,18 @@ abstract class SparkClient {
   def broadcastAsHash[V](
     sc: SparkContext,
     rdds: Seq[RDD[(ShuffleKey, V)]],
-    directions: Array[Boolean],
+    sort: Option[ShuffleKey.SortOrdering],
+    grouping: ShuffleKey.GroupingOrdering,
     part: Partitioner): Broadcast[Map[ShuffleKey, Seq[V]]] = {
 
     val name = "Prepare for Broadcast"
     sc.clearCallSite()
     sc.setCallSite(name)
 
-    val ordering = Option(new ShuffleKey.SortOrdering(directions))
     val rdd = smcogroup(
-      Seq((confluent(rdds, part, ordering).asInstanceOf[RDD[(ShuffleKey, _)]], ordering)),
+      Seq((confluent(rdds, part, sort).asInstanceOf[RDD[(ShuffleKey, _)]], sort)),
       part,
-      ShuffleKey.GroupingOrdering)
+      grouping)
       .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[V]]) }
 
     sc.setCallSite(CallSite(name, rdd.toDebugString))

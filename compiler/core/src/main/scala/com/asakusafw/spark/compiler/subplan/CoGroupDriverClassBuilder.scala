@@ -31,7 +31,8 @@ abstract class CoGroupDriverClassBuilder(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
       classOf[Map[BroadcastId, Broadcast[_]]].asType,
-      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[Array[Boolean]])]].asType,
+      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])]].asType,
+      classOf[ShuffleKey.GroupingOrdering].asType,
       classOf[Partitioner].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
@@ -70,13 +71,14 @@ abstract class CoGroupDriverClassBuilder(
                 }
                   .newTypeArgument(SignatureVisitor.INSTANCEOF) {
                     _.newClassType(classOf[Option[_]].asType) {
-                      _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Array[Boolean]].asType)
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey.SortOrdering].asType)
                     }
                   }
               }
             }
           }
         }
+        .newParameterType(classOf[ShuffleKey.GroupingOrdering].asType)
         .newParameterType(classOf[Partitioner].asType)
         .newVoidReturnType()
         .build()) { mb =>
@@ -84,8 +86,9 @@ abstract class CoGroupDriverClassBuilder(
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
-        val inputsVar = `var`(classOf[Seq[_]].asType, broadcastsVar.nextLocal)
-        val partVar = `var`(classOf[Partitioner].asType, inputsVar.nextLocal)
+        val inputsVar = `var`(classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])]].asType, broadcastsVar.nextLocal)
+        val groupingVar = `var`(classOf[ShuffleKey.GroupingOrdering].asType, inputsVar.nextLocal)
+        val partVar = `var`(classOf[Partitioner].asType, groupingVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,
@@ -93,6 +96,7 @@ abstract class CoGroupDriverClassBuilder(
           hadoopConfVar.push(),
           broadcastsVar.push(),
           inputsVar.push(),
+          groupingVar.push(),
           partVar.push())
       }
   }

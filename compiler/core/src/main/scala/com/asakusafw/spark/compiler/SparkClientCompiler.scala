@@ -33,7 +33,7 @@ import com.asakusafw.spark.compiler.serializer.{
 }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
-import com.asakusafw.spark.runtime.driver.BroadcastId
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -183,15 +183,26 @@ class SparkClientCompiler extends JobflowProcessor {
                                 builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                               },
                               {
-                                val arr = pushNewArray(Type.BOOLEAN_TYPE, key.getOrdering.size)
-
-                                key.getOrdering.zipWithIndex.foreach {
-                                  case (ordering, i) =>
-                                    arr.dup().astore(ldc(i),
-                                      ldc(ordering.getDirection == Group.Direction.ASCENDANT))
-                                }
-
-                                arr
+                                getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                                  .invokeV("apply", classOf[Option[_]].asType, {
+                                    val sort = pushNew(classOf[ShuffleKey.SortOrdering].asType)
+                                    sort.dup().invokeInit(
+                                      ldc(key.getGrouping.size), {
+                                        val arr = pushNewArray(Type.BOOLEAN_TYPE, key.getOrdering.size)
+                                        key.getOrdering.zipWithIndex.foreach {
+                                          case (ordering, i) =>
+                                            arr.dup().astore(ldc(i),
+                                              ldc(ordering.getDirection == Group.Direction.ASCENDANT))
+                                        }
+                                        arr
+                                      })
+                                    sort
+                                  }.asType(classOf[AnyRef].asType))
+                              },
+                              {
+                                val grouping = pushNew(classOf[ShuffleKey.GroupingOrdering].asType)
+                                grouping.dup().invokeInit(ldc(key.getGrouping.size))
+                                grouping
                               },
                               {
                                 val partitioner = pushNew(classOf[HashPartitioner].asType)
