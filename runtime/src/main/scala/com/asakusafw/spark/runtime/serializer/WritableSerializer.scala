@@ -24,11 +24,7 @@ abstract class WritableSerializer[W <: Writable] extends Serializer[W](false, fa
         outputs.set((output, dos))
         dos
     }
-    try {
-      obj.write(dos)
-    } finally {
-      dos.flush()
-    }
+    obj.write(dos)
   }
 
   private[this] val inputs = new ThreadLocal[(Input, DataInputStream)]
