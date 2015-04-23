@@ -10,7 +10,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -25,10 +25,10 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = OutputSubPlanCompiler.OutputDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[ExternalOutput],
-      s"The dominant operator should be external output: ${dominant}")
-    val operator = dominant.asInstanceOf[ExternalOutput]
+    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    assert(primaryOperator.isInstanceOf[ExternalOutput],
+      s"The dominant operator should be external output: ${primaryOperator}")
+    val operator = primaryOperator.asInstanceOf[ExternalOutput]
 
     context.jpContext.addExternalOutput(
       operator.getName, operator.getInfo,

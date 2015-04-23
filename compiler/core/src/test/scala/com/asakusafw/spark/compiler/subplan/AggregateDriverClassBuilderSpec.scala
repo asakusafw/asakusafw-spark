@@ -20,11 +20,10 @@ import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, Groups, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
-import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.orderings._
@@ -64,11 +63,11 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         Seq(resultMarker)).build().getPlan()
     assert(plan.getElements.size === 1)
     val subplan = plan.getElements.head
-    subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
-    subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == resultMarker.getOriginalSerialNumber)
-      .get
-      .putAttribute(classOf[PartitioningParameters],
-        new PartitioningParameters(Groups.parse(Seq("i"))))
+    subplan.putAttribute(classOf[SubPlanInfo],
+      new SubPlanInfo(subplan, SubPlanInfo.DriverType.AGGREGATE, Seq.empty[SubPlanInfo.DriverOption], operator))
+    val subplanOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == resultMarker.getOriginalSerialNumber).get
+    subplanOutput.putAttribute(classOf[SubPlanOutputInfo],
+      new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Groups.parse(Seq("i")), operator))
 
     implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",

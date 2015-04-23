@@ -25,8 +25,12 @@ import com.asakusafw.lang.compiler.inspection.driver.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, TypeDescription }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
-import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
-import com.asakusafw.spark.compiler.planning.SparkPlanning
+import com.asakusafw.spark.compiler.planning.{
+  SparkPlanning,
+  SubPlanInfo,
+  SubPlanInputInfo,
+  SubPlanOutputInfo
+}
 import com.asakusafw.spark.compiler.serializer.{
   BranchKeySerializerClassBuilder,
   BroadcastIdSerializerClassBuilder,
@@ -125,8 +129,8 @@ class SparkClientCompiler extends JobflowProcessor {
             case (subplan, i) =>
               methodDef.newMethod(s"execute${i}", Seq.empty) { mb =>
                 import mb._
-                val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-                val compiler = subplanCompilers.find(_.support(dominant)).get
+                val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+                val compiler = subplanCompilers.find(_.support(primaryOperator)).get
                 val driverType = compiler.compile(subplan)
 
                 val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType).store(thisVar.nextLocal)
@@ -141,7 +145,7 @@ class SparkClientCompiler extends JobflowProcessor {
                     .filter(_.getOperator.getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST)
                     .foreach { input =>
                       val dataModelRef = context.jpContext.getDataModelLoader.load(input.getOperator.getInput.getDataType)
-                      val key = input.getAttribute(classOf[PartitioningParameters]).getKey
+                      val key = input.getAttribute(classOf[SubPlanInputInfo]).getPartitionInfo
                       val groupings = key.getGrouping.toSeq.map { grouping =>
                         (dataModelRef.findProperty(grouping).getType.asType, true)
                       }

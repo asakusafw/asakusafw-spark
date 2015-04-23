@@ -11,7 +11,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
+import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -66,30 +66,30 @@ trait PartitionersField extends ClassBuilder {
     import mb._
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    subplanOutputs.sortBy(_.getOperator.getSerialNumber).foreach { output =>
-      val op = output.getOperator
-      Option(output.getAttribute(classOf[PartitioningParameters])).foreach { params =>
-        builder.invokeI(
-          NameTransformer.encode("+="),
-          classOf[mutable.Builder[_, _]].asType,
-          getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-            invokeV("apply", classOf[(_, _)].asType,
-              getStatic(
-                branchKeys.thisType,
-                branchKeys.getField(op.getSerialNumber),
-                classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
-                val partitioner = pushNew(classOf[HashPartitioner].asType)
-                partitioner.dup().invokeInit(
-                  if (op.getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST) {
-                    ldc(1)
-                  } else {
-                    thisVar.push().invokeV("sc", classOf[SparkContext].asType)
-                      .invokeV("defaultParallelism", Type.INT_TYPE)
-                  })
-                partitioner.asType(classOf[AnyRef].asType)
-              })
-            .asType(classOf[AnyRef].asType))
-      }
+    for {
+      output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
+      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+    } {
+      builder.invokeI(
+        NameTransformer.encode("+="),
+        classOf[mutable.Builder[_, _]].asType,
+        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+          invokeV("apply", classOf[(_, _)].asType,
+            getStatic(
+              branchKeys.thisType,
+              branchKeys.getField(output.getOperator.getSerialNumber),
+              classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
+              val partitioner = pushNew(classOf[HashPartitioner].asType)
+              partitioner.dup().invokeInit(
+                if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST) {
+                  ldc(1)
+                } else {
+                  thisVar.push().invokeV("sc", classOf[SparkContext].asType)
+                    .invokeV("defaultParallelism", Type.INT_TYPE)
+                })
+              partitioner.asType(classOf[AnyRef].asType)
+            })
+          .asType(classOf[AnyRef].asType))
     }
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
   }

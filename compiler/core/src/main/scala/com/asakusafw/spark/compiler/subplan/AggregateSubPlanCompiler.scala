@@ -15,9 +15,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.ShuffleKey
@@ -39,10 +39,10 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = AggregateDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[UserOperator],
-      s"The dominant operator should be user operator: ${dominant}")
-    val operator = dominant.asInstanceOf[UserOperator]
+    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    assert(primaryOperator.isInstanceOf[UserOperator],
+      s"The primary operator should be user operator: ${primaryOperator}")
+    val operator = primaryOperator.asInstanceOf[UserOperator]
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
@@ -140,9 +140,9 @@ object AggregateSubPlanCompiler {
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
 
-      val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator.asInstanceOf[UserOperator]
+      val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
 
-      val operatorInfo = new OperatorInfo(dominant)(context.jpContext)
+      val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
       import operatorInfo._
 
       assert(inputs.size == 1,

@@ -15,9 +15,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment._
@@ -44,10 +44,10 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = CoGroupSubPlanCompiler.CoGroupDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[UserOperator],
-      s"The dominant operator should be user operator: ${dominant}")
-    val operator = dominant.asInstanceOf[UserOperator]
+    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    assert(primaryOperator.isInstanceOf[UserOperator],
+      s"The dominant operator should be user operator: ${primaryOperator}")
+    val operator = primaryOperator.asInstanceOf[UserOperator]
 
     val builder = new CoGroupDriverClassBuilder(context.flowId, classOf[AnyRef].asType) {
 
@@ -136,9 +136,9 @@ object CoGroupSubPlanCompiler {
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
 
-      val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
+      val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
-      val operatorInfo = new OperatorInfo(dominant)(context.jpContext)
+      val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
       import operatorInfo._
 
       val properties = inputs.map { input =>
@@ -166,7 +166,7 @@ object CoGroupSubPlanCompiler {
           // Seq[(Seq[RDD[(K, _)]], Option[ShuffleKey.SortOrdering])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-          dominant.getInputs.foreach { input =>
+          primaryOperator.getInputs.foreach { input =>
             builder.invokeI(NameTransformer.encode("+="),
               classOf[mutable.Builder[_, _]].asType, {
                 getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)

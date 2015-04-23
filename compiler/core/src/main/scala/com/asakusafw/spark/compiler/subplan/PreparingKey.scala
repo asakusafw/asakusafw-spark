@@ -11,8 +11,8 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.lang.compiler.planning.spark.{ NextDominantOperator, PartitioningParameters }
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.ShuffleKey
@@ -32,31 +32,34 @@ trait PreparingKey extends ClassBuilder {
   def subplanOutputs: Seq[SubPlan.Output]
 
   lazy val shuffleKeyTypes: Map[Long, (Type, Boolean)] = {
-    subplanOutputs.collect {
-      case output if Option(output.getAttribute(classOf[PartitioningParameters])).isDefined =>
-        val op = output.getOperator
-        val group = output.getAttribute(classOf[PartitioningParameters]).getKey
-        val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
-        val dataModelType = dataModelRef.getDeclaration.asType
+    (for {
+      output <- subplanOutputs
+      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+      partitionInfo <- Option(outputInfo.getPartitionInfo)
+    } yield {
+      val op = output.getOperator
+      val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
+      val dataModelType = dataModelRef.getDeclaration.asType
 
-        val shuffleKeyType = ShuffleKeyClassBuilder.getOrCompile(jpContext)(
-          flowId,
-          dataModelType,
-          group.getGrouping.map { grouping =>
-            val property = dataModelRef.findProperty(grouping)
-            (property.getDeclaration.getName, property.getType.asType)
-          },
-          group.getOrdering.map { ordering =>
-            val property = dataModelRef.findProperty(ordering.getPropertyName)
-            (property.getDeclaration.getName, property.getType.asType)
-          })
+      val shuffleKeyType = ShuffleKeyClassBuilder.getOrCompile(jpContext)(
+        flowId,
+        dataModelType,
+        partitionInfo.getGrouping.map { grouping =>
+          val property = dataModelRef.findProperty(grouping)
+          (property.getDeclaration.getName, property.getType.asType)
+        },
+        partitionInfo.getOrdering.map { ordering =>
+          val property = dataModelRef.findProperty(ordering.getPropertyName)
+          (property.getDeclaration.getName, property.getType.asType)
+        })
 
-        val aggregation =
-          Option(output.getAttribute(classOf[NextDominantOperator])).exists { dominant =>
-            AggregationCompiler.support(dominant.getNextDominantOperator)(AggregationCompiler.Context(flowId, jpContext))
-          }
-        op.getOriginalSerialNumber -> (shuffleKeyType, aggregation)
-    }.toMap
+      val aggregation =
+        Option(output.getAttribute(classOf[SubPlanOutputInfo]).getAggregationInfo).exists {
+          aggregationOperator =>
+            AggregationCompiler.support(aggregationOperator)(AggregationCompiler.Context(flowId, jpContext))
+        }
+      op.getOriginalSerialNumber -> (shuffleKeyType, aggregation)
+    }).toMap
   }
 
   def defShuffleKeyFields(fieldDef: FieldDef): Unit = {

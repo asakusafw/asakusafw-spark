@@ -23,10 +23,10 @@ import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.orderings._
@@ -106,7 +106,8 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
           nResultMarker)).build().getPlan()
     assert(plan.getElements.size === 1)
     val subplan = plan.getElements.head
-    subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
+    subplan.putAttribute(classOf[SubPlanInfo],
+      new SubPlanInfo(subplan, SubPlanInfo.DriverType.COGROUP, Seq.empty[SubPlanInfo.DriverOption], operator))
 
     implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",

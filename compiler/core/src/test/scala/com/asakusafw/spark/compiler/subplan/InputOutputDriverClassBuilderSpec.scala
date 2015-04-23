@@ -23,9 +23,9 @@ import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -69,7 +69,8 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
         Seq(endMarker)).build().getPlan()
     assert(outputPlan.getElements.size === 1)
     val outputSubPlan = outputPlan.getElements.head
-    outputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(outputOperator))
+    outputSubPlan.putAttribute(classOf[SubPlanInfo],
+      new SubPlanInfo(outputSubPlan, SubPlanInfo.DriverType.OUTPUT, Seq.empty[SubPlanInfo.DriverOption], outputOperator))
 
     val outputCompilerContext = SubPlanCompiler.Context(
       flowId = "outtputFlowId",
@@ -126,7 +127,8 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
         Seq(inputMarker)).build().getPlan()
     assert(inputPlan.getElements.size === 1)
     val inputSubPlan = inputPlan.getElements.head
-    inputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(inputOperator))
+    inputSubPlan.putAttribute(classOf[SubPlanInfo],
+      new SubPlanInfo(inputSubPlan, SubPlanInfo.DriverType.INPUT, Seq.empty[SubPlanInfo.DriverOption], inputOperator))
 
     val inputCompilerContext = SubPlanCompiler.Context(
       flowId = "inputFlowId",
