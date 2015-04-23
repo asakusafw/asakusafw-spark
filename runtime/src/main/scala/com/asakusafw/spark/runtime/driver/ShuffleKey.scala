@@ -42,22 +42,21 @@ class ShuffleKey(
 
 object ShuffleKey {
 
-  @tailrec
-  private[this] def compare0(xs: Seq[ValueOption[_]], ys: Seq[ValueOption[_]], ascs: Seq[Boolean]): Int = {
-    if (xs.isEmpty) {
-      0
-    } else {
-      val cmp = if (ascs.head) {
-        xs.head.compareTo(ys.head)
+  private[this] def compare0(xs: Seq[ValueOption[_]], ys: Seq[ValueOption[_]], ascs: Array[Boolean]): Int = {
+    val size = xs.size
+    var i = 0
+    while (i < size) {
+      val cmp = if (ascs(i)) {
+        xs(i).compareTo(ys(i))
       } else {
-        ys.head.compareTo(xs.head)
+        ys(i).compareTo(xs(i))
       }
-      if (cmp == 0) {
-        compare0(xs.tail, ys.tail, ascs.tail)
-      } else {
-        cmp
+      if (cmp != 0) {
+        return cmp
       }
+      i += 1
     }
+    0
   }
 
   object GroupingOrdering extends Ordering[ShuffleKey] {
@@ -72,11 +71,11 @@ object ShuffleKey {
           y.grouping.map(_.getClass).mkString("(", ",", ")")
         })")
 
-      compare0(x.grouping, y.grouping, Seq.fill(x.grouping.size)(true))
+      compare0(x.grouping, y.grouping, Array.fill(x.grouping.size)(true))
     }
   }
 
-  class SortOrdering(directions: Seq[Boolean]) extends Ordering[ShuffleKey] {
+  class SortOrdering(directions: Array[Boolean]) extends Ordering[ShuffleKey] {
 
     override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
       assert(x.grouping.size == y.grouping.size,
@@ -95,8 +94,8 @@ object ShuffleKey {
         }, ${
           y.grouping.map(_.getClass).mkString("(", ",", ")")
         })")
-      assert(directions.size == x.ordering.size,
-        s"The size of directions should be the same as ordering keys: (${directions.size}, ${x.ordering.size})")
+      assert(directions.length == x.ordering.size,
+        s"The size of directions should be the same as ordering keys: (${directions.length}, ${x.ordering.size})")
 
       val cmp = GroupingOrdering.compare(x, y)
       if (cmp == 0) {

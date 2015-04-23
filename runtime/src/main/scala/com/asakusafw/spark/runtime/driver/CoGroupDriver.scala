@@ -14,7 +14,7 @@ abstract class CoGroupDriver(
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Broadcast[_]],
-  @transient prevs: Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])],
+  @transient prevs: Seq[(Seq[RDD[(ShuffleKey, _)]], Array[Boolean])],
   @transient part: Partitioner)
     extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[Seq[Iterable[_]]] {
   assert(prevs.size > 0,

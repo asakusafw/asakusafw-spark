@@ -260,7 +260,7 @@ object MapDriverSpec {
         Map(Foo2Result -> new HashPartitioner(1))
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] =
-        Map(Foo2Result -> new ShuffleKey.SortOrdering(Seq(false)))
+        Map(Foo2Result -> new ShuffleKey.SortOrdering(Array(false)))
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 

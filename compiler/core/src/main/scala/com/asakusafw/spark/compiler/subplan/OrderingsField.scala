@@ -90,17 +90,16 @@ trait OrderingsField extends ClassBuilder {
                 classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
                 val ordering = pushNew(classOf[ShuffleKey.SortOrdering].asType)
                 ordering.dup().invokeInit({
-                  val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                    .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                  val arr = pushNewArray(Type.BOOLEAN_TYPE, params.getKey.getOrdering.size)
 
-                  params.getKey.getOrdering.foreach { ordering =>
-                    builder.invokeI(
-                      NameTransformer.encode("+="),
-                      classOf[mutable.Builder[_, _]].asType,
-                      ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+                  params.getKey.getOrdering.zipWithIndex.foreach {
+                    case (ordering, i) =>
+                      arr.dup().astore(
+                        ldc(i),
+                        ldc(ordering.getDirection == Group.Direction.ASCENDANT))
                   }
 
-                  builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                  arr
                 })
                 ordering.asType(classOf[AnyRef].asType)
               })

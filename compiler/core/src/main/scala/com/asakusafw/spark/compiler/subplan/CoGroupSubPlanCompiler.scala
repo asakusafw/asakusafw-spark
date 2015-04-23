@@ -198,18 +198,16 @@ object CoGroupSubPlanCompiler {
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                     }.asType(classOf[AnyRef].asType),
                     {
-                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                      val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
 
-                      input.getGroup.getOrdering.foreach { ordering =>
-                        builder.invokeI(
-                          NameTransformer.encode("+="),
-                          classOf[mutable.Builder[_, _]].asType,
-                          ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+                      input.getGroup.getOrdering.zipWithIndex.foreach {
+                        case (ordering, i) =>
+                          arr.dup().astore(
+                            ldc(i),
+                            ldc(ordering.getDirection == Group.Direction.ASCENDANT))
                       }
 
-                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-                        .asType(classOf[AnyRef].asType)
+                      arr.asType(classOf[AnyRef].asType)
                     }).asType(classOf[AnyRef].asType)
               })
           }

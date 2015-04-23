@@ -34,7 +34,7 @@ abstract class SparkClient {
   def broadcastAsHash[V](
     sc: SparkContext,
     rdds: Seq[RDD[(ShuffleKey, V)]],
-    directions: Seq[Boolean],
+    directions: Array[Boolean],
     part: Partitioner): Broadcast[Map[ShuffleKey, Seq[V]]] = {
 
     val name = "Prepare for Broadcast"

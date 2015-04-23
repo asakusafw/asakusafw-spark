@@ -28,7 +28,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
   behavior of "CoGroupDriver"
 
   it should "cogroup" in {
-    val hogeOrd = Seq(true)
+    val hogeOrd = Array(true)
     val fHoge = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
       @transient var h: Hoge = _
       def hoge: Hoge = {
@@ -53,7 +53,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 100).map(fHoge).asInstanceOf[RDD[(ShuffleKey, _)]]
 
-    val fooOrd = Seq(true)
+    val fooOrd = Array(true)
     val fFoo = new Function2[Int, Int, (ShuffleKey, Foo)] with Serializable {
       @transient var f: Foo = _
       def foo: Foo = {
@@ -126,7 +126,7 @@ object CoGroupDriverSpec {
   class TestCoGroupDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient inputs: Seq[(Seq[RDD[(ShuffleKey, _)]], Seq[Boolean])],
+    @transient inputs: Seq[(Seq[RDD[(ShuffleKey, _)]], Array[Boolean])],
     @transient part: Partitioner)
       extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, part) {
 

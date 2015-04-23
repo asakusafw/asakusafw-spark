@@ -183,17 +183,15 @@ class SparkClientCompiler extends JobflowProcessor {
                                 builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                               },
                               {
-                                val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                                  .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                                val arr = pushNewArray(Type.BOOLEAN_TYPE, key.getOrdering.size)
 
-                                key.getOrdering.foreach { ordering =>
-                                  builder.invokeI(
-                                    NameTransformer.encode("+="),
-                                    classOf[mutable.Builder[_, _]].asType,
-                                    ldc(ordering.getDirection == Group.Direction.ASCENDANT).box().asType(classOf[AnyRef].asType))
+                                key.getOrdering.zipWithIndex.foreach {
+                                  case (ordering, i) =>
+                                    arr.dup().astore(ldc(i),
+                                      ldc(ordering.getDirection == Group.Direction.ASCENDANT))
                                 }
 
-                                builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                                arr
                               },
                               {
                                 val partitioner = pushNew(classOf[HashPartitioner].asType)

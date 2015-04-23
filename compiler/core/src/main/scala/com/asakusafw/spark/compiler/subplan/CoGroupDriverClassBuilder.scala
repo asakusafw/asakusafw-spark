@@ -31,7 +31,7 @@ abstract class CoGroupDriverClassBuilder(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
       classOf[Map[BroadcastId, Broadcast[_]]].asType,
-      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[Seq[Boolean]])]].asType,
+      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[Array[Boolean]])]].asType,
       classOf[Partitioner].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
@@ -70,11 +70,7 @@ abstract class CoGroupDriverClassBuilder(
                 }
                   .newTypeArgument(SignatureVisitor.INSTANCEOF) {
                     _.newClassType(classOf[Option[_]].asType) {
-                      _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                        _.newClassType(classOf[Seq[_]].asType) {
-                          _.newTypeArgument(SignatureVisitor.INSTANCEOF, Type.BOOLEAN_TYPE)
-                        }
-                      }
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Array[Boolean]].asType)
                     }
                   }
               }
