@@ -13,7 +13,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait BranchKeysField extends ClassBuilder {
 
-  def branchKeys: BranchKeysClassBuilder
+  def branchKeys: BranchKeys
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -56,11 +56,11 @@ trait BranchKeysField extends ClassBuilder {
     val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-    subplanOutputs.map(_.getOperator.getSerialNumber).sorted.foreach { sn =>
+    subplanOutputs.map(_.getOperator).sortBy(_.getSerialNumber).foreach { marker =>
       builder.invokeI(
         NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
-        getStatic(branchKeys.thisType, branchKeys.getField(sn), classOf[BranchKey].asType).asType(classOf[AnyRef].asType))
+        branchKeys.getField(mb, marker).asType(classOf[AnyRef].asType))
     }
 
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType)

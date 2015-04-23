@@ -87,15 +87,14 @@ class FragmentTreeBuilder(
   def buildOutputsVar(outputs: Seq[SubPlan.Output]): Var = {
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    outputs.map(_.getOperator).sortBy(_.getSerialNumber).foreach { op =>
+    for {
+      op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
+    } {
       builder.invokeI(NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
           invokeV("apply", classOf[(_, _)].asType,
-            getStatic(
-              context.branchKeys.thisType,
-              context.branchKeys.getField(op.getSerialNumber),
-              classOf[BranchKey].asType).asType(classOf[AnyRef].asType),
+            context.branchKeys.getField(mb, op).asType(classOf[AnyRef].asType),
             vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
           .asType(classOf[AnyRef].asType))
     }

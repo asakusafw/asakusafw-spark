@@ -68,23 +68,19 @@ object OutputSubPlanCompiler {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-          subplan.getInputs.toSet[SubPlan.Input]
-            .filter { input =>
-              val marker = input.getOperator.getAttribute(classOf[PlanMarker])
-              marker == PlanMarker.CHECKPOINT || marker == PlanMarker.GATHER
-            }
-            .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
-            .map(_.getOperator.getSerialNumber)
-            .foreach { sn =>
-              builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                context.rddsVar.push().invokeI(
-                  "apply",
-                  classOf[AnyRef].asType,
-                  getStatic(
-                    context.branchKeys.thisType,
-                    context.branchKeys.getField(sn),
-                    classOf[BranchKey].asType).asType(classOf[AnyRef].asType)))
-            }
+          for {
+            subPlanInput <- subplan.getInputs
+            planMarker = subPlanInput.getOperator.getAttribute(classOf[PlanMarker])
+            if planMarker == PlanMarker.CHECKPOINT || planMarker == PlanMarker.GATHER
+            prevSubPlanOutput <- subPlanInput.getOpposites
+            marker = prevSubPlanOutput.getOperator
+          } {
+            builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+              context.rddsVar.push().invokeI(
+                "apply",
+                classOf[AnyRef].asType,
+                context.branchKeys.getField(context.mb, marker).asType(classOf[AnyRef].asType)))
+          }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         })

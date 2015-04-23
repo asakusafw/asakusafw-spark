@@ -24,7 +24,7 @@ trait OrderingsField extends ClassBuilder {
 
   def jpContext: JPContext
 
-  def branchKeys: BranchKeysClassBuilder
+  def branchKeys: BranchKeys
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -86,19 +86,17 @@ trait OrderingsField extends ClassBuilder {
         classOf[mutable.Builder[_, _]].asType,
         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
           invokeV("apply", classOf[(_, _)].asType,
-            getStatic(
-              branchKeys.thisType,
-              branchKeys.getField(output.getOperator.getSerialNumber),
-              classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
+            branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
               val ordering = pushNew(classOf[ShuffleKey.SortOrdering].asType)
               ordering.dup().invokeInit(
                 ldc(partitionInfo.getGrouping.size), {
                   val arr = pushNewArray(Type.BOOLEAN_TYPE, partitionInfo.getOrdering.size)
-                  partitionInfo.getOrdering.zipWithIndex.foreach {
-                    case (ordering, i) =>
-                      arr.dup().astore(
-                        ldc(i),
-                        ldc(ordering.getDirection == Group.Direction.ASCENDANT))
+                  for {
+                    (ordering, i) <- partitionInfo.getOrdering.zipWithIndex
+                  } {
+                    arr.dup().astore(
+                      ldc(i),
+                      ldc(ordering.getDirection == Group.Direction.ASCENDANT))
                   }
                   arr
                 })

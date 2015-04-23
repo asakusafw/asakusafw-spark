@@ -34,27 +34,25 @@ class ShuffleKeyClassBuilder(
       thisVar.push().invokeInit(
         superType, {
           val buffer = pushNew0(classOf[CompactBuffer[_]].asType)
-
-          grouping.foreach {
-            case (_, t) =>
-              buffer.invokeV(
-                NameTransformer.encode("+="),
-                classOf[CompactBuffer[_]].asType,
-                pushNew0(t).asType(classOf[AnyRef].asType))
+          for {
+            (_, t) <- grouping
+          } {
+            buffer.invokeV(
+              NameTransformer.encode("+="),
+              classOf[CompactBuffer[_]].asType,
+              pushNew0(t).asType(classOf[AnyRef].asType))
           }
-
           buffer.asType(classOf[Seq[_]].asType)
         }, {
           val buffer = pushNew0(classOf[CompactBuffer[_]].asType)
-
-          ordering.foreach {
-            case (_, t) =>
-              buffer.invokeV(
-                NameTransformer.encode("+="),
-                classOf[CompactBuffer[_]].asType,
-                pushNew0(t).asType(classOf[AnyRef].asType))
+          for {
+            (_, t) <- ordering
+          } {
+            buffer.invokeV(
+              NameTransformer.encode("+="),
+              classOf[CompactBuffer[_]].asType,
+              pushNew0(t).asType(classOf[AnyRef].asType))
           }
-
           buffer.asType(classOf[Seq[_]].asType)
         })
     }
@@ -77,23 +75,25 @@ class ShuffleKeyClassBuilder(
       val groupingIterVar = thisVar.push()
         .invokeV("grouping", classOf[Seq[_]].asType)
         .invokeI("iterator", classOf[Iterator[_]].asType).store(dataModelVar.nextLocal)
-      grouping.foreach {
-        case (name, t) =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
-            .invokeV("copy",
-              dataModelVar.push().invokeV(name, t),
-              groupingIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(t))
+      for {
+        (name, t) <- grouping
+      } {
+        getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          .invokeV("copy",
+            dataModelVar.push().invokeV(name, t),
+            groupingIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(t))
       }
 
       val orderingIterVar = thisVar.push()
         .invokeV("ordering", classOf[Seq[_]].asType)
         .invokeI("iterator", classOf[Iterator[_]].asType).store(dataModelVar.nextLocal)
-      ordering.foreach {
-        case (name, t) =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
-            .invokeV("copy",
-              dataModelVar.push().invokeV(name, t),
-              orderingIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(t))
+      for {
+        (name, t) <- ordering
+      } {
+        getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          .invokeV("copy",
+            dataModelVar.push().invokeV(name, t),
+            orderingIterVar.push().invokeI("next", classOf[AnyRef].asType).cast(t))
       }
 
       `return`()

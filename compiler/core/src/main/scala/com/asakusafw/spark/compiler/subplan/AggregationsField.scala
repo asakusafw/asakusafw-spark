@@ -24,7 +24,7 @@ trait AggregationsField extends ClassBuilder {
 
   def jpContext: JPContext
 
-  def branchKeys: BranchKeysClassBuilder
+  def branchKeys: BranchKeys
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -90,10 +90,7 @@ trait AggregationsField extends ClassBuilder {
         classOf[mutable.Builder[_, _]].asType, {
           getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
             .invokeV("apply", classOf[(_, _)].asType,
-              getStatic(
-                branchKeys.thisType,
-                branchKeys.getField(output.getOperator.getSerialNumber),
-                classOf[BranchKey].asType)
+              branchKeys.getField(mb, output.getOperator)
                 .asType(classOf[AnyRef].asType),
               pushNew0(AggregationClassBuilder.getOrCompile(flowId, operator, jpContext))
                 .asType(classOf[AnyRef].asType))

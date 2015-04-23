@@ -53,7 +53,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
-      override val branchKeys: BranchKeysClassBuilder = context.branchKeys
+      override val branchKeys: BranchKeys = context.branchKeys
 
       override val dominantOperator = operator
 
@@ -166,7 +166,9 @@ object CoGroupSubPlanCompiler {
           // Seq[(Seq[RDD[(K, _)]], Option[ShuffleKey.SortOrdering])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-          primaryOperator.getInputs.foreach { input =>
+          for {
+            input <- primaryOperator.getInputs
+          } {
             builder.invokeI(NameTransformer.encode("+="),
               classOf[mutable.Builder[_, _]].asType, {
                 getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
@@ -175,25 +177,19 @@ object CoGroupSubPlanCompiler {
                       val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
                         .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-                      input.getOpposites.toSet[OperatorOutput]
-                        .flatMap(opposite => subplan.getInputs
-                          .filter { input =>
-                            val marker = input.getOperator.getAttribute(classOf[PlanMarker])
-                            marker == PlanMarker.CHECKPOINT || marker == PlanMarker.GATHER
-                          }.find(
-                            _.getOperator.getOriginalSerialNumber == opposite.getOwner.getOriginalSerialNumber)
-                          .get.getOpposites.toSeq)
-                        .map(_.getOperator.getSerialNumber)
-                        .foreach { sn =>
-                          builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                            context.rddsVar.push().invokeI(
-                              "apply",
-                              classOf[AnyRef].asType,
-                              getStatic(
-                                context.branchKeys.thisType,
-                                context.branchKeys.getField(sn),
-                                classOf[BranchKey].asType).asType(classOf[AnyRef].asType)))
-                        }
+                      for {
+                        opposite <- input.getOpposites.toSet[OperatorOutput]
+                        subPlanInput <- Option(subplan.findInput(opposite.getOwner))
+                        prevSubPlanOutput <- subPlanInput.getOpposites.toSeq
+                        marker = prevSubPlanOutput.getOperator
+                      } {
+                        builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+                          context.rddsVar.push().invokeI(
+                            "apply",
+                            classOf[AnyRef].asType,
+                            context.branchKeys.getField(context.mb, marker)
+                              .asType(classOf[AnyRef].asType)))
+                      }
 
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
                     }.asType(classOf[AnyRef].asType),
@@ -204,11 +200,12 @@ object CoGroupSubPlanCompiler {
                           sort.dup().invokeInit(
                             ldc(input.getGroup.getGrouping.size), {
                               val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
-                              input.getGroup.getOrdering.zipWithIndex.foreach {
-                                case (ordering, i) =>
-                                  arr.dup().astore(
-                                    ldc(i),
-                                    ldc(ordering.getDirection == Group.Direction.ASCENDANT))
+                              for {
+                                (ordering, i) <- input.getGroup.getOrdering.zipWithIndex
+                              } {
+                                arr.dup().astore(
+                                  ldc(i),
+                                  ldc(ordering.getDirection == Group.Direction.ASCENDANT))
                               }
                               arr
                             })

@@ -17,7 +17,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput }
 import com.asakusafw.lang.compiler.planning.PlanMarker
-import com.asakusafw.spark.compiler.subplan.ShuffleKeyClassBuilder
+import com.asakusafw.spark.compiler.subplan.{ BroadcastIds, ShuffleKeyClassBuilder }
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
@@ -27,6 +27,9 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
 
   def jpContext: JPContext
+
+  def broadcastIds: BroadcastIds
+
   def shuffleKeyTypes: mutable.Set[Type]
 
   def masterInput: OperatorInput
@@ -51,7 +54,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
     import mb._
     val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
-    val masterSerialNumber: Long = {
+    val marker: MarkerOperator = {
       val opposites = masterInput.getOpposites
       assert(opposites.size == 1,
         s"The size of master inputs should be 1: ${opposites.size}")
@@ -62,13 +65,16 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
         s"The master input should be BROADCAST marker operator: ${
           opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
         }")
-      opposite.getOriginalSerialNumber
+      opposite.asInstanceOf[MarkerOperator]
     }
 
     thisVar.push().putField(
       "masters",
       classOf[Map[_, _]].asType,
-      getBroadcast(mb, masterSerialNumber)
+      getBroadcastsField(mb)
+        .invokeI("apply", classOf[AnyRef].asType,
+          broadcastIds.getField(mb, marker).asType(classOf[AnyRef].asType))
+        .cast(classOf[Broadcast[_]].asType)
         .invokeV("value", classOf[AnyRef].asType)
         .cast(classOf[Map[_, _]].asType))
   }

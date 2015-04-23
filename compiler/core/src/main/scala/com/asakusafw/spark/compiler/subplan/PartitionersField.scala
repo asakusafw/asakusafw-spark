@@ -22,7 +22,7 @@ trait PartitionersField extends ClassBuilder {
 
   def jpContext: JPContext
 
-  def branchKeys: BranchKeysClassBuilder
+  def branchKeys: BranchKeys
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -75,10 +75,7 @@ trait PartitionersField extends ClassBuilder {
         classOf[mutable.Builder[_, _]].asType,
         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
           invokeV("apply", classOf[(_, _)].asType,
-            getStatic(
-              branchKeys.thisType,
-              branchKeys.getField(output.getOperator.getSerialNumber),
-              classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
+            branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
               val partitioner = pushNew(classOf[HashPartitioner].asType)
               partitioner.dup().invokeInit(
                 if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST) {

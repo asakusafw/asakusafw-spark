@@ -7,7 +7,6 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
-import com.asakusafw.spark.compiler.subplan.BroadcastIdsClassBuilder
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateOp }
 
@@ -60,8 +59,6 @@ class ShuffledMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
       classOf[Seq[Iterable[_]]].asType,
       implementationClassType,
       outputs) with ShuffledJoin with MasterJoinUpdate {
-
-      val broadcastIds: BroadcastIdsClassBuilder = context.broadcastIds
 
       val masterType: Type = inputs(MasterJoinUpdateOp.ID_INPUT_MASTER).dataModelType
       val txType: Type = inputs(MasterJoinUpdateOp.ID_INPUT_TRANSACTION).dataModelType

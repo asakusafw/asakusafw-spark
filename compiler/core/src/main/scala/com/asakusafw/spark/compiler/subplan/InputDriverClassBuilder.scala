@@ -23,8 +23,7 @@ abstract class InputDriverClassBuilder(
       new ClassSignatureBuilder()
         .newSuperclass {
           _.newClassType(classOf[InputDriver[_]].asType) {
-            _
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
           }
         }
         .build(),

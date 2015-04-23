@@ -109,6 +109,8 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     subplan.putAttribute(classOf[SubPlanInfo],
       new SubPlanInfo(subplan, SubPlanInfo.DriverType.COGROUP, Seq.empty[SubPlanInfo.DriverOption], operator))
 
+    val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
+    val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
     implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -116,13 +118,14 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile),
       externalInputs = mutable.Map.empty,
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
+      branchKeys = branchKeysClassBuilder,
+      broadcastIds = broadcastIdsClassBuilder,
       shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
-    context.jpContext.addClass(context.branchKeys)
+    context.jpContext.addClass(branchKeysClassBuilder)
+    context.jpContext.addClass(broadcastIdsClassBuilder)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
     val hogeOrd = new ShuffleKey.SortOrdering(1, Array(true))
@@ -156,10 +159,10 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         part)
     val results = driver.execute()
 
-    val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+    val branchKeyCls = classServer.loadClass(branchKeysClassBuilder.thisType.getClassName)
     def getBranchKey(osn: Long): BranchKey = {
       val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
-      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+      branchKeyCls.getField(branchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
     }
 
     assert(driver.branchKeys ===

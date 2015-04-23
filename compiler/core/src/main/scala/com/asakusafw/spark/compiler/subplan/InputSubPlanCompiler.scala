@@ -44,7 +44,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
-      override val branchKeys: BranchKeysClassBuilder = context.branchKeys
+      override val branchKeys: BranchKeys = context.branchKeys
 
       override val dominantOperator = operator
 
