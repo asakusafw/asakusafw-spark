@@ -56,7 +56,7 @@ trait BranchKeysField extends ClassBuilder {
     val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-    subplanOutputs.map(_.getOperator.getOriginalSerialNumber).sorted.foreach { sn =>
+    subplanOutputs.map(_.getOperator.getSerialNumber).sorted.foreach { sn =>
       builder.invokeI(
         NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,

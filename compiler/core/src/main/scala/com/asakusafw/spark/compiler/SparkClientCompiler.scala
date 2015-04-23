@@ -3,6 +3,7 @@ package com.asakusafw.spark.compiler
 import java.lang.{ Boolean => JBoolean }
 import java.util.concurrent.atomic.AtomicInteger
 
+import scala.collection.generic.Growable
 import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.reflect.NameTransformer
@@ -223,32 +224,12 @@ class SparkClientCompiler extends JobflowProcessor {
                 val rdds = driverVar.push().invokeV("execute", classOf[Map[BranchKey, RDD[_]]].asType)
                 val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
 
-                subplan.getOutputs.collect {
-                  case output if output.getOpposites.size > 0 => output.getOperator
-                }.foreach { marker =>
-                  rddsVar.push().invokeI(
-                    NameTransformer.encode("+="),
-                    classOf[mutable.MapLike[_, _, _]].asType,
-                    getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
-                      .invokeV(
-                        "apply",
-                        classOf[(BranchKey, RDD[_])].asType,
-                        getStatic(
-                          context.branchKeys.thisType,
-                          context.branchKeys.getField(marker.getSerialNumber),
-                          classOf[BranchKey].asType)
-                          .asType(classOf[AnyRef].asType),
-                        resultVar.push().invokeI(
-                          "apply",
-                          classOf[AnyRef].asType,
-                          getStatic(
-                            context.branchKeys.thisType,
-                            context.branchKeys.getField(marker.getOriginalSerialNumber),
-                            classOf[BranchKey].asType).asType(classOf[AnyRef].asType))
-                          .cast(classOf[RDD[_]].asType)
-                          .asType(classOf[AnyRef].asType)))
-                    .pop()
-                }
+                rddsVar.push().invokeI(
+                  NameTransformer.encode("++="),
+                  classOf[Growable[_]].asType,
+                  resultVar.push().asType(classOf[TraversableOnce[_]].asType))
+                  .pop()
+
                 `return`()
               }
           }

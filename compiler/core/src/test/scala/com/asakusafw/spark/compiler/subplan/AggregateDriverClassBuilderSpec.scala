@@ -109,13 +109,14 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
     val results = driver.execute()
 
     val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+    def getBranchKey(osn: Long): BranchKey = {
+      val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+    }
+
     assert(driver.branchKeys ===
       Set(resultMarker)
-      .map(marker => context.branchKeys.getField(marker.getOriginalSerialNumber))
-      .map(field => branchKeyCls.getField(field).get(null)))
-
-    def getBranchKey(sn: Long): BranchKey =
-      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+      .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
     val result = results(getBranchKey(resultMarker.getOriginalSerialNumber)).asInstanceOf[RDD[(ShuffleKey, Hoge)]]
       .collect.toSeq.sortBy(_._1.grouping(0).asInstanceOf[IntOption].get)

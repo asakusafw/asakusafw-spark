@@ -156,16 +156,16 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
     val results = driver.execute()
 
     val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+    def getBranchKey(osn: Long): BranchKey = {
+      val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+    }
+
     assert(driver.branchKeys ===
       Set(hogeResultMarker, fooResultMarker,
         hogeErrorMarker, fooErrorMarker,
         hogeAllMarker, fooAllMarker,
-        nResultMarker)
-      .map(marker => context.branchKeys.getField(marker.getOriginalSerialNumber))
-      .map(field => branchKeyCls.getField(field).get(null)))
-
-    def getBranchKey(sn: Long): BranchKey =
-      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+        nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
     val hogeResult = results(getBranchKey(hogeResultMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[Hoge])

@@ -66,7 +66,7 @@ trait PartitionersField extends ClassBuilder {
     import mb._
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    subplanOutputs.sortBy(_.getOperator.getOriginalSerialNumber).foreach { output =>
+    subplanOutputs.sortBy(_.getOperator.getSerialNumber).foreach { output =>
       val op = output.getOperator
       Option(output.getAttribute(classOf[PartitioningParameters])).foreach { params =>
         builder.invokeI(
@@ -76,7 +76,7 @@ trait PartitionersField extends ClassBuilder {
             invokeV("apply", classOf[(_, _)].asType,
               getStatic(
                 branchKeys.thisType,
-                branchKeys.getField(op.getOriginalSerialNumber),
+                branchKeys.getField(op.getSerialNumber),
                 classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
                 val partitioner = pushNew(classOf[HashPartitioner].asType)
                 partitioner.dup().invokeInit(

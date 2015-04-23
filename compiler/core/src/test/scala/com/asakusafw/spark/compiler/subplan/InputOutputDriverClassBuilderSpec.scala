@@ -150,13 +150,14 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val inputs = inputDriver.execute()
 
     val branchKeyCls = classServer.loadClass(inputCompilerContext.branchKeys.thisType.getClassName)
+    def getBranchKey(osn: Long): BranchKey = {
+      val sn = inputSubPlan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      branchKeyCls.getField(inputCompilerContext.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+    }
+
     assert(inputDriver.branchKeys ===
       Set(inputMarker)
-      .map(marker => inputCompilerContext.branchKeys.getField(marker.getOriginalSerialNumber))
-      .map(field => branchKeyCls.getField(field).get(null)))
-
-    def getBranchKey(sn: Long): BranchKey =
-      branchKeyCls.getField(inputCompilerContext.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+      .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
     assert(inputs(getBranchKey(inputMarker.getOriginalSerialNumber))
       .map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))

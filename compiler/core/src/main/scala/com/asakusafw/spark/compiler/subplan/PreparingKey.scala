@@ -95,7 +95,7 @@ trait PreparingKey extends ClassBuilder {
           case output if shuffleKeyTypes.contains(output.getOperator.getOriginalSerialNumber) =>
             val op = output.getOperator
             (op, shuffleKeyTypes(op.getOriginalSerialNumber))
-        }.sortBy(_._1.getOriginalSerialNumber).foreach {
+        }.sortBy(_._1.getSerialNumber).foreach {
           case (op, (shuffleKeyType, aggregation)) =>
 
             val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
@@ -104,7 +104,7 @@ trait PreparingKey extends ClassBuilder {
             branchVar.push().unlessNotEqual(
               getStatic(
                 branchKeys.thisType,
-                branchKeys.getField(op.getOriginalSerialNumber),
+                branchKeys.getField(op.getSerialNumber),
                 classOf[BranchKey].asType)) {
 
                 if (aggregation) {
@@ -114,7 +114,7 @@ trait PreparingKey extends ClassBuilder {
                       classOf[Option[_]].asType,
                       getStatic(
                         branchKeys.thisType,
-                        branchKeys.getField(op.getOriginalSerialNumber),
+                        branchKeys.getField(op.getSerialNumber),
                         classOf[BranchKey].asType)
                         .asType(classOf[AnyRef].asType))
                     .invokeV("orNull", classOf[AnyRef].asType,
@@ -141,7 +141,7 @@ trait PreparingKey extends ClassBuilder {
                     classOf[Option[_]].asType,
                     getStatic(
                       branchKeys.thisType,
-                      branchKeys.getField(op.getOriginalSerialNumber),
+                      branchKeys.getField(op.getSerialNumber),
                       classOf[BranchKey].asType)
                       .asType(classOf[AnyRef].asType))
                   .invokeV("orNull", classOf[AnyRef].asType,
@@ -159,7 +159,7 @@ trait PreparingKey extends ClassBuilder {
                         .invokeV("apply", classOf[(_, _)].asType,
                           getStatic(
                             branchKeys.thisType,
-                            branchKeys.getField(op.getOriginalSerialNumber),
+                            branchKeys.getField(op.getSerialNumber),
                             classOf[BranchKey].asType)
                             .asType(classOf[AnyRef].asType),
                           shuffleKeyVar.push().asType(classOf[AnyRef].asType)))
