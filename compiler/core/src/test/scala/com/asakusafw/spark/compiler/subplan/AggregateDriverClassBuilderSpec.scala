@@ -97,14 +97,14 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       classOf[Broadcast[Configuration]],
       classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Seq[RDD[(ShuffleKey, _)]]],
-      classOf[ShuffleKey.SortOrdering],
+      classOf[Option[ShuffleKey.SortOrdering]],
       classOf[Partitioner])
       .newInstance(
         sc,
         hadoopConf,
         Map.empty,
         Seq(hoges),
-        new ShuffleKey.SortOrdering(1, Array.empty[Boolean]),
+        Option(new ShuffleKey.SortOrdering(1, Array.empty[Boolean])),
         new HashPartitioner(2))
     val results = driver.execute()
 

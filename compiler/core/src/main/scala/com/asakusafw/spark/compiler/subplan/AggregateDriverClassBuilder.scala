@@ -41,7 +41,7 @@ abstract class AggregateDriverClassBuilder(
       classOf[Broadcast[Configuration]].asType,
       classOf[Map[BroadcastId, Broadcast[_]]].asType,
       classOf[Seq[RDD[(ShuffleKey, _)]]].asType,
-      classOf[ShuffleKey.SortOrdering].asType,
+      classOf[Option[ShuffleKey.SortOrdering]].asType,
       classOf[Partitioner].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
@@ -74,7 +74,11 @@ abstract class AggregateDriverClassBuilder(
             }
           }
         }
-        .newParameterType(classOf[ShuffleKey.SortOrdering].asType)
+        .newParameterType {
+          _.newClassType(classOf[Option[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey.SortOrdering].asType)
+          }
+        }
         .newParameterType(classOf[Partitioner].asType)
         .newVoidReturnType()
         .build()) { mb =>
@@ -83,7 +87,7 @@ abstract class AggregateDriverClassBuilder(
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
         val prevsVar = `var`(classOf[Seq[RDD[(ShuffleKey, _)]]].asType, broadcastsVar.nextLocal)
-        val sortVar = `var`(classOf[ShuffleKey.SortOrdering].asType, prevsVar.nextLocal)
+        val sortVar = `var`(classOf[Option[ShuffleKey.SortOrdering]].asType, prevsVar.nextLocal)
         val partVar = `var`(classOf[Partitioner].asType, sortVar.nextLocal)
 
         thisVar.push().invokeInit(

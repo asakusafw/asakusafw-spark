@@ -187,18 +187,21 @@ object AggregateSubPlanCompiler {
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         }, {
-          val sort = pushNew(classOf[ShuffleKey.SortOrdering].asType)
-          sort.dup().invokeInit(
-            ldc(input.getGroup.getGrouping.size), {
-              val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
-              input.getGroup.getOrdering.zipWithIndex.foreach {
-                case (ordering, i) =>
-                  arr.dup().astore(ldc(i),
-                    ldc(ordering.getDirection == Group.Direction.ASCENDANT))
-              }
-              arr
-            })
-          sort
+          getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+            .invokeV("apply", classOf[Option[_]].asType, {
+              val sort = pushNew(classOf[ShuffleKey.SortOrdering].asType)
+              sort.dup().invokeInit(
+                ldc(input.getGroup.getGrouping.size), {
+                  val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
+                  input.getGroup.getOrdering.zipWithIndex.foreach {
+                    case (ordering, i) =>
+                      arr.dup().astore(ldc(i),
+                        ldc(ordering.getDirection == Group.Direction.ASCENDANT))
+                  }
+                  arr
+                })
+              sort
+            }.asType(classOf[AnyRef].asType))
         },
         partitionerVar.push().asType(classOf[Partitioner].asType))
       aggregateDriver.store(context.nextLocal.getAndAdd(aggregateDriver.size))

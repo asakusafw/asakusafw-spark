@@ -18,7 +18,7 @@ abstract class AggregateDriver[V, C](
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Broadcast[_]],
   @transient prevs: Seq[RDD[(ShuffleKey, V)]],
-  @transient sort: ShuffleKey.SortOrdering,
+  @transient sort: Option[ShuffleKey.SortOrdering],
   @transient partitioner: Partitioner)
     extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[C] {
   assert(prevs.size > 0,
@@ -32,7 +32,6 @@ abstract class AggregateDriver[V, C](
     sc.setCallSite(name)
 
     val aggregated = {
-      val ordering = Option(sort)
       if (agg.mapSideCombine) {
         confluent(
           prevs.map {
@@ -45,7 +44,7 @@ abstract class AggregateDriver[V, C](
                 val context = TaskContext.get
                 new InterruptibleIterator(context, combiner.iterator)
               }, preservesPartitioning = true)
-          }, partitioner, ordering)
+          }, partitioner, sort)
           .mapPartitions({ iter =>
             val combiner = agg.combinerCombiner
             combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })
@@ -53,7 +52,7 @@ abstract class AggregateDriver[V, C](
             new InterruptibleIterator(context, combiner.iterator)
           }, preservesPartitioning = true)
       } else {
-        confluent(prevs, partitioner, ordering)
+        confluent(prevs, partitioner, sort)
           .mapPartitions({ iter =>
             val combiner = agg.valueCombiner
             combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })
