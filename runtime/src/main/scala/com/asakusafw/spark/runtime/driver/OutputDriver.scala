@@ -45,8 +45,11 @@ abstract class OutputDriver[T: ClassTag](
     sc.clearCallSite()
     sc.setCallSite(name)
 
-    val output = (if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs))
-      .map(in => (NullWritable.get, in._2))
+    val output = (if (prevs.size == 1) {
+      prevs.head
+    } else {
+      new UnionRDD(sc, prevs).coalesce(sc.defaultParallelism, shuffle = false)
+    }).map(in => (NullWritable.get, in._2))
 
     if (Logger.isDebugEnabled()) {
       Logger.debug(output.toDebugString)

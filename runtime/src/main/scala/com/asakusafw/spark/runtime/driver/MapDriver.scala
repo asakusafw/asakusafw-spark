@@ -23,7 +23,11 @@ abstract class MapDriver[T](
     sc.clearCallSite()
     sc.setCallSite(name)
 
-    val prev = if (prevs.size == 1) prevs.head else new UnionRDD(sc, prevs)
+    val prev = if (prevs.size == 1) {
+      prevs.head
+    } else {
+      new UnionRDD(sc, prevs).coalesce(sc.defaultParallelism, shuffle = false)
+    }
 
     sc.setCallSite(CallSite(name, prev.toDebugString))
     branch(prev)
