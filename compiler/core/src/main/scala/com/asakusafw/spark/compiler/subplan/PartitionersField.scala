@@ -70,23 +70,35 @@ trait PartitionersField extends ClassBuilder {
       output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
       outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
     } {
-      builder.invokeI(
-        NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType,
-        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-          invokeV("apply", classOf[(_, _)].asType,
-            branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
-              val partitioner = pushNew(classOf[HashPartitioner].asType)
-              partitioner.dup().invokeInit(
-                if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST) {
-                  ldc(1)
-                } else {
-                  thisVar.push().invokeV("sc", classOf[SparkContext].asType)
-                    .invokeV("defaultParallelism", Type.INT_TYPE)
+      outputInfo.getOutputType match {
+        case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
+          builder.invokeI(
+            NameTransformer.encode("+="),
+            classOf[mutable.Builder[_, _]].asType,
+            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+              invokeV("apply", classOf[(_, _)].asType,
+                branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
+                  val partitioner = pushNew(classOf[HashPartitioner].asType)
+                  partitioner.dup().invokeInit(
+                    thisVar.push().invokeV("sc", classOf[SparkContext].asType)
+                      .invokeV("defaultParallelism", Type.INT_TYPE))
+                  partitioner.asType(classOf[AnyRef].asType)
                 })
-              partitioner.asType(classOf[AnyRef].asType)
-            })
-          .asType(classOf[AnyRef].asType))
+              .asType(classOf[AnyRef].asType))
+        case SubPlanOutputInfo.OutputType.BROADCAST =>
+          builder.invokeI(
+            NameTransformer.encode("+="),
+            classOf[mutable.Builder[_, _]].asType,
+            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+              invokeV("apply", classOf[(_, _)].asType,
+                branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
+                  val partitioner = pushNew(classOf[HashPartitioner].asType)
+                  partitioner.dup().invokeInit(ldc(1))
+                  partitioner.asType(classOf[AnyRef].asType)
+                })
+              .asType(classOf[AnyRef].asType))
+        case _ =>
+      }
     }
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
   }
