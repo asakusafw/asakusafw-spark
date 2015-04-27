@@ -3,13 +3,13 @@
 
 	<parent>
 		<groupId>com.asakusafw.spark</groupId>
-		<artifactId>asakusafw-spark-tools</artifactId>
+		<artifactId>asakusa-spark-tools</artifactId>
 		<version>0.1.0-SNAPSHOT</version>
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
 	<name>ASM Utilities for Asakusa DSL Compiler for Spark</name>
-	<artifactId>asakusafw-spark-tools-asm</artifactId>
+	<artifactId>asakusa-spark-tools-asm</artifactId>
 	<packaging>jar</packaging>
 
 	<description>ASM Utilities for Asakusa DSL Compiler for Spark</description>
@@ -21,6 +21,22 @@
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
 				<artifactId>scala-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-eclipse-plugin</artifactId>
+				<configuration>
+					<buildcommands>
+						<buildcommand>org.scala-ide.sdt.core.scalabuilder</buildcommand>
+					</buildcommands>
+					<projectnatures>
+						<projectnature>org.scala-ide.sdt.core.scalanature</projectnature>
+						<projectnature>org.eclipse.jdt.core.javanature</projectnature>
+					</projectnatures>
+					<sourceIncludes>
+						<sourceInclude>**/*.scala</sourceInclude>
+					</sourceIncludes>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

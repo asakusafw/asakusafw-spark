@@ -3,13 +3,13 @@
 
 	<parent>
 		<groupId>com.asakusafw.spark</groupId>
-		<artifactId>asakusafw-spark-compiler</artifactId>
+		<artifactId>asakusa-spark-compiler</artifactId>
 		<version>0.1.0-SNAPSHOT</version>
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
 	<name>Asakusa DSL Compiler for Spark Core</name>
-	<artifactId>asakusafw-spark-compiler-core</artifactId>
+	<artifactId>asakusa-spark-compiler-core</artifactId>
 	<packaging>jar</packaging>
 
 	<description>Asakusa DSL Compiler for Spark Core</description>
@@ -21,6 +21,22 @@
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
 				<artifactId>scala-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-eclipse-plugin</artifactId>
+				<configuration>
+					<buildcommands>
+						<buildcommand>org.scala-ide.sdt.core.scalabuilder</buildcommand>
+					</buildcommands>
+					<projectnatures>
+						<projectnature>org.scala-ide.sdt.core.scalanature</projectnature>
+						<projectnature>org.eclipse.jdt.core.javanature</projectnature>
+					</projectnatures>
+					<sourceIncludes>
+						<sourceInclude>**/*.scala</sourceInclude>
+					</sourceIncludes>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
@@ -75,12 +91,12 @@
 		</dependency>
 		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
-			<artifactId>asakusafw-spark-runtime</artifactId>
+			<artifactId>asakusa-spark-runtime</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
-			<artifactId>asakusafw-spark-tools-asm</artifactId>
+			<artifactId>asakusa-spark-tools-asm</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 
@@ -134,7 +150,7 @@
 		</dependency>
 		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
-			<artifactId>asakusafw-spark-tools-asm</artifactId>
+			<artifactId>asakusa-spark-tools-asm</artifactId>
 			<version>${project.version}</version>
 			<classifier>tests</classifier>
 			<scope>test</scope>

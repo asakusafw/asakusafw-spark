@@ -3,13 +3,13 @@
 
 	<parent>
 		<groupId>com.asakusafw.spark</groupId>
-		<artifactId>asakusafw-spark</artifactId>
+		<artifactId>asakusa-spark</artifactId>
 		<version>0.1.0-SNAPSHOT</version>
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
 	<name>Asakusa Batch for Spark Runtime Library</name>
-	<artifactId>asakusafw-spark-runtime</artifactId>
+	<artifactId>asakusa-spark-runtime</artifactId>
 	<packaging>jar</packaging>
 
 	<description>Asakusa Batch for Spark Runtime Library</description>
@@ -21,6 +21,22 @@
 			<plugin>
 				<groupId>net.alchim31.maven</groupId>
 				<artifactId>scala-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-eclipse-plugin</artifactId>
+				<configuration>
+					<buildcommands>
+						<buildcommand>org.scala-ide.sdt.core.scalabuilder</buildcommand>
+					</buildcommands>
+					<projectnatures>
+						<projectnature>org.scala-ide.sdt.core.scalanature</projectnature>
+						<projectnature>org.eclipse.jdt.core.javanature</projectnature>
+					</projectnatures>
+					<sourceIncludes>
+						<sourceInclude>**/*.scala</sourceInclude>
+					</sourceIncludes>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

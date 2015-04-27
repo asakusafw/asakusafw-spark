@@ -3,13 +3,13 @@
 
 	<parent>
 		<groupId>com.asakusafw.spark</groupId>
-		<artifactId>asakusafw-spark</artifactId>
+		<artifactId>asakusa-spark</artifactId>
 		<version>0.1.0-SNAPSHOT</version>
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
 	<name>Asakusa DSL Compiler for Spark</name>
-	<artifactId>asakusafw-spark-compiler</artifactId>
+	<artifactId>asakusa-spark-compiler</artifactId>
 	<packaging>pom</packaging>
 
 	<description>Asakusa DSL Compiler for Spark</description>

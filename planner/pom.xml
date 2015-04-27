@@ -4,7 +4,7 @@
 
 	<parent>
 		<groupId>com.asakusafw.spark</groupId>
-		<artifactId>asakusafw-spark</artifactId>
+		<artifactId>asakusa-spark</artifactId>
 		<version>0.1.0-SNAPSHOT</version>
 	</parent>
 
