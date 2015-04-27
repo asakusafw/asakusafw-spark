@@ -35,7 +35,7 @@ abstract class CoGroupDriver(
         grouping)
         .mapValues(_.toSeq).asInstanceOf[RDD[(ShuffleKey, Seq[Iterable[_]])]]
 
-    sc.setCallSite(CallSite(name, cogrouped.toDebugString))
+//    sc.setCallSite(CallSite(name, cogrouped.toDebugString))
     branch(cogrouped.asInstanceOf[RDD[(_, Seq[Iterable[_]])]])
   }
 }

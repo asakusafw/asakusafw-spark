@@ -48,7 +48,7 @@ abstract class SparkClient {
       grouping)
       .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[V]]) }
 
-    sc.setCallSite(CallSite(name, rdd.toDebugString))
+//    sc.setCallSite(CallSite(name, rdd.toDebugString))
 
     val results =
       sc.runJob(

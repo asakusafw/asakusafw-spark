@@ -47,7 +47,7 @@ abstract class InputDriver[T: ClassTag](
         classOf[NullWritable],
         classTag[T].runtimeClass.asInstanceOf[Class[T]])
 
-    sc.setCallSite(CallSite(name, rdd.toDebugString))
+//    sc.setCallSite(CallSite(name, rdd.toDebugString))
     branch(rdd.asInstanceOf[RDD[(_, T)]])
   }
 }

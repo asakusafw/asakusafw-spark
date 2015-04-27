@@ -55,7 +55,7 @@ abstract class OutputDriver[T: ClassTag](
       Logger.debug(output.toDebugString)
     }
 
-    sc.setCallSite(CallSite(name, output.toDebugString))
+//    sc.setCallSite(CallSite(name, output.toDebugString))
     output.saveAsNewAPIHadoopDataset(job.getConfiguration)
     Map.empty
   }

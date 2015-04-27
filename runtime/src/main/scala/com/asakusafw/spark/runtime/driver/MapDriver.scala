@@ -29,7 +29,7 @@ abstract class MapDriver[T](
       new UnionRDD(sc, prevs).coalesce(sc.defaultParallelism, shuffle = false)
     }
 
-    sc.setCallSite(CallSite(name, prev.toDebugString))
+//    sc.setCallSite(CallSite(name, prev.toDebugString))
     branch(prev)
   }
 }

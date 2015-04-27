@@ -62,7 +62,7 @@ abstract class AggregateDriver[V, C](
       }
     }
 
-    sc.setCallSite(CallSite(name, aggregated.toDebugString))
+//    sc.setCallSite(CallSite(name, aggregated.toDebugString))
     branch(aggregated.asInstanceOf[RDD[(_, C)]])
   }
 
