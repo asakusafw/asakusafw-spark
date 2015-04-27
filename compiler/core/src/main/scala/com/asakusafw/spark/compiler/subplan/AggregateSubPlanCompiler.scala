@@ -15,9 +15,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.ShuffleKey
@@ -39,10 +39,10 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = AggregateDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[UserOperator],
-      s"The dominant operator should be user operator: ${dominant}")
-    val operator = dominant.asInstanceOf[UserOperator]
+    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    assert(primaryOperator.isInstanceOf[UserOperator],
+      s"The primary operator should be user operator: ${primaryOperator}")
+    val operator = primaryOperator.asInstanceOf[UserOperator]
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._
@@ -59,7 +59,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
-      override val branchKeys: BranchKeysClassBuilder = context.branchKeys
+      override val branchKeys: BranchKeys = context.branchKeys
 
       override val dominantOperator = operator
 
@@ -140,18 +140,14 @@ object AggregateSubPlanCompiler {
       subplan: SubPlan)(implicit context: Context): Var = {
       import context.mb._
 
-      val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator.asInstanceOf[UserOperator]
+      val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
 
-      val operatorInfo = new OperatorInfo(dominant)(context.jpContext)
+      val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
       import operatorInfo._
 
       assert(inputs.size == 1,
         s"The size of inputs should be 1: ${inputs.size}")
       val input = inputs.head
-      val dataModelRef = input.dataModelRef
-      val properties = input.getGroup.getGrouping.map { grouping =>
-        dataModelRef.findProperty(grouping).getType.asType
-      }.toSeq
 
       val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(
@@ -167,23 +163,19 @@ object AggregateSubPlanCompiler {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-          subplan.getInputs.toSet[SubPlan.Input]
-            .filter { input =>
-              val marker = input.getOperator.getAttribute(classOf[PlanMarker])
-              marker == PlanMarker.CHECKPOINT || marker == PlanMarker.GATHER
-            }
-            .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
-            .map(_.getOperator.getSerialNumber)
-            .foreach { sn =>
-              builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                context.rddsVar.push().invokeI(
-                  "apply",
-                  classOf[AnyRef].asType,
-                  getStatic(
-                    context.branchKeys.thisType,
-                    context.branchKeys.getField(sn),
-                    classOf[BranchKey].asType).asType(classOf[AnyRef].asType)))
-            }
+          for {
+            subPlanInput <- subplan.getInputs
+            planMarker = subPlanInput.getOperator.getAttribute(classOf[PlanMarker])
+            if planMarker == PlanMarker.CHECKPOINT || planMarker == PlanMarker.GATHER
+            prevSubPlanOutput <- subPlanInput.getOpposites
+            marker = prevSubPlanOutput.getOperator
+          } {
+            builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+              context.rddsVar.push().invokeI(
+                "apply",
+                classOf[AnyRef].asType,
+                context.branchKeys.getField(context.mb, marker).asType(classOf[AnyRef].asType)))
+          }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         }, {
@@ -193,10 +185,11 @@ object AggregateSubPlanCompiler {
               sort.dup().invokeInit(
                 ldc(input.getGroup.getGrouping.size), {
                   val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
-                  input.getGroup.getOrdering.zipWithIndex.foreach {
-                    case (ordering, i) =>
-                      arr.dup().astore(ldc(i),
-                        ldc(ordering.getDirection == Group.Direction.ASCENDANT))
+                  for {
+                    (ordering, i) <- input.getGroup.getOrdering.zipWithIndex
+                  } {
+                    arr.dup().astore(ldc(i),
+                      ldc(ordering.getDirection == Group.Direction.ASCENDANT))
                   }
                   arr
                 })

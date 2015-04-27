@@ -14,9 +14,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.lang.compiler.planning.spark.{ DominantOperator, PartitioningParameters }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -32,10 +32,10 @@ class InputSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = InputSubPlanCompiler.InputDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[ExternalInput],
-      s"The dominant operator should be external input: ${dominant}")
-    val operator = dominant.asInstanceOf[ExternalInput]
+    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    assert(primaryOperator.isInstanceOf[ExternalInput],
+      s"The dominant operator should be external input: ${primaryOperator}")
+    val operator = primaryOperator.asInstanceOf[ExternalInput]
     val inputRef = context.externalInputs.getOrElseUpdate(
       operator.getName,
       context.jpContext.addExternalInput(operator.getName, operator.getInfo))
@@ -44,7 +44,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
       override val jpContext = context.jpContext
 
-      override val branchKeys: BranchKeysClassBuilder = context.branchKeys
+      override val branchKeys: BranchKeys = context.branchKeys
 
       override val dominantOperator = operator
 

@@ -23,9 +23,9 @@ import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -69,18 +69,22 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
         Seq(endMarker)).build().getPlan()
     assert(outputPlan.getElements.size === 1)
     val outputSubPlan = outputPlan.getElements.head
-    outputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(outputOperator))
+    outputSubPlan.putAttribute(classOf[SubPlanInfo],
+      new SubPlanInfo(outputSubPlan, SubPlanInfo.DriverType.OUTPUT, Seq.empty[SubPlanInfo.DriverOption], outputOperator))
 
+    val outputBranchKeysClassBuilder = new BranchKeysClassBuilder("outputFlowId")
+    val outputBroadcastIdsClassBuilder = new BroadcastIdsClassBuilder("outputFlowId")
     val outputCompilerContext = SubPlanCompiler.Context(
       flowId = "outtputFlowId",
       jpContext = jpContext,
       externalInputs = mutable.Map.empty,
-      branchKeys = new BranchKeysClassBuilder("outputFlowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("outputFlowId"),
+      branchKeys = outputBranchKeysClassBuilder,
+      broadcastIds = outputBroadcastIdsClassBuilder,
       shuffleKeyTypes = mutable.Set.empty)
     val outputCompiler = resolvers.find(_.support(outputOperator)(outputCompilerContext)).get
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
-    outputCompilerContext.jpContext.addClass(outputCompilerContext.branchKeys)
+    outputCompilerContext.jpContext.addClass(outputBranchKeysClassBuilder)
+    outputCompilerContext.jpContext.addClass(outputBroadcastIdsClassBuilder)
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -126,18 +130,22 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
         Seq(inputMarker)).build().getPlan()
     assert(inputPlan.getElements.size === 1)
     val inputSubPlan = inputPlan.getElements.head
-    inputSubPlan.putAttribute(classOf[DominantOperator], new DominantOperator(inputOperator))
+    inputSubPlan.putAttribute(classOf[SubPlanInfo],
+      new SubPlanInfo(inputSubPlan, SubPlanInfo.DriverType.INPUT, Seq.empty[SubPlanInfo.DriverOption], inputOperator))
 
+    val inputBranchKeysClassBuilder = new BranchKeysClassBuilder("inputFlowId")
+    val inputBroadcastIdsClassBuilder = new BroadcastIdsClassBuilder("inputFlowId")
     val inputCompilerContext = SubPlanCompiler.Context(
       flowId = "inputFlowId",
       jpContext = jpContext,
       externalInputs = mutable.Map.empty,
-      branchKeys = new BranchKeysClassBuilder("inputFlowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("inputFlowId"),
+      branchKeys = inputBranchKeysClassBuilder,
+      broadcastIds = inputBroadcastIdsClassBuilder,
       shuffleKeyTypes = mutable.Set.empty)
     val inputCompiler = resolvers.find(_.support(inputOperator)(inputCompilerContext)).get
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
-    inputCompilerContext.jpContext.addClass(inputCompilerContext.branchKeys)
+    inputCompilerContext.jpContext.addClass(inputBranchKeysClassBuilder)
+    inputCompilerContext.jpContext.addClass(inputBroadcastIdsClassBuilder)
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[Hoge]])
     val inputDriver = inputDriverCls.getConstructor(
       classOf[SparkContext],
@@ -149,14 +157,15 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
         Map.empty)
     val inputs = inputDriver.execute()
 
-    val branchKeyCls = classServer.loadClass(inputCompilerContext.branchKeys.thisType.getClassName)
+    val branchKeyCls = classServer.loadClass(inputBranchKeysClassBuilder.thisType.getClassName)
+    def getBranchKey(osn: Long): BranchKey = {
+      val sn = inputSubPlan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      branchKeyCls.getField(inputBranchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
+    }
+
     assert(inputDriver.branchKeys ===
       Set(inputMarker)
-      .map(marker => inputCompilerContext.branchKeys.getField(marker.getOriginalSerialNumber))
-      .map(field => branchKeyCls.getField(field).get(null)))
-
-    def getBranchKey(sn: Long): BranchKey =
-      branchKeyCls.getField(inputCompilerContext.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+      .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
     assert(inputs(getBranchKey(inputMarker.getOriginalSerialNumber))
       .map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))

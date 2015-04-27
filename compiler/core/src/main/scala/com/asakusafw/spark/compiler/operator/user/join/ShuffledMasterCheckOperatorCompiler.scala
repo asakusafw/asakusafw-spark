@@ -7,7 +7,6 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
-import com.asakusafw.spark.compiler.subplan.BroadcastIdsClassBuilder
 import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 import com.asakusafw.spark.tools.asm._
 
@@ -44,8 +43,6 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
       classOf[Seq[Iterable[_]]].asType,
       implementationClassType,
       outputs) with ShuffledJoin with MasterCheck {
-
-      val broadcastIds: BroadcastIdsClassBuilder = context.broadcastIds
 
       val masterType: Type = inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType
       val txType: Type = inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType

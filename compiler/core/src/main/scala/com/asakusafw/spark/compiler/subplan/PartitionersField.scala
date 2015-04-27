@@ -11,7 +11,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
+import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -22,7 +22,7 @@ trait PartitionersField extends ClassBuilder {
 
   def jpContext: JPContext
 
-  def branchKeys: BranchKeysClassBuilder
+  def branchKeys: BranchKeys
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -66,29 +66,38 @@ trait PartitionersField extends ClassBuilder {
     import mb._
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    subplanOutputs.sortBy(_.getOperator.getOriginalSerialNumber).foreach { output =>
-      val op = output.getOperator
-      Option(output.getAttribute(classOf[PartitioningParameters])).foreach { params =>
-        builder.invokeI(
-          NameTransformer.encode("+="),
-          classOf[mutable.Builder[_, _]].asType,
-          getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-            invokeV("apply", classOf[(_, _)].asType,
-              getStatic(
-                branchKeys.thisType,
-                branchKeys.getField(op.getOriginalSerialNumber),
-                classOf[BranchKey].asType).asType(classOf[AnyRef].asType), {
-                val partitioner = pushNew(classOf[HashPartitioner].asType)
-                partitioner.dup().invokeInit(
-                  if (op.getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST) {
-                    ldc(1)
-                  } else {
+    for {
+      output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
+      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+    } {
+      outputInfo.getOutputType match {
+        case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
+          builder.invokeI(
+            NameTransformer.encode("+="),
+            classOf[mutable.Builder[_, _]].asType,
+            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+              invokeV("apply", classOf[(_, _)].asType,
+                branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
+                  val partitioner = pushNew(classOf[HashPartitioner].asType)
+                  partitioner.dup().invokeInit(
                     thisVar.push().invokeV("sc", classOf[SparkContext].asType)
-                      .invokeV("defaultParallelism", Type.INT_TYPE)
-                  })
-                partitioner.asType(classOf[AnyRef].asType)
-              })
-            .asType(classOf[AnyRef].asType))
+                      .invokeV("defaultParallelism", Type.INT_TYPE))
+                  partitioner.asType(classOf[AnyRef].asType)
+                })
+              .asType(classOf[AnyRef].asType))
+        case SubPlanOutputInfo.OutputType.BROADCAST =>
+          builder.invokeI(
+            NameTransformer.encode("+="),
+            classOf[mutable.Builder[_, _]].asType,
+            getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+              invokeV("apply", classOf[(_, _)].asType,
+                branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
+                  val partitioner = pushNew(classOf[HashPartitioner].asType)
+                  partitioner.dup().invokeInit(ldc(1))
+                  partitioner.asType(classOf[AnyRef].asType)
+                })
+              .asType(classOf[AnyRef].asType))
+        case _ =>
       }
     }
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)

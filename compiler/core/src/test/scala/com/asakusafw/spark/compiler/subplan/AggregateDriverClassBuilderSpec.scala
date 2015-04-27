@@ -20,11 +20,10 @@ import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, Groups, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
-import com.asakusafw.lang.compiler.planning.spark.PartitioningParameters
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.orderings._
@@ -64,12 +63,14 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         Seq(resultMarker)).build().getPlan()
     assert(plan.getElements.size === 1)
     val subplan = plan.getElements.head
-    subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
-    subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == resultMarker.getOriginalSerialNumber)
-      .get
-      .putAttribute(classOf[PartitioningParameters],
-        new PartitioningParameters(Groups.parse(Seq("i"))))
+    subplan.putAttribute(classOf[SubPlanInfo],
+      new SubPlanInfo(subplan, SubPlanInfo.DriverType.AGGREGATE, Seq.empty[SubPlanInfo.DriverOption], operator))
+    val subplanOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == resultMarker.getOriginalSerialNumber).get
+    subplanOutput.putAttribute(classOf[SubPlanOutputInfo],
+      new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("i")), operator))
 
+    val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
+    val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
     implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -77,13 +78,14 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile),
       externalInputs = mutable.Map.empty,
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
+      branchKeys = branchKeysClassBuilder,
+      broadcastIds = broadcastIdsClassBuilder,
       shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
-    context.jpContext.addClass(context.branchKeys)
+    context.jpContext.addClass(branchKeysClassBuilder)
+    context.jpContext.addClass(broadcastIdsClassBuilder)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -108,14 +110,15 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new HashPartitioner(2))
     val results = driver.execute()
 
-    val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+    val branchKeyCls = classServer.loadClass(branchKeysClassBuilder.thisType.getClassName)
+    def getBranchKey(osn: Long): BranchKey = {
+      val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      branchKeyCls.getField(branchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
+    }
+
     assert(driver.branchKeys ===
       Set(resultMarker)
-      .map(marker => context.branchKeys.getField(marker.getOriginalSerialNumber))
-      .map(field => branchKeyCls.getField(field).get(null)))
-
-    def getBranchKey(sn: Long): BranchKey =
-      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+      .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
     val result = results(getBranchKey(resultMarker.getOriginalSerialNumber)).asInstanceOf[RDD[(ShuffleKey, Hoge)]]
       .collect.toSeq.sortBy(_._1.grouping(0).asInstanceOf[IntOption].get)

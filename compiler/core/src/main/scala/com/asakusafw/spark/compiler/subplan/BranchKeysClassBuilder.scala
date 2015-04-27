@@ -8,14 +8,24 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
+trait BranchKeys {
+  this: BranchKeysClassBuilder =>
+
+  def getField(mb: MethodBuilder, marker: MarkerOperator): Stack = {
+    import mb._
+    getStatic(thisType, getField(marker.getSerialNumber), classOf[BranchKey].asType)
+  }
+}
+
 class BranchKeysClassBuilder(flowId: String)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BranchKeys;"),
-      classOf[AnyRef].asType) {
+      classOf[AnyRef].asType) with BranchKeys {
 
   private[this] val branchKeys: mutable.Map[Long, Int] = mutable.Map.empty
 

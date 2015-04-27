@@ -23,7 +23,7 @@ trait Instantiator {
     nextLocal: AtomicInteger,
     flowId: String,
     jpContext: JPContext,
-    branchKeys: BranchKeysClassBuilder)
+    branchKeys: BranchKeys)
 
   def newInstance(
     driverType: Type,

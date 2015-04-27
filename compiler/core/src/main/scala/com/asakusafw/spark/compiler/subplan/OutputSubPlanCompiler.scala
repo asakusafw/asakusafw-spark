@@ -10,7 +10,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -25,10 +25,10 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = OutputSubPlanCompiler.OutputDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val dominant = subplan.getAttribute(classOf[DominantOperator]).getDominantOperator
-    assert(dominant.isInstanceOf[ExternalOutput],
-      s"The dominant operator should be external output: ${dominant}")
-    val operator = dominant.asInstanceOf[ExternalOutput]
+    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    assert(primaryOperator.isInstanceOf[ExternalOutput],
+      s"The dominant operator should be external output: ${primaryOperator}")
+    val operator = primaryOperator.asInstanceOf[ExternalOutput]
 
     context.jpContext.addExternalOutput(
       operator.getName, operator.getInfo,
@@ -68,23 +68,19 @@ object OutputSubPlanCompiler {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-          subplan.getInputs.toSet[SubPlan.Input]
-            .filter { input =>
-              val marker = input.getOperator.getAttribute(classOf[PlanMarker])
-              marker == PlanMarker.CHECKPOINT || marker == PlanMarker.GATHER
-            }
-            .flatMap(input => input.getOpposites.toSet[SubPlan.Output])
-            .map(_.getOperator.getSerialNumber)
-            .foreach { sn =>
-              builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                context.rddsVar.push().invokeI(
-                  "apply",
-                  classOf[AnyRef].asType,
-                  getStatic(
-                    context.branchKeys.thisType,
-                    context.branchKeys.getField(sn),
-                    classOf[BranchKey].asType).asType(classOf[AnyRef].asType)))
-            }
+          for {
+            subPlanInput <- subplan.getInputs
+            planMarker = subPlanInput.getOperator.getAttribute(classOf[PlanMarker])
+            if planMarker == PlanMarker.CHECKPOINT || planMarker == PlanMarker.GATHER
+            prevSubPlanOutput <- subPlanInput.getOpposites
+            marker = prevSubPlanOutput.getOperator
+          } {
+            builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+              context.rddsVar.push().invokeI(
+                "apply",
+                classOf[AnyRef].asType,
+                context.branchKeys.getField(context.mb, marker).asType(classOf[AnyRef].asType)))
+          }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         })

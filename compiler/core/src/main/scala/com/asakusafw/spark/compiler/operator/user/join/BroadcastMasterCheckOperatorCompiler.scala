@@ -11,7 +11,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput, UserOperator }
 import com.asakusafw.spark.compiler.spi.OperatorType
-import com.asakusafw.spark.compiler.subplan.BroadcastIdsClassBuilder
+import com.asakusafw.spark.compiler.subplan.BroadcastIds
 import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 
 class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
@@ -50,7 +50,7 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
       val jpContext: JPContext = context.jpContext
 
-      val broadcastIds: BroadcastIdsClassBuilder = context.broadcastIds
+      val broadcastIds: BroadcastIds = context.broadcastIds
 
       val shuffleKeyTypes: mutable.Set[Type] = context.shuffleKeyTypes
 

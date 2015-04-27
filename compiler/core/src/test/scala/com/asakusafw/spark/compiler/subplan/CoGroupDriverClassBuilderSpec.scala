@@ -23,10 +23,10 @@ import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
-import com.asakusafw.lang.compiler.planning.spark.DominantOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.orderings._
@@ -106,8 +106,11 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
           nResultMarker)).build().getPlan()
     assert(plan.getElements.size === 1)
     val subplan = plan.getElements.head
-    subplan.putAttribute(classOf[DominantOperator], new DominantOperator(operator))
+    subplan.putAttribute(classOf[SubPlanInfo],
+      new SubPlanInfo(subplan, SubPlanInfo.DriverType.COGROUP, Seq.empty[SubPlanInfo.DriverOption], operator))
 
+    val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
+    val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
     implicit val context = SubPlanCompiler.Context(
       flowId = "flowId",
       jpContext = new MockJobflowProcessorContext(
@@ -115,13 +118,14 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         Thread.currentThread.getContextClassLoader,
         classServer.root.toFile),
       externalInputs = mutable.Map.empty,
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
+      branchKeys = branchKeysClassBuilder,
+      broadcastIds = broadcastIdsClassBuilder,
       shuffleKeyTypes = mutable.Set.empty)
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
-    context.jpContext.addClass(context.branchKeys)
+    context.jpContext.addClass(branchKeysClassBuilder)
+    context.jpContext.addClass(broadcastIdsClassBuilder)
     val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
     val hogeOrd = new ShuffleKey.SortOrdering(1, Array(true))
@@ -155,17 +159,17 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         part)
     val results = driver.execute()
 
-    val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+    val branchKeyCls = classServer.loadClass(branchKeysClassBuilder.thisType.getClassName)
+    def getBranchKey(osn: Long): BranchKey = {
+      val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      branchKeyCls.getField(branchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
+    }
+
     assert(driver.branchKeys ===
       Set(hogeResultMarker, fooResultMarker,
         hogeErrorMarker, fooErrorMarker,
         hogeAllMarker, fooAllMarker,
-        nResultMarker)
-      .map(marker => context.branchKeys.getField(marker.getOriginalSerialNumber))
-      .map(field => branchKeyCls.getField(field).get(null)))
-
-    def getBranchKey(sn: Long): BranchKey =
-      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+        nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
     val hogeResult = results(getBranchKey(hogeResultMarker.getOriginalSerialNumber))
       .collect.toSeq.map(_._2.asInstanceOf[Hoge])

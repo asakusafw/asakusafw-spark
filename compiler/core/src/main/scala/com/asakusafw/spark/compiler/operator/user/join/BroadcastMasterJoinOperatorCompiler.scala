@@ -12,7 +12,7 @@ import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput, UserOperator }
 import com.asakusafw.spark.compiler.spi.OperatorType
-import com.asakusafw.spark.compiler.subplan.BroadcastIdsClassBuilder
+import com.asakusafw.spark.compiler.subplan.BroadcastIds
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
 class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
@@ -51,7 +51,7 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
       val jpContext: JPContext = context.jpContext
 
-      val broadcastIds: BroadcastIdsClassBuilder = context.broadcastIds
+      val broadcastIds: BroadcastIds = context.broadcastIds
 
       val shuffleKeyTypes: mutable.Set[Type] = context.shuffleKeyTypes
 
