@@ -133,6 +133,12 @@ trait PreparingKey extends ClassBuilder {
           val dataModelType = dataModelRef.getDeclaration.asType
 
           branchVar.push().unlessNotEqual(branchKeys.getField(mb, marker)) {
+
+            val shuffleKey = pushNew(shuffleKeyType)
+            shuffleKey.dup().invokeInit(valueVar.push().cast(dataModelType))
+            `return`(shuffleKey)
+
+            /*
             if (aggregation) {
               val shuffleKey = pushNew(shuffleKeyType)
               shuffleKey.dup().invokeInit(valueVar.push().cast(dataModelType))
@@ -165,6 +171,7 @@ trait PreparingKey extends ClassBuilder {
               shuffleKeyVar.push().invokeV("copyFrom", valueVar.push().cast(dataModelType))
               `return`(shuffleKeyVar.push())
             }
+            */
           }
         }
         `return`(pushNull(classOf[ShuffleKey].asType))

@@ -1,28 +1,25 @@
 package com.asakusafw.spark.runtime.fragment
 
+import scala.collection.mutable
+
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
-
-import org.apache.spark.util.collection.backdoor.CompactBuffer
 
 abstract class OutputFragment[T <: DataModel[T]] extends Fragment[T] with Iterable[T] {
 
   def newDataModel(): T
 
-  private[this] val buf = new CompactBuffer[T]
-  private[this] var curSize = 0
+  private[this] val buf = mutable.ArrayBuffer.empty[T]
 
-  override def iterator: Iterator[T] = buf.iterator.take(curSize)
+  override def iterator: Iterator[T] = buf.iterator
 
   override def add(result: T): Unit = {
-    if (buf.size <= curSize) {
-      buf += newDataModel()
-    }
-    buf(curSize).copyFrom(result)
-    curSize += 1
+    val dataModel = newDataModel()
+    dataModel.copyFrom(result)
+    buf += dataModel
   }
 
   override def reset(): Unit = {
-    curSize = 0
+    buf.clear()
   }
 }
