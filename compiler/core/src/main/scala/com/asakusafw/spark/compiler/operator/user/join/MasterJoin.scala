@@ -26,6 +26,8 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
   }
 
   override def initFields(mb: MethodBuilder): Unit = {
+    super.initFields(mb)
+
     import mb._
     thisVar.push().putField(
       "joinedDataModel",

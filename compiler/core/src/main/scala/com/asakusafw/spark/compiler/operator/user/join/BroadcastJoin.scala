@@ -51,6 +51,8 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   }
 
   override def initFields(mb: MethodBuilder): Unit = {
+    super.initFields(mb)
+
     import mb._
     val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
