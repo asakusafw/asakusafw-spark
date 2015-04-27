@@ -2,10 +2,13 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
+	<name>Asakusa DSL Compiler for Spark Project Root</name>
 	<groupId>com.asakusafw.spark</groupId>
 	<artifactId>asakusafw-spark</artifactId>
 	<packaging>pom</packaging>
 	<version>0.1.0-SNAPSHOT</version>
+
+	<description>Asakusa DSL Compiler for Spark Project Root</description>
 
 	<properties>
 		<artifact.name>${project.artifactId}</artifact.name>
@@ -15,7 +18,6 @@
 		<asakusafw.version>0.7.3-hadoop1</asakusafw.version>
 		<asakusafw-lang.version>0.1-SNAPSHOT</asakusafw-lang.version>
 		<asakusafw-bridge.version>0.1-SNAPSHOT</asakusafw-bridge.version>
-		<asakusafw-spark-planner.version>0.1-SNAPSHOT</asakusafw-spark-planner.version>
 
 		<scala.binary.version>2.10</scala.binary.version>
 		<scala.version>${scala.binary.version}.4</scala.version>
@@ -35,6 +37,7 @@
 
 	<modules>
 		<module>compiler</module>
+		<module>planner</module>
 		<module>runtime</module>
 		<module>tools</module>
 	</modules>
@@ -44,9 +47,19 @@
 			<plugins>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-resources-plugin</artifactId>
+					<version>2.6</version>
+					<configuration>
+						<encoding>UTF-8</encoding>
+						<escapeString>\</escapeString>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
 					<version>3.2</version>
 					<configuration>
+						<fork>true</fork>
 						<source>1.7</source>
 						<target>1.7</target>
 						<encoding>UTF-8</encoding>
@@ -57,8 +70,23 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>2.18.1</version>
 					<configuration>
-						<parallel>classes</parallel>
-						<useUnlimitedThreads>true</useUnlimitedThreads>
+						<argLine>-ea</argLine>
+						<includes>
+							<include>**/*Test.java</include>
+						</includes>
+						<forkMode>once</forkMode>
+						<!-- see: http://docs.codehaus.org/display/MAVENUSER/Classloading+and+Forking+under+Maven+Surefire -->
+						<useSystemClassLoader>false</useSystemClassLoader>
+						<systemProperties>
+							<property>
+								<name>net.sourceforge.cobertura.datafile</name>
+								<value>${basedir}/target/cobertura/cobertura.ser</value>
+							</property>
+							<property>
+								<name>org.slf4j.simpleLogger.defaultLogLevel</name>
+								<value>debug</value>
+							</property>
+						</systemProperties>
 					</configuration>
 				</plugin>
 				<plugin>
@@ -75,6 +103,9 @@
 					</executions>
 					<configuration>
 						<archive>
+							<manifest>
+								<addDefaultImplementationEntries />
+							</manifest>
 							<manifestEntries>
 								<Artifact-Id>${artifact.id}</Artifact-Id>
 							</manifestEntries>
@@ -91,6 +122,12 @@
 							<goals>
 								<goal>jar</goal>
 								<goal>test-jar</goal>
+							</goals>
+						</execution>
+						<execution>
+							<id>attach-sources</id>
+							<goals>
+								<goal>jar-no-fork</goal>
 							</goals>
 						</execution>
 					</executions>
@@ -141,9 +178,105 @@ encoding/<project>=UTF-8
 						</additionalConfig>
 					</configuration>
 				</plugin>
+				<plugin>
+					<groupId>com.mycila</groupId>
+					<artifactId>license-maven-plugin</artifactId>
+					<version>2.8</version>
+					<dependencies>
+						<dependency>
+							<groupId>com.asakusafw</groupId>
+							<artifactId>build-tools</artifactId>
+							<version>${asakusafw.version}</version>
+						</dependency>
+					</dependencies>
+					<configuration>
+						<aggregate>true</aggregate>
+						<strictCheck>true</strictCheck>
+						<header>/com/asakusafw/source-header.txt</header>
+						<includes>
+							<include>src/**/*.java</include>
+							<include>src/**/*.flex</include>
+							<include>src/**/*.jj</include>
+							<include>src/**/*.sh</include>
+						</includes>
+						<encoding>UTF-8</encoding>
+						<mapping>
+							<flex>JAVADOC_STYLE</flex>
+							<jj>JAVADOC_STYLE</jj>
+						</mapping>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-javadoc-plugin</artifactId>
+					<version>2.10.1</version>
+					<configuration>
+						<encoding>UTF-8</encoding>
+						<charset>UTF-8</charset>
+						<docencoding>UTF-8</docencoding>
+						<locale>en_US</locale>
+						<show>protected</show>
+						<doctitle>Asakusa DSL Compiler for Spark API References (Version
+							${project.version})</doctitle>
+						<windowtitle>Asakusa DSL Compiler for Spark API References
+							(Version ${project.version})</windowtitle>
+					</configuration>
+					<executions>
+						<execution>
+							<id>non-aggregate</id>
+							<goals>
+								<goal>javadoc</goal>
+							</goals>
+						</execution>
+						<execution>
+							<id>aggregate</id>
+							<goals>
+								<goal>aggregate</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+				<plugin>
+					<groupId>org.codehaus.mojo</groupId>
+					<artifactId>findbugs-maven-plugin</artifactId>
+					<version>3.0.0</version>
+					<dependencies>
+						<dependency>
+							<groupId>com.asakusafw</groupId>
+							<artifactId>build-tools</artifactId>
+							<version>${asakusafw.version}</version>
+						</dependency>
+					</dependencies>
+					<configuration>
+						<xmlOutput>true</xmlOutput>
+						<findbugsXmlOutput>true</findbugsXmlOutput>
+						<excludeFilterFile>com/asakusafw/fb_exclude.xml</excludeFilterFile>
+						<sourceEncoding>UTF-8</sourceEncoding>
+						<outputEncoding>UTF-8</outputEncoding>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-checkstyle-plugin</artifactId>
+					<version>2.12.1</version>
+					<dependencies>
+						<dependency>
+							<groupId>com.asakusafw</groupId>
+							<artifactId>build-tools</artifactId>
+							<version>${asakusafw.version}</version>
+						</dependency>
+					</dependencies>
+					<configuration>
+						<configLocation>com/asakusafw/checkstyle.xml</configLocation>
+					</configuration>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -166,6 +299,78 @@ encoding/<project>=UTF-8
 			</plugin>
 		</plugins>
 	</build>
+
+	<reporting>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.10.1</version>
+				<configuration>
+					<encoding>UTF-8</encoding>
+					<charset>UTF-8</charset>
+					<docencoding>UTF-8</docencoding>
+					<locale>en_US</locale>
+					<show>protected</show>
+					<doctitle>Asakusa DSL Compiler for Spark API References (Version
+						${project.version})</doctitle>
+					<windowtitle>Asakusa DSL Compiler for Spark API References (Version
+						${project.version})</windowtitle>
+				</configuration>
+				<reportSets>
+					<reportSet>
+						<id>non-aggregate</id>
+						<reports>
+							<report>javadoc</report>
+						</reports>
+					</reportSet>
+					<reportSet>
+						<id>aggregate</id>
+						<reports>
+							<report>aggregate</report>
+						</reports>
+					</reportSet>
+				</reportSets>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>cobertura-maven-plugin</artifactId>
+				<version>2.5.1</version>
+				<configuration>
+					<formats>
+						<format>xml</format>
+						<format>html</format>
+					</formats>
+					<instrumentation>
+						<excludes>
+							<exclude>**/*Test*.class</exclude>
+						</excludes>
+					</instrumentation>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-report-plugin</artifactId>
+				<version>2.12</version>
+				<reportSets>
+					<reportSet>
+						<reports>
+							<report>report-only</report>
+						</reports>
+					</reportSet>
+				</reportSets>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-project-info-reports-plugin</artifactId>
+				<version>2.4</version>
+				<configuration>
+					<dependencyDetailsEnabled>false</dependencyDetailsEnabled>
+					<dependencyLocationsEnabled>false</dependencyLocationsEnabled>
+				</configuration>
+			</plugin>
+		</plugins>
+	</reporting>
 
 	<dependencyManagement>
 		<dependencies>
@@ -223,17 +428,16 @@ encoding/<project>=UTF-8
 				<artifactId>asakusa-compiler-inspection-driver</artifactId>
 				<version>${asakusafw-lang.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>com.asakusafw.lang.compiler</groupId>
+				<artifactId>asakusa-compiler-optimizer</artifactId>
+				<version>${asakusafw-lang.version}</version>
+			</dependency>
 
 			<dependency>
 				<groupId>com.asakusafw.bridge</groupId>
 				<artifactId>asakusa-bridge-runtime</artifactId>
 				<version>${asakusafw-bridge.version}</version>
-			</dependency>
-
-			<dependency>
-				<groupId>com.asakusafw.spark</groupId>
-				<artifactId>asakusa-spark-planner</artifactId>
-				<version>${asakusafw-spark-planner.version}</version>
 			</dependency>
 
 			<dependency>
@@ -328,6 +532,12 @@ encoding/<project>=UTF-8
 			</dependency>
 			<dependency>
 				<groupId>org.slf4j</groupId>
+				<artifactId>slf4j-simple</artifactId>
+				<version>${slf4j.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.slf4j</groupId>
 				<artifactId>jcl-over-slf4j</artifactId>
 				<version>${slf4j.version}</version>
 				<scope>provided</scope>
@@ -417,7 +627,60 @@ encoding/<project>=UTF-8
 				<enabled>false</enabled>
 			</snapshots>
 		</repository>
+		<repository>
+			<id>com.asakusafw.snapshots</id>
+			<name>Asakusa Framework Snapshot Repository</name>
+			<url>http://asakusafw.s3.amazonaws.com/maven/snapshots</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
 	</repositories>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<id>central</id>
+			<name>Central Repository</name>
+			<url>http://repo.maven.apache.org/maven2</url>
+			<layout>default</layout>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<releases>
+				<updatePolicy>never</updatePolicy>
+			</releases>
+		</pluginRepository>
+		<pluginRepository>
+			<id>codehaus.org</id>
+			<name>Codehaus Maven Repository</name>
+			<url>http://repository.codehaus.org/</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</pluginRepository>
+		<pluginRepository>
+			<id>com.asakusafw.releases</id>
+			<name>Asakusa Framework Repository</name>
+			<url>http://asakusafw.s3.amazonaws.com/maven/releases</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</pluginRepository>
+		<pluginRepository>
+			<id>com.asakusafw.snapshots</id>
+			<name>Asakusa Framework Snapshot Repository</name>
+			<url>http://asakusafw.s3.amazonaws.com/maven/snapshots</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</pluginRepository>
+	</pluginRepositories>
 
 	<profiles>
 		<profile>

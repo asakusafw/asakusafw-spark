@@ -8,8 +8,11 @@
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
+	<name>ASM Utilities for Asakusa DSL Compiler for Spark</name>
 	<artifactId>asakusafw-spark-tools-asm</artifactId>
 	<packaging>jar</packaging>
+
+	<description>ASM Utilities for Asakusa DSL Compiler for Spark</description>
 
 	<build>
 		<sourceDirectory>src/main/scala</sourceDirectory>

@@ -8,8 +8,11 @@
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
+	<name>Asakusa DSL Compiler for Spark Core</name>
 	<artifactId>asakusafw-spark-compiler-core</artifactId>
 	<packaging>jar</packaging>
+
+	<description>Asakusa DSL Compiler for Spark Core</description>
 
 	<build>
 		<sourceDirectory>src/main/scala</sourceDirectory>
@@ -68,8 +71,8 @@
 		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
 			<artifactId>asakusa-spark-planner</artifactId>
+			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>com.asakusafw.spark</groupId>
 			<artifactId>asakusafw-spark-runtime</artifactId>

@@ -8,8 +8,11 @@
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
+	<name>Asakusa DSL Compiler for Spark</name>
 	<artifactId>asakusafw-spark-compiler</artifactId>
 	<packaging>pom</packaging>
+
+	<description>Asakusa DSL Compiler for Spark</description>
 
 	<modules>
 		<module>core</module>
