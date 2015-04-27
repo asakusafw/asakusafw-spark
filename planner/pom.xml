@@ -38,6 +38,7 @@
 			<groupId>com.asakusafw</groupId>
 			<artifactId>asakusa-runtime</artifactId>
 		</dependency>
+
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
@@ -46,18 +47,7 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>com.asakusafw.lang.compiler</groupId>
-			<artifactId>asakusa-compiler-analyzer</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.asakusafw.lang.compiler</groupId>
-			<artifactId>asakusa-compiler-model-testing</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.asakusafw.lang.compiler</groupId>
-			<artifactId>asakusa-compiler-api-testing</artifactId>
-		</dependency>
+
 		<dependency>
 			<groupId>org.apache.hadoop</groupId>
 			<artifactId>hadoop-client</artifactId>
@@ -71,6 +61,19 @@
 		<dependency>
 			<groupId>org.hamcrest</groupId>
 			<artifactId>hamcrest-library</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-model-testing</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-api-testing</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.asakusafw.lang.compiler</groupId>
+			<artifactId>asakusa-compiler-analyzer</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
