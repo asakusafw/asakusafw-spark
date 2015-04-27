@@ -67,7 +67,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       new SubPlanInfo(subplan, SubPlanInfo.DriverType.AGGREGATE, Seq.empty[SubPlanInfo.DriverOption], operator))
     val subplanOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == resultMarker.getOriginalSerialNumber).get
     subplanOutput.putAttribute(classOf[SubPlanOutputInfo],
-      new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Groups.parse(Seq("i")), operator))
+      new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("i")), operator))
 
     val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
     val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
