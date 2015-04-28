@@ -33,7 +33,7 @@ abstract class SparkClient {
 
   def broadcastAsHash[V](
     sc: SparkContext,
-    rdds: Seq[RDD[(ShuffleKey, V)]],
+    prev: RDD[(ShuffleKey, V)],
     sort: Option[ShuffleKey.SortOrdering],
     grouping: ShuffleKey.GroupingOrdering,
     part: Partitioner): Broadcast[Map[ShuffleKey, Seq[V]]] = {
@@ -43,7 +43,7 @@ abstract class SparkClient {
     sc.setCallSite(name)
 
     val rdd = smcogroup(
-      Seq((confluent(rdds, part, sort).asInstanceOf[RDD[(ShuffleKey, _)]], sort)),
+      Seq((prev.asInstanceOf[RDD[(ShuffleKey, _)]], sort)),
       part,
       grouping)
       .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[V]]) }

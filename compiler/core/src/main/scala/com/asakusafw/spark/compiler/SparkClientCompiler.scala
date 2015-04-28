@@ -98,6 +98,26 @@ class SparkClientCompiler extends JobflowProcessor {
                   }
               }
               .build())
+          fieldDef.newField("broadcasts", classOf[mutable.Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]].asType,
+            new TypeSignatureBuilder()
+              .newClassType(classOf[mutable.Map[_, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Broadcast[_]].asType) {
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                        _.newClassType(classOf[Map[_, _]].asType) {
+                          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                            .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                              _.newClassType(classOf[Seq[_]].asType) {
+                                _.newTypeArgument()
+                              }
+                            }
+                        }
+                      }
+                    }
+                  }
+              }
+              .build())
         }
 
         override def defMethods(methodDef: MethodDef): Unit = {
@@ -119,6 +139,9 @@ class SparkClientCompiler extends JobflowProcessor {
               thisVar.push().putField("rdds", classOf[mutable.Map[BranchKey, RDD[_]]].asType,
                 getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
                   .invokeV("empty", classOf[mutable.Map[BranchKey, RDD[_]]].asType))
+              thisVar.push().putField("broadcasts", classOf[mutable.Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]].asType,
+                getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
+                  .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
 
               subplans.zipWithIndex.foreach {
                 case (_, i) =>
@@ -149,17 +172,10 @@ class SparkClientCompiler extends JobflowProcessor {
                     subPlanInput <- subplan.getInputs
                     inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
                     if inputInfo.getInputType == SubPlanInputInfo.InputType.BROADCAST
-                    broadcastInfo <- Option(subPlanInput.getAttribute(classOf[BroadcastInfo]))
                   } {
-                    val dataModelRef = context.jpContext.getDataModelLoader.load(subPlanInput.getOperator.getInput.getDataType)
-                    val key = broadcastInfo.getFormatInfo
-                    val groupings = key.getGrouping.toSeq.map { grouping =>
-                      (dataModelRef.findProperty(grouping).getType.asType, true)
-                    }
-                    val orderings = groupings ++ key.getOrdering.toSeq.map { ordering =>
-                      (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                        ordering.getDirection == Group.Direction.ASCENDANT)
-                    }
+                    val prevSubPlanOutputs = subPlanInput.getOpposites
+                    assert(prevSubPlanOutputs.size == 1)
+                    val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
 
                     builder.invokeI(
                       NameTransformer.encode("+="),
@@ -170,24 +186,62 @@ class SparkClientCompiler extends JobflowProcessor {
                           classOf[(BroadcastId, Broadcast[_])].asType,
                           context.broadcastIds.getField(mb, subPlanInput.getOperator)
                             .asType(classOf[AnyRef].asType),
+                          thisVar.push().getField("broadcasts", classOf[mutable.Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]].asType)
+                            .invokeI(
+                              "apply",
+                              classOf[AnyRef].asType,
+                              context.broadcastIds.getField(mb, prevSubPlanOperator)
+                                .asType(classOf[AnyRef].asType))
+                            .cast(classOf[Broadcast[Map[ShuffleKey, Seq[_]]]].asType)
+                            .asType(classOf[AnyRef].asType))
+                        .asType(classOf[AnyRef].asType))
+                  }
+
+                  val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
+                  broadcasts.store(nextLocal.getAndAdd(broadcasts.size))
+                }
+
+                val instantiator = compiler.instantiator
+                val driverVar = instantiator.newInstance(driverType, subplan)(
+                  instantiator.Context(mb, scVar, hadoopConfVar, broadcastsVar, rddsVar,
+                    nextLocal, source.getFlowId, jpContext, context.branchKeys))
+                val rdds = driverVar.push().invokeV("execute", classOf[Map[BranchKey, RDD[_]]].asType)
+                val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
+
+                for {
+                  subPlanOutput <- subplan.getOutputs
+                  outputInfo <- Option(subPlanOutput.getAttribute(classOf[SubPlanOutputInfo]))
+                  if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
+                  broadcastInfo <- Option(subPlanOutput.getAttribute(classOf[BroadcastInfo]))
+                } {
+                  val dataModelRef = context.jpContext.getDataModelLoader.load(subPlanOutput.getOperator.getInput.getDataType)
+                  val key = broadcastInfo.getFormatInfo
+                  val groupings = key.getGrouping.toSeq.map { grouping =>
+                    (dataModelRef.findProperty(grouping).getType.asType, true)
+                  }
+                  val orderings = groupings ++ key.getOrdering.toSeq.map { ordering =>
+                    (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                      ordering.getDirection == Group.Direction.ASCENDANT)
+                  }
+
+                  thisVar.push().getField("broadcasts", classOf[mutable.Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]].asType)
+                    .invokeI(
+                      NameTransformer.encode("+="),
+                      classOf[Growable[_]].asType,
+                      getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+                        .invokeV("apply", classOf[(_, _)].asType,
+                          context.broadcastIds.getField(mb, subPlanOutput.getOperator)
+                            .asType(classOf[AnyRef].asType),
                           thisVar.push().invokeV(
                             "broadcastAsHash",
                             classOf[Broadcast[_]].asType,
                             scVar.push(),
-                            {
-                              val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                                .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-                              subPlanInput.getOpposites.toSeq.map(_.getOperator).foreach { marker =>
-                                builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-                                  rddsVar.push().invokeI(
-                                    "apply",
-                                    classOf[AnyRef].asType,
-                                    context.branchKeys.getField(mb, marker).asType(classOf[AnyRef].asType)))
-                              }
-
-                              builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-                            },
+                            resultVar.push().invokeI(
+                              "apply",
+                              classOf[AnyRef].asType,
+                              context.branchKeys.getField(mb, subPlanOutput.getOperator)
+                                .asType(classOf[AnyRef].asType))
+                              .cast(classOf[RDD[(ShuffleKey, _)]].asType),
                             {
                               getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
                                 .invokeV("apply", classOf[Option[_]].asType, {
@@ -217,17 +271,8 @@ class SparkClientCompiler extends JobflowProcessor {
                             })
                             .asType(classOf[AnyRef].asType))
                         .asType(classOf[AnyRef].asType))
-                  }
-                  val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
-                  broadcasts.store(nextLocal.getAndAdd(broadcasts.size))
+                    .pop()
                 }
-
-                val instantiator = compiler.instantiator
-                val driverVar = instantiator.newInstance(driverType, subplan)(
-                  instantiator.Context(mb, scVar, hadoopConfVar, broadcastsVar, rddsVar,
-                    nextLocal, source.getFlowId, jpContext, context.branchKeys))
-                val rdds = driverVar.push().invokeV("execute", classOf[Map[BranchKey, RDD[_]]].asType)
-                val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
 
                 rddsVar.push().invokeI(
                   NameTransformer.encode("++="),
