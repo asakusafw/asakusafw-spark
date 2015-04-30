@@ -133,7 +133,7 @@ public class PlanStatistics implements ComplexAttribute {
     }
 
     @Override
-    public Map<String, ?> getNestedAttributes() {
+    public Map<String, ?> toMap() {
         Map<String, Object> results = new LinkedHashMap<>();
         results.put("drivers", getDriverTypes()); //$NON-NLS-1$
         results.put("inputs", getInputTypes()); //$NON-NLS-1$
@@ -145,6 +145,6 @@ public class PlanStatistics implements ComplexAttribute {
     public String toString() {
         return MessageFormat.format(
                 "Plan{0}", //$NON-NLS-1$
-                getNestedAttributes());
+                toMap());
     }
 }

@@ -15,10 +15,12 @@
  */
 package com.asakusafw.spark.compiler.planning;
 
-import java.text.MessageFormat;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
+import com.asakusafw.lang.compiler.common.ComplexAttribute;
 import com.asakusafw.lang.compiler.common.util.EnumUtil;
 import com.asakusafw.lang.compiler.model.graph.Group;
 import com.asakusafw.lang.compiler.planning.SubPlan;
@@ -26,7 +28,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan;
 /**
  * Extra information for {@link com.asakusafw.lang.compiler.planning.SubPlan.Input SubPlan.Input}.
  */
-public class SubPlanInputInfo {
+public class SubPlanInputInfo implements ComplexAttribute {
 
     private final SubPlan.Input origin;
 
@@ -89,12 +91,17 @@ public class SubPlanInputInfo {
     }
 
     @Override
+    public Map<String, ?> toMap() {
+        Map<String, Object> results = new LinkedHashMap<>();
+        results.put("type", getInputType()); //$NON-NLS-1$
+        results.put("options", getInputOptions()); //$NON-NLS-1$
+        results.put("partition", partitionInfo == null ? "N/A" : partitionInfo); //$NON-NLS-1$ //$NON-NLS-2$
+        return results;
+    }
+
+    @Override
     public String toString() {
-        return MessageFormat.format(
-                "{0}{1}(partition={2})", //$NON-NLS-1$
-                inputType,
-                inputOptions,
-                partitionInfo == null ? "N/A" : partitionInfo); //$NON-NLS-1$
+        return toMap().toString();
     }
 
     /**
