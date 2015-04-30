@@ -9,6 +9,20 @@
 	<version>0.1.0-SNAPSHOT</version>
 
 	<description>Asakusa DSL Compiler for Spark Project Root</description>
+	<url>http://asakusafw.com</url>
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>manual</distribution>
+		</license>
+	</licenses>
+
+	<inceptionYear>2011</inceptionYear>
+	<organization>
+		<name>Asakusa Framework Team</name>
+		<url>http://asakusafw.com</url>
+	</organization>
 
 	<properties>
 		<artifact.name>${project.artifactId}</artifact.name>
@@ -63,6 +77,7 @@
 						<source>1.7</source>
 						<target>1.7</target>
 						<encoding>UTF-8</encoding>
+						<proc>none</proc>
 					</configuration>
 				</plugin>
 				<plugin>
@@ -184,6 +199,7 @@ encoding/<project>=UTF-8
 						<strictCheck>true</strictCheck>
 						<header>/com/asakusafw/source-header.txt</header>
 						<includes>
+							<include>src/**/*.scala</include>
 							<include>src/**/*.java</include>
 							<include>src/**/*.flex</include>
 							<include>src/**/*.jj</include>
@@ -191,6 +207,7 @@ encoding/<project>=UTF-8
 						</includes>
 						<encoding>UTF-8</encoding>
 						<mapping>
+							<scala>SLASHSTAR_STYLE</scala>
 							<flex>JAVADOC_STYLE</flex>
 							<jj>JAVADOC_STYLE</jj>
 						</mapping>
@@ -206,10 +223,8 @@ encoding/<project>=UTF-8
 						<docencoding>UTF-8</docencoding>
 						<locale>en_US</locale>
 						<show>protected</show>
-						<doctitle>Asakusa DSL Compiler for Spark API References (Version
-							${project.version})</doctitle>
-						<windowtitle>Asakusa DSL Compiler for Spark API References
-							(Version ${project.version})</windowtitle>
+						<doctitle>Asakusa DSL Compiler for Spark API References (Version ${project.version})</doctitle>
+						<windowtitle>Asakusa DSL Compiler for Spark API References (Version ${project.version})</windowtitle>
 					</configuration>
 					<executions>
 						<execution>
