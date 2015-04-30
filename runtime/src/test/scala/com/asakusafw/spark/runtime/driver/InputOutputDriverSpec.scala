@@ -106,7 +106,7 @@ object InputOutputDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
       val fragment = new HogeOutputFragment
       val outputs = Map(HogeResult -> fragment)
       (fragment, outputs)

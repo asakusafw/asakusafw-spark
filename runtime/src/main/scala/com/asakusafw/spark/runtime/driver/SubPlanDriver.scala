@@ -1,5 +1,7 @@
 package com.asakusafw.spark.runtime.driver
 
+import scala.concurrent.Future
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
 import org.apache.spark._
@@ -12,7 +14,7 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 abstract class SubPlanDriver(
     @transient val sc: SparkContext,
     val hadoopConf: Broadcast[Configuration],
-    val broadcasts: Map[BroadcastId, Broadcast[_]]) extends Serializable {
+    @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]]) extends Serializable {
 
   def name: String
 

@@ -3,6 +3,7 @@ package driver
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
@@ -23,7 +24,7 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 abstract class InputDriver[T: ClassTag](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Broadcast[_]])
+  broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
     extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[T] {
 
   def paths: Set[String]
@@ -47,7 +48,7 @@ abstract class InputDriver[T: ClassTag](
         classOf[NullWritable],
         classTag[T].runtimeClass.asInstanceOf[Class[T]])
 
-//    sc.setCallSite(CallSite(name, rdd.toDebugString))
+    //    sc.setCallSite(CallSite(name, rdd.toDebugString))
     branch(rdd.asInstanceOf[RDD[(_, T)]])
   }
 }

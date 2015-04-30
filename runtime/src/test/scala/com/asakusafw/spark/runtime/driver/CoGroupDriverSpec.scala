@@ -144,7 +144,7 @@ object CoGroupDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments: (Fragment[Seq[Iterable[_]]], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Seq[Iterable[_]]], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         HogeResult -> new HogeOutputFragment,
         FooResult -> new FooOutputFragment,

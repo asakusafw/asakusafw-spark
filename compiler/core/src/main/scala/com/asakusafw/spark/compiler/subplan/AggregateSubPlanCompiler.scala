@@ -20,7 +20,7 @@ import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -68,8 +68,18 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty,
+        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
           new MethodSignatureBuilder()
+            .newParameterType {
+              _.newClassType(classOf[Map[_, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Broadcast[_]].asType) {
+                      _.newTypeArgument()
+                    }
+                  }
+              }
+            }
             .newReturnType {
               _.newClassType(classOf[(_, _)].asType) {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
@@ -91,9 +101,10 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
             }
             .build()) { mb =>
             import mb._
-            val nextLocal = new AtomicInteger(thisVar.nextLocal)
+            val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+            val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
-            val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)(
+            val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)(
               OperatorCompiler.Context(
                 flowId = context.flowId,
                 jpContext = context.jpContext,

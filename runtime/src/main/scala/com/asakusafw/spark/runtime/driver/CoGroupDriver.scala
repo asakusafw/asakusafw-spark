@@ -1,5 +1,7 @@
 package com.asakusafw.spark.runtime.driver
 
+import scala.concurrent.Future
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.SparkContext._
@@ -13,7 +15,7 @@ import com.asakusafw.spark.runtime.rdd._
 abstract class CoGroupDriver(
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Broadcast[_]],
+  broadcasts: Map[BroadcastId, Future[Broadcast[_]]],
   @transient prevs: Seq[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])],
   @transient grouping: ShuffleKey.GroupingOrdering,
   @transient part: Partitioner)
@@ -35,7 +37,7 @@ abstract class CoGroupDriver(
         grouping)
         .mapValues(_.toSeq).asInstanceOf[RDD[(ShuffleKey, Seq[Iterable[_]])]]
 
-//    sc.setCallSite(CallSite(name, cogrouped.toDebugString))
+    //    sc.setCallSite(CallSite(name, cogrouped.toDebugString))
     branch(cogrouped.asInstanceOf[RDD[(_, Seq[Iterable[_]])]])
   }
 }

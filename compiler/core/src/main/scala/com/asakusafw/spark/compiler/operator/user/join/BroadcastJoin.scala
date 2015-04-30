@@ -73,7 +73,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
     thisVar.push().putField(
       "masters",
       classOf[Map[_, _]].asType,
-      getBroadcastsField(mb)
+      broadcastsVar.push()
         .invokeI("apply", classOf[AnyRef].asType,
           broadcastIds.getField(mb, marker).asType(classOf[AnyRef].asType))
         .cast(classOf[Broadcast[_]].asType)

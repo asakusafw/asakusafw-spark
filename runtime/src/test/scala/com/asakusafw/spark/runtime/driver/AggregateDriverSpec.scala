@@ -206,7 +206,7 @@ object AggregateDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val fragment = new HogeOutputFragment
         val outputs = Map(Result -> fragment)
         (fragment, outputs)
@@ -252,7 +252,7 @@ object AggregateDriverSpec {
         Map(Result1 -> new TestAggregation(true))
       }
 
-      override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val fragment1 = new HogeOutputFragment
         val fragment2 = new HogeOutputFragment
         (new EdgeFragment[Hoge](Array(fragment1, fragment2)) {

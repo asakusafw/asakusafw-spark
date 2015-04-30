@@ -1,6 +1,8 @@
 package com.asakusafw.spark.runtime.driver
 
 import scala.collection.mutable
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.Partitioner
@@ -14,8 +16,7 @@ import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
 
 trait Branching[T] {
-
-  def hadoopConf: Broadcast[Configuration]
+  this: SubPlanDriver =>
 
   def branchKeys: Set[BranchKey]
 
@@ -27,13 +28,16 @@ trait Branching[T] {
 
   def shuffleKey(branch: BranchKey, value: Any): ShuffleKey
 
-  def fragments: (Fragment[T], Map[BranchKey, OutputFragment[_]])
+  def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
   def branch(rdd: RDD[(_, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
+    val broadcasts = this.broadcasts.map {
+      case (key, future) => key -> Await.result(future, Duration.Inf)
+    }.toMap[BroadcastId, Broadcast[_]]
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
         rdd.mapPartitions({ iter =>
-          f(iter).map {
+          f(iter, broadcasts).map {
             case (Branch(_, k), v) => (k, v)
           }
         }, preservesPartitioning = true))
@@ -46,9 +50,9 @@ trait Branching[T] {
           }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]
 
           if (combiners.isEmpty) {
-            f(iter)
+            f(iter, broadcasts)
           } else {
-            f(iter).flatMap {
+            f(iter, broadcasts).flatMap {
               case (Branch(b, k), v) if combiners.contains(b) =>
                 combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]]
                   .insert(k, v)
@@ -68,8 +72,8 @@ trait Branching[T] {
     }
   }
 
-  private def f(iter: Iterator[(_, T)]): Iterator[(Branch[ShuffleKey], _)] = {
-    val (fragment, outputs) = fragments
+  private def f(iter: Iterator[(_, T)], broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], _)] = {
+    val (fragment, outputs) = fragments(broadcasts)
     assert(outputs.keys.toSet == branchKeys,
       s"The branch keys of outputs and branch keys field should be the same: (${
         outputs.keys.mkString("(", ",", ")")

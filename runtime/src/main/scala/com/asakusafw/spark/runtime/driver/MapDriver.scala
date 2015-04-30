@@ -1,5 +1,7 @@
 package com.asakusafw.spark.runtime.driver
 
+import scala.concurrent.Future
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.rdd._
@@ -13,7 +15,7 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 abstract class MapDriver[T](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Broadcast[_]],
+  broadcasts: Map[BroadcastId, Future[Broadcast[_]]],
   @transient prevs: Seq[RDD[(_, T)]])
     extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[T] {
   assert(prevs.size > 0,
@@ -29,7 +31,7 @@ abstract class MapDriver[T](
       new UnionRDD(sc, prevs).coalesce(sc.defaultParallelism, shuffle = false)
     }
 
-//    sc.setCallSite(CallSite(name, prev.toDebugString))
+    //    sc.setCallSite(CallSite(name, prev.toDebugString))
     branch(prev)
   }
 }

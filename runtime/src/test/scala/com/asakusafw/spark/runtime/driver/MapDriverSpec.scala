@@ -169,7 +169,7 @@ object MapDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val output = new HogeOutputFragment
         val fragment = new SimpleFragment(output)
         (fragment, Map(HogeResult -> output))
@@ -211,7 +211,7 @@ object MapDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val hoge1Output = new HogeOutputFragment
         val hoge2Output = new HogeOutputFragment
         val fragment = new BranchFragment(hoge1Output, hoge2Output)
@@ -264,7 +264,7 @@ object MapDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      override def fragments: (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
         val foo1Output = new FooOutputFragment
         val foo2Output = new FooOutputFragment
         val fragment = new BranchFragment(foo1Output, foo2Output)

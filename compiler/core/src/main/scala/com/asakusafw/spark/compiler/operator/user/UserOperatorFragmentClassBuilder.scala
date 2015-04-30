@@ -2,6 +2,8 @@ package com.asakusafw.spark.compiler
 package operator
 package user
 
+import scala.concurrent.Future
+
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
@@ -18,12 +20,10 @@ abstract class UserOperatorFragmentClassBuilder(
   val operatorOutputs: Seq[OperatorOutput])
     extends FragmentClassBuilder(flowId, dataModelType)
     with OperatorField
-    with BroadcastsField
     with OutputFragments {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     defOperatorField(fieldDef)
-    defBroadcastsField(fieldDef)
     defOutputFields(fieldDef)
   }
 
@@ -50,7 +50,6 @@ abstract class UserOperatorFragmentClassBuilder(
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
         thisVar.push().invokeInit(superType)
-        initBroadcastsField(mb, broadcastsVar)
         initOutputFields(mb, broadcastsVar.nextLocal)
         initFields(mb)
       }

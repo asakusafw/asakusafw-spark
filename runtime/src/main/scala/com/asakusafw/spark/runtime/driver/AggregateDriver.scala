@@ -1,5 +1,7 @@
 package com.asakusafw.spark.runtime.driver
 
+import scala.concurrent.Future
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.SparkContext._
@@ -16,7 +18,7 @@ import com.asakusafw.spark.runtime.rdd._
 abstract class AggregateDriver[V, C](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Broadcast[_]],
+  broadcasts: Map[BroadcastId, Future[Broadcast[_]]],
   @transient prevs: Seq[RDD[(ShuffleKey, V)]],
   @transient sort: Option[ShuffleKey.SortOrdering],
   @transient partitioner: Partitioner)
@@ -62,7 +64,7 @@ abstract class AggregateDriver[V, C](
       }
     }
 
-//    sc.setCallSite(CallSite(name, aggregated.toDebugString))
+    //    sc.setCallSite(CallSite(name, aggregated.toDebugString))
     branch(aggregated.asInstanceOf[RDD[(_, C)]])
   }
 

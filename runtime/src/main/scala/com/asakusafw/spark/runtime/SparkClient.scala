@@ -1,5 +1,8 @@
 package com.asakusafw.spark.runtime
 
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits._
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
 import org.apache.spark.SparkContext._
@@ -36,7 +39,7 @@ abstract class SparkClient {
     prev: RDD[(ShuffleKey, V)],
     sort: Option[ShuffleKey.SortOrdering],
     grouping: ShuffleKey.GroupingOrdering,
-    part: Partitioner): Broadcast[Map[ShuffleKey, Seq[V]]] = {
+    part: Partitioner): Future[Broadcast[Map[ShuffleKey, Seq[V]]]] = {
 
     val name = "Prepare for Broadcast"
     sc.clearCallSite()
@@ -48,14 +51,16 @@ abstract class SparkClient {
       grouping)
       .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[V]]) }
 
-//    sc.setCallSite(CallSite(name, rdd.toDebugString))
+    //    sc.setCallSite(CallSite(name, rdd.toDebugString))
 
-    val results =
-      sc.runJob(
-        rdd,
-        (iter: Iterator[(ShuffleKey, Seq[V])]) => iter.toVector,
-        0 until rdd.partitions.size,
-        allowLocal = true)
-    sc.broadcast(results.flatten.toMap)
+    Future {
+      val results =
+        sc.runJob(
+          rdd,
+          (iter: Iterator[(ShuffleKey, Seq[V])]) => iter.toVector,
+          0 until rdd.partitions.size,
+          allowLocal = true)
+      sc.broadcast(results.flatten.toMap)
+    }
   }
 }

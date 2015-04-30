@@ -67,7 +67,7 @@ object ResourceBrokingIteratorSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         Result -> new HogeOutputFragment)
       val fragment = new TestFragment(outputs(Result))
