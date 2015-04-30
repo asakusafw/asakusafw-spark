@@ -128,6 +128,16 @@ class SparkClientCompiler extends JobflowProcessor {
                   }
               }
               .build())
+          fieldDef.newField("terminators", classOf[mutable.Set[Future[Unit]]].asType,
+            new TypeSignatureBuilder()
+              .newClassType(classOf[mutable.Set[Future[Unit]]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                  _.newClassType(classOf[Future[Unit]].asType) {
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Unit].asType)
+                  }
+                }
+              }
+              .build())
         }
 
         override def defMethods(methodDef: MethodDef): Unit = {
@@ -152,10 +162,29 @@ class SparkClientCompiler extends JobflowProcessor {
               thisVar.push().putField("broadcasts", classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType,
                 getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
                   .invokeV("empty", classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType))
+              thisVar.push().putField("terminators", classOf[mutable.Set[Future[Unit]]].asType,
+                getStatic(mutable.Set.getClass.asType, "MODULE$", mutable.Set.getClass.asType)
+                  .invokeV("empty", classOf[mutable.Set[Future[Unit]]].asType))
 
               subplans.foreach {
                 case (_, i) =>
                   thisVar.push().invokeV(s"execute${i}")
+              }
+
+              val iterVar = thisVar.push().getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
+                .invokeI("iterator", classOf[Iterator[Future[Unit]]].asType)
+                .store(hadoopConfVar.nextLocal)
+              whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
+                getStatic(Await.getClass.asType, "MODULE$", Await.getClass.asType)
+                  .invokeV("result", classOf[AnyRef].asType,
+                    iterVar.push()
+                      .invokeI("next", classOf[AnyRef].asType)
+                      .cast(classOf[Future[Unit]].asType)
+                      .asType(classOf[Awaitable[_]].asType),
+                    getStatic(Duration.getClass.asType, "MODULE$", Duration.getClass.asType)
+                      .invokeV("Inf", classOf[Duration.Infinite].asType)
+                      .asType(classOf[Duration].asType))
+                  .pop()
               }
 
               `return`(ldc(0))
@@ -172,7 +201,8 @@ class SparkClientCompiler extends JobflowProcessor {
                 val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType).store(thisVar.nextLocal)
                 val hadoopConfVar = thisVar.push().getField("hadoopConf", classOf[Broadcast[Configuration]].asType).store(scVar.nextLocal)
                 val rddsVar = thisVar.push().getField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType).store(hadoopConfVar.nextLocal)
-                val nextLocal = new AtomicInteger(rddsVar.nextLocal)
+                val terminatorsVar = thisVar.push().getField("terminators", classOf[mutable.Set[Future[Unit]]].asType).store(rddsVar.nextLocal)
+                val nextLocal = new AtomicInteger(terminatorsVar.nextLocal)
 
                 val broadcastsVar = {
                   val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
@@ -213,7 +243,7 @@ class SparkClientCompiler extends JobflowProcessor {
 
                 val instantiator = compiler.instantiator
                 val driverVar = instantiator.newInstance(driverType, subplan)(
-                  instantiator.Context(mb, scVar, hadoopConfVar, broadcastsVar, rddsVar,
+                  instantiator.Context(mb, scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar,
                     nextLocal, source.getFlowId, jpContext, context.branchKeys))
                 val rdds = driverVar.push().invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
                 val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))

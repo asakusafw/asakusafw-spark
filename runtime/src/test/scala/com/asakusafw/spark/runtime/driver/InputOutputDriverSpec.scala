@@ -8,6 +8,7 @@ import org.scalatest.junit.JUnitRunner
 import java.io.{ DataInput, DataOutput, File }
 import java.nio.file.{ Files, Path }
 
+import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -56,7 +57,11 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
 
     val hoges = sc.parallelize(0 until 10).map(f).asInstanceOf[RDD[(_, Hoge)]]
 
-    new TestOutputDriver(sc, hadoopConf, Future.successful(hoges), path).execute()
+    val terminators = mutable.Set.empty[Future[Unit]]
+    new TestOutputDriver(sc, hadoopConf, Future.successful(hoges), terminators, path).execute()
+    terminators.foreach {
+      Await.ready(_, Duration.Inf)
+    }
 
     val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
     assert(Await.result(
@@ -88,8 +93,9 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient input: Future[RDD[(_, Hoge)]],
+    @transient terminators: mutable.Set[Future[Unit]],
     val path: String)
-      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input)) {
+      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input), terminators) {
 
     override def name = "TestOutput"
   }

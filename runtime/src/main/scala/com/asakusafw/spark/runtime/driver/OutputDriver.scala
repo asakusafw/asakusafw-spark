@@ -1,9 +1,9 @@
 package com.asakusafw.spark.runtime
 package driver
 
-import scala.concurrent.{ Await, Future }
+import scala.collection.mutable
+import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
@@ -28,7 +28,8 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 abstract class OutputDriver[T: ClassTag](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  @transient prevs: Seq[Future[RDD[(_, T)]]])
+  @transient prevs: Seq[Future[RDD[(_, T)]]],
+  @transient terminators: mutable.Set[Future[Unit]])
     extends SubPlanDriver(sc, hadoopConf, Map.empty) {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
@@ -68,7 +69,8 @@ abstract class OutputDriver[T: ClassTag](
         output.saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
 
-    Await.result(future, Duration.Inf)
+    terminators += future
+
     Map.empty
   }
 

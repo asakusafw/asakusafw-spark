@@ -95,15 +95,21 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       hoge.id.modify(i)
       (hoge, hoge)
     }
+    val terminators = mutable.Set.empty[Future[Unit]]
     val outputDriver = outputDriverCls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
-      classOf[Seq[Future[RDD[_]]]])
+      classOf[Seq[Future[RDD[_]]]],
+      classOf[mutable.Set[Future[Unit]]])
       .newInstance(
         sc,
         hadoopConf,
-        Seq(Future.successful(hoges)))
+        Seq(Future.successful(hoges)),
+        terminators)
     outputDriver.execute()
+    terminators.foreach {
+      Await.result(_, Duration.Inf)
+    }
 
     // prepare for input
     val srcDir = new File(tmpDir, s"${outputOperator.getName}")

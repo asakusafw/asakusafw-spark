@@ -3,6 +3,7 @@ package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.ClassTag
 
@@ -35,7 +36,8 @@ abstract class OutputDriverClassBuilder(
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
-      classOf[Seq[Future[RDD[(_, _)]]]].asType),
+      classOf[Seq[Future[RDD[(_, _)]]]].asType,
+      classOf[mutable.Set[Future[Unit]]].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
         .newParameterType {
@@ -61,18 +63,29 @@ abstract class OutputDriverClassBuilder(
             }
           }
         }
+        .newParameterType {
+          _.newClassType(classOf[mutable.Set[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[Future[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Unit].asType)
+              }
+            }
+          }
+        }
         .newVoidReturnType()
         .build()) { mb =>
         import mb._
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
         val prevsVar = `var`(classOf[Seq[Future[RDD[(_, _)]]]].asType, hadoopConfVar.nextLocal)
+        val terminatorsVar = `var`(classOf[mutable.Set[Future[Unit]]].asType, prevsVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,
           scVar.push(),
           hadoopConfVar.push(),
           prevsVar.push(),
+          terminatorsVar.push(),
           getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
             .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
       }

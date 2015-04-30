@@ -87,7 +87,8 @@ object OutputSubPlanCompiler {
           }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-        })
+        },
+        context.terminatorsVar.push())
       outputDriver.store(context.nextLocal.getAndAdd(outputDriver.size))
     }
   }
