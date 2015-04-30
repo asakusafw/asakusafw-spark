@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.reflect.{ ClassTag, NameTransformer }
 
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
@@ -62,8 +63,18 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq.empty,
+        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
           new MethodSignatureBuilder()
+            .newParameterType {
+              _.newClassType(classOf[Map[_, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Broadcast[_]].asType) {
+                      _.newTypeArgument()
+                    }
+                  }
+              }
+            }
             .newReturnType {
               _.newClassType(classOf[(_, _)].asType) {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
@@ -93,7 +104,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
             }
             .build()) { mb =>
             import mb._
-            val nextLocal = new AtomicInteger(thisVar.nextLocal)
+            val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+            val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
             implicit val compilerContext =
               OperatorCompiler.Context(
@@ -102,13 +114,13 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
                 branchKeys = context.branchKeys,
                 broadcastIds = context.broadcastIds,
                 shuffleKeyTypes = context.shuffleKeyTypes)
-            val fragmentBuilder = new FragmentTreeBuilder(mb, nextLocal)
+            val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)
             val fragmentVar = {
               val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
               val outputs = operator.getOutputs.map(fragmentBuilder.build)
               val fragment = pushNew(t)
               fragment.dup().invokeInit(
-                thisVar.push().invokeV("broadcasts", classOf[Map[BroadcastId, Broadcast[_]]].asType)
+                broadcastsVar.push()
                   +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
               fragment.store(nextLocal.getAndAdd(fragment.size))
             }
@@ -188,7 +200,9 @@ object CoGroupSubPlanCompiler {
                             "apply",
                             classOf[AnyRef].asType,
                             context.branchKeys.getField(context.mb, marker)
-                              .asType(classOf[AnyRef].asType)))
+                              .asType(classOf[AnyRef].asType))
+                            .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
+                            .asType(classOf[AnyRef].asType))
                       }
 
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)

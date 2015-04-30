@@ -22,6 +22,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class FragmentTreeBuilder(
     mb: MethodBuilder,
+    broadcastsVar: Var,
     nextLocal: AtomicInteger)(implicit context: OperatorCompiler.Context) {
   import mb._
 
@@ -47,7 +48,7 @@ class FragmentTreeBuilder(
         val outputs = operator.getOutputs.map(build)
         val fragment = pushNew(t)
         fragment.dup().invokeInit(
-          thisVar.push().invokeV("broadcasts", classOf[Map[BroadcastId, Broadcast[_]]].asType)
+          broadcastsVar.push()
             +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
         fragment
     }

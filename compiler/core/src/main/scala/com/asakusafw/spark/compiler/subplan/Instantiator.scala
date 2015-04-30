@@ -20,6 +20,7 @@ trait Instantiator {
     hadoopConfVar: Var, // Broadcast[Configuration]
     broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
     rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
+    terminatorsVar: Var, // mutable.Set[Future[Unit]]
     nextLocal: AtomicInteger,
     flowId: String,
     jpContext: JPContext,

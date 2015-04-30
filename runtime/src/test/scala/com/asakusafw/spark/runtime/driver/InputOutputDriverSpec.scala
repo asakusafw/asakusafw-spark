@@ -8,7 +8,11 @@ import org.scalatest.junit.JUnitRunner
 import java.io.{ DataInput, DataOutput, File }
 import java.nio.file.{ Files, Path }
 
+import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
@@ -51,12 +55,19 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
       }
     }
 
-    val hoges = sc.parallelize(0 until 10).map(f)
+    val hoges = sc.parallelize(0 until 10).map(f).asInstanceOf[RDD[(_, Hoge)]]
 
-    new TestOutputDriver(sc, hadoopConf, hoges.asInstanceOf[RDD[(_, Hoge)]], path).execute()
+    val terminators = mutable.Set.empty[Future[Unit]]
+    new TestOutputDriver(sc, hadoopConf, Future.successful(hoges), terminators, path).execute()
+    terminators.foreach {
+      Await.ready(_, Duration.Inf)
+    }
 
     val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
-    assert(inputs(HogeResult).map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
+    assert(Await.result(
+      inputs(HogeResult).map {
+        _.map(_._2.asInstanceOf[Hoge].id.get)
+      }, Duration.Inf).collect.toSeq === (0 until 10))
   }
 
   private def createTempDirectory(): Path = {
@@ -81,9 +92,10 @@ object InputOutputDriverSpec {
   class TestOutputDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient input: RDD[(_, Hoge)],
+    @transient input: Future[RDD[(_, Hoge)]],
+    @transient terminators: mutable.Set[Future[Unit]],
     val path: String)
-      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input)) {
+      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input), terminators) {
 
     override def name = "TestOutput"
   }
@@ -106,7 +118,7 @@ object InputOutputDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
       val fragment = new HogeOutputFragment
       val outputs = Map(HogeResult -> fragment)
       (fragment, outputs)

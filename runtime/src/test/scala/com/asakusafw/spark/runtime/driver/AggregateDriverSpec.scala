@@ -5,6 +5,9 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
@@ -52,12 +55,15 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val aggregation = new TestAggregation(true)
 
     val driver = new TestAggregateDriver(
-      sc, hadoopConf, hoges, Option(new ShuffleKey.SortOrdering(1, Array(false))), part, aggregation)
+      sc, hadoopConf, Future.successful(hoges), Option(new ShuffleKey.SortOrdering(1, Array(false))), part, aggregation)
 
     val outputs = driver.execute()
-    assert(outputs(Result).map {
-      case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
-    }.collect.toSeq.sortBy(_._1) ===
+    assert(Await.result(
+      outputs(Result).map {
+        _.map {
+          case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
+        }
+      }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
       Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
   }
 
@@ -92,12 +98,15 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val aggregation = new TestAggregation(false)
 
     val driver = new TestAggregateDriver(
-      sc, hadoopConf, hoges, Option(new ShuffleKey.SortOrdering(1, Array(false))), part, aggregation)
+      sc, hadoopConf, Future.successful(hoges), Option(new ShuffleKey.SortOrdering(1, Array(false))), part, aggregation)
 
     val outputs = driver.execute()
-    assert(outputs(Result).map {
-      case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
-    }.collect.toSeq.sortBy(_._1) ===
+    assert(Await.result(
+      outputs(Result).map {
+        _.map {
+          case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
+        }
+      }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
       Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
   }
 
@@ -126,20 +135,26 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
         (shuffleKey, hoge)
       }
     }
-    val hoges = sc.parallelize(0 until 10, 2).map(f)
+    val hoges = sc.parallelize(0 until 10, 2).map(f).asInstanceOf[RDD[(_, Hoge)]]
 
-    val driver = new TestPartialAggregationMapDriver(sc, hadoopConf, hoges.asInstanceOf[RDD[(_, Hoge)]])
+    val driver = new TestPartialAggregationMapDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
-    assert(outputs(Result1).map {
-      case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
-    }.collect.toSeq.sortBy(_._1) ===
+    assert(Await.result(
+      outputs(Result1).map {
+        _.map {
+          case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
+        }
+      }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
       Seq(
         (0, (0 until 10).filter(_ % 2 == 0).filter(_ < 5).map(_ * 100).sum),
         (0, (0 until 10).filter(_ % 2 == 0).filterNot(_ < 5).map(_ * 100).sum),
         (1, (0 until 10).filter(_ % 2 == 1).filter(_ < 5).map(_ * 100).sum),
         (1, (0 until 10).filter(_ % 2 == 1).filterNot(_ < 5).map(_ * 100).sum)))
-    assert(outputs(Result2).collect.toSeq.map { case (key, hoge: Hoge) => hoge.price.get } === (0 until 10).map(100 * _))
+    assert(Await.result(
+      outputs(Result2), Duration.Inf).collect.toSeq.map {
+        case (key, hoge: Hoge) => hoge.price.get
+      } === (0 until 10).map(100 * _))
   }
 }
 
@@ -190,7 +205,7 @@ object AggregateDriverSpec {
     class TestAggregateDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: RDD[(ShuffleKey, Hoge)],
+      @transient prev: Future[RDD[(ShuffleKey, Hoge)]],
       @transient sort: Option[ShuffleKey.SortOrdering],
       @transient part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
@@ -206,7 +221,7 @@ object AggregateDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val fragment = new HogeOutputFragment
         val outputs = Map(Result -> fragment)
         (fragment, outputs)
@@ -235,7 +250,7 @@ object AggregateDriverSpec {
     class TestPartialAggregationMapDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: RDD[(_, Hoge)])
+      @transient prev: Future[RDD[(_, Hoge)]])
         extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def name = "TestPartialAggregation"
@@ -252,7 +267,7 @@ object AggregateDriverSpec {
         Map(Result1 -> new TestAggregation(true))
       }
 
-      override def fragments: (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val fragment1 = new HogeOutputFragment
         val fragment2 = new HogeOutputFragment
         (new EdgeFragment[Hoge](Array(fragment1, fragment2)) {

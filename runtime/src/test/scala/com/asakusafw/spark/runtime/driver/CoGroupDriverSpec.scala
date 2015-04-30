@@ -5,6 +5,9 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
@@ -77,16 +80,16 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
         (shuffleKey, foo)
       }
     }
-    val foos = sc.parallelize(0 until 100).flatMap(i => (0 until i).iterator.map(fFoo(i, _)))
-      .asInstanceOf[RDD[(ShuffleKey, _)]]
+    val foos = sc.parallelize(0 until 100).flatMap(i => (0 until i).iterator.map(fFoo(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
 
     val grouping = new ShuffleKey.GroupingOrdering(1)
     val part = new HashPartitioner(2)
     val driver = new TestCoGroupDriver(
-      sc, hadoopConf, Seq((Seq(hoges), Option(hogeOrd)), (Seq(foos), Option(fooOrd))), grouping, part)
+      sc, hadoopConf, Seq((Seq(Future.successful(hoges)), Option(hogeOrd)), (Seq(Future.successful(foos)), Option(fooOrd))), grouping, part)
 
     val outputs = driver.execute()
-    outputs.mapValues(_.collect.toSeq).foreach {
+
+    outputs.mapValues(Await.result(_, Duration.Inf).collect.toSeq).foreach {
       case (HogeResult, values) =>
         val hogeResults = values.asInstanceOf[Seq[(ShuffleKey, Hoge)]]
         assert(hogeResults.size === 1)
@@ -127,7 +130,7 @@ object CoGroupDriverSpec {
   class TestCoGroupDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient inputs: Seq[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])],
+    @transient inputs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])],
     @transient grouping: ShuffleKey.GroupingOrdering,
     @transient part: Partitioner)
       extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, grouping, part) {
@@ -144,7 +147,7 @@ object CoGroupDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments: (Fragment[Seq[Iterable[_]]], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Seq[Iterable[_]]], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         HogeResult -> new HogeOutputFragment,
         FooResult -> new FooOutputFragment,

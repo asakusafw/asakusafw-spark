@@ -3,6 +3,7 @@ package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.concurrent.Future
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
@@ -34,7 +35,7 @@ abstract class InputDriverClassBuilder(
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
-      classOf[Map[BroadcastId, Broadcast[_]]].asType),
+      classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
         .newParameterType {
@@ -46,8 +47,12 @@ abstract class InputDriverClassBuilder(
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
               .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                _.newClassType(classOf[Broadcast[_]].asType) {
-                  _.newTypeArgument()
+                _.newClassType(classOf[Future[_]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Broadcast[_]].asType) {
+                      _.newTypeArgument()
+                    }
+                  }
                 }
               }
           }
@@ -57,7 +62,7 @@ abstract class InputDriverClassBuilder(
         import mb._
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, hadoopConfVar.nextLocal)
+        val broadcastsVar = `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,
