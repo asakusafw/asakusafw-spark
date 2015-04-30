@@ -4,6 +4,7 @@ package driver
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
@@ -29,7 +30,7 @@ abstract class InputDriver[T: ClassTag](
 
   def paths: Set[String]
 
-  override def execute(): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
+  override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
 
     val conf = sc.getConf
@@ -38,17 +39,19 @@ abstract class InputDriver[T: ClassTag](
       new Path(stageInfo.resolveVariables(path))
     }.toSeq)
 
-    sc.clearCallSite()
-    sc.setCallSite(name)
+    val future = Future {
+      sc.clearCallSite()
+      sc.setCallSite(name)
 
-    val rdd =
-      sc.newAPIHadoopRDD(
-        job.getConfiguration,
-        classOf[TemporaryInputFormat[T]],
-        classOf[NullWritable],
-        classTag[T].runtimeClass.asInstanceOf[Class[T]])
+      val rdd =
+        sc.newAPIHadoopRDD(
+          job.getConfiguration,
+          classOf[TemporaryInputFormat[T]],
+          classOf[NullWritable],
+          classTag[T].runtimeClass.asInstanceOf[Class[T]])
 
-    //    sc.setCallSite(CallSite(name, rdd.toDebugString))
-    branch(rdd.asInstanceOf[RDD[(_, T)]])
+      branch(rdd.asInstanceOf[RDD[(_, T)]])
+    }
+    branchKeys.map(key => key -> future.map(_(key))).toMap
   }
 }

@@ -5,6 +5,10 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.NullWritable
 import org.apache.spark._
@@ -44,10 +48,13 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 100).map(f)
 
-    val driver = new SimpleMapDriver(sc, hadoopConf, hoges)
+    val driver = new SimpleMapDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
-    val hogeResult = outputs(HogeResult).map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq
+    val hogeResult = Await.result(
+      outputs(HogeResult).map {
+        _.map(_._2.asInstanceOf[Hoge].id.get)
+      }, Duration.Inf).collect.toSeq
     assert(hogeResult.size === 100)
     assert(hogeResult === (0 until 100))
   }
@@ -69,13 +76,19 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 100).map(f)
 
-    val driver = new BranchMapDriver(sc, hadoopConf, hoges)
+    val driver = new BranchMapDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
-    val hoge1Result = outputs(Hoge1Result).map(_._2.asInstanceOf[Hoge]).collect.toSeq
+    val hoge1Result = Await.result(
+      outputs(Hoge1Result).map {
+        _.map(_._2.asInstanceOf[Hoge])
+      }, Duration.Inf).collect.toSeq
     assert(hoge1Result.size === 50)
     assert(hoge1Result.map(_.id.get) === (0 until 100 by 2))
-    val hoge2Result = outputs(Hoge2Result).map(_._2.asInstanceOf[Hoge]).collect.toSeq
+    val hoge2Result = Await.result(
+      outputs(Hoge2Result).map {
+        _.map(_._2.asInstanceOf[Hoge])
+      }, Duration.Inf).collect.toSeq
     assert(hoge2Result.size === 50)
     assert(hoge2Result.map(_.id.get) === (1 until 100 by 2))
   }
@@ -98,14 +111,20 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 100).map(f)
 
-    val driver = new BranchAndOrderingMapDriver(sc, hadoopConf, hoges)
+    val driver = new BranchAndOrderingMapDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
-    val foo1Result = outputs(Foo1Result).map(_._2.asInstanceOf[Foo]).collect.toSeq
+    val foo1Result = Await.result(
+      outputs(Foo1Result).map {
+        _.map(_._2.asInstanceOf[Foo])
+      }, Duration.Inf).collect.toSeq
     assert(foo1Result.size === 40)
     assert(foo1Result.map(_.id.get) === (0 until 100).map(_ % 5).filter(_ % 3 == 0))
     assert(foo1Result.map(_.ord.get) === (0 until 100).filter(i => (i % 5) % 3 == 0))
-    val foo2Result = outputs(Foo2Result).map(_._2.asInstanceOf[Foo]).collect.toSeq
+    val foo2Result = Await.result(
+      outputs(Foo2Result).map {
+        _.map(_._2.asInstanceOf[Foo])
+      }, Duration.Inf).collect.toSeq
     assert(foo2Result.size === 60)
     assert(foo2Result.map(foo => (foo.id.get, foo.ord.get)) ===
       (0 until 100).filterNot(i => (i % 5) % 3 == 0).map(i => (i % 5, i)).sortBy(t => (t._1, -t._2)))
@@ -156,7 +175,7 @@ object MapDriverSpec {
     class SimpleMapDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: RDD[(_, Hoge)])
+      @transient prev: Future[RDD[(_, Hoge)]])
         extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def name = "SimpleMap"
@@ -198,7 +217,7 @@ object MapDriverSpec {
     class BranchMapDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: RDD[(_, Hoge)])
+      @transient prev: Future[RDD[(_, Hoge)]])
         extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def name = "BranchMap"
@@ -249,7 +268,7 @@ object MapDriverSpec {
     class BranchAndOrderingMapDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: RDD[(_, Foo)])
+      @transient prev: Future[RDD[(_, Foo)]])
         extends MapDriver[Foo](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def name = "BranchAndOrderingMap"

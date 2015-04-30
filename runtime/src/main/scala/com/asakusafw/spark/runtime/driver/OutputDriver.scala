@@ -1,6 +1,9 @@
 package com.asakusafw.spark.runtime
 package driver
 
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
@@ -25,14 +28,14 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 abstract class OutputDriver[T: ClassTag](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
-  @transient prevs: Seq[RDD[(_, T)]])
+  @transient prevs: Seq[Future[RDD[(_, T)]]])
     extends SubPlanDriver(sc, hadoopConf, Map.empty) {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
   val Logger = LoggerFactory.getLogger(getClass())
 
-  override def execute(): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
+  override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])
@@ -42,21 +45,30 @@ abstract class OutputDriver[T: ClassTag](
     val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
     TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveVariables(path)))
 
-    sc.clearCallSite()
-    sc.setCallSite(name)
-
-    val output = (if (prevs.size == 1) {
+    val future = (if (prevs.size == 1) {
       prevs.head
     } else {
-      new UnionRDD(sc, prevs).coalesce(sc.defaultParallelism, shuffle = false)
-    }).map(in => (NullWritable.get, in._2))
+      ((prevs :\ Future.successful(List.empty[RDD[(_, T)]])) {
+        case (prev, list) => prev.zip(list).map {
+          case (p, l) => p :: l
+        }
+      }).map(new UnionRDD(sc, _).coalesce(sc.defaultParallelism, shuffle = false))
+    })
+      .map { prev =>
 
-    if (Logger.isDebugEnabled()) {
-      Logger.debug(output.toDebugString)
-    }
+        sc.clearCallSite()
+        sc.setCallSite(name)
 
-//    sc.setCallSite(CallSite(name, output.toDebugString))
-    output.saveAsNewAPIHadoopDataset(job.getConfiguration)
+        val output = prev.map(in => (NullWritable.get, in._2))
+
+        if (Logger.isDebugEnabled()) {
+          Logger.debug(output.toDebugString)
+        }
+
+        output.saveAsNewAPIHadoopDataset(job.getConfiguration)
+      }
+
+    Await.result(future, Duration.Inf)
     Map.empty
   }
 

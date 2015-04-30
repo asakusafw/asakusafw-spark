@@ -3,6 +3,7 @@ package subplan
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.concurrent.Future
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
@@ -34,7 +35,7 @@ abstract class OutputDriverClassBuilder(
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
-      classOf[Seq[RDD[(_, _)]]].asType),
+      classOf[Seq[Future[RDD[(_, _)]]]].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
         .newParameterType {
@@ -45,9 +46,17 @@ abstract class OutputDriverClassBuilder(
         .newParameterType {
           _.newClassType(classOf[Seq[_]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(classOf[(_, _)].asType) {
-                _.newTypeArgument()
-                  .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+              _.newClassType(classOf[Future[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                  _.newClassType(classOf[RDD[_]].asType) {
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                      _.newClassType(classOf[(_, _)].asType) {
+                        _.newTypeArgument()
+                          .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+                      }
+                    }
+                  }
+                }
               }
             }
           }
@@ -57,7 +66,7 @@ abstract class OutputDriverClassBuilder(
         import mb._
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val prevsVar = `var`(classOf[Seq[RDD[_]]].asType, hadoopConfVar.nextLocal)
+        val prevsVar = `var`(classOf[Seq[Future[RDD[(_, _)]]]].asType, hadoopConfVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,

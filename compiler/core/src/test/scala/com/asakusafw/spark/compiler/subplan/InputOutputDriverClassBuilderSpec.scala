@@ -10,6 +10,9 @@ import java.nio.file.{ Files, Path }
 
 import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
@@ -95,11 +98,11 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val outputDriver = outputDriverCls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
-      classOf[Seq[RDD[_]]])
+      classOf[Seq[Future[RDD[_]]]])
       .newInstance(
         sc,
         hadoopConf,
-        Seq(hoges))
+        Seq(Future.successful(hoges)))
     outputDriver.execute()
 
     // prepare for input
@@ -167,8 +170,8 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       Set(inputMarker)
       .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-    assert(inputs(getBranchKey(inputMarker.getOriginalSerialNumber))
-      .map(_._2.asInstanceOf[Hoge].id.get).collect.toSeq === (0 until 10))
+    assert(Await.result(inputs(getBranchKey(inputMarker.getOriginalSerialNumber))
+      .map(_.map(_._2.asInstanceOf[Hoge].id.get)), Duration.Inf).collect.toSeq === (0 until 10))
   }
 }
 

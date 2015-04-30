@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.reflect.{ ClassTag, NameTransformer }
 
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
@@ -199,7 +200,9 @@ object CoGroupSubPlanCompiler {
                             "apply",
                             classOf[AnyRef].asType,
                             context.branchKeys.getField(context.mb, marker)
-                              .asType(classOf[AnyRef].asType)))
+                              .asType(classOf[AnyRef].asType))
+                            .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
+                            .asType(classOf[AnyRef].asType))
                       }
 
                       builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)

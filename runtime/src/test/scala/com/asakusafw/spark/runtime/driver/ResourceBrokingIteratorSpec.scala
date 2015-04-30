@@ -5,6 +5,9 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
@@ -35,12 +38,15 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkSugar {
       ((), hoge)
     }.asInstanceOf[RDD[(_, Hoge)]]
 
-    val driver = new TestDriver(sc, hadoopConf, hoges)
+    val driver = new TestDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
 
-    val result = outputs(Result).map(_._2.asInstanceOf[Hoge])
-      .map(hoge => (hoge.id.get, hoge.str.getAsString)).collect.toSeq
+    val result = Await.result(
+      outputs(Result).map {
+        _.map(_._2.asInstanceOf[Hoge])
+          .map(hoge => (hoge.id.get, hoge.str.getAsString))
+      }, Duration.Inf).collect.toSeq
     assert(result.size === 10)
     assert(result.map(_._1) === (0 until 10))
     assert(result.map(_._2) === (0 until 10).map(i => s"test_${i}"))
@@ -54,7 +60,7 @@ object ResourceBrokingIteratorSpec {
   class TestDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient prev: RDD[(_, Hoge)])
+    @transient prev: Future[RDD[(_, Hoge)]])
       extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def name = "TestMap"

@@ -10,6 +10,8 @@ import java.util.{ List => JList }
 
 import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
@@ -147,14 +149,14 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
       classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[Seq[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])]],
+      classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])]],
       classOf[ShuffleKey.GroupingOrdering],
       classOf[Partitioner])
       .newInstance(
         sc,
         hadoopConf,
         Map.empty,
-        Seq((Seq(hogeList), Option(hogeOrd)), (Seq(fooList), Option(fooOrd))),
+        Seq((Seq(Future.successful(hogeList)), Option(hogeOrd)), (Seq(Future.successful(fooList)), Option(fooOrd))),
         grouping,
         part)
     val results = driver.execute()
@@ -171,18 +173,18 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         hogeAllMarker, fooAllMarker,
         nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-    val hogeResult = results(getBranchKey(hogeResultMarker.getOriginalSerialNumber))
+    val hogeResult = Await.result(results(getBranchKey(hogeResultMarker.getOriginalSerialNumber)), Duration.Inf)
       .collect.toSeq.map(_._2.asInstanceOf[Hoge])
     assert(hogeResult.size === 1)
     assert(hogeResult(0).id.get === 1)
 
-    val fooResult = results(getBranchKey(fooResultMarker.getOriginalSerialNumber))
+    val fooResult = Await.result(results(getBranchKey(fooResultMarker.getOriginalSerialNumber)), Duration.Inf)
       .collect.toSeq.map(_._2.asInstanceOf[Foo])
     assert(fooResult.size === 1)
     assert(fooResult(0).id.get === 10)
     assert(fooResult(0).hogeId.get === 1)
 
-    val hogeError = results(getBranchKey(hogeErrorMarker.getOriginalSerialNumber))
+    val hogeError = Await.result(results(getBranchKey(hogeErrorMarker.getOriginalSerialNumber)), Duration.Inf)
       .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
     assert(hogeError.size === 9)
     assert(hogeError(0).id.get === 0)
@@ -190,7 +192,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       assert(hogeError(i - 1).id.get === i)
     }
 
-    val fooError = results(getBranchKey(fooErrorMarker.getOriginalSerialNumber))
+    val fooError = Await.result(results(getBranchKey(fooErrorMarker.getOriginalSerialNumber)), Duration.Inf)
       .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
     assert(fooError.size === 44)
     for {
@@ -201,14 +203,14 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       assert(fooError((i * (i - 1)) / 2 + j - 1).hogeId.get == i)
     }
 
-    val hogeAll = results(getBranchKey(hogeAllMarker.getOriginalSerialNumber))
+    val hogeAll = Await.result(results(getBranchKey(hogeAllMarker.getOriginalSerialNumber)), Duration.Inf)
       .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
     assert(hogeAll.size === 10)
     for (i <- 0 until 10) {
       assert(hogeAll(i).id.get === i)
     }
 
-    val fooAll = results(getBranchKey(fooAllMarker.getOriginalSerialNumber))
+    val fooAll = Await.result(results(getBranchKey(fooAllMarker.getOriginalSerialNumber)), Duration.Inf)
       .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
     assert(fooAll.size === 45)
     for {
@@ -219,7 +221,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       assert(fooAll((i * (i - 1)) / 2 + j).hogeId.get == i)
     }
 
-    val nResult = results(getBranchKey(nResultMarker.getOriginalSerialNumber))
+    val nResult = Await.result(results(getBranchKey(nResultMarker.getOriginalSerialNumber)), Duration.Inf)
       .collect.toSeq.map(_._2.asInstanceOf[N])
     assert(nResult.size === 10)
     nResult.foreach(n => assert(n.n.get === 10))

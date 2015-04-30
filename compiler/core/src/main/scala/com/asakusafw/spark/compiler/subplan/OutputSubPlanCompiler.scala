@@ -3,6 +3,7 @@ package subplan
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.reflect.NameTransformer
 
 import org.apache.spark.rdd.RDD
@@ -79,7 +80,10 @@ object OutputSubPlanCompiler {
               context.rddsVar.push().invokeI(
                 "apply",
                 classOf[AnyRef].asType,
-                context.branchKeys.getField(context.mb, marker).asType(classOf[AnyRef].asType)))
+                context.branchKeys.getField(context.mb, marker)
+                  .asType(classOf[AnyRef].asType))
+                .cast(classOf[Future[RDD[(_, _)]]].asType)
+                .asType(classOf[AnyRef].asType))
           }
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)

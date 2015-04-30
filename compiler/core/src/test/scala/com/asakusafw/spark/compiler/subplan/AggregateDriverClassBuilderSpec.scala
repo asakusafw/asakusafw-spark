@@ -7,6 +7,9 @@ import org.scalatest.junit.JUnitRunner
 
 import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
@@ -98,14 +101,14 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
       classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[Seq[RDD[(ShuffleKey, _)]]],
+      classOf[Seq[Future[RDD[(ShuffleKey, _)]]]],
       classOf[Option[ShuffleKey.SortOrdering]],
       classOf[Partitioner])
       .newInstance(
         sc,
         hadoopConf,
         Map.empty,
-        Seq(hoges),
+        Seq(Future.successful(hoges)),
         Option(new ShuffleKey.SortOrdering(1, Array.empty[Boolean])),
         new HashPartitioner(2))
     val results = driver.execute()
@@ -120,7 +123,9 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       Set(resultMarker)
       .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-    val result = results(getBranchKey(resultMarker.getOriginalSerialNumber)).asInstanceOf[RDD[(ShuffleKey, Hoge)]]
+    val result = Await.result(
+      results(getBranchKey(resultMarker.getOriginalSerialNumber)).map(_.asInstanceOf[RDD[(ShuffleKey, Hoge)]]),
+      Duration.Inf)
       .collect.toSeq.sortBy(_._1.grouping(0).asInstanceOf[IntOption].get)
     assert(result.size === 2)
     assert(result(0)._1.grouping(0).asInstanceOf[IntOption].get === 0)
