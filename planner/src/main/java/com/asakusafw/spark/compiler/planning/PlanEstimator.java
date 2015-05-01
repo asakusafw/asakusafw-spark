@@ -15,25 +15,35 @@
  */
 package com.asakusafw.spark.compiler.planning;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import com.asakusafw.lang.compiler.model.graph.MarkerOperator;
+import com.asakusafw.lang.compiler.model.graph.Operator;
+import com.asakusafw.lang.compiler.optimizer.OperatorEstimate;
 import com.asakusafw.lang.compiler.optimizer.OperatorEstimator;
 import com.asakusafw.lang.compiler.optimizer.OptimizerContext;
 import com.asakusafw.lang.compiler.optimizer.adapter.OperatorEstimatorAdapter;
+import com.asakusafw.lang.compiler.optimizer.basic.BasicOperatorEstimate;
 import com.asakusafw.lang.compiler.planning.SubPlan;
+import com.asakusafw.utils.graph.Graph;
+import com.asakusafw.utils.graph.Graphs;
 
 /**
  * Estimates the size of data-sets on sub-plan inputs/outputs.
  */
-@SuppressWarnings("unused")
 public class PlanEstimator {
 
     private final OperatorEstimator estimator;
 
-    private final OperatorEstimator.Context context;
+    private final OperatorEstimatorAdapter context;
 
-    private final Set<SubPlan> performed = new HashSet<>();
+    private final Set<SubPlan> resolved = new HashSet<>();
 
     /**
      * Creates a new instance.
@@ -47,11 +57,85 @@ public class PlanEstimator {
 
     /**
      * Estimates the size of port.
-     * @param port the targer port
-     * @return the size infomation
+     * @param port the target port
+     * @return the size information
      */
     public SizeInfo estimate(SubPlan.Port port) {
-        // FIXME implement
-        return SizeInfo.UNKNOWN;
+        SubPlan owner = port.getOwner();
+        prepare(owner);
+        assert resolved.contains(owner);
+        OperatorEstimate estimate = context.estimate(port.getOperator());
+        return new SizeInfo(estimate.getSize(port.getOperator().getInput()));
+    }
+
+    private void prepare(SubPlan sub) {
+        if (resolved.contains(sub)) {
+            return;
+        }
+        List<SubPlan> list = sortUnresolved(Collections.singleton(sub));
+        for (SubPlan element : list) {
+            assert resolved.contains(element) == false;
+            prepareFlat(element);
+        }
+    }
+
+    private List<SubPlan> sortUnresolved(Collection<? extends SubPlan> subs) {
+        Graph<SubPlan> graph = Graphs.newInstance();
+        LinkedList<SubPlan> work = new LinkedList<>(subs);
+        while (work.isEmpty() == false) {
+            SubPlan first = work.removeFirst();
+            if (resolved.contains(first)) {
+                continue;
+            }
+            graph.addNode(first);
+            for (SubPlan.Input input : first.getInputs()) {
+                for (SubPlan.Output opposite : input.getOpposites()) {
+                    SubPlan upstream = opposite.getOwner();
+                    if (resolved.contains(upstream)) {
+                        continue;
+                    }
+                    graph.addEdge(first, upstream);
+                    work.add(upstream);
+                }
+            }
+        }
+        return Graphs.sortPostOrder(graph);
+    }
+
+    private void prepareFlat(SubPlan sub) {
+        for (SubPlan.Input port : sub.getInputs()) {
+            propagateInputs(port);
+        }
+        Set<Operator> outputs = new HashSet<>();
+        for (SubPlan.Output port : sub.getOutputs()) {
+            outputs.add(port.getOperator());
+        }
+        context.apply(estimator, outputs);
+        resolved.add(sub);
+    }
+
+    private void propagateInputs(SubPlan.Input port) {
+        Set<MarkerOperator> upstreams = new HashSet<>();
+        for (SubPlan.Output opposite : port.getOpposites()) {
+            upstreams.add(opposite.getOperator());
+        }
+        Map<Operator, OperatorEstimate> estimates = context.estimate(upstreams);
+        double total = 0.0;
+        for (Map.Entry<Operator, OperatorEstimate> entry : estimates.entrySet()) {
+            MarkerOperator operator = (MarkerOperator) entry.getKey();
+            OperatorEstimate estimate = entry.getValue();
+            double fragment = estimate.getSize(operator.getOutput());
+            if (Double.isNaN(fragment)) {
+                total = Double.NaN;
+                break;
+            } else {
+                total += fragment;
+            }
+        }
+
+        BasicOperatorEstimate results = new BasicOperatorEstimate();
+        results.putSize(port.getOperator().getInput(), total);
+        results.putSize(port.getOperator().getOutput(), total);
+        context.put(port.getOperator(), results);
     }
 }
