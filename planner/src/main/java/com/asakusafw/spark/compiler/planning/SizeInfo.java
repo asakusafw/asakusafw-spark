@@ -62,8 +62,10 @@ public class SizeInfo {
     public String toString() {
         if (Double.isNaN(size)) {
             return "N/A";
+        } else if (Double.isInfinite(size)) {
+            return String.valueOf(size);
         } else {
-            return String.format("%.2fbytes", size); //$NON-NLS-1$
+            return String.format("%,.0fbytes", size); //$NON-NLS-1$
         }
     }
 }
