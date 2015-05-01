@@ -138,6 +138,11 @@ public class PlanningContext {
         CHECKPOINT_BEFORE_EXTERNAL_OUTPUTS,
 
         /**
+         * Enables to estimate size of sub-plan I/O ports.
+         */
+        SIZE_ESTIMATION,
+
+        /**
          * Enables {@link GraphStatistics}.
          */
         GRAPH_STATISTICS,

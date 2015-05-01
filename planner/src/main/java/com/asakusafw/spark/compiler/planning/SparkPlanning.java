@@ -78,6 +78,7 @@ public final class SparkPlanning {
     static final Set<Option> DEFAULT_OPTIONS = EnumUtil.freeze(new Option[] {
             Option.UNIFY_SUBPLAN_IO,
             Option.CHECKPOINT_BEFORE_EXTERNAL_OUTPUTS,
+            Option.SIZE_ESTIMATION,
             Option.GRAPH_STATISTICS,
             Option.PLAN_STATISTICS,
     });
@@ -365,11 +366,30 @@ public final class SparkPlanning {
     private static void decoratePlan(PlanningContext context, Plan plan, SubPlanAnalyzer analyzer) {
         attachCoreInfo(plan, analyzer);
         attachBroadcastInfo(plan, analyzer);
+        if (context.getOptions().contains(Option.SIZE_ESTIMATION)) {
+            attachSizeInfo(context, plan);
+        }
         if (context.getOptions().contains(Option.GRAPH_STATISTICS)) {
             attachGraphStatistics(plan);
         }
         if (context.getOptions().contains(Option.PLAN_STATISTICS)) {
             attachPlanStatistics(plan);
+        }
+    }
+
+    private static void attachSizeInfo(PlanningContext context, Plan plan) {
+        PlanEstimator estimator = new PlanEstimator(context.getEstimator(), context.getOptimizerContext());
+        for (SubPlan sub : plan.getElements()) {
+            for (SubPlan.Input input : sub.getInputs()) {
+                SizeInfo info = estimator.estimate(input);
+                assert info != null;
+                input.putAttribute(SizeInfo.class, info);
+            }
+            for (SubPlan.Output output : sub.getOutputs()) {
+                SizeInfo info = estimator.estimate(output);
+                assert info != null;
+                output.putAttribute(SizeInfo.class, info);
+            }
         }
     }
 
