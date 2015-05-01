@@ -25,7 +25,7 @@ abstract class CoGroupDriverClassBuilder(
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${CoGroupDriverClassBuilder.nextId};"),
       classOf[CoGroupDriver].asType)
-    with Branching with DriverName {
+    with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

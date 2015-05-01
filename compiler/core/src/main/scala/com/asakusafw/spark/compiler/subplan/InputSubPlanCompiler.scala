@@ -33,7 +33,8 @@ class InputSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = InputSubPlanCompiler.InputDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+    val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalInput],
       s"The dominant operator should be external input: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[ExternalInput]
@@ -47,7 +48,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
       override val branchKeys: BranchKeys = context.branchKeys
 
-      override val dominantOperator = operator
+      override val label: String = subPlanInfo.getLabel
 
       override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
 

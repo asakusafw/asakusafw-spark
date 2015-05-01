@@ -16,7 +16,7 @@ abstract class SubPlanDriver(
     val hadoopConf: Broadcast[Configuration],
     @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]]) extends Serializable {
 
-  def name: String
+  def label: String
 
   def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]
 }

@@ -178,7 +178,7 @@ object MapDriverSpec {
       @transient prev: Future[RDD[(_, Hoge)]])
         extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
-      override def name = "SimpleMap"
+      override def label = "SimpleMap"
 
       override def branchKeys: Set[BranchKey] = Set(HogeResult)
 
@@ -220,7 +220,7 @@ object MapDriverSpec {
       @transient prev: Future[RDD[(_, Hoge)]])
         extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
-      override def name = "BranchMap"
+      override def label = "BranchMap"
 
       override def branchKeys: Set[BranchKey] = Set(Hoge1Result, Hoge2Result)
 
@@ -271,7 +271,7 @@ object MapDriverSpec {
       @transient prev: Future[RDD[(_, Foo)]])
         extends MapDriver[Foo](sc, hadoopConf, Map.empty, Seq(prev)) {
 
-      override def name = "BranchAndOrderingMap"
+      override def label = "BranchAndOrderingMap"
 
       override def branchKeys: Set[BranchKey] = Set(Foo1Result, Foo2Result)
 

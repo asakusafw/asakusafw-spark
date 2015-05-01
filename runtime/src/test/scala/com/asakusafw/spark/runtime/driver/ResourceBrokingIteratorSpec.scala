@@ -63,7 +63,7 @@ object ResourceBrokingIteratorSpec {
     @transient prev: Future[RDD[(_, Hoge)]])
       extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
-    override def name = "TestMap"
+    override def label = "TestMap"
 
     override def branchKeys: Set[BranchKey] = Set(Result)
 

@@ -211,7 +211,7 @@ object AggregateDriverSpec {
       val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
         extends AggregateDriver[Hoge, Hoge](sc, hadoopConf, Map.empty, Seq(prev), sort, part) {
 
-      override def name = "TestAggregation"
+      override def label = "TestAggregation"
 
       override def branchKeys: Set[BranchKey] = Set(Result)
 
@@ -253,7 +253,7 @@ object AggregateDriverSpec {
       @transient prev: Future[RDD[(_, Hoge)]])
         extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
-      override def name = "TestPartialAggregation"
+      override def label = "TestPartialAggregation"
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
 

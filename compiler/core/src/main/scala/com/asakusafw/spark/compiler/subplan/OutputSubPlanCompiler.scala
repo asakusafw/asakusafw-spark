@@ -26,7 +26,8 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = OutputSubPlanCompiler.OutputDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+    val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalOutput],
       s"The dominant operator should be external output: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[ExternalOutput]
@@ -37,7 +38,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
     val builder = new OutputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
 
-      override val dominantOperator = operator
+      override val label: String = subPlanInfo.getLabel
 
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)

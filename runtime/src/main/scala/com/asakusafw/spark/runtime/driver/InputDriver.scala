@@ -41,7 +41,7 @@ abstract class InputDriver[T: ClassTag](
 
     val future = Future {
       sc.clearCallSite()
-      sc.setCallSite(name)
+      sc.setCallSite(label)
 
       val rdd =
         sc.newAPIHadoopRDD(

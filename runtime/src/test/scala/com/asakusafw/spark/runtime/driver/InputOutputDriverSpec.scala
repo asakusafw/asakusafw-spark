@@ -97,7 +97,7 @@ object InputOutputDriverSpec {
     val path: String)
       extends OutputDriver[Hoge](sc, hadoopConf, Seq(input), terminators) {
 
-    override def name = "TestOutput"
+    override def label = "TestOutput"
   }
 
   class TestInputDriver(
@@ -106,7 +106,7 @@ object InputOutputDriverSpec {
     basePath: String)
       extends InputDriver[Hoge](sc, hadoopConf, Map.empty) {
 
-    override def name = "TestInput"
+    override def label = "TestInput"
 
     override def paths: Set[String] = Set(basePath + "/part-*")
 

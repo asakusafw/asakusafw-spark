@@ -34,7 +34,7 @@ abstract class MapDriver[T](
       }).map(new UnionRDD(sc, _).coalesce(sc.defaultParallelism, shuffle = false))
     }).map { prev =>
       sc.clearCallSite()
-      sc.setCallSite(name)
+      sc.setCallSite(label)
 
       branch(prev)
     }

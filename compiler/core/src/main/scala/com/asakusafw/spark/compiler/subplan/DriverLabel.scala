@@ -3,16 +3,16 @@ package com.asakusafw.spark.compiler.subplan
 import com.asakusafw.lang.compiler.model.graph.Operator
 import com.asakusafw.spark.tools.asm._
 
-trait DriverName extends ClassBuilder {
+trait DriverLabel extends ClassBuilder {
 
-  def dominantOperator: Operator
+  def label: String
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("name", classOf[String].asType, Seq.empty) { mb =>
+    methodDef.newMethod("label", classOf[String].asType, Seq.empty) { mb =>
       import mb._
-      `return`(ldc(dominantOperator.toString))
+      `return`(ldc(label))
     }
   }
 }

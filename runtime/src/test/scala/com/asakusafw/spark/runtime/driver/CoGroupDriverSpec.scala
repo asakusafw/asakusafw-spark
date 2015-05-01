@@ -135,7 +135,7 @@ object CoGroupDriverSpec {
     @transient part: Partitioner)
       extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, grouping, part) {
 
-    override def name = "TestCoGroup"
+    override def label = "TestCoGroup"
 
     override def branchKeys: Set[BranchKey] = {
       Set(HogeResult, FooResult, HogeError, FooError)

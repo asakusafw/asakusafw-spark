@@ -30,7 +30,7 @@ abstract class OutputDriverClassBuilder(
           }
         }
         .build(),
-      classOf[OutputDriver[_]].asType) with DriverName {
+      classOf[OutputDriver[_]].asType) with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

@@ -276,6 +276,7 @@ class SparkClientCompiler extends JobflowProcessor {
                             "broadcastAsHash",
                             classOf[Future[Broadcast[_]]].asType,
                             scVar.push(),
+                            ldc(broadcastInfo.getLabel),
                             resultVar.push().invokeI(
                               "apply",
                               classOf[AnyRef].asType,

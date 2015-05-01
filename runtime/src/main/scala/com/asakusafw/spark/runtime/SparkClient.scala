@@ -36,16 +36,15 @@ abstract class SparkClient {
 
   def broadcastAsHash[V](
     sc: SparkContext,
+    label: String,
     prev: Future[RDD[(ShuffleKey, V)]],
     sort: Option[ShuffleKey.SortOrdering],
     grouping: ShuffleKey.GroupingOrdering,
     part: Partitioner): Future[Broadcast[Map[ShuffleKey, Seq[V]]]] = {
 
-    val name = "Prepare for Broadcast"
-
     prev.map { p =>
       sc.clearCallSite()
-      sc.setCallSite(name)
+      sc.setCallSite(label)
 
       val rdd = smcogroup(
         Seq((p.asInstanceOf[RDD[(ShuffleKey, _)]], sort)),

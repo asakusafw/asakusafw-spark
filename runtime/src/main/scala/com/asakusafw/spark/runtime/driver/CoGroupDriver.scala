@@ -37,7 +37,7 @@ abstract class CoGroupDriver(
           }
       }).map { prevs =>
         sc.clearCallSite()
-        sc.setCallSite(name)
+        sc.setCallSite(label)
 
         val cogrouped = smcogroup[ShuffleKey](
           prevs.map {

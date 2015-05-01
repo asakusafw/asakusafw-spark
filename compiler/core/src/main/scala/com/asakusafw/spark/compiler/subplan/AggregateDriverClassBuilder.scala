@@ -34,7 +34,7 @@ abstract class AggregateDriverClassBuilder(
         }
         .build(),
       classOf[AggregateDriver[_, _]].asType)
-    with Branching with DriverName {
+    with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

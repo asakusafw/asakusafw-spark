@@ -29,7 +29,7 @@ abstract class InputDriverClassBuilder(
         }
         .build(),
       classOf[InputDriver[_]].asType)
-    with Branching with DriverName {
+    with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

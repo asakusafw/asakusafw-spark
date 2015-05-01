@@ -58,7 +58,7 @@ abstract class OutputDriver[T: ClassTag](
       .map { prev =>
 
         sc.clearCallSite()
-        sc.setCallSite(name)
+        sc.setCallSite(label)
 
         val output = prev.map(in => (NullWritable.get, in._2))
 

@@ -45,7 +45,8 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
   override def instantiator: Instantiator = CoGroupSubPlanCompiler.CoGroupDriverInstantiator
 
   override def compile(subplan: SubPlan)(implicit context: Context): Type = {
-    val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
+    val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+    val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[UserOperator],
       s"The dominant operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
@@ -56,7 +57,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
       override val branchKeys: BranchKeys = context.branchKeys
 
-      override val dominantOperator = operator
+      override val label: String = subPlanInfo.getLabel
 
       override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
 

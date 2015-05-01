@@ -37,7 +37,7 @@ abstract class AggregateDriver[V, C](
       }
     }).map { prevs =>
       sc.clearCallSite()
-      sc.setCallSite(name)
+      sc.setCallSite(label)
 
       val aggregated = {
         if (agg.mapSideCombine) {
