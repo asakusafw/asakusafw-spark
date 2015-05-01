@@ -430,7 +430,7 @@ encoding/<project>=UTF-8
 			</dependency>
 			<dependency>
 				<groupId>com.asakusafw.lang.compiler</groupId>
-				<artifactId>asakusa-compiler-inspection-driver</artifactId>
+				<artifactId>asakusa-compiler-inspection</artifactId>
 				<version>${asakusafw-lang.version}</version>
 			</dependency>
 			<dependency>

@@ -20,7 +20,7 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.common.Location
-import com.asakusafw.lang.compiler.inspection.driver.{ AbstractInspectionExtension, InspectionExtension }
+import com.asakusafw.lang.compiler.inspection.{ AbstractInspectionExtension, InspectionExtension }
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
