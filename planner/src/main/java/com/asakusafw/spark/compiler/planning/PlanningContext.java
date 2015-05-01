@@ -141,5 +141,10 @@ public class PlanningContext {
          * Enables {@link GraphStatistics}.
          */
         GRAPH_STATISTICS,
+
+        /**
+         * Enables {@link PlanStatistics}.
+         */
+        PLAN_STATISTICS,
     }
 }

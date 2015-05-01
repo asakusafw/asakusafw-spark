@@ -15,10 +15,12 @@
  */
 package com.asakusafw.spark.compiler.planning;
 
-import java.text.MessageFormat;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
+import com.asakusafw.lang.compiler.common.ComplexAttribute;
 import com.asakusafw.lang.compiler.common.util.EnumUtil;
 import com.asakusafw.lang.compiler.model.graph.Group;
 import com.asakusafw.lang.compiler.model.graph.Operator;
@@ -27,7 +29,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan;
 /**
  * Extra information for {@link com.asakusafw.lang.compiler.planning.SubPlan.Output SubPlan.Output}.
  */
-public class SubPlanOutputInfo {
+public class SubPlanOutputInfo implements ComplexAttribute {
 
     private final SubPlan.Output origin;
 
@@ -105,13 +107,18 @@ public class SubPlanOutputInfo {
     }
 
     @Override
+    public Map<String, ?> toMap() {
+        Map<String, Object> results = new LinkedHashMap<>();
+        results.put("type", getOutputType()); //$NON-NLS-1$
+        results.put("options", getOutputOptions()); //$NON-NLS-1$
+        results.put("partition", partitionInfo == null ? "N/A" : partitionInfo); //$NON-NLS-1$ //$NON-NLS-2$
+        results.put("aggregation", SubPlanInfo.toSimpleString(aggregationInfo)); //$NON-NLS-1$
+        return results;
+    }
+
+    @Override
     public String toString() {
-        return MessageFormat.format(
-                "{0}{1}(partition={2}, aggregation={3})", //$NON-NLS-1$
-                outputType,
-                outputOptions,
-                partitionInfo == null ? "N/A" : partitionInfo, //$NON-NLS-1$
-                SubPlanInfo.toSimpleString(aggregationInfo));
+        return toMap().toString();
     }
 
     /**

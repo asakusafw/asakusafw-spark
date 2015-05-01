@@ -18,9 +18,12 @@ package com.asakusafw.spark.compiler.planning;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
+import com.asakusafw.lang.compiler.common.ComplexAttribute;
 import com.asakusafw.lang.compiler.common.util.EnumUtil;
 import com.asakusafw.lang.compiler.model.graph.ExternalInput;
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput;
@@ -35,7 +38,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan;
 /**
  * Extra information for {@link SubPlan}.
  */
-public class SubPlanInfo {
+public class SubPlanInfo implements ComplexAttribute {
 
     private static final OperatorKind[] TYPICAL_ORDER = {
         OperatorKind.MARKER,
@@ -156,19 +159,18 @@ public class SubPlanInfo {
     }
 
     @Override
-    public String toString() {
-        return MessageFormat.format(
-                "{0}{1}({2})", //$NON-NLS-1$
-                driverType, driverOptions,
-                getOverview());
+    public Map<String, ?> toMap() {
+        Map<String, Object> results = new LinkedHashMap<>();
+        results.put("type", getDriverType()); //$NON-NLS-1$
+        results.put("options", getDriverOptions()); //$NON-NLS-1$
+        results.put("primary", toSimpleString(primaryOperator)); //$NON-NLS-1$
+        results.put("typical", toSimpleString(getTypicalOperator())); //$NON-NLS-1$
+        return results;
     }
 
-    private String getOverview() {
-        Operator operator = getTypicalOperator();
-        if (operator != null) {
-            return toSimpleString(operator);
-        }
-        return ""; //$NON-NLS-1$
+    @Override
+    public String toString() {
+        return toMap().toString();
     }
 
     Operator getTypicalOperator() {

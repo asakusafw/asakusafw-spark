@@ -81,6 +81,7 @@ public final class SparkPlanning {
             Option.UNIFY_SUBPLAN_IO,
             Option.CHECKPOINT_BEFORE_EXTERNAL_OUTPUTS,
             Option.GRAPH_STATISTICS,
+            Option.PLAN_STATISTICS,
     });
 
     private SparkPlanning() {
@@ -369,6 +370,9 @@ public final class SparkPlanning {
         if (context.getOptions().contains(Option.GRAPH_STATISTICS)) {
             attachGraphStatistics(plan);
         }
+        if (context.getOptions().contains(Option.PLAN_STATISTICS)) {
+            attachPlanStatistics(plan);
+        }
     }
 
     private static void attachCoreInfo(Plan plan, SubPlanAnalyzer analyzer) {
@@ -416,6 +420,10 @@ public final class SparkPlanning {
         for (SubPlan sub : plan.getElements()) {
             sub.putAttribute(GraphStatistics.class, GraphStatistics.of(Planning.toDependencyGraph(sub)));
         }
+    }
+
+    private static void attachPlanStatistics(Plan plan) {
+        plan.putAttribute(PlanStatistics.class, PlanStatistics.of(plan));
     }
 
     private static class SubPlanGroup {
