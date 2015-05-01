@@ -59,8 +59,6 @@ import com.asakusafw.lang.compiler.planning.Planning;
 import com.asakusafw.lang.compiler.planning.SubPlan;
 import com.asakusafw.lang.compiler.planning.util.GraphStatistics;
 import com.asakusafw.spark.compiler.planning.PlanningContext.Option;
-import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputType;
-import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo.OutputType;
 import com.asakusafw.utils.graph.Graph;
 
 /**
@@ -396,20 +394,17 @@ public final class SparkPlanning {
     }
 
     private static void attachBroadcastInfo(Plan plan, SubPlanAnalyzer analyzer) {
-        GroupKeyUnifier unifier = new GroupKeyUnifier();
         for (SubPlan sub : plan.getElements()) {
-            for (SubPlan.Input input : sub.getInputs()) {
-                SubPlanInputInfo core = analyzer.analyze(input);
-                if (core.getInputType() == InputType.BROADCAST) {
-                    BroadcastInfo info = new BroadcastInfo(unifier.get(input));
-                    input.putAttribute(BroadcastInfo.class, info);
+            for (SubPlan.Input port : sub.getInputs()) {
+                BroadcastInfo info = analyzer.analyzeBroadcast(port);
+                if (info != null) {
+                    port.putAttribute(BroadcastInfo.class, info);
                 }
             }
-            for (SubPlan.Output output : sub.getOutputs()) {
-                SubPlanOutputInfo core = analyzer.analyze(output);
-                if (core.getOutputType() == OutputType.BROADCAST) {
-                    BroadcastInfo info = new BroadcastInfo(unifier.get(output));
-                    output.putAttribute(BroadcastInfo.class, info);
+            for (SubPlan.Output port : sub.getOutputs()) {
+                BroadcastInfo info = analyzer.analyzeBroadcast(port);
+                if (info != null) {
+                    port.putAttribute(BroadcastInfo.class, info);
                 }
             }
         }

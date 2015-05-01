@@ -15,23 +15,47 @@
  */
 package com.asakusafw.spark.compiler.planning;
 
-import java.text.MessageFormat;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
+import com.asakusafw.lang.compiler.common.ComplexAttribute;
 import com.asakusafw.lang.compiler.model.graph.Group;
 
 /**
  * Extra information for the broadcast sub-plan inputs/outputs.
  */
-public class BroadcastInfo {
+public class BroadcastInfo implements ComplexAttribute {
+
+    private static final String UNKNOWN_LABEL = "unknown"; //$NON-NLS-1$
+
+    private final String label;
 
     private final Group formatInfo;
+
+    /**
+     * Creates a new instance.
+     * @param label label of this information (nullable)
+     * @param formatInfo information of the broadcast data-set format
+     */
+    public BroadcastInfo(String label, Group formatInfo) {
+        this.label = label == null ? UNKNOWN_LABEL : label;
+        this.formatInfo = formatInfo;
+    }
 
     /**
      * Creates a new instance.
      * @param formatInfo information of the broadcast data-set format
      */
     public BroadcastInfo(Group formatInfo) {
-        this.formatInfo = formatInfo;
+        this(null, formatInfo);
+    }
+
+    /**
+     * Returns the label of this information.
+     * @return the label (never null)
+     */
+    public String getLabel() {
+        return label;
     }
 
     /**
@@ -43,9 +67,15 @@ public class BroadcastInfo {
     }
 
     @Override
+    public Map<String, ?> toMap() {
+        Map<String, Object> results = new LinkedHashMap<>();
+        results.put("label", Util.toLabel(getLabel())); //$NON-NLS-1$
+        results.put("format", Util.toLabel(getFormatInfo())); //$NON-NLS-1$
+        return results;
+    }
+
+    @Override
     public String toString() {
-        return MessageFormat.format(
-                "Broadcast({0})", //$NON-NLS-1$
-                formatInfo == null ? "N/A" : formatInfo); //$NON-NLS-1$
+        return toMap().toString();
     }
 }

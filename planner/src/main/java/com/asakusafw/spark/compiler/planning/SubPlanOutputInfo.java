@@ -111,8 +111,8 @@ public class SubPlanOutputInfo implements ComplexAttribute {
         Map<String, Object> results = new LinkedHashMap<>();
         results.put("type", getOutputType()); //$NON-NLS-1$
         results.put("options", getOutputOptions()); //$NON-NLS-1$
-        results.put("partition", partitionInfo == null ? "N/A" : partitionInfo); //$NON-NLS-1$ //$NON-NLS-2$
-        results.put("aggregation", SubPlanInfo.toSimpleString(aggregationInfo)); //$NON-NLS-1$
+        results.put("partition", Util.toLabel(getPartitionInfo())); //$NON-NLS-1$
+        results.put("aggregation", Util.toOperatorLabel(getAggregationInfo())); //$NON-NLS-1$
         return results;
     }
 

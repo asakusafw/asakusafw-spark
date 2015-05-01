@@ -364,4 +364,54 @@ public class SubPlanAnalyzer {
         }
         return true;
     }
+
+    /**
+     * Returns {@link BroadcastInfo} only if the target port represents a broadcast.
+     * @param port the target port
+     * @return the analyzed information, or {@code null} if the target port does not represents a broadcast
+     */
+    public BroadcastInfo analyzeBroadcast(SubPlan.Input port) {
+        SubPlanInputInfo info = analyze(port);
+        if (info.getInputType() != InputType.BROADCAST) {
+            return null;
+        }
+        Operator typical = Util.findMostTypical(collectDescriptivePredecessors(port));
+        String label = typical == null ? null : Util.toOperatorLabel(typical);
+        return new BroadcastInfo(label, groupKeys.get(port));
+    }
+
+    /**
+     * Returns {@link BroadcastInfo} only if the target port represents a broadcast.
+     * @param port the target port
+     * @return the analyzed information, or {@code null} if the target port does not represents a broadcast
+     */
+    public BroadcastInfo analyzeBroadcast(SubPlan.Output port) {
+        SubPlanOutputInfo info = analyze(port);
+        if (info.getOutputType() != OutputType.BROADCAST) {
+            return null;
+        }
+        Operator typical = Util.findMostTypical(collectDescriptivePredecessors(port));
+        String label = typical == null ? null : Util.toOperatorLabel(typical);
+        return new BroadcastInfo(label, groupKeys.get(port));
+    }
+
+    private Set<Operator> collectDescriptivePredecessors(SubPlan.Output port) {
+        Set<Operator> results = new LinkedHashSet<>();
+        SubPlan sub = port.getOwner();
+        for (Operator operator : Operators.getPredecessors(port.getOperator())) {
+            if (sub.findInput(operator) != null) {
+                continue;
+            }
+            results.add(operator);
+        }
+        return results;
+    }
+
+    private Set<Operator> collectDescriptivePredecessors(SubPlan.Input port) {
+        Set<Operator> results = new LinkedHashSet<>();
+        for (SubPlan.Output opposite : port.getOpposites()) {
+            results.addAll(collectDescriptivePredecessors(opposite));
+        }
+        return results;
+    }
 }

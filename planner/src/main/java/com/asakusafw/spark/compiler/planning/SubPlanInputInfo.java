@@ -95,7 +95,7 @@ public class SubPlanInputInfo implements ComplexAttribute {
         Map<String, Object> results = new LinkedHashMap<>();
         results.put("type", getInputType()); //$NON-NLS-1$
         results.put("options", getInputOptions()); //$NON-NLS-1$
-        results.put("partition", partitionInfo == null ? "N/A" : partitionInfo); //$NON-NLS-1$ //$NON-NLS-2$
+        results.put("partition", Util.toLabel(getPartitionInfo())); //$NON-NLS-1$
         return results;
     }
 

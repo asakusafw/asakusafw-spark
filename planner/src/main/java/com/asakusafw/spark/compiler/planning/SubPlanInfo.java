@@ -15,11 +15,12 @@
  */
 package com.asakusafw.spark.compiler.planning;
 
-import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,7 +29,6 @@ import com.asakusafw.lang.compiler.common.util.EnumUtil;
 import com.asakusafw.lang.compiler.model.graph.ExternalInput;
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput;
 import com.asakusafw.lang.compiler.model.graph.Operator;
-import com.asakusafw.lang.compiler.model.graph.Operator.OperatorKind;
 import com.asakusafw.lang.compiler.model.graph.Operators;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
 import com.asakusafw.lang.compiler.planning.PlanMarker;
@@ -39,15 +39,6 @@ import com.asakusafw.lang.compiler.planning.SubPlan;
  * Extra information for {@link SubPlan}.
  */
 public class SubPlanInfo implements ComplexAttribute {
-
-    private static final OperatorKind[] TYPICAL_ORDER = {
-        OperatorKind.MARKER,
-        OperatorKind.CORE,
-        OperatorKind.USER,
-        OperatorKind.FLOW,
-        OperatorKind.INPUT,
-        OperatorKind.OUTPUT,
-    };
 
     private final SubPlan origin;
 
@@ -158,13 +149,25 @@ public class SubPlanInfo implements ComplexAttribute {
         return secondaryInputs;
     }
 
+    /**
+     * Returns the label of this information.
+     * @return the label (never null)
+     */
+    public String getLabel() {
+        Operator typical = getTypicalOperator();
+        if (typical == null) {
+            return "Id"; //$NON-NLS-1$
+        } else {
+            return Util.toOperatorLabel(typical);
+        }
+    }
+
     @Override
     public Map<String, ?> toMap() {
         Map<String, Object> results = new LinkedHashMap<>();
         results.put("type", getDriverType()); //$NON-NLS-1$
         results.put("options", getDriverOptions()); //$NON-NLS-1$
-        results.put("primary", toSimpleString(primaryOperator)); //$NON-NLS-1$
-        results.put("typical", toSimpleString(getTypicalOperator())); //$NON-NLS-1$
+        results.put("label", getLabel()); //$NON-NLS-1$
         return results;
     }
 
@@ -173,52 +176,20 @@ public class SubPlanInfo implements ComplexAttribute {
         return toMap().toString();
     }
 
-    Operator getTypicalOperator() {
+    private Operator getTypicalOperator() {
         if (primaryOperator != null) {
             return primaryOperator;
         }
-        Operator candidate = null;
+        List<Operator> candidates = new ArrayList<>();
         for (SubPlan.Input input : getPrimaryInputs()) {
             for (Operator operator : Operators.getSuccessors(input.getOperator())) {
                 if (origin.findOutput(operator) != null) {
                     continue;
                 }
-                if (candidate == null || isMoreTypical(operator, candidate)) {
-                    candidate = operator;
-                }
+                candidates.add(operator);
             }
         }
-        return candidate;
-    }
-
-    private boolean isMoreTypical(Operator a, Operator b) {
-        OperatorKind aKind = a.getOperatorKind();
-        OperatorKind bKind = b.getOperatorKind();
-        if (aKind == bKind) {
-            return false;
-        } else {
-            for (OperatorKind target : TYPICAL_ORDER) {
-                if (aKind == target || bKind == target) {
-                    return bKind == target;
-                }
-            }
-        }
-        return false;
-    }
-
-    static String toSimpleString(Operator operator) {
-        if (operator == null) {
-            return "N/A"; //$NON-NLS-1$
-        } else if (operator.getOperatorKind() == OperatorKind.USER) {
-            UserOperator op = (UserOperator) operator;
-            return MessageFormat.format(
-                    "@{0}:{1}.{2}", //$NON-NLS-1$
-                    op.getAnnotation().getDeclaringClass().getSimpleName(),
-                    op.getMethod().getDeclaringClass().getSimpleName(),
-                    op.getMethod().getName());
-        } else {
-            return operator.toString();
-        }
+        return Util.findMostTypical(candidates);
     }
 
     /**
