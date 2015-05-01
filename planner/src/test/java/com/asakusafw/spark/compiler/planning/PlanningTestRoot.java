@@ -18,11 +18,13 @@ package com.asakusafw.spark.compiler.planning;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.hamcrest.FeatureMatcher;
@@ -34,6 +36,8 @@ import com.asakusafw.lang.compiler.api.CompilerOptions;
 import com.asakusafw.lang.compiler.api.JobflowProcessor;
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext;
 import com.asakusafw.lang.compiler.model.description.ClassDescription;
+import com.asakusafw.lang.compiler.model.graph.Group;
+import com.asakusafw.lang.compiler.model.graph.Groups;
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator;
 import com.asakusafw.lang.compiler.model.graph.Operator;
 import com.asakusafw.lang.compiler.model.info.JobflowInfo;
@@ -229,5 +233,60 @@ public abstract class PlanningTestRoot {
                 context,
                 new JobflowInfo.Basic("testing", new ClassDescription("testing")),
                 planningOptions);
+    }
+
+    /**
+     * Restores the {@link MockOperators}.
+     * @param detail the plan detail
+     * @return the restored one
+     */
+    public static MockOperators restore(PlanDetail detail) {
+        Set<Operator> managed = new HashSet<>();
+        for (Operator operator : detail.getSources()) {
+            if (MockOperators.getId(operator) != null) {
+                managed.add(operator);
+            }
+        }
+        return new MockOperators(managed);
+    }
+
+    /**
+     * Returns the singular input.
+     * @param sub the target sub-plan
+     * @return the singular input
+     */
+    public static SubPlan.Input input(SubPlan sub) {
+        Set<? extends SubPlan.Input> inputs = sub.getInputs();
+        assertThat(inputs, hasSize(1));
+        return inputs.iterator().next();
+    }
+
+    /**
+     * Returns the singular output.
+     * @param sub the target sub-plan
+     * @return the singular output
+     */
+    public static SubPlan.Output output(SubPlan sub) {
+        Set<? extends SubPlan.Output> outputs = sub.getOutputs();
+        assertThat(outputs, hasSize(1));
+        return outputs.iterator().next();
+    }
+
+    /**
+     * Creates a {@link Group}.
+     * @param values the expressions
+     * @return the created object
+     */
+    public static Group group(String... values) {
+        List<String> g = new ArrayList<>();
+        List<String> o = new ArrayList<>();
+        for (String s : values) {
+            if (s.startsWith("=")) {
+                g.add(s.substring(1));
+            } else {
+                o.add(s);
+            }
+        }
+        return Groups.parse(g, o);
     }
 }

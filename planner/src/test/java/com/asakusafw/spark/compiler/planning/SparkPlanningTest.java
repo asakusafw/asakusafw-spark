@@ -19,9 +19,6 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.hamcrest.FeatureMatcher;
@@ -31,7 +28,6 @@ import org.junit.Test;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind;
 import com.asakusafw.lang.compiler.model.graph.Group;
-import com.asakusafw.lang.compiler.model.graph.Groups;
 import com.asakusafw.lang.compiler.model.graph.Operator;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo.DataSize;
@@ -720,41 +716,6 @@ in1 -/------/------/
         assertThat(s1.getOutputs(), hasSize(1));
         assertThat(s2.getInputs(), hasSize(2));
         assertThat(s3.getInputs(), hasSize(2));
-    }
-
-    private MockOperators restore(PlanDetail detail) {
-        Set<Operator> managed = new HashSet<>();
-        for (Operator operator : detail.getSources()) {
-            if (MockOperators.getId(operator) != null) {
-                managed.add(operator);
-            }
-        }
-        return new MockOperators(managed);
-    }
-
-    private SubPlan.Input input(SubPlan sub) {
-        Set<? extends SubPlan.Input> inputs = sub.getInputs();
-        assertThat(inputs, hasSize(1));
-        return inputs.iterator().next();
-    }
-
-    private SubPlan.Output output(SubPlan sub) {
-        Set<? extends SubPlan.Output> outputs = sub.getOutputs();
-        assertThat(outputs, hasSize(1));
-        return outputs.iterator().next();
-    }
-
-    private static Group group(String... values) {
-        List<String> g = new ArrayList<>();
-        List<String> o = new ArrayList<>();
-        for (String s : values) {
-            if (s.startsWith("=")) {
-                g.add(s.substring(1));
-            } else {
-                o.add(s);
-            }
-        }
-        return Groups.parse(g, o);
     }
 
     static SubPlanInfo info(SubPlan container) {
