@@ -11,7 +11,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor.CallSite
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd._
 
 abstract class MapDriver[T](
   sc: SparkContext,
@@ -31,7 +31,22 @@ abstract class MapDriver[T](
         case (prev, list) => prev.zip(list).map {
           case (p, l) => p :: l
         }
-      }).map(new UnionRDD(sc, _).coalesce(sc.defaultParallelism, shuffle = false))
+      }).map { prevs =>
+        val part = Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*)
+        val (unioning, coalescing) = prevs.partition(_.partitions.size < part.numPartitions)
+        val coalesced = zipPartitions(
+          coalescing.map {
+            case prev if prev.partitions.size == part.numPartitions => prev
+            case prev => prev.coalesce(part.numPartitions, shuffle = false)
+          }, preservesPartitioning = false) {
+            _.iterator.flatten.asInstanceOf[Iterator[(_, T)]]
+          }
+        if (unioning.isEmpty) {
+          coalesced
+        } else {
+          new UnionRDD(sc, coalesced :: unioning)
+        }
+      }
     }).map { prev =>
       sc.clearCallSite()
       sc.setCallSite(label)

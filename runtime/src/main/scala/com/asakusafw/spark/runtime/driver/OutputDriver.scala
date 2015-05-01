@@ -23,7 +23,7 @@ import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.util.VariableTable
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd._
 
 abstract class OutputDriver[T: ClassTag](
   sc: SparkContext,
@@ -53,7 +53,22 @@ abstract class OutputDriver[T: ClassTag](
         case (prev, list) => prev.zip(list).map {
           case (p, l) => p :: l
         }
-      }).map(new UnionRDD(sc, _).coalesce(sc.defaultParallelism, shuffle = false))
+      }).map { prevs =>
+        val part = Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*)
+        val (unioning, coalescing) = prevs.partition(_.partitions.size < part.numPartitions)
+        val coalesced = zipPartitions(
+          coalescing.map {
+            case prev if prev.partitions.size == part.numPartitions => prev
+            case prev => prev.coalesce(part.numPartitions, shuffle = false)
+          }, preservesPartitioning = false) {
+            _.iterator.flatten.asInstanceOf[Iterator[(_, T)]]
+          }
+        if (unioning.isEmpty) {
+          coalesced
+        } else {
+          new UnionRDD(sc, coalesced :: unioning)
+        }
+      }
     })
       .map { prev =>
 
