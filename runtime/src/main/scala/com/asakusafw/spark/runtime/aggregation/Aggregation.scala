@@ -3,6 +3,8 @@ package com.asakusafw.spark.runtime.aggregation
 import org.apache.spark.{ Aggregator, SparkEnv, TaskContext }
 import org.apache.spark.util.collection.{ AppendOnlyMap, ExternalAppendOnlyMap }
 
+import org.apache.spark.executor.backdoor._
+
 abstract class Aggregation[K, V, C] extends Serializable {
 
   import Aggregation._
@@ -81,8 +83,8 @@ object Aggregation {
 
     def iterator: Iterator[(K, C)] = {
       Option(TaskContext.get).foreach { c =>
-        c.taskMetrics.memoryBytesSpilled += combiners.memoryBytesSpilled
-        c.taskMetrics.diskBytesSpilled += combiners.diskBytesSpilled
+        c.taskMetrics.incMemoryBytesSpilled(combiners.memoryBytesSpilled)
+        c.taskMetrics.incDiskBytesSpilled(combiners.diskBytesSpilled)
       }
       combiners.iterator
     }

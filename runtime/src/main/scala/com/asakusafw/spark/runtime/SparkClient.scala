@@ -4,7 +4,6 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
-import org.apache.spark.SparkContext._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 

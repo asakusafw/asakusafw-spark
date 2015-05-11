@@ -6,7 +6,6 @@ import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import org.apache.spark._
-import org.apache.spark.SparkContext._
 import org.apache.spark.rdd._
 
 @RunWith(classOf[JUnitRunner])

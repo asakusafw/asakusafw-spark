@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.reflect.NameTransformer
+import scala.reflect.{ ClassTag, NameTransformer }
 
 import org.objectweb.asm.Type
 
@@ -13,6 +13,7 @@ import org.apache.spark.util.collection.backdoor.CompactBuffer
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.description.TypeDescription
 import com.asakusafw.lang.compiler.model.graph.Group
+import com.asakusafw.runtime.value.ValueOption
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
@@ -33,7 +34,11 @@ class ShuffleKeyClassBuilder(
 
       thisVar.push().invokeInit(
         superType, {
-          val buffer = pushNew0(classOf[CompactBuffer[_]].asType)
+          val buffer = pushNew(classOf[CompactBuffer[_]].asType)
+          buffer.dup().invokeInit(
+            getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+              .invokeV("apply", classOf[ClassTag[_]].asType,
+                ldc(classOf[ValueOption[_]].asType).asType(classOf[Class[_]].asType)))
           for {
             (_, t) <- grouping
           } {
@@ -44,7 +49,11 @@ class ShuffleKeyClassBuilder(
           }
           buffer.asType(classOf[Seq[_]].asType)
         }, {
-          val buffer = pushNew0(classOf[CompactBuffer[_]].asType)
+          val buffer = pushNew(classOf[CompactBuffer[_]].asType)
+          buffer.dup().invokeInit(
+            getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+              .invokeV("apply", classOf[ClassTag[_]].asType,
+                ldc(classOf[ValueOption[_]].asType).asType(classOf[Class[_]].asType)))
           for {
             (_, t) <- ordering
           } {

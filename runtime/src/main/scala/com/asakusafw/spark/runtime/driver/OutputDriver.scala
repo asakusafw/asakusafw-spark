@@ -10,7 +10,6 @@ import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
-import org.apache.spark.SparkContext._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 import org.slf4j.LoggerFactory

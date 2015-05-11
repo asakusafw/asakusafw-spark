@@ -6,7 +6,6 @@ import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import org.apache.spark.{ HashPartitioner, TaskContext }
-import org.apache.spark.SparkContext._
 
 @RunWith(classOf[JUnitRunner])
 class BranchRDDFunctionsSpecTest extends BranchRDDFunctionsSpec

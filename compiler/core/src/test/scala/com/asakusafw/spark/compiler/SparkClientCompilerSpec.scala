@@ -13,7 +13,6 @@ import scala.collection.JavaConversions._
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.{ SparkConf, SparkContext }
-import org.apache.spark.SparkContext._
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
