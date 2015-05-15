@@ -1,7 +1,6 @@
 package com.asakusafw.spark.runtime.driver
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
@@ -11,6 +10,7 @@ import org.apache.spark.rdd._
 
 import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor._
+import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver(
@@ -28,11 +28,7 @@ abstract class CoGroupDriver(
     val future =
       ((prevs :\ Future.successful(List.empty[(Seq[RDD[(ShuffleKey, _)]], Option[ShuffleKey.SortOrdering])])) {
         case ((prevs, sort), list) =>
-          ((prevs :\ Future.successful(List.empty[RDD[(ShuffleKey, _)]])) {
-            case (prev, list) => prev.zip(list).map {
-              case (p, l) => p :: l
-            }
-          }).map((_, sort)).zip(list).map {
+          Future.sequence(prevs).map((_, sort)).zip(list).map {
             case (p, l) => p :: l
           }
       }).map { prevs =>

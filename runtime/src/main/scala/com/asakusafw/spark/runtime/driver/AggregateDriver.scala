@@ -1,7 +1,6 @@
 package com.asakusafw.spark.runtime.driver
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
@@ -12,6 +11,7 @@ import org.apache.spark.rdd._
 import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor.CallSite
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd._
@@ -31,11 +31,7 @@ abstract class AggregateDriver[V, C](
     val agg = aggregation
     val part = Some(partitioner)
 
-    val future = ((prevs :\ Future.successful(List.empty[RDD[(ShuffleKey, V)]])) {
-      case (prev, list) => prev.zip(list).map {
-        case (p, l) => p :: l
-      }
-    }).map { prevs =>
+    val future = Future.sequence(prevs).map { prevs =>
       sc.clearCallSite()
       sc.setCallSite(label)
 

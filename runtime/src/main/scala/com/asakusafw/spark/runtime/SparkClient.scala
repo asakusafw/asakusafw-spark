@@ -1,7 +1,6 @@
 package com.asakusafw.spark.runtime
 
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark._
@@ -11,6 +10,7 @@ import org.apache.spark.rdd.RDD
 
 import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor._
+import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd._
 
@@ -61,4 +61,9 @@ abstract class SparkClient {
       sc.broadcast(results.flatten.toMap)
     }
   }
+}
+
+object SparkClient {
+
+  implicit lazy val executionContext: ExecutionContext = ExecutionContext.fromExecutor(null)
 }

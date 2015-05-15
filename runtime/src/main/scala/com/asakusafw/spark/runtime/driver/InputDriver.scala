@@ -4,7 +4,6 @@ package driver
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
@@ -20,6 +19,7 @@ import org.apache.spark.util.backdoor._
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
+import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class InputDriver[T: ClassTag](

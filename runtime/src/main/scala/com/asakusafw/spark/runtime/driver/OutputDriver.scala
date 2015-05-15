@@ -3,7 +3,6 @@ package driver
 
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
@@ -23,6 +22,7 @@ import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.util.VariableTable
+import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class OutputDriver[T: ClassTag](
@@ -49,11 +49,7 @@ abstract class OutputDriver[T: ClassTag](
     val future = (if (prevs.size == 1) {
       prevs.head
     } else {
-      ((prevs :\ Future.successful(List.empty[RDD[(_, T)]])) {
-        case (prev, list) => prev.zip(list).map {
-          case (p, l) => p :: l
-        }
-      }).map { prevs =>
+      Future.sequence(prevs).map { prevs =>
         val part = Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*)
         val (unioning, coalescing) = prevs.partition(_.partitions.size < part.numPartitions)
         val coalesced = zipPartitions(
@@ -66,7 +62,7 @@ abstract class OutputDriver[T: ClassTag](
         if (unioning.isEmpty) {
           coalesced
         } else {
-          new UnionRDD(sc, coalesced :: unioning)
+          new UnionRDD(sc, coalesced +: unioning)
         }
       }
     })
