@@ -51,9 +51,9 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkSugar {
       case ((actualKey, actualValues), key @ (k, _)) =>
         assert(grouping.compare(actualKey, key) === 0)
         assert(actualValues.size === 3)
-        assert(actualValues(0) === Seq(k))
-        assert(actualValues(1) === Seq(k.toInt, k.toInt * 10))
-        assert(actualValues(2) === Seq(k.toLong * 10, k.toLong))
+        assert(actualValues(0).toSeq === Seq(k))
+        assert(actualValues(1).toSeq === Seq(k.toInt, k.toInt * 10))
+        assert(actualValues(2).toSeq === Seq(k.toLong * 10, k.toLong))
     }
   }
 
@@ -75,7 +75,7 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkSugar {
       case ((actualKey, actualValues), key @ (k, _)) =>
         assert(grouping.compare(actualKey, key) === 0)
         assert(actualValues.size === 1)
-        assert(actualValues(0) === Seq(k))
+        assert(actualValues(0).toSeq === Seq(k))
     }
   }
 }

@@ -54,7 +54,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
-      classOf[Seq[Iterable[_]]].asType,
+      classOf[Seq[Iterator[_]]].asType,
       implementationClassType,
       outputs) {
 
@@ -69,7 +69,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
                   .invokeV("seqAsJavaList", classOf[JList[_]].asType,
                     dataModelVar.push()
                       .invokeI("apply", classOf[AnyRef].asType, ldc(i).box().asType(classOf[AnyRef].asType))
-                      .cast(classOf[Iterable[_]].asType)
+                      .cast(classOf[Iterator[_]].asType)
                       .invokeI("toSeq", classOf[Seq[_]].asType))
             }
               ++ outputs.map { output =>

@@ -22,13 +22,12 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
       .invokeV("seqAsJavaList", classOf[JList[_]].asType,
         dataModelVar.push().invokeI(
           "apply", classOf[AnyRef].asType, ldc(0).box().asType(classOf[AnyRef].asType))
-          .cast(classOf[Iterable[_]].asType)
+          .cast(classOf[Iterator[_]].asType)
           .invokeI("toSeq", classOf[Seq[_]].asType))
       .store(dataModelVar.nextLocal)
     val txIterVar = dataModelVar.push().invokeI(
       "apply", classOf[AnyRef].asType, ldc(1).box().asType(classOf[AnyRef].asType))
-      .cast(classOf[Iterable[_]].asType)
-      .invokeI("iterator", classOf[Iterator[_]].asType)
+      .cast(classOf[Iterator[_]].asType)
       .store(mastersVar.nextLocal)
     whileLoop(txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
       val txVar = txIterVar.push().invokeI("next", classOf[AnyRef].asType)

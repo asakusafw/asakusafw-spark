@@ -65,7 +65,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val hogeResult = new GenericOutputFragment[Hoge]
     val hogeError = new GenericOutputFragment[Hoge]
@@ -85,7 +85,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
     {
       val hoges = Seq.empty[Hoge]
       val foos = Seq.empty[Foo]
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(hogeResult.size === 0)
       assert(fooResult.size === 0)
       assert(hogeError.size === 0)
@@ -109,7 +109,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(hogeResult.size === 1)
       assert(hogeResult.head.id.get === hoge.id.get)
       assert(fooResult.size === 1)
@@ -138,7 +138,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
         foo.hogeId.modify(1)
         foo
       }
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(hogeResult.size === 0)
       assert(fooResult.size === 0)
       assert(hogeError.size === 1)

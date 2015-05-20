@@ -61,7 +61,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -80,7 +80,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(updated.size === 1)
       assert(updated.head.id.get === 10)
       assert(missed.size === 0)
@@ -91,11 +91,11 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
     assert(missed.size === 0)
 
     {
-      val hoges = Seq.empty[Hoge]
+      val hoges = Iterator.empty
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
-      val foos = Seq(foo)
+      val foos = Iterator(foo)
       fragment.add(Seq(hoges, foos))
       assert(updated.size === 0)
       assert(missed.size === 1)
@@ -130,7 +130,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -151,7 +151,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         foo.hogeId.modify(0)
         foo
       }
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(updated.size === 5)
       assert(updated.map(_.id.get) === (0 until 10 by 2))
       assert(missed.size === 5)
@@ -168,7 +168,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(updated.size === 0)
       assert(missed.size === 1)
       assert(missed.head.id.get === 10)
@@ -202,7 +202,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -221,7 +221,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(updated.size === 1)
       assert(updated.head.id.get === 10)
       assert(missed.size === 0)
@@ -237,7 +237,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(updated.size === 0)
       assert(missed.size === 1)
       assert(missed.head.id.get === 10)
@@ -271,7 +271,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -292,7 +292,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         foo.hogeId.modify(0)
         foo
       }
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(updated.size === 5)
       assert(updated.map(_.id.get) === (0 until 10 by 2))
       assert(missed.size === 5)
@@ -309,7 +309,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(updated.size === 0)
       assert(missed.size === 1)
       assert(missed.head.id.get === 10)
