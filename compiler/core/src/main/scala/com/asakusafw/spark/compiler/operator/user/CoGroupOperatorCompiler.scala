@@ -5,16 +5,18 @@ package user
 import java.util.{ List => JList }
 import java.util.concurrent.atomic.AtomicInteger
 
+import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.{ Opcodes, Type }
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
-import com.asakusafw.runtime.flow.{ ArrayListBuffer, ListBuffer }
+import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
 import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.vocabulary.flow.processor.InputBuffer
 import com.asakusafw.vocabulary.operator.{ CoGroup, GroupSort }
 
 class CoGroupOperatorCompiler extends UserOperatorCompiler {
@@ -53,6 +55,9 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
           ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
+    val inputBuffer = annotationDesc.getElements()("inputBuffer").resolve(context.jpContext.getClassLoader)
+      .asInstanceOf[InputBuffer]
+
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
       classOf[Seq[Iterator[_]]].asType,
@@ -80,7 +85,11 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
           val arr = pushNewArray(classOf[ListBuffer[_]].asType, inputs.size)
           inputs.zipWithIndex.foreach {
             case (input, i) =>
-              arr.dup().astore(ldc(i), pushNew0(classOf[ArrayListBuffer[_]].asType))
+              arr.dup().astore(ldc(i), pushNew0(
+                inputBuffer match {
+                  case InputBuffer.EXPAND => classOf[ArrayListBuffer[_]].asType
+                  case InputBuffer.ESCAPE => classOf[FileMapListBuffer[_]].asType
+                }))
           }
           arr
         })

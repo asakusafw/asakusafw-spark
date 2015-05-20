@@ -5,6 +5,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
 import java.nio.file.Files
 import java.util.{ List => JList }
 
@@ -14,6 +15,7 @@ import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.Writable
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -34,6 +36,7 @@ import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.orderings._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.vocabulary.flow.processor.InputBuffer
 import com.asakusafw.vocabulary.operator.CoGroup
 
 @RunWith(classOf[JUnitRunner])
@@ -47,190 +50,194 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
 
   def resolvers = SubPlanCompiler(Thread.currentThread.getContextClassLoader)
 
-  it should "build cogroup driver class" in {
-    val hogeListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
-    val fooListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
+  for (
+    method <- Seq("cogroup", "cogroupEscape")
+  ) {
+    it should s"build cogroup driver class ${method}" in {
+      val hogeListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+        .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
+      val fooListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
 
-    val operator = OperatorExtractor
-      .extract(classOf[CoGroup], classOf[CoGroupOperator], "cogroup")
-      .input("hogeList", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")),
-        hogeListMarker.getOutput)
-      .input("fooList", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")),
-        fooListMarker.getOutput)
-      .output("hogeResult", ClassDescription.of(classOf[Hoge]))
-      .output("fooResult", ClassDescription.of(classOf[Foo]))
-      .output("hogeError", ClassDescription.of(classOf[Hoge]))
-      .output("fooError", ClassDescription.of(classOf[Foo]))
-      .output("nResult", ClassDescription.of(classOf[N]))
-      .argument("n", ImmediateDescription.of(10))
-      .build()
+      val operator = OperatorExtractor
+        .extract(classOf[CoGroup], classOf[CoGroupOperator], method)
+        .input("hogeList", ClassDescription.of(classOf[Hoge]),
+          Groups.parse(Seq("id")),
+          hogeListMarker.getOutput)
+        .input("fooList", ClassDescription.of(classOf[Foo]),
+          Groups.parse(Seq("hogeId"), Seq("+id")),
+          fooListMarker.getOutput)
+        .output("hogeResult", ClassDescription.of(classOf[Hoge]))
+        .output("fooResult", ClassDescription.of(classOf[Foo]))
+        .output("hogeError", ClassDescription.of(classOf[Hoge]))
+        .output("fooError", ClassDescription.of(classOf[Foo]))
+        .output("nResult", ClassDescription.of(classOf[N]))
+        .argument("n", ImmediateDescription.of(10))
+        .build()
 
-    val hogeResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    operator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
+      val hogeResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
 
-    val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    operator.findOutput("fooResult").connect(fooResultMarker.getInput)
+      val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("fooResult").connect(fooResultMarker.getInput)
 
-    val hogeErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    operator.findOutput("hogeError").connect(hogeErrorMarker.getInput)
+      val hogeErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("hogeError").connect(hogeErrorMarker.getInput)
 
-    val fooErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    operator.findOutput("fooError").connect(fooErrorMarker.getInput)
+      val fooErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("fooError").connect(fooErrorMarker.getInput)
 
-    val hogeAllMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    operator.findOutput("hogeResult").connect(hogeAllMarker.getInput)
-    operator.findOutput("hogeError").connect(hogeAllMarker.getInput)
+      val hogeAllMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("hogeResult").connect(hogeAllMarker.getInput)
+      operator.findOutput("hogeError").connect(hogeAllMarker.getInput)
 
-    val fooAllMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    operator.findOutput("fooResult").connect(fooAllMarker.getInput)
-    operator.findOutput("fooError").connect(fooAllMarker.getInput)
+      val fooAllMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("fooResult").connect(fooAllMarker.getInput)
+      operator.findOutput("fooError").connect(fooAllMarker.getInput)
 
-    val nResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[N]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-    operator.findOutput("nResult").connect(nResultMarker.getInput)
+      val nResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[N]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("nResult").connect(nResultMarker.getInput)
 
-    val plan = PlanBuilder.from(Seq(operator))
-      .add(
-        Seq(hogeListMarker, fooListMarker),
-        Seq(hogeResultMarker, fooResultMarker,
+      val plan = PlanBuilder.from(Seq(operator))
+        .add(
+          Seq(hogeListMarker, fooListMarker),
+          Seq(hogeResultMarker, fooResultMarker,
+            hogeErrorMarker, fooErrorMarker,
+            hogeAllMarker, fooAllMarker,
+            nResultMarker)).build().getPlan()
+      assert(plan.getElements.size === 1)
+      val subplan = plan.getElements.head
+      subplan.putAttribute(classOf[SubPlanInfo],
+        new SubPlanInfo(subplan, SubPlanInfo.DriverType.COGROUP, Seq.empty[SubPlanInfo.DriverOption], operator))
+
+      val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
+      val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
+      implicit val context = SubPlanCompiler.Context(
+        flowId = "flowId",
+        jpContext = new MockJobflowProcessorContext(
+          new CompilerOptions("buildid", "", Map.empty[String, String]),
+          Thread.currentThread.getContextClassLoader,
+          classServer.root.toFile),
+        externalInputs = mutable.Map.empty,
+        branchKeys = branchKeysClassBuilder,
+        broadcastIds = broadcastIdsClassBuilder,
+        shuffleKeyTypes = mutable.Set.empty)
+
+      val compiler = resolvers.find(_.support(operator)).get
+      val thisType = compiler.compile(subplan)
+      context.jpContext.addClass(branchKeysClassBuilder)
+      context.jpContext.addClass(broadcastIdsClassBuilder)
+      val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
+
+      val hogeOrd = new ShuffleKey.SortOrdering(1, Array(true))
+      val hogeList = sc.parallelize(0 until 10).map { i =>
+        val hoge = new Hoge()
+        hoge.id.modify(i)
+        (new ShuffleKey(Seq(hoge.id), Seq(new BooleanOption().modify(hoge.id.get % 3 == 0))) {}, hoge)
+      }
+      val fooOrd = new ShuffleKey.SortOrdering(1, Array(true))
+      val fooList = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
+        val foo = new Foo()
+        foo.id.modify(10 + j)
+        foo.hogeId.modify(i)
+        (new ShuffleKey(Seq(foo.hogeId), Seq(new IntOption().modify(foo.id.toString.hashCode))) {}, foo)
+      })
+      val grouping = new ShuffleKey.GroupingOrdering(1)
+      val part = new HashPartitioner(2)
+      val driver = cls.getConstructor(
+        classOf[SparkContext],
+        classOf[Broadcast[Configuration]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])]],
+        classOf[ShuffleKey.GroupingOrdering],
+        classOf[Partitioner])
+        .newInstance(
+          sc,
+          hadoopConf,
+          Map.empty,
+          Seq((Seq(Future.successful(hogeList)), Option(hogeOrd)), (Seq(Future.successful(fooList)), Option(fooOrd))),
+          grouping,
+          part)
+      val results = driver.execute()
+
+      val branchKeyCls = classServer.loadClass(branchKeysClassBuilder.thisType.getClassName)
+      def getBranchKey(osn: Long): BranchKey = {
+        val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+        branchKeyCls.getField(branchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
+      }
+
+      assert(driver.branchKeys ===
+        Set(hogeResultMarker, fooResultMarker,
           hogeErrorMarker, fooErrorMarker,
           hogeAllMarker, fooAllMarker,
-          nResultMarker)).build().getPlan()
-    assert(plan.getElements.size === 1)
-    val subplan = plan.getElements.head
-    subplan.putAttribute(classOf[SubPlanInfo],
-      new SubPlanInfo(subplan, SubPlanInfo.DriverType.COGROUP, Seq.empty[SubPlanInfo.DriverOption], operator))
+          nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-    val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
-    val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
-    implicit val context = SubPlanCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classServer.root.toFile),
-      externalInputs = mutable.Map.empty,
-      branchKeys = branchKeysClassBuilder,
-      broadcastIds = broadcastIdsClassBuilder,
-      shuffleKeyTypes = mutable.Set.empty)
+      val hogeResult = Await.result(results(getBranchKey(hogeResultMarker.getOriginalSerialNumber)), Duration.Inf)
+        .collect.toSeq.map(_._2.asInstanceOf[Hoge])
+      assert(hogeResult.size === 1)
+      assert(hogeResult(0).id.get === 1)
 
-    val compiler = resolvers.find(_.support(operator)).get
-    val thisType = compiler.compile(subplan)
-    context.jpContext.addClass(branchKeysClassBuilder)
-    context.jpContext.addClass(broadcastIdsClassBuilder)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
+      val fooResult = Await.result(results(getBranchKey(fooResultMarker.getOriginalSerialNumber)), Duration.Inf)
+        .collect.toSeq.map(_._2.asInstanceOf[Foo])
+      assert(fooResult.size === 1)
+      assert(fooResult(0).id.get === 10)
+      assert(fooResult(0).hogeId.get === 1)
 
-    val hogeOrd = new ShuffleKey.SortOrdering(1, Array(true))
-    val hogeList = sc.parallelize(0 until 10).map { i =>
-      val hoge = new Hoge()
-      hoge.id.modify(i)
-      (new ShuffleKey(Seq(hoge.id), Seq(new BooleanOption().modify(hoge.id.get % 3 == 0))) {}, hoge)
+      val hogeError = Await.result(results(getBranchKey(hogeErrorMarker.getOriginalSerialNumber)), Duration.Inf)
+        .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
+      assert(hogeError.size === 9)
+      assert(hogeError(0).id.get === 0)
+      for (i <- 2 until 10) {
+        assert(hogeError(i - 1).id.get === i)
+      }
+
+      val fooError = Await.result(results(getBranchKey(fooErrorMarker.getOriginalSerialNumber)), Duration.Inf)
+        .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
+      assert(fooError.size === 44)
+      for {
+        i <- 2 until 10
+        j <- 0 until i
+      } {
+        assert(fooError((i * (i - 1)) / 2 + j - 1).id.get == 10 + j)
+        assert(fooError((i * (i - 1)) / 2 + j - 1).hogeId.get == i)
+      }
+
+      val hogeAll = Await.result(results(getBranchKey(hogeAllMarker.getOriginalSerialNumber)), Duration.Inf)
+        .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
+      assert(hogeAll.size === 10)
+      for (i <- 0 until 10) {
+        assert(hogeAll(i).id.get === i)
+      }
+
+      val fooAll = Await.result(results(getBranchKey(fooAllMarker.getOriginalSerialNumber)), Duration.Inf)
+        .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
+      assert(fooAll.size === 45)
+      for {
+        i <- 0 until 10
+        j <- 0 until i
+      } {
+        assert(fooAll((i * (i - 1)) / 2 + j).id.get == 10 + j)
+        assert(fooAll((i * (i - 1)) / 2 + j).hogeId.get == i)
+      }
+
+      val nResult = Await.result(results(getBranchKey(nResultMarker.getOriginalSerialNumber)), Duration.Inf)
+        .collect.toSeq.map(_._2.asInstanceOf[N])
+      assert(nResult.size === 10)
+      nResult.foreach(n => assert(n.n.get === 10))
     }
-    val fooOrd = new ShuffleKey.SortOrdering(1, Array(true))
-    val fooList = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
-      val foo = new Foo()
-      foo.id.modify(10 + j)
-      foo.hogeId.modify(i)
-      (new ShuffleKey(Seq(foo.hogeId), Seq(new IntOption().modify(foo.id.toString.hashCode))) {}, foo)
-    })
-    val grouping = new ShuffleKey.GroupingOrdering(1)
-    val part = new HashPartitioner(2)
-    val driver = cls.getConstructor(
-      classOf[SparkContext],
-      classOf[Broadcast[Configuration]],
-      classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])]],
-      classOf[ShuffleKey.GroupingOrdering],
-      classOf[Partitioner])
-      .newInstance(
-        sc,
-        hadoopConf,
-        Map.empty,
-        Seq((Seq(Future.successful(hogeList)), Option(hogeOrd)), (Seq(Future.successful(fooList)), Option(fooOrd))),
-        grouping,
-        part)
-    val results = driver.execute()
-
-    val branchKeyCls = classServer.loadClass(branchKeysClassBuilder.thisType.getClassName)
-    def getBranchKey(osn: Long): BranchKey = {
-      val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
-      branchKeyCls.getField(branchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
-    }
-
-    assert(driver.branchKeys ===
-      Set(hogeResultMarker, fooResultMarker,
-        hogeErrorMarker, fooErrorMarker,
-        hogeAllMarker, fooAllMarker,
-        nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
-
-    val hogeResult = Await.result(results(getBranchKey(hogeResultMarker.getOriginalSerialNumber)), Duration.Inf)
-      .collect.toSeq.map(_._2.asInstanceOf[Hoge])
-    assert(hogeResult.size === 1)
-    assert(hogeResult(0).id.get === 1)
-
-    val fooResult = Await.result(results(getBranchKey(fooResultMarker.getOriginalSerialNumber)), Duration.Inf)
-      .collect.toSeq.map(_._2.asInstanceOf[Foo])
-    assert(fooResult.size === 1)
-    assert(fooResult(0).id.get === 10)
-    assert(fooResult(0).hogeId.get === 1)
-
-    val hogeError = Await.result(results(getBranchKey(hogeErrorMarker.getOriginalSerialNumber)), Duration.Inf)
-      .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
-    assert(hogeError.size === 9)
-    assert(hogeError(0).id.get === 0)
-    for (i <- 2 until 10) {
-      assert(hogeError(i - 1).id.get === i)
-    }
-
-    val fooError = Await.result(results(getBranchKey(fooErrorMarker.getOriginalSerialNumber)), Duration.Inf)
-      .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
-    assert(fooError.size === 44)
-    for {
-      i <- 2 until 10
-      j <- 0 until i
-    } {
-      assert(fooError((i * (i - 1)) / 2 + j - 1).id.get == 10 + j)
-      assert(fooError((i * (i - 1)) / 2 + j - 1).hogeId.get == i)
-    }
-
-    val hogeAll = Await.result(results(getBranchKey(hogeAllMarker.getOriginalSerialNumber)), Duration.Inf)
-      .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
-    assert(hogeAll.size === 10)
-    for (i <- 0 until 10) {
-      assert(hogeAll(i).id.get === i)
-    }
-
-    val fooAll = Await.result(results(getBranchKey(fooAllMarker.getOriginalSerialNumber)), Duration.Inf)
-      .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
-    assert(fooAll.size === 45)
-    for {
-      i <- 0 until 10
-      j <- 0 until i
-    } {
-      assert(fooAll((i * (i - 1)) / 2 + j).id.get == 10 + j)
-      assert(fooAll((i * (i - 1)) / 2 + j).hogeId.get == i)
-    }
-
-    val nResult = Await.result(results(getBranchKey(nResultMarker.getOriginalSerialNumber)), Duration.Inf)
-      .collect.toSeq.map(_._2.asInstanceOf[N])
-    assert(nResult.size === 10)
-    nResult.foreach(n => assert(n.n.get === 10))
   }
 }
 
 object CoGroupDriverClassBuilderSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  class Hoge extends DataModel[Hoge] with Writable {
 
     val id = new IntOption()
 
@@ -240,11 +247,17 @@ object CoGroupDriverClassBuilderSpec {
     override def copyFrom(other: Hoge): Unit = {
       id.copyFrom(other.id)
     }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+    }
 
     def getIdOption: IntOption = id
   }
 
-  class Foo extends DataModel[Foo] {
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -256,6 +269,14 @@ object CoGroupDriverClassBuilderSpec {
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
       hogeId.copyFrom(other.hogeId)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      hogeId.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      hogeId.write(out)
     }
 
     def getIdOption: IntOption = id
@@ -282,6 +303,23 @@ object CoGroupDriverClassBuilderSpec {
 
     @CoGroup
     def cogroup(
+      hogeList: JList[Hoge], fooList: JList[Foo],
+      hogeResult: Result[Hoge], fooResult: Result[Foo],
+      hogeError: Result[Hoge], fooError: Result[Foo],
+      nResult: Result[N], n: Int): Unit = {
+      if (hogeList.size == 1 && fooList.size == 1) {
+        hogeResult.add(hogeList(0))
+        fooResult.add(fooList(0))
+      } else {
+        hogeList.foreach(hogeError.add)
+        fooList.foreach(fooError.add)
+      }
+      this.n.n.modify(n)
+      nResult.add(this.n)
+    }
+
+    @CoGroup(inputBuffer = InputBuffer.ESCAPE)
+    def cogroupEscape(
       hogeList: JList[Hoge], fooList: JList[Foo],
       hogeResult: Result[Hoge], fooResult: Result[Foo],
       hogeError: Result[Hoge], fooError: Result[Foo],
