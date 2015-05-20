@@ -27,7 +27,22 @@ class ShuffleKeyClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/ShuffleKey$$${ShuffleKeyClassBuilder.nextId};"),
       classOf[ShuffleKey].asType) {
 
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
+    fieldDef.newStaticFinalField("valueOptionClassTag", classOf[ClassTag[ValueOption[_]]].asType)
+  }
+
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
+    ctorDef.newStaticInit { mb =>
+      import mb._
+
+      putStatic(thisType, "valueOptionClassTag", classOf[ClassTag[ValueOption[_]]].asType,
+        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+          .invokeV("apply", classOf[ClassTag[_]].asType,
+            ldc(classOf[ValueOption[_]].asType).asType(classOf[Class[_]].asType)))
+    }
+
     ctorDef.newInit(Seq.empty) { mb =>
       import mb._
       val dataModelVar = `var`(dataModelType, thisVar.nextLocal)
@@ -36,9 +51,7 @@ class ShuffleKeyClassBuilder(
         superType, {
           val buffer = pushNew(classOf[CompactBuffer[_]].asType)
           buffer.dup().invokeInit(
-            getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-              .invokeV("apply", classOf[ClassTag[_]].asType,
-                ldc(classOf[ValueOption[_]].asType).asType(classOf[Class[_]].asType)))
+            getStatic(thisType, "valueOptionClassTag", classOf[ClassTag[ValueOption[_]]].asType))
           for {
             (_, t) <- grouping
           } {
@@ -51,9 +64,7 @@ class ShuffleKeyClassBuilder(
         }, {
           val buffer = pushNew(classOf[CompactBuffer[_]].asType)
           buffer.dup().invokeInit(
-            getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-              .invokeV("apply", classOf[ClassTag[_]].asType,
-                ldc(classOf[ValueOption[_]].asType).asType(classOf[Class[_]].asType)))
+            getStatic(thisType, "valueOptionClassTag", classOf[ClassTag[ValueOption[_]]].asType))
           for {
             (_, t) <- ordering
           } {
