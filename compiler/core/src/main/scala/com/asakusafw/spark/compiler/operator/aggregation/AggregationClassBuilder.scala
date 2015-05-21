@@ -36,7 +36,7 @@ abstract class AggregationClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("mapSideCombine", Type.BOOLEAN_TYPE, Seq.empty)(defMapSideCombiner)
+    methodDef.newMethod("mapSideCombine", Type.BOOLEAN_TYPE, Seq.empty)(defMapSideCombine)
 
     methodDef.newMethod("createCombiner", classOf[AnyRef].asType, Seq(classOf[AnyRef].asType)) { mb =>
       import mb._
@@ -84,7 +84,7 @@ abstract class AggregationClassBuilder(
     }
   }
 
-  def defMapSideCombiner(mb: MethodBuilder): Unit
+  def defMapSideCombine(mb: MethodBuilder): Unit
   def defCreateCombiner(mb: MethodBuilder, valueVar: Var): Unit
   def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit
   def defMergeCombiners(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit

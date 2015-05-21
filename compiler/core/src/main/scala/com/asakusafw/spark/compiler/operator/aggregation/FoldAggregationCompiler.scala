@@ -68,7 +68,7 @@ class FoldAggregationCompiler extends AggregationCompiler {
         defGetOperator(methodDef)
       }
 
-      override def defMapSideCombiner(mb: MethodBuilder): Unit = {
+      override def defMapSideCombine(mb: MethodBuilder): Unit = {
         import mb._
         val partialAggregation = annotationDesc.getElements()("partialAggregation")
           .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]
