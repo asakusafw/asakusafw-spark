@@ -42,7 +42,6 @@ abstract class CoGroupDriver(
           },
           part,
           grouping)
-          .mapValues(_.toSeq)
 
         branch(cogrouped.asInstanceOf[RDD[(_, Seq[Iterator[_]])]])
       }
