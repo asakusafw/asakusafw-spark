@@ -60,12 +60,16 @@ class FoldAggregationCompiler extends AggregationCompiler {
       override val operatorType: Type = implementationClassType
 
       override def defFields(fieldDef: FieldDef): Unit = {
+        super.defFields(fieldDef)
         defOperatorField(fieldDef)
       }
 
-      override def defMethods(methodDef: MethodDef): Unit = {
-        super.defMethods(methodDef)
-        defGetOperator(methodDef)
+      override def defConstructors(ctorDef: ConstructorDef): Unit = {
+        ctorDef.newInit(Seq.empty) { mb =>
+          import mb._
+          thisVar.push().invokeInit(superType)
+          initOperatorField(mb)
+        }
       }
 
       override def defMapSideCombine(mb: MethodBuilder): Unit = {

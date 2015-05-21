@@ -51,6 +51,7 @@ abstract class UserOperatorFragmentClassBuilder(
 
         thisVar.push().invokeInit(superType)
         initOutputFields(mb, broadcastsVar.nextLocal)
+        initOperatorField(mb)
         initFields(mb)
       }
   }
@@ -65,7 +66,5 @@ abstract class UserOperatorFragmentClassBuilder(
       resetOutputs(mb)
       `return`()
     }
-
-    defGetOperator(methodDef)
   }
 }
