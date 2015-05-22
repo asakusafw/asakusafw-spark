@@ -147,7 +147,7 @@ object CoGroupDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Seq[Iterable[_]]], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Seq[Iterator[_]]], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         HogeResult -> new HogeOutputFragment,
         FooResult -> new FooOutputFragment,
@@ -195,12 +195,12 @@ object CoGroupDriverSpec {
     override def newDataModel: Foo = new Foo()
   }
 
-  class TestCoGroupFragment(outputs: Map[BranchKey, Fragment[_]]) extends Fragment[Seq[Iterable[_]]] {
+  class TestCoGroupFragment(outputs: Map[BranchKey, Fragment[_]]) extends Fragment[Seq[Iterator[_]]] {
 
-    override def add(groups: Seq[Iterable[_]]): Unit = {
+    override def add(groups: Seq[Iterator[_]]): Unit = {
       assert(groups.size == 2)
-      val hogeList = groups(0).asInstanceOf[Iterable[Hoge]].toSeq
-      val fooList = groups(1).asInstanceOf[Iterable[Foo]].toSeq
+      val hogeList = groups(0).asInstanceOf[Iterator[Hoge]].toSeq
+      val fooList = groups(1).asInstanceOf[Iterator[Foo]].toSeq
       if (hogeList.size == 1 && fooList.size == 1) {
         outputs(HogeResult).asInstanceOf[HogeOutputFragment].add(hogeList.head)
         outputs(FooResult).asInstanceOf[FooOutputFragment].add(fooList.head)

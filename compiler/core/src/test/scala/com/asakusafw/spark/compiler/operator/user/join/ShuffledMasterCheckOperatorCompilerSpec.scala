@@ -61,7 +61,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val found = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -79,7 +79,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(found.size === 1)
       assert(found.head.id.get === 10)
       assert(missed.size === 0)
@@ -95,7 +95,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(found.size === 0)
       assert(missed.size === 1)
       assert(missed.head.id.get === 10)
@@ -129,7 +129,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val found = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -149,7 +149,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
         foo.hogeId.modify(0)
         foo
       }
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(found.size === 5)
       assert(found.map(_.id.get) === (0 until 10 by 2))
       assert(missed.size === 5)
@@ -166,7 +166,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(found.size === 0)
       assert(missed.size === 1)
       assert(missed.head.id.get === 10)

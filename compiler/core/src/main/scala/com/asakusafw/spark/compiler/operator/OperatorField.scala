@@ -10,21 +10,16 @@ trait OperatorField extends ClassBuilder {
   def operatorType: Type
 
   def defOperatorField(fieldDef: FieldDef): Unit = {
-    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT, "operator", operatorType)
+    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "operator", operatorType)
+  }
+
+  def initOperatorField(mb: MethodBuilder): Unit = {
+    import mb._
+    thisVar.push().putField("operator", operatorType, pushNew0(operatorType))
   }
 
   def getOperatorField(mb: MethodBuilder): Stack = {
     import mb._
-    thisVar.push().invokeV("getOperator", operatorType)
-  }
-
-  def defGetOperator(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("getOperator", operatorType, Seq.empty) { mb =>
-      import mb._
-      thisVar.push().getField("operator", operatorType).unlessNotNull {
-        thisVar.push().putField("operator", operatorType, pushNew0(operatorType))
-      }
-      `return`(thisVar.push().getField("operator", operatorType))
-    }
+    thisVar.push().getField("operator", operatorType)
   }
 }

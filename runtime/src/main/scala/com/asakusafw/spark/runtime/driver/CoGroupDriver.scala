@@ -19,7 +19,7 @@ abstract class CoGroupDriver(
   @transient prevs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])],
   @transient grouping: ShuffleKey.GroupingOrdering,
   @transient part: Partitioner)
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[Seq[Iterable[_]]] {
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[Seq[Iterator[_]]] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
@@ -41,9 +41,8 @@ abstract class CoGroupDriver(
           },
           part,
           grouping)
-          .mapValues(_.toSeq).asInstanceOf[RDD[(ShuffleKey, Seq[Iterable[_]])]]
 
-        branch(cogrouped.asInstanceOf[RDD[(_, Seq[Iterable[_]])]])
+        branch(cogrouped.asInstanceOf[RDD[(_, Seq[Iterator[_]])]])
       }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

@@ -41,7 +41,7 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
       inputs(Summarize.ID_INPUT).dataModelType,
       outputs(Summarize.ID_OUTPUT).dataModelType) {
 
-      override def defMapSideCombiner(mb: MethodBuilder): Unit = {
+      override def defMapSideCombine(mb: MethodBuilder): Unit = {
         import mb._
         val partialAggregation = annotationDesc.getElements()("partialAggregation")
           .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]

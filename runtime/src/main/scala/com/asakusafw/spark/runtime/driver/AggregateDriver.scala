@@ -27,29 +27,28 @@ abstract class AggregateDriver[V, C](
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
-    val agg = aggregation
-    val part = Some(partitioner)
 
     val future = Future.sequence(prevs).map { prevs =>
       sc.clearCallSite()
       sc.setCallSite(label)
 
       val aggregated = {
-        if (agg.mapSideCombine) {
+        if (aggregation.mapSideCombine) {
+          val part = Some(partitioner)
           confluent(
             prevs.map {
               case prev if prev.partitioner == part =>
                 prev.asInstanceOf[RDD[(ShuffleKey, C)]]
               case prev =>
                 prev.mapPartitions({ iter =>
-                  val combiner = agg.valueCombiner
+                  val combiner = aggregation.valueCombiner
                   combiner.insertAll(iter)
                   val context = TaskContext.get
                   new InterruptibleIterator(context, combiner.iterator)
                 }, preservesPartitioning = true)
             }, partitioner, sort)
             .mapPartitions({ iter =>
-              val combiner = agg.combinerCombiner
+              val combiner = aggregation.combinerCombiner
               combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })
               val context = TaskContext.get
               new InterruptibleIterator(context, combiner.iterator)
@@ -57,7 +56,7 @@ abstract class AggregateDriver[V, C](
         } else {
           confluent(prevs, partitioner, sort)
             .mapPartitions({ iter =>
-              val combiner = agg.valueCombiner
+              val combiner = aggregation.valueCombiner
               combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })
               val context = TaskContext.get
               new InterruptibleIterator(context, combiner.iterator)
