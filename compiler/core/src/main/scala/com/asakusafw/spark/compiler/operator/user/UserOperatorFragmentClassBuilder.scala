@@ -34,7 +34,11 @@ abstract class UserOperatorFragmentClassBuilder(
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Broadcast[_]].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcast[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
           }
         } /: operatorOutputs) {
           case (builder, output) =>
