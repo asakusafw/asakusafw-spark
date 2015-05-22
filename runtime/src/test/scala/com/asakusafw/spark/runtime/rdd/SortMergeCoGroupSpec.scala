@@ -47,7 +47,7 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkSugar {
       val part = k.hashCode % 2
       (if (part < 0) part + 2 else part) == 0
     }
-    cogrouped.collect.zip((part0 ++ part1).map(k => (k, 0))).foreach {
+    cogrouped.mapValues(_.map(_.toArray)).collect.zip((part0 ++ part1).map(k => (k, 0))).foreach {
       case ((actualKey, actualValues), key @ (k, _)) =>
         assert(grouping.compare(actualKey, key) === 0)
         assert(actualValues.size === 3)
@@ -71,7 +71,7 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkSugar {
       val part = k.hashCode % 2
       (if (part < 0) part + 2 else part) == 0
     }
-    cogrouped.collect.zip((part0 ++ part1).map(k => (k, 0))).foreach {
+    cogrouped.mapValues(_.map(_.toArray)).collect.zip((part0 ++ part1).map(k => (k, 0))).foreach {
       case ((actualKey, actualValues), key @ (k, _)) =>
         assert(grouping.compare(actualKey, key) === 0)
         assert(actualValues.size === 1)

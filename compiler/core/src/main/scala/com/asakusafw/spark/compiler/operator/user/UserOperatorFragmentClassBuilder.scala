@@ -34,7 +34,11 @@ abstract class UserOperatorFragmentClassBuilder(
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Broadcast[_]].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcast[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
           }
         } /: operatorOutputs) {
           case (builder, output) =>
@@ -51,6 +55,7 @@ abstract class UserOperatorFragmentClassBuilder(
 
         thisVar.push().invokeInit(superType)
         initOutputFields(mb, broadcastsVar.nextLocal)
+        initOperatorField(mb)
         initFields(mb)
       }
   }
@@ -65,7 +70,5 @@ abstract class UserOperatorFragmentClassBuilder(
       resetOutputs(mb)
       `return`()
     }
-
-    defGetOperator(methodDef)
   }
 }

@@ -62,7 +62,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val low = new GenericOutputFragment[Foo]
     val high = new GenericOutputFragment[Foo]
@@ -80,7 +80,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.id.modify(10)
       foo.hogeId.modify(10)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(low.size === 0)
       assert(high.size === 1)
       assert(high.head.id.get === 10)
@@ -96,7 +96,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(low.size === 1)
       assert(low.head.id.get === 10)
       assert(high.size === 0)
@@ -130,7 +130,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val low = new GenericOutputFragment[Foo]
     val high = new GenericOutputFragment[Foo]
@@ -150,7 +150,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         foo.hogeId.modify(10)
         foo
       }
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(low.size === 5)
       assert(low.map(_.id.get) === (1 until 10 by 2))
       assert(high.size === 5)
@@ -167,7 +167,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(low.size === 1)
       assert(low.head.id.get === 10)
       assert(high.size === 0)
@@ -201,7 +201,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val low = new GenericOutputFragment[Foo]
     val high = new GenericOutputFragment[Foo]
@@ -219,7 +219,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.id.modify(10)
       foo.hogeId.modify(10)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(low.size === 0)
       assert(high.size === 1)
       assert(high.head.id.get === 10)
@@ -235,7 +235,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(low.size === 1)
       assert(low.head.id.get === 10)
       assert(high.size === 0)
@@ -269,7 +269,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val low = new GenericOutputFragment[Foo]
     val high = new GenericOutputFragment[Foo]
@@ -289,7 +289,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         foo.hogeId.modify(10)
         foo
       }
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(low.size === 5)
       assert(low.map(_.id.get) === (1 until 10 by 2))
       assert(high.size === 5)
@@ -306,7 +306,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(low.size === 1)
       assert(low.head.id.get === 10)
       assert(high.size === 0)

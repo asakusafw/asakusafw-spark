@@ -62,7 +62,7 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val joined = new GenericOutputFragment[Baa]
     val missed = new GenericOutputFragment[Foo]
@@ -83,7 +83,7 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       foo.hogeId.modify(1)
       foo.foo.modify("foo")
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(joined.size === 1)
       assert(joined.head.id.get === 1)
       assert(joined.head.hoge.getAsString === "hoge")
@@ -102,7 +102,7 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       foo.hogeId.modify(1)
       foo.foo.modify("foo")
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(joined.size === 0)
       assert(missed.size === 1)
       assert(missed.head.id.get === 10)
@@ -136,7 +136,7 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       shuffleKeyTypes = mutable.Set.empty)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterable[_]]]])
+    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val joined = new GenericOutputFragment[Baa]
     val missed = new GenericOutputFragment[Foo]
@@ -159,7 +159,7 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
         foo.foo.modify(s"foo ${i}")
         foo
       }
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(joined.size === 5)
       assert(joined.map(_.id.get) === (0 until 10 by 2).map(_ => 0))
       assert(joined.map(_.hoge.getAsString) === (0 until 10 by 2).map(_ => "hoge"))
@@ -180,7 +180,7 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       foo.hogeId.modify(1)
       foo.foo.modify("foo")
       val foos = Seq(foo)
-      fragment.add(Seq(hoges, foos))
+      fragment.add(Seq(hoges.iterator, foos.iterator))
       assert(joined.size === 0)
       assert(missed.size === 1)
       assert(missed.head.id.get === 10)

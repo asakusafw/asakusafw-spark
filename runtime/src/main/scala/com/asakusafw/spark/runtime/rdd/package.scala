@@ -82,7 +82,7 @@ package object rdd {
   def smcogroup[K](
     rdds: Seq[(RDD[(K, _)], Option[Ordering[K]])],
     part: Partitioner,
-    grouping: Ordering[K]): RDD[(K, Array[Iterable[_]])] = {
+    grouping: Ordering[K]): RDD[(K, Seq[Iterator[_]])] = {
     assert(rdds.size > 0,
       s"The size of RDDs to be smcogrouped should be more than 0: ${rdds.size}")
 
@@ -93,7 +93,11 @@ package object rdd {
 
     zipPartitions(rdds.map(shuffle), preservesPartitioning = true) { iters =>
       val buffs = iters.map(_.asInstanceOf[Iterator[(K, _)]].buffered)
+      var values = Seq.empty[Iterator[_]]
       Iterator.continually {
+        values.foreach { iter =>
+          while (iter.hasNext) iter.next()
+        }
         ((None: Option[K]) /: buffs) {
           case (opt, iter) if iter.hasNext =>
             opt.map { key =>
@@ -102,12 +106,11 @@ package object rdd {
           case (opt, _) => opt
         }
       }.takeWhile(_.isDefined).map(_.get).map { key =>
-        val values = Array.fill[Iterable[_]](iters.size)(new CompactBuffer[Any])
-        buffs.zipWithIndex.foreach {
-          case (iter, i) =>
-            while (iter.hasNext && grouping.equiv(iter.head._1, key)) {
-              values(i).asInstanceOf[CompactBuffer[Any]] += iter.next._2
-            }
+        values = buffs.map { buff =>
+          new Iterator[Any] {
+            def hasNext = buff.hasNext && grouping.equiv(buff.head._1, key)
+            def next() = buff.next()._2
+          }
         }
         key -> values
       }
