@@ -28,7 +28,9 @@ trait OrderingsField extends ClassBuilder {
 
   def subplanOutputs: Seq[SubPlan.Output]
 
-  def defOrderingsField(fieldDef: FieldDef): Unit = {
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
     fieldDef.newField(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
       "orderings",
@@ -45,12 +47,9 @@ trait OrderingsField extends ClassBuilder {
         .build())
   }
 
-  def getOrderingsField(mb: MethodBuilder): Stack = {
-    import mb._
-    thisVar.push().invokeV("orderings", classOf[Map[_, _]].asType)
-  }
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-  def defOrderings(methodDef: MethodDef): Unit = {
     methodDef.newMethod("orderings", classOf[Map[_, _]].asType, Seq.empty,
       new MethodSignatureBuilder()
         .newReturnType {
@@ -70,6 +69,11 @@ trait OrderingsField extends ClassBuilder {
         }
         `return`(thisVar.push().getField("orderings", classOf[Map[_, _]].asType))
       }
+  }
+
+  def getOrderingsField(mb: MethodBuilder): Stack = {
+    import mb._
+    thisVar.push().invokeV("orderings", classOf[Map[_, _]].asType)
   }
 
   private def initOrderings(mb: MethodBuilder): Stack = {

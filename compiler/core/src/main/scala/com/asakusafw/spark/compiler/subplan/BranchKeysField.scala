@@ -17,7 +17,9 @@ trait BranchKeysField extends ClassBuilder {
 
   def subplanOutputs: Seq[SubPlan.Output]
 
-  def defBranchKeysField(fieldDef: FieldDef): Unit = {
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
     fieldDef.newField(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
       "branchKeys",
@@ -29,12 +31,9 @@ trait BranchKeysField extends ClassBuilder {
         .build())
   }
 
-  def getBranchKeysField(mb: MethodBuilder): Stack = {
-    import mb._
-    thisVar.push().invokeV("branchKeys", classOf[Set[_]].asType)
-  }
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-  def defBranchKeys(methodDef: MethodDef): Unit = {
     methodDef.newMethod("branchKeys", classOf[Set[_]].asType, Seq.empty,
       new MethodSignatureBuilder()
         .newReturnType {
@@ -49,6 +48,11 @@ trait BranchKeysField extends ClassBuilder {
         }
         `return`(thisVar.push().getField("branchKeys", classOf[Set[_]].asType))
       }
+  }
+
+  def getBranchKeysField(mb: MethodBuilder): Stack = {
+    import mb._
+    thisVar.push().invokeV("branchKeys", classOf[Set[_]].asType)
   }
 
   private def initBranchKeys(mb: MethodBuilder): Stack = {

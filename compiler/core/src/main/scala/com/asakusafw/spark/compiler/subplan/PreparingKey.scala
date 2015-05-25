@@ -19,7 +19,6 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait PreparingKey extends ClassBuilder {
-  this: AggregationsField =>
 
   def flowId: String
 
@@ -84,7 +83,9 @@ trait PreparingKey extends ClassBuilder {
     builder.result
   }
 
-  def defShuffleKeyFields(fieldDef: FieldDef): Unit = {
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
     fieldDef.newField(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
       "shuffleKeys",
@@ -97,7 +98,8 @@ trait PreparingKey extends ClassBuilder {
         .build())
   }
 
-  def defShuffleKey(methodDef: MethodDef): Unit = {
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
     methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
       Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { mb =>

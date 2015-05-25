@@ -28,7 +28,9 @@ trait AggregationsField extends ClassBuilder {
 
   def subplanOutputs: Seq[SubPlan.Output]
 
-  def defAggregationsField(fieldDef: FieldDef): Unit = {
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
     fieldDef.newField(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
       "aggregations", classOf[Map[_, _]].asType,
@@ -46,12 +48,9 @@ trait AggregationsField extends ClassBuilder {
         .build())
   }
 
-  def getAggregationsField(mb: MethodBuilder): Stack = {
-    import mb._
-    thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
-  }
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-  def defAggregations(methodDef: MethodDef): Unit = {
     methodDef.newMethod("aggregations", classOf[Map[_, _]].asType, Seq.empty,
       new MethodSignatureBuilder()
         .newReturnType {
@@ -73,6 +72,11 @@ trait AggregationsField extends ClassBuilder {
         }
         `return`(thisVar.push().getField("aggregations", classOf[Map[_, _]].asType))
       }
+  }
+
+  def getAggregationsField(mb: MethodBuilder): Stack = {
+    import mb._
+    thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
   }
 
   private def initAggregations(mb: MethodBuilder): Stack = {
