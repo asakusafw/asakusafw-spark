@@ -5,6 +5,8 @@ package join
 
 import java.util.{ List => JList }
 
+import scala.reflect.ClassTag
+
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -15,6 +17,9 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
+
+  val opInfo: OperatorInfo
+  import opInfo._
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -74,8 +79,13 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
             .invokeV(
               name,
               t.getReturnType(),
-              mastersVar.push().asType(t.getArgumentTypes()(0)),
-              txVar.push().asType(t.getArgumentTypes()(1)))
+              ({ () => mastersVar.push() } +:
+                { () => txVar.push() } +:
+                arguments.map { argument =>
+                  () => ldc(argument.value)(ClassTag(argument.resolveClass))
+                }).zip(t.getArgumentTypes()).map {
+                  case (s, t) => s().asType(t)
+                }: _*)
         case None =>
           getStatic(DefaultMasterSelection.getClass.asType, "MODULE$", DefaultMasterSelection.getClass.asType)
             .invokeV(
