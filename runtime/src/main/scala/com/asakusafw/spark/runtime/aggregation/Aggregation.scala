@@ -11,30 +11,32 @@ abstract class Aggregation[K, V, C] extends Serializable {
 
   def mapSideCombine: Boolean
 
-  def createCombiner(value: V): C
+  def newCombiner(): C
+
+  def initCombinerByValue(combiner: C, value: V): C
 
   def mergeValue(combiner: C, value: V): C
+
+  def initCombinerByCombiner(comb1: C, comb2: C): C
 
   def mergeCombiners(comb1: C, comb2: C): C
 
   lazy val isSpillEnabled =
     Option(SparkEnv.get).map(_.conf.getBoolean("spark.shuffle.spill", true)).getOrElse(false)
 
-  def aggregator(): Aggregator[K, V, C] = Aggregator(createCombiner _, mergeValue _, mergeCombiners _)
-
   def valueCombiner(): Combiner[K, V, C] = {
     if (!isSpillEnabled) {
-      new InMemoryCombiner(createCombiner _, mergeValue _, mergeCombiners _)
+      new InMemoryCombiner(initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
     } else {
-      new ExternalCombiner(createCombiner _, mergeValue _, mergeCombiners _)
+      new ExternalCombiner(initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
     }
   }
 
   def combinerCombiner(): Combiner[K, C, C] = {
     if (!isSpillEnabled) {
-      new InMemoryCombiner(identity, mergeCombiners _, mergeCombiners _)
+      new InMemoryCombiner(initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
     } else {
-      new ExternalCombiner(identity, mergeCombiners _, mergeCombiners _)
+      new ExternalCombiner(initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
     }
   }
 }

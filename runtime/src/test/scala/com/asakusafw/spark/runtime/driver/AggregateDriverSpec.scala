@@ -182,8 +182,11 @@ object AggregateDriverSpec {
   class TestAggregation(val mapSideCombine: Boolean)
       extends Aggregation[ShuffleKey, Hoge, Hoge] {
 
-    override def createCombiner(value: Hoge): Hoge = {
-      val combiner = new Hoge()
+    override def newCombiner(): Hoge = {
+      new Hoge()
+    }
+
+    override def initCombinerByValue(combiner: Hoge, value: Hoge): Hoge = {
       combiner.copyFrom(value)
       combiner
     }
@@ -191,6 +194,11 @@ object AggregateDriverSpec {
     override def mergeValue(combiner: Hoge, value: Hoge): Hoge = {
       combiner.price.add(value.price)
       combiner
+    }
+
+    override def initCombinerByCombiner(comb1: Hoge, comb2: Hoge): Hoge = {
+      comb1.copyFrom(comb2)
+      comb1
     }
 
     override def mergeCombiners(comb1: Hoge, comb2: Hoge): Hoge = {

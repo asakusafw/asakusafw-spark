@@ -48,9 +48,13 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
         `return`(ldc(partialAggregation != PartialAggregation.TOTAL))
       }
 
-      override def defCreateCombiner(mb: MethodBuilder, valueVar: Var): Unit = {
+      override def defNewCombiner(mb: MethodBuilder): Unit = {
         import mb._
-        val combinerVar = pushNew0(combinerType).store(valueVar.nextLocal)
+        `return`(pushNew0(combinerType))
+      }
+
+      override def defInitCombinerByValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
+        import mb._
         propertyFoldings.foreach { folding =>
           val mapping = folding.getMapping
           val valuePropertyRef = inputs(Summarize.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
@@ -112,6 +116,12 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
           }
         }
         `return`(combinerVar.push())
+      }
+
+      override def defInitCombinerByCombiner(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
+        import mb._
+        comb1Var.push().invokeV("copyFrom", comb2Var.push())
+        `return`(comb1Var.push())
       }
 
       override def defMergeCombiners(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
