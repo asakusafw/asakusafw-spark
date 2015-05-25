@@ -8,7 +8,7 @@ import java.util.{ ArrayList, List => JList }
 import scala.collection.mutable
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
-import scala.reflect.NameTransformer
+import scala.reflect.{ ClassTag, NameTransformer }
 
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
@@ -34,6 +34,9 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
 
   def masterInput: OperatorInput
   def txInput: OperatorInput
+
+  val opInfo: OperatorInfo
+  import opInfo._
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -127,8 +130,13 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
           .invokeV(
             name,
             t.getReturnType(),
-            mastersVar.push().asType(t.getArgumentTypes()(0)),
-            dataModelVar.push().asType(t.getArgumentTypes()(1)))
+            ({ () => mastersVar.push() } +:
+              { () => dataModelVar.push() } +:
+              arguments.map { argument =>
+                () => ldc(argument.value)(ClassTag(argument.resolveClass))
+              }).zip(t.getArgumentTypes()).map {
+                case (s, t) => s().asType(t)
+              }: _*)
       case None =>
         getStatic(DefaultMasterSelection.getClass.asType, "MODULE$", DefaultMasterSelection.getClass.asType)
           .invokeV("select", classOf[AnyRef].asType, mastersVar.push(), dataModelVar.push().asType(classOf[AnyRef].asType))
