@@ -22,11 +22,6 @@ abstract class UserOperatorFragmentClassBuilder(
     with OperatorField
     with OutputFragments {
 
-  override def defFields(fieldDef: FieldDef): Unit = {
-    defOperatorField(fieldDef)
-    defOutputFields(fieldDef)
-  }
-
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(
       classOf[Map[BroadcastId, Broadcast[_]]].asType +: (0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
@@ -54,6 +49,7 @@ abstract class UserOperatorFragmentClassBuilder(
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
         thisVar.push().invokeInit(superType)
+        initReset(mb)
         initOutputFields(mb, broadcastsVar.nextLocal)
         initOperatorField(mb)
         initFields(mb)
@@ -61,14 +57,4 @@ abstract class UserOperatorFragmentClassBuilder(
   }
 
   def initFields(mb: MethodBuilder): Unit = {}
-
-  override def defMethods(methodDef: MethodDef): Unit = {
-    super.defMethods(methodDef)
-
-    methodDef.newMethod("reset", Seq.empty) { mb =>
-      import mb._
-      resetOutputs(mb)
-      `return`()
-    }
-  }
 }

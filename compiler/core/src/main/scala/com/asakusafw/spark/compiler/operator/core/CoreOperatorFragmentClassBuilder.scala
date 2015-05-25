@@ -2,7 +2,7 @@ package com.asakusafw.spark.compiler.operator
 package core
 
 import org.apache.spark.broadcast.Broadcast
-import org.objectweb.asm.Type
+import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.runtime.driver.BroadcastId
@@ -17,13 +17,15 @@ abstract class CoreOperatorFragmentClassBuilder(
     extends FragmentClassBuilder(flowId, dataModelType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
-    fieldDef.newFinalField("child", classOf[Fragment[_]].asType,
+    super.defFields(fieldDef)
+
+    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "child", classOf[Fragment[_]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Fragment[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, childDataModelType)
         }
         .build())
-    fieldDef.newFinalField("childDataModel", childDataModelType)
+    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "childDataModel", childDataModelType)
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -50,16 +52,15 @@ abstract class CoreOperatorFragmentClassBuilder(
         thisVar.push().invokeInit(superType)
         thisVar.push().putField("child", classOf[Fragment[_]].asType, childVar.push())
         thisVar.push().putField("childDataModel", childDataModelType, pushNew0(childDataModelType))
+        initReset(mb)
       }
   }
 
-  override def defMethods(methodDef: MethodDef): Unit = {
-    super.defMethods(methodDef)
-
-    methodDef.newMethod("reset", Seq.empty) { mb =>
-      import mb._
+  override def defReset(mb: MethodBuilder): Unit = {
+    import mb._
+    unlessReset(mb) {
       thisVar.push().getField("child", classOf[Fragment[_]].asType).invokeV("reset")
-      `return`()
     }
+    `return`()
   }
 }

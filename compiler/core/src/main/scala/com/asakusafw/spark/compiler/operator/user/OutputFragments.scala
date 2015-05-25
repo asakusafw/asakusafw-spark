@@ -9,11 +9,13 @@ import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait OutputFragments extends ClassBuilder {
+trait OutputFragments extends FragmentClassBuilder {
 
   def operatorOutputs: Seq[OperatorOutput]
 
-  def defOutputFields(fieldDef: FieldDef): Unit = {
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
     operatorOutputs.foreach { output =>
       fieldDef.newFinalField(output.getName, classOf[Fragment[_]].asType,
         new TypeSignatureBuilder()
@@ -39,10 +41,13 @@ trait OutputFragments extends ClassBuilder {
     thisVar.push().getField(output.getName, classOf[Fragment[_]].asType)
   }
 
-  def resetOutputs(mb: MethodBuilder): Unit = {
+  def defReset(mb: MethodBuilder): Unit = {
     import mb._
-    operatorOutputs.foreach { output =>
-      thisVar.push().getField(output.getName, classOf[Fragment[_]].asType).invokeV("reset")
+    unlessReset(mb) {
+      operatorOutputs.foreach { output =>
+        thisVar.push().getField(output.getName, classOf[Fragment[_]].asType).invokeV("reset")
+      }
     }
+    `return`()
   }
 }

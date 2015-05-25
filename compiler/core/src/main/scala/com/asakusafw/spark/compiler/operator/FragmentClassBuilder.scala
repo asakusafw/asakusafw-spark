@@ -3,7 +3,7 @@ package operator
 
 import java.util.concurrent.atomic.AtomicLong
 
-import org.objectweb.asm.Type
+import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.runtime.fragment.Fragment
@@ -24,6 +24,17 @@ abstract class FragmentClassBuilder(
         .build(),
       classOf[Fragment[_]].asType) {
 
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
+    fieldDef.newField(Opcodes.ACC_PRIVATE, "reset", Type.BOOLEAN_TYPE)
+  }
+
+  protected def initReset(mb: MethodBuilder): Unit = {
+    import mb._
+    thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))
+  }
+
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
@@ -36,11 +47,23 @@ abstract class FragmentClassBuilder(
 
     methodDef.newMethod("add", Seq(dataModelType)) { mb =>
       import mb._
+      thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(false))
       defAddMethod(mb, `var`(dataModelType, thisVar.nextLocal))
     }
+
+    methodDef.newMethod("reset", Seq.empty)(defReset)
   }
 
   def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit
+  def defReset(mb: MethodBuilder): Unit
+
+  protected def unlessReset(mb: MethodBuilder)(b: => Unit): Unit = {
+    import mb._
+    thisVar.push().getField("reset", Type.BOOLEAN_TYPE).unlessTrue {
+      b
+      thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))
+    }
+  }
 }
 
 object FragmentClassBuilder {

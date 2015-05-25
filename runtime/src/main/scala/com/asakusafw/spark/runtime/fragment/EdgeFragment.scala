@@ -11,12 +11,14 @@ abstract class EdgeFragment[T <: DataModel[T]](children: Array[Fragment[T]]) ext
 
   private[this] val dataModel: T = newDataModel()
 
-  private[this] val size = children.size
+  private[this] val size = children.length
+
+  private[this] var reset = true
 
   override def add(result: T): Unit = {
+    reset = false
     var i = 0
     while (i < size - 1) {
-      dataModel.reset()
       dataModel.copyFrom(result)
       children(i).add(dataModel)
       i += 1
@@ -25,10 +27,13 @@ abstract class EdgeFragment[T <: DataModel[T]](children: Array[Fragment[T]]) ext
   }
 
   override def reset(): Unit = {
-    var i = 0
-    while (i < size) {
-      children(i).reset()
-      i += 1
+    if (!reset) {
+      var i = 0
+      while (i < size) {
+        children(i).reset()
+        i += 1
+      }
+      reset = true
     }
   }
 }

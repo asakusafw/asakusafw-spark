@@ -20,6 +20,8 @@ abstract class OutputFragment[T <: DataModel[T]] extends Fragment[T] with Iterab
   }
 
   override def reset(): Unit = {
-    buf.clear()
+    if (buf.nonEmpty) {
+      buf.clear()
+    }
   }
 }

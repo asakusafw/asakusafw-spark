@@ -9,7 +9,9 @@ trait OperatorField extends ClassBuilder {
 
   def operatorType: Type
 
-  def defOperatorField(fieldDef: FieldDef): Unit = {
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
     fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "operator", operatorType)
   }
 
