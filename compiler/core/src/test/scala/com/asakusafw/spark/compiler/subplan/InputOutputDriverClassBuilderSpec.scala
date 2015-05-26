@@ -177,7 +177,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
     assert(Await.result(inputs(getBranchKey(inputMarker.getOriginalSerialNumber))
-      .map(_.map(_._2.asInstanceOf[Hoge].id.get)), Duration.Inf).collect.toSeq === (0 until 10))
+      .map(_.map(_._2.asInstanceOf[Hoge].id.get)), Duration.Inf).collect.toSeq.sorted === (0 until 10))
   }
 }
 

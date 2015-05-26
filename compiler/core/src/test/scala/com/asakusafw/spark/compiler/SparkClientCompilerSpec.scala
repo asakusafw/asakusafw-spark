@@ -141,7 +141,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
           classOf[TemporaryInputFormat[Hoge]],
           classOf[NullWritable],
           classOf[Hoge])
-        assert(rdd.map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect ===
+        assert(rdd.map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq.sortBy(_._1) ===
           (0 until 100).map(i => (i, s"hoge${i}")))
       }
     }
@@ -251,7 +251,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             classOf[TemporaryInputFormat[Hoge]],
             classOf[NullWritable],
             classOf[Hoge])
-          assert(rdd.map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect ===
+          assert(rdd.map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq.sortBy(_._1) ===
             (0 until 100).filter(_ % 2 == 0).map(i => (i, s"hoge${i}")))
         }
         {
@@ -262,7 +262,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             classOf[TemporaryInputFormat[Hoge]],
             classOf[NullWritable],
             classOf[Hoge])
-          assert(rdd.map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect ===
+          assert(rdd.map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq.sortBy(_._1) ===
             (0 until 100).filterNot(_ % 2 == 0).map(i => (i, s"hoge${i}")))
         }
       }
@@ -431,7 +431,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Hoge]],
             classOf[NullWritable],
-            classOf[Hoge]).map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq
+            classOf[Hoge]).map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq.sortBy(_._1)
           assert(hogeResult.size === 1)
           assert(hogeResult(0) === (1, "hoge1"))
         }
@@ -442,7 +442,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Foo]],
             classOf[NullWritable],
-            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq
+            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(fooResult.size === 1)
           assert(fooResult(0) === (10, 1, "foo10"))
         }
@@ -453,7 +453,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Hoge]],
             classOf[NullWritable],
-            classOf[Hoge]).map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq.sorted
+            classOf[Hoge]).map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq.sortBy(_._1)
           assert(hogeError.size === 9)
           assert(hogeError(0) === (0, "hoge0"))
           for (i <- 2 until 10) {
@@ -467,7 +467,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Foo]],
             classOf[NullWritable],
-            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq
+            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sortBy(_._1)
             .sortBy(foo => (foo._2, foo._1))
           assert(fooError.size === 44)
           for {
@@ -635,7 +635,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Foo]],
             classOf[NullWritable],
-            classOf[Foo]).map(foo => (foo._2.id.get, foo._2.foo.getAsString)).collect.toSeq.sorted
+            classOf[Foo]).map(foo => (foo._2.id.get, foo._2.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(found.size === 5)
           assert(found === (5 until 10).map(i => (10 + i, s"foo${10 + i}")))
         }
@@ -646,7 +646,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Foo]],
             classOf[NullWritable],
-            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sorted
+            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(missed.size === 5)
           assert(missed === (10 until 15).map(i => (10 + i, i, s"foo${10 + i}")))
         }
@@ -786,7 +786,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Foo]],
             classOf[NullWritable],
-            classOf[Foo]).map(foo => (foo._2.id.get, foo._2.foo.getAsString)).collect.toSeq
+            classOf[Foo]).map(foo => (foo._2.id.get, foo._2.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(found.size === 5)
           assert(found === (5 until 10).map(i => (10 + i, s"foo${10 + i}")))
         }
@@ -797,7 +797,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Foo]],
             classOf[NullWritable],
-            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq
+            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(missed.size === 5)
           assert(missed === (10 until 15).map(i => (10 + i, i, s"foo${10 + i}")))
         }
@@ -959,7 +959,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[HogeFoo]],
             classOf[NullWritable],
-            classOf[HogeFoo]).map(hogefoo => (hogefoo._2.id.get, hogefoo._2.hoge.getAsString, hogefoo._2.foo.getAsString)).collect.toSeq.sorted
+            classOf[HogeFoo]).map(hogefoo => (hogefoo._2.id.get, hogefoo._2.hoge.getAsString, hogefoo._2.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(found.size === 5)
           assert(found === (5 until 10).map(i => (i, s"hoge${i}", s"foo${10 + i}")))
         }
@@ -970,7 +970,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Foo]],
             classOf[NullWritable],
-            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sorted
+            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(missed.size === 5)
           assert(missed === (10 until 15).map(i => (10 + i, i, s"foo${10 + i}")))
         }
@@ -1110,7 +1110,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[HogeFoo]],
             classOf[NullWritable],
-            classOf[HogeFoo]).map(hogefoo => (hogefoo._2.id.get, hogefoo._2.hoge.getAsString, hogefoo._2.foo.getAsString)).collect.toSeq
+            classOf[HogeFoo]).map(hogefoo => (hogefoo._2.id.get, hogefoo._2.hoge.getAsString, hogefoo._2.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(found.size === 5)
           assert(found === (5 until 10).map(i => (i, s"hoge${i}", s"foo${i + 10}")))
         }
@@ -1121,7 +1121,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Foo]],
             classOf[NullWritable],
-            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq
+            classOf[Foo]).map(_._2).map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sortBy(_._1)
           assert(missed.size === 5)
           assert(missed === (10 until 15).map(i => (10 + i, i, s"foo${10 + i}")))
         }
@@ -1236,7 +1236,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Hoge]],
             classOf[NullWritable],
-            classOf[Hoge]).map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq
+            classOf[Hoge]).map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq.sortBy(_._1)
           assert(found.size === 10)
           assert(found === (0 until 10).map(i => (i, s"hoge${i}")))
         }
@@ -1247,7 +1247,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             job.getConfiguration,
             classOf[TemporaryInputFormat[Hoge]],
             classOf[NullWritable],
-            classOf[Hoge]).map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq
+            classOf[Hoge]).map(hoge => (hoge._2.id.get, hoge._2.hoge.getAsString)).collect.toSeq.sortBy(_._1)
           assert(missed.size === 0)
         }
       }

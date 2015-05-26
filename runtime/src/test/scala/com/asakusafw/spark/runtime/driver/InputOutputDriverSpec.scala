@@ -67,7 +67,7 @@ class InputOutputDriverSpec extends FlatSpec with SparkSugar {
     assert(Await.result(
       inputs(HogeResult).map {
         _.map(_._2.asInstanceOf[Hoge].id.get)
-      }, Duration.Inf).collect.toSeq === (0 until 10))
+      }, Duration.Inf).collect.toSeq.sorted === (0 until 10))
   }
 
   private def createTempDirectory(): Path = {
