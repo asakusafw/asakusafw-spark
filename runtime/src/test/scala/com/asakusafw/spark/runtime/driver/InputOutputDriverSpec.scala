@@ -26,6 +26,7 @@ import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.io._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -118,13 +119,21 @@ object InputOutputDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
+
+    override def serialize(branch: BranchKey, value: Any): BufferSlice = {
+      ???
+    }
+
+    override def deserialize(branch: BranchKey, value: BufferSlice): Any = {
+      ???
+    }
+
     override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
       val fragment = new HogeOutputFragment
       val outputs = Map(HogeResult -> fragment)
       (fragment, outputs)
     }
-
-    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] with Writable {

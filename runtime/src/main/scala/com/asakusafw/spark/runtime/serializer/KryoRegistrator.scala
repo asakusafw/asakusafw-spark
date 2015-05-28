@@ -8,6 +8,7 @@ import com.esotericsoftware.kryo.Kryo
 
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.io.BufferSlice
 import com.asakusafw.spark.runtime.rdd.Branch
 
 class KryoRegistrator extends SparkKryoRegistrator {
@@ -24,6 +25,7 @@ class KryoRegistrator extends SparkKryoRegistrator {
 
     kryo.register(classOf[Branch[_]], BranchSerializer)
     kryo.register(classOf[ShuffleKey], ShuffleKeySerializer)
+    kryo.register(classOf[BufferSlice], BufferSliceSerializer)
 
     kryo.register(classOf[BooleanOption], WritableSerializer.BooleanOptionSerializer)
     kryo.register(classOf[ByteOption], WritableSerializer.ByteOptionSerializer)

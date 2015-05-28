@@ -5,12 +5,16 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+import java.util.Arrays
+
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.Writable
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -19,6 +23,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.io._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -152,15 +157,17 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
         (1, (0 until 10).filter(_ % 2 == 1).filter(_ < 5).map(_ * 100).sum),
         (1, (0 until 10).filter(_ % 2 == 1).filterNot(_ < 5).map(_ * 100).sum)))
     assert(Await.result(
-      outputs(Result2), Duration.Inf).collect.toSeq.map {
-        case (key, hoge: Hoge) => hoge.price.get
-      } === (0 until 10).map(100 * _))
+      outputs(Result2).map {
+        _.map {
+          case (key, hoge: Hoge) => hoge.price.get
+        }
+      }, Duration.Inf).collect.toSeq === (0 until 10).map(100 * _))
   }
 }
 
 object AggregateDriverSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  class Hoge extends DataModel[Hoge] with Writable {
 
     val id = new IntOption()
     val price = new IntOption()
@@ -172,6 +179,14 @@ object AggregateDriverSpec {
     override def copyFrom(other: Hoge): Unit = {
       id.copyFrom(other.id)
       price.copyFrom(other.price)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      price.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      price.write(out)
     }
   }
 
@@ -229,12 +244,6 @@ object AggregateDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment = new HogeOutputFragment
-        val outputs = Map(Result -> fragment)
-        (fragment, outputs)
-      }
-
       @transient var sk: ShuffleKey = _
 
       def shuffleKey = {
@@ -247,6 +256,20 @@ object AggregateDriverSpec {
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
         shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(value.asInstanceOf[Hoge].id)
         shuffleKey
+      }
+
+      override def serialize(branch: BranchKey, value: Any): BufferSlice = {
+        ???
+      }
+
+      override def deserialize(branch: BranchKey, value: BufferSlice): Any = {
+        ???
+      }
+
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment = new HogeOutputFragment
+        val outputs = Map(Result -> fragment)
+        (fragment, outputs)
       }
     }
   }
@@ -275,16 +298,6 @@ object AggregateDriverSpec {
         Map(Result1 -> new TestAggregation(true))
       }
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment1 = new HogeOutputFragment
-        val fragment2 = new HogeOutputFragment
-        (new EdgeFragment[Hoge](Array(fragment1, fragment2)) {
-          override def newDataModel(): Hoge = new Hoge()
-        }, Map(
-          Result1 -> fragment1,
-          Result2 -> fragment2))
-      }
-
       @transient var sk: ShuffleKey = _
 
       def shuffleKey = {
@@ -304,6 +317,43 @@ object AggregateDriverSpec {
             shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(value.asInstanceOf[Hoge].id)
             shuffleKey
         }
+      }
+
+      @transient var b: WritableBuffer = _
+
+      def buff = {
+        if (b == null) {
+          b = new WritableBuffer()
+        }
+        b
+      }
+
+      override def serialize(branch: BranchKey, value: Any): BufferSlice = {
+        buff.putAndSlice(value.asInstanceOf[Writable])
+      }
+
+      @transient var h: Hoge = _
+
+      def hoge = {
+        if (h == null) {
+          h = new Hoge()
+        }
+        h
+      }
+
+      override def deserialize(branch: BranchKey, value: BufferSlice): Any = {
+        buff.resetAndGet(value, hoge)
+        hoge
+      }
+
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment1 = new HogeOutputFragment
+        val fragment2 = new HogeOutputFragment
+        (new EdgeFragment[Hoge](Array(fragment1, fragment2)) {
+          override def newDataModel(): Hoge = new Hoge()
+        }, Map(
+          Result1 -> fragment1,
+          Result2 -> fragment2))
       }
     }
   }

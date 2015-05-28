@@ -5,12 +5,15 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.Writable
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
@@ -19,6 +22,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.io._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -89,33 +93,42 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
 
     val outputs = driver.execute()
 
-    outputs.mapValues(Await.result(_, Duration.Inf).collect.toSeq).foreach {
-      case (HogeResult, values) =>
-        val hogeResults = values.asInstanceOf[Seq[(ShuffleKey, Hoge)]]
-        assert(hogeResults.size === 1)
-        assert(hogeResults.head._2.id.get === 1)
-      case (FooResult, values) =>
-        val fooResults = values.asInstanceOf[Seq[(ShuffleKey, Foo)]]
-        assert(fooResults.size === 1)
-        assert(fooResults.head._2.id.get === 100)
-        assert(fooResults.head._2.hogeId.get === 1)
-      case (HogeError, values) =>
-        val hogeErrors = values.asInstanceOf[Seq[(ShuffleKey, Hoge)]].sortBy(_._2.id.get)
-        assert(hogeErrors.size === 99)
-        assert(hogeErrors.head._2.id.get === 0)
-        for (i <- 2 until 10) {
-          assert(hogeErrors(i - 1)._2.id.get === i)
-        }
-      case (FooError, values) =>
-        val fooErrors = values.asInstanceOf[Seq[(ShuffleKey, Foo)]].sortBy(_._2.hogeId.get)
-        assert(fooErrors.size === 4949)
-        for {
-          i <- 2 until 100
-          j <- 0 until i
-        } {
-          assert(fooErrors((i * (i - 1)) / 2 + j - 1)._2.id.get == 100 + j)
-          assert(fooErrors((i * (i - 1)) / 2 + j - 1)._2.hogeId.get == i)
-        }
+    val hogeResult = Await.result(
+      outputs(HogeResult).map {
+        _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
+      }, Duration.Inf).collect.toSeq
+    assert(hogeResult.size === 1)
+    assert(hogeResult.head === 1)
+
+    val fooResult = Await.result(
+      outputs(FooResult).map {
+        _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
+      }, Duration.Inf).collect.toSeq
+    assert(fooResult.size === 1)
+    assert(fooResult.head._1 === 100)
+    assert(fooResult.head._2 === 1)
+
+    val hogeError = Await.result(
+      outputs(HogeError).map {
+        _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
+      }, Duration.Inf).collect.toSeq.sorted
+    assert(hogeError.size === 99)
+    assert(hogeError.head === 0)
+    for (i <- 2 until 10) {
+      assert(hogeError(i - 1) === i)
+    }
+
+    val fooError = Await.result(
+      outputs(FooError).map {
+        _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
+      }, Duration.Inf).collect.toSeq.sortBy(_._2)
+    assert(fooError.size === 4949)
+    for {
+      i <- 2 until 100
+      j <- 0 until i
+    } {
+      assert(fooError((i * (i - 1)) / 2 + j - 1)._1 === 100 + j)
+      assert(fooError((i * (i - 1)) / 2 + j - 1)._2 === i)
     }
   }
 }
@@ -147,6 +160,50 @@ object CoGroupDriverSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
+
+    @transient var b: WritableBuffer = _
+
+    def buff = {
+      if (b == null) {
+        b = new WritableBuffer()
+      }
+      b
+    }
+
+    override def serialize(branch: BranchKey, value: Any): BufferSlice = {
+      buff.putAndSlice(value.asInstanceOf[Writable])
+    }
+
+    @transient var h: Hoge = _
+
+    def hoge = {
+      if (h == null) {
+        h = new Hoge()
+      }
+      h
+    }
+
+    @transient var f: Foo = _
+
+    def foo = {
+      if (f == null) {
+        f = new Foo()
+      }
+      f
+    }
+
+    override def deserialize(branch: BranchKey, value: BufferSlice): Any = {
+      branch match {
+        case HogeResult | HogeError =>
+          buff.resetAndGet(value, hoge)
+          hoge
+        case FooResult | FooError =>
+          buff.resetAndGet(value, foo)
+          foo
+      }
+    }
+
     override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Seq[Iterator[_]]], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         HogeResult -> new HogeOutputFragment,
@@ -156,11 +213,9 @@ object CoGroupDriverSpec {
       val fragment = new TestCoGroupFragment(outputs)
       (fragment, outputs)
     }
-
-    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
   }
 
-  class Hoge extends DataModel[Hoge] {
+  class Hoge extends DataModel[Hoge] with Writable {
 
     val id = new IntOption()
 
@@ -170,9 +225,15 @@ object CoGroupDriverSpec {
     override def copyFrom(other: Hoge): Unit = {
       id.copyFrom(other.id)
     }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+    }
   }
 
-  class Foo extends DataModel[Foo] {
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -184,6 +245,14 @@ object CoGroupDriverSpec {
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
       hogeId.copyFrom(other.hogeId)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      hogeId.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      hogeId.write(out)
     }
   }
 

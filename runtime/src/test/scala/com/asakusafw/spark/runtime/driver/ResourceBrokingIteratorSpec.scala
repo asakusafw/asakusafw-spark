@@ -20,6 +20,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.io._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -73,14 +74,22 @@ object ResourceBrokingIteratorSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
+
+    override def serialize(branch: BranchKey, value: Any): BufferSlice = {
+      ???
+    }
+
+    override def deserialize(branch: BranchKey, value: BufferSlice): Any = {
+      ???
+    }
+
     override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         Result -> new HogeOutputFragment)
       val fragment = new TestFragment(outputs(Result))
       (fragment, outputs)
     }
-
-    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] {
