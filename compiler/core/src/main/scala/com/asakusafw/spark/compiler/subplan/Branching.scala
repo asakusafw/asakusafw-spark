@@ -13,3 +13,4 @@ trait Branching
   with OrderingsField
   with AggregationsField
   with PreparingKey
+  with Serializing

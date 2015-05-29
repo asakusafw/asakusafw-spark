@@ -5,6 +5,8 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, Future }
@@ -12,6 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.Writable
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -137,7 +140,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
 object AggregateDriverClassBuilderSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  class Hoge extends DataModel[Hoge] with Writable {
 
     val i = new IntOption()
     val sum = new IntOption()
@@ -149,6 +152,14 @@ object AggregateDriverClassBuilderSpec {
     override def copyFrom(other: Hoge): Unit = {
       i.copyFrom(other.i)
       sum.copyFrom(other.sum)
+    }
+    override def readFields(in: DataInput): Unit = {
+      i.readFields(in)
+      sum.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      i.write(out)
+      sum.write(out)
     }
 
     def getIOption: IntOption = i

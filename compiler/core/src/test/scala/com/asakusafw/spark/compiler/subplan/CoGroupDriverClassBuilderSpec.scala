@@ -12,6 +12,7 @@ import java.util.{ List => JList }
 import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
@@ -179,58 +180,79 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
           hogeAllMarker, fooAllMarker,
           nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-      val hogeResult = Await.result(results(getBranchKey(hogeResultMarker.getOriginalSerialNumber)), Duration.Inf)
-        .collect.toSeq.map(_._2.asInstanceOf[Hoge])
+      val hogeResult = Await.result(
+        results(getBranchKey(hogeResultMarker.getOriginalSerialNumber)).map {
+          _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
+        }, Duration.Inf)
+        .collect.toSeq
       assert(hogeResult.size === 1)
-      assert(hogeResult(0).id.get === 1)
+      assert(hogeResult(0) === 1)
 
-      val fooResult = Await.result(results(getBranchKey(fooResultMarker.getOriginalSerialNumber)), Duration.Inf)
-        .collect.toSeq.map(_._2.asInstanceOf[Foo])
+      val fooResult = Await.result(
+        results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
+          _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
+        }, Duration.Inf)
+        .collect.toSeq
       assert(fooResult.size === 1)
-      assert(fooResult(0).id.get === 10)
-      assert(fooResult(0).hogeId.get === 1)
+      assert(fooResult(0)._1 === 10)
+      assert(fooResult(0)._2 === 1)
 
-      val hogeError = Await.result(results(getBranchKey(hogeErrorMarker.getOriginalSerialNumber)), Duration.Inf)
-        .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
+      val hogeError = Await.result(
+        results(getBranchKey(hogeErrorMarker.getOriginalSerialNumber)).map {
+          _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
+        }, Duration.Inf)
+        .collect.toSeq.sorted
       assert(hogeError.size === 9)
-      assert(hogeError(0).id.get === 0)
+      assert(hogeError(0) === 0)
       for (i <- 2 until 10) {
-        assert(hogeError(i - 1).id.get === i)
+        assert(hogeError(i - 1) === i)
       }
 
-      val fooError = Await.result(results(getBranchKey(fooErrorMarker.getOriginalSerialNumber)), Duration.Inf)
-        .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
+      val fooError = Await.result(
+        results(getBranchKey(fooErrorMarker.getOriginalSerialNumber)).map {
+          _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
+        }, Duration.Inf)
+        .collect.toSeq.sortBy(_._2)
       assert(fooError.size === 44)
       for {
         i <- 2 until 10
         j <- 0 until i
       } {
-        assert(fooError((i * (i - 1)) / 2 + j - 1).id.get == 10 + j)
-        assert(fooError((i * (i - 1)) / 2 + j - 1).hogeId.get == i)
+        assert(fooError((i * (i - 1)) / 2 + j - 1)._1 == 10 + j)
+        assert(fooError((i * (i - 1)) / 2 + j - 1)._2 == i)
       }
 
-      val hogeAll = Await.result(results(getBranchKey(hogeAllMarker.getOriginalSerialNumber)), Duration.Inf)
-        .collect.toSeq.map(_._2.asInstanceOf[Hoge]).sortBy(_.id)
+      val hogeAll = Await.result(
+        results(getBranchKey(hogeAllMarker.getOriginalSerialNumber)).map {
+          _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
+        }, Duration.Inf)
+        .collect.toSeq.sorted
       assert(hogeAll.size === 10)
       for (i <- 0 until 10) {
-        assert(hogeAll(i).id.get === i)
+        assert(hogeAll(i) === i)
       }
 
-      val fooAll = Await.result(results(getBranchKey(fooAllMarker.getOriginalSerialNumber)), Duration.Inf)
-        .collect.toSeq.map(_._2.asInstanceOf[Foo]).sortBy(_.hogeId)
+      val fooAll = Await.result(
+        results(getBranchKey(fooAllMarker.getOriginalSerialNumber)).map {
+          _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
+        }, Duration.Inf)
+        .collect.toSeq.sortBy(_._2)
       assert(fooAll.size === 45)
       for {
         i <- 0 until 10
         j <- 0 until i
       } {
-        assert(fooAll((i * (i - 1)) / 2 + j).id.get == 10 + j)
-        assert(fooAll((i * (i - 1)) / 2 + j).hogeId.get == i)
+        assert(fooAll((i * (i - 1)) / 2 + j)._1 == 10 + j)
+        assert(fooAll((i * (i - 1)) / 2 + j)._2 == i)
       }
 
-      val nResult = Await.result(results(getBranchKey(nResultMarker.getOriginalSerialNumber)), Duration.Inf)
-        .collect.toSeq.map(_._2.asInstanceOf[N])
+      val nResult = Await.result(
+        results(getBranchKey(nResultMarker.getOriginalSerialNumber)).map {
+          _.map(_._2.asInstanceOf[N]).map(_.n.get)
+        }, Duration.Inf)
+        .collect.toSeq
       assert(nResult.size === 10)
-      nResult.foreach(n => assert(n.n.get === 10))
+      nResult.foreach(n => assert(n === 10))
     }
   }
 }
@@ -283,7 +305,7 @@ object CoGroupDriverClassBuilderSpec {
     def getHogeIdOption: IntOption = hogeId
   }
 
-  class N extends DataModel[N] {
+  class N extends DataModel[N] with Writable {
 
     val n = new IntOption()
 
@@ -292,6 +314,12 @@ object CoGroupDriverClassBuilderSpec {
     }
     override def copyFrom(other: N): Unit = {
       n.copyFrom(other.n)
+    }
+    override def readFields(in: DataInput): Unit = {
+      n.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      n.write(out)
     }
 
     def getNOption: IntOption = n
