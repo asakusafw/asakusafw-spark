@@ -31,7 +31,7 @@ import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
+import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.orderings._
@@ -117,6 +117,34 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       val subplan = plan.getElements.head
       subplan.putAttribute(classOf[SubPlanInfo],
         new SubPlanInfo(subplan, SubPlanInfo.DriverType.COGROUP, Seq.empty[SubPlanInfo.DriverOption], operator))
+
+      val hogeResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeResultMarker.getOriginalSerialNumber).get
+      hogeResultOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(hogeResultOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+
+      val fooResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get
+      fooResultOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(fooResultOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+
+      val hogeErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeErrorMarker.getOriginalSerialNumber).get
+      hogeErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(hogeErrorOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+
+      val fooErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooErrorMarker.getOriginalSerialNumber).get
+      fooErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(fooErrorOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+
+      val hogeAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeAllMarker.getOriginalSerialNumber).get
+      hogeAllOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(hogeAllOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+
+      val fooAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooAllMarker.getOriginalSerialNumber).get
+      fooAllOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(fooAllOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+
+      val nResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == nResultMarker.getOriginalSerialNumber).get
+      nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(nResultOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
       val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")

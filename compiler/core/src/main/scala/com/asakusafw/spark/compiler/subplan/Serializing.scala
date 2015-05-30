@@ -4,12 +4,18 @@ package subplan
 import org.apache.hadoop.io.Writable
 import org.objectweb.asm.{ Opcodes, Type }
 
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.operator.OperatorInfo
+import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.io.{ BufferSlice, WritableBuffer }
 import com.asakusafw.spark.tools.asm._
 
 trait Serializing extends ClassBuilder {
+
+  def jpContext: JPContext
 
   def branchKeys: BranchKeys
 
@@ -29,7 +35,7 @@ trait Serializing extends ClassBuilder {
       fieldDef.newField(
         Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
         s"value${i}",
-        output.getOperator.getDataType.asType)
+        outputType(output))
     }
   }
 
@@ -104,9 +110,8 @@ trait Serializing extends ClassBuilder {
       for {
         (output, i) <- subplanOutputs.zipWithIndex
       } {
-        val op = output.getOperator
-        branchVar.push().unlessNotEqual(branchKeys.getField(mb, op)) {
-          val t = op.getDataType.asType
+        branchVar.push().unlessNotEqual(branchKeys.getField(mb, output.getOperator)) {
+          val t = outputType(output)
           thisVar.push().getField(s"value${i}", t).unlessNotNull {
             thisVar.push().putField(s"value${i}", t, pushNew0(t))
           }
@@ -114,6 +119,19 @@ trait Serializing extends ClassBuilder {
         }
       }
       `throw`(pushNew0(classOf[AssertionError].asType))
+    }
+  }
+
+  private def outputType(output: SubPlan.Output): Type = {
+    val outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
+    if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED) {
+      val op = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
+      val operatorInfo = new OperatorInfo(op)(jpContext)
+      import operatorInfo._
+      assert(outputs.size == 1)
+      outputs.head.getDataType.asType
+    } else {
+      output.getOperator.getDataType.asType
     }
   }
 }
