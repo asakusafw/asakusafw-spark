@@ -31,6 +31,8 @@ trait Serializing extends ClassBuilder {
 
     for {
       (output, i) <- subplanOutputs.zipWithIndex
+      outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
+      if outputInfo.getOutputType != SubPlanOutputInfo.OutputType.BROADCAST
     } {
       fieldDef.newField(
         Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
@@ -112,10 +114,15 @@ trait Serializing extends ClassBuilder {
       } {
         branchVar.push().unlessNotEqual(branchKeys.getField(mb, output.getOperator)) {
           val t = outputType(output)
-          thisVar.push().getField(s"value${i}", t).unlessNotNull {
-            thisVar.push().putField(s"value${i}", t, pushNew0(t))
+          val outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
+          if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST) {
+            `return`(pushNew0(t))
+          } else {
+            thisVar.push().getField(s"value${i}", t).unlessNotNull {
+              thisVar.push().putField(s"value${i}", t, pushNew0(t))
+            }
+            `return`(thisVar.push().getField(s"value${i}", t))
           }
-          `return`(thisVar.push().getField(s"value${i}", t))
         }
       }
       `throw`(pushNew0(classOf[AssertionError].asType))
