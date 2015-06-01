@@ -28,9 +28,9 @@ trait Branching[T] {
 
   def shuffleKey(branch: BranchKey, value: Any): ShuffleKey
 
-  def serialize(branch: BranchKey, value: Any): BufferSlice
+  def serialize(branch: BranchKey, value: Any): Array[Byte]
 
-  def deserialize(branch: BranchKey, value: BufferSlice): Any
+  def deserialize(branch: BranchKey, value: Array[Byte]): Any
 
   def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
@@ -46,7 +46,7 @@ trait Branching[T] {
           }
         }, preservesPartitioning = true))
     } else {
-      rdd.branch[ShuffleKey, BufferSlice](
+      rdd.branch[ShuffleKey, Array[Byte]](
         branchKeys,
         { iter =>
           val combiners = aggregations.collect {

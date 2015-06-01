@@ -26,7 +26,6 @@ import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.io._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -121,11 +120,11 @@ object InputOutputDriverSpec {
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-    override def serialize(branch: BranchKey, value: Any): BufferSlice = {
+    override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
       ???
     }
 
-    override def deserialize(branch: BranchKey, value: BufferSlice): Any = {
+    override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
       ???
     }
 

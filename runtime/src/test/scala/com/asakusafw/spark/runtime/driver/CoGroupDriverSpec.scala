@@ -22,7 +22,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.io._
+import com.asakusafw.spark.runtime.io.WritableSerializer
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -162,17 +162,17 @@ object CoGroupDriverSpec {
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-    @transient var b: WritableBuffer = _
+    @transient var ws: WritableSerializer = _
 
-    def buff = {
-      if (b == null) {
-        b = new WritableBuffer()
+    def serde = {
+      if (ws == null) {
+        ws = new WritableSerializer()
       }
-      b
+      ws
     }
 
-    override def serialize(branch: BranchKey, value: Any): BufferSlice = {
-      buff.putAndSlice(value.asInstanceOf[Writable])
+    override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
+      serde.serialize(value.asInstanceOf[Writable])
     }
 
     @transient var h: Hoge = _
@@ -193,13 +193,13 @@ object CoGroupDriverSpec {
       f
     }
 
-    override def deserialize(branch: BranchKey, value: BufferSlice): Any = {
+    override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
       branch match {
         case HogeResult | HogeError =>
-          buff.resetAndGet(value, hoge)
+          serde.deserialize(value, hoge)
           hoge
         case FooResult | FooError =>
-          buff.resetAndGet(value, foo)
+          serde.deserialize(value, foo)
           foo
       }
     }
