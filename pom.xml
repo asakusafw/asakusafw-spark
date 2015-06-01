@@ -90,7 +90,6 @@
 							<include>**/*Test.java</include>
 						</includes>
 						<forkMode>once</forkMode>
-						<!-- see: http://docs.codehaus.org/display/MAVENUSER/Classloading+and+Forking+under+Maven+Surefire -->
 						<useSystemClassLoader>false</useSystemClassLoader>
 						<systemProperties>
 							<property>
@@ -697,14 +696,6 @@ encoding/<project>=UTF-8
 			<releases>
 				<updatePolicy>never</updatePolicy>
 			</releases>
-		</pluginRepository>
-		<pluginRepository>
-			<id>codehaus.org</id>
-			<name>Codehaus Maven Repository</name>
-			<url>http://repository.codehaus.org/</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
 		</pluginRepository>
 		<pluginRepository>
 			<id>com.asakusafw.releases</id>
