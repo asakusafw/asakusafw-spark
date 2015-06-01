@@ -1,0 +1,67 @@
+version = '0.1.0-SNAPSHOT'
+group = 'com.asakusafw.spark'
+
+defaultTasks 'clean', 'build', 'install'
+
+apply plugin: 'groovy'
+apply plugin: 'maven'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+
+configurations {
+    deployerJars
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'http://asakusafw.s3.amazonaws.com/maven/releases' }
+}
+
+dependencies {
+    compile gradleApi()
+    compile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: '0.7.3'
+    deployerJars 'org.springframework.build:aws-maven:5.0.0.RELEASE'
+}
+
+project.sourceCompatibility = JavaVersion.toVersion('1.7')
+project.targetCompatibility = JavaVersion.toVersion('1.7')
+
+tasks.withType(AbstractCompile) { task ->
+    task.options.encoding = 'UTF-8'
+    if (System.getProperty('compiler.bootclasspath') != null) {
+        task.options.compilerArgs += ['-bootclasspath', System.getProperty('compiler.bootclasspath')]
+    }
+}
+
+eclipse.classpath {
+    file {
+        whenMerged { classpath ->
+            classpath.entries.findAll {
+                it.path.contains('org.eclipse.jdt.launching.JRE_CONTAINER')
+            }.each {
+                it.path = "org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-${sourceCompatibility}"
+            }
+            classpath.entries.unique()
+        }
+    }
+}
+
+groovydoc {
+    docTitle "Asakusa on Spark Gradle Plugins ${version}"
+    windowTitle "Asakusa on Spark Gradle Plugins ${version}"
+    footer "Copyright 2011-${new Date().format('yyyy')} Asakusa Framework Team."
+}
+
+task sourcesJar(type: Jar) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives tasks.sourcesJar
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion '2.3'
+    jarFile file('.buildtools/gradlew.jar')
+}
