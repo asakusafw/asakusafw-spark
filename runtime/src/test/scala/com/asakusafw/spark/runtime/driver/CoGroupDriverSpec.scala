@@ -22,7 +22,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.io.WritableSerializer
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -35,58 +35,70 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
   behavior of "CoGroupDriver"
 
   it should "cogroup" in {
-    val hogeOrd = new ShuffleKey.SortOrdering(1, Array(true))
+    val hogeOrd = new HogeSortOrdering()
     val fHoge = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
+
+      @transient var sd: WritableSerDe = _
+
+      def serde = {
+        if (sd == null) {
+          sd = new WritableSerDe()
+        }
+        sd
+      }
+
       @transient var h: Hoge = _
+
       def hoge: Hoge = {
         if (h == null) {
           h = new Hoge()
         }
         h
       }
-      @transient var sk: ShuffleKey = _
-      def shuffleKey: ShuffleKey = {
-        if (sk == null) {
-          sk = new ShuffleKey(Seq(new IntOption()), Seq(new BooleanOption()))
-        }
-        sk
-      }
+
       override def apply(i: Int): (ShuffleKey, Hoge) = {
         hoge.id.modify(i)
-        shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(hoge.id)
-        shuffleKey.ordering(0).asInstanceOf[BooleanOption].modify(hoge.id.get % 3 == 0)
+        val shuffleKey = new ShuffleKey(
+          serde.serialize(hoge.id),
+          serde.serialize(new BooleanOption().modify(hoge.id.get % 3 == 0)))
         (shuffleKey, hoge)
       }
     }
     val hoges = sc.parallelize(0 until 100).map(fHoge).asInstanceOf[RDD[(ShuffleKey, _)]]
 
-    val fooOrd = new ShuffleKey.SortOrdering(1, Array(true))
+    val fooOrd = new FooSortOrdering()
     val fFoo = new Function2[Int, Int, (ShuffleKey, Foo)] with Serializable {
+
+      @transient var sd: WritableSerDe = _
+
+      def serde = {
+        if (sd == null) {
+          sd = new WritableSerDe()
+        }
+        sd
+      }
+
       @transient var f: Foo = _
+
       def foo: Foo = {
         if (f == null) {
           f = new Foo()
         }
         f
       }
-      @transient var sk: ShuffleKey = _
-      def shuffleKey: ShuffleKey = {
-        if (sk == null) {
-          sk = new ShuffleKey(Seq(new IntOption()), Seq(new IntOption()))
-        }
-        sk
-      }
+
       override def apply(i: Int, j: Int): (ShuffleKey, Foo) = {
         foo.id.modify(100 + j)
         foo.hogeId.modify(i)
-        shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(foo.hogeId)
-        shuffleKey.ordering(0).asInstanceOf[IntOption].modify(foo.id.toString.hashCode)
+        val shuffleKey = new ShuffleKey(
+          serde.serialize(foo.hogeId),
+          serde.serialize(new IntOption().modify(foo.id.toString.hashCode)))
         (shuffleKey, foo)
       }
     }
     val foos = sc.parallelize(0 until 100).flatMap(i => (0 until i).iterator.map(fFoo(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
 
-    val grouping = new ShuffleKey.GroupingOrdering(1)
+    val grouping = new GroupingOrdering()
     val part = new HashPartitioner(2)
     val driver = new TestCoGroupDriver(
       sc, hadoopConf, Seq((Seq(Future.successful(hoges)), Option(hogeOrd)), (Seq(Future.successful(foos)), Option(fooOrd))), grouping, part)
@@ -143,8 +155,8 @@ object CoGroupDriverSpec {
   class TestCoGroupDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient inputs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])],
-    @transient grouping: ShuffleKey.GroupingOrdering,
+    @transient inputs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])],
+    @transient grouping: Ordering[ShuffleKey],
     @transient part: Partitioner)
       extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, grouping, part) {
 
@@ -162,13 +174,13 @@ object CoGroupDriverSpec {
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-    @transient var ws: WritableSerializer = _
+    @transient var sd: WritableSerDe = _
 
     def serde = {
-      if (ws == null) {
-        ws = new WritableSerializer()
+      if (sd == null) {
+        sd = new WritableSerDe()
       }
-      ws
+      sd
     }
 
     override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
@@ -253,6 +265,43 @@ object CoGroupDriverSpec {
     override def write(out: DataOutput): Unit = {
       id.write(out)
       hogeId.write(out)
+    }
+  }
+
+  class GroupingOrdering extends Ordering[ShuffleKey] {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      val xGrouping = x.grouping
+      val yGrouping = y.grouping
+      IntOption.compareBytes(xGrouping, 0, xGrouping.length, yGrouping, 0, yGrouping.length)
+    }
+  }
+
+  class HogeSortOrdering extends GroupingOrdering {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      val cmp = super.compare(x, y)
+      if (cmp == 0) {
+        val xOrdering = x.ordering
+        val yOrdering = y.ordering
+        BooleanOption.compareBytes(xOrdering, 0, xOrdering.length, yOrdering, 0, yOrdering.length)
+      } else {
+        cmp
+      }
+    }
+  }
+
+  class FooSortOrdering extends GroupingOrdering {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      val cmp = super.compare(x, y)
+      if (cmp == 0) {
+        val xOrdering = x.ordering
+        val yOrdering = y.ordering
+        IntOption.compareBytes(xOrdering, 0, xOrdering.length, yOrdering, 0, yOrdering.length)
+      } else {
+        cmp
+      }
     }
   }
 

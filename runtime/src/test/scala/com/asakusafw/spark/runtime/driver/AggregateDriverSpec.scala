@@ -23,7 +23,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.io.WritableSerializer
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -38,19 +38,30 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
   it should "aggregate with map-side combine" in {
     import TotalAggregate._
     val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
+
+      @transient var sd: WritableSerDe = _
+
+      def serde = {
+        if (sd == null) {
+          sd = new WritableSerDe()
+        }
+        sd
+      }
+
       @transient var h: Hoge = _
+
       def hoge: Hoge = {
         if (h == null) {
           h = new Hoge()
         }
         h
       }
+
       override def apply(i: Int): (ShuffleKey, Hoge) = {
         hoge.id.modify(i % 2)
         hoge.price.modify(i * 100)
-        val shuffleKey = new ShuffleKey(Seq(new IntOption()), Seq(new IntOption()))
-        shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(hoge.id)
-        shuffleKey.ordering(0).asInstanceOf[IntOption].copyFrom(hoge.price)
+        val shuffleKey = new ShuffleKey(
+          serde.serialize(hoge.id), serde.serialize(hoge.price))
         (shuffleKey, hoge)
       }
     }
@@ -60,13 +71,16 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val aggregation = new TestAggregation(true)
 
     val driver = new TestAggregateDriver(
-      sc, hadoopConf, Future.successful(hoges), Option(new ShuffleKey.SortOrdering(1, Array(false))), part, aggregation)
+      sc, hadoopConf, Future.successful(hoges),
+      Option(new SortOrdering()),
+      part,
+      aggregation)
 
     val outputs = driver.execute()
     assert(Await.result(
       outputs(Result).map {
         _.map {
-          case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
+          case (_, hoge: Hoge) => (hoge.id.get, hoge.price.get)
         }
       }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
       Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
@@ -75,25 +89,29 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
   it should "aggregate without map-side combine" in {
     import TotalAggregate._
     val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
+
+      @transient var sd: WritableSerDe = _
+
+      def serde = {
+        if (sd == null) {
+          sd = new WritableSerDe()
+        }
+        sd
+      }
+
       @transient var h: Hoge = _
+
       def hoge: Hoge = {
         if (h == null) {
           h = new Hoge()
         }
         h
       }
-      @transient var sk: ShuffleKey = _
-      def shuffleKey: ShuffleKey = {
-        if (sk == null) {
-          sk = new ShuffleKey(Seq(new IntOption()), Seq(new IntOption()))
-        }
-        sk
-      }
+
       override def apply(i: Int): (ShuffleKey, Hoge) = {
         hoge.id.modify(i % 2)
         hoge.price.modify(i * 100)
-        shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(hoge.id)
-        shuffleKey.ordering(0).asInstanceOf[IntOption].copyFrom(hoge.price)
+        val shuffleKey = new ShuffleKey(serde.serialize(hoge.id), serde.serialize(hoge.price))
         (shuffleKey, hoge)
       }
     }
@@ -103,13 +121,16 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     val aggregation = new TestAggregation(false)
 
     val driver = new TestAggregateDriver(
-      sc, hadoopConf, Future.successful(hoges), Option(new ShuffleKey.SortOrdering(1, Array(false))), part, aggregation)
+      sc, hadoopConf, Future.successful(hoges),
+      Option(new SortOrdering()),
+      part,
+      aggregation)
 
     val outputs = driver.execute()
     assert(Await.result(
       outputs(Result).map {
         _.map {
-          case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
+          case (_, hoge: Hoge) => (hoge.id.get, hoge.price.get)
         }
       }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
       Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
@@ -118,25 +139,29 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
   it should "aggregate partially" in {
     import PartialAggregate._
     val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
+
+      @transient var sd: WritableSerDe = _
+
+      def serde = {
+        if (sd == null) {
+          sd = new WritableSerDe()
+        }
+        sd
+      }
+
       @transient var h: Hoge = _
+
       def hoge: Hoge = {
         if (h == null) {
           h = new Hoge()
         }
         h
       }
-      @transient var sk: ShuffleKey = _
-      def shuffleKey: ShuffleKey = {
-        if (sk == null) {
-          sk = new ShuffleKey(Seq(new IntOption()), Seq(new IntOption()))
-        }
-        sk
-      }
+
       override def apply(i: Int): (ShuffleKey, Hoge) = {
         hoge.id.modify(i % 2)
         hoge.price.modify(i * 100)
-        shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(hoge.id)
-        shuffleKey.ordering(0).asInstanceOf[IntOption].copyFrom(hoge.price)
+        val shuffleKey = new ShuffleKey(serde.serialize(hoge.id), serde.serialize(hoge.price))
         (shuffleKey, hoge)
       }
     }
@@ -148,7 +173,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     assert(Await.result(
       outputs(Result1).map {
         _.map {
-          case (id: ShuffleKey, hoge: Hoge) => (id.grouping(0).asInstanceOf[IntOption].get, hoge.price.get)
+          case (_, hoge: Hoge) => (hoge.id.get, hoge.price.get)
         }
       }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
       Seq(
@@ -229,7 +254,7 @@ object AggregateDriverSpec {
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(ShuffleKey, Hoge)]],
-      @transient sort: Option[ShuffleKey.SortOrdering],
+      @transient sort: Option[Ordering[ShuffleKey]],
       @transient part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
         extends AggregateDriver[Hoge, Hoge](sc, hadoopConf, Map.empty, Seq(prev), sort, part) {
@@ -244,18 +269,17 @@ object AggregateDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      @transient var sk: ShuffleKey = _
+      @transient var sd: WritableSerDe = _
 
-      def shuffleKey = {
-        if (sk == null) {
-          sk = new ShuffleKey(Seq(new IntOption()), Seq.empty)
+      def serde = {
+        if (sd == null) {
+          sd = new WritableSerDe()
         }
-        sk
+        sd
       }
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
-        shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(value.asInstanceOf[Hoge].id)
-        shuffleKey
+        new ShuffleKey(serde.serialize(value.asInstanceOf[Hoge].id), Array.empty)
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
@@ -270,6 +294,22 @@ object AggregateDriverSpec {
         val fragment = new HogeOutputFragment
         val outputs = Map(Result -> fragment)
         (fragment, outputs)
+      }
+    }
+
+    class SortOrdering extends Ordering[ShuffleKey] {
+
+      override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+        val xGrouping = x.grouping
+        val yGrouping = y.grouping
+        val cmp = IntOption.compareBytes(xGrouping, 0, xGrouping.length, yGrouping, 0, yGrouping.length)
+        if (cmp == 0) {
+          val xOrdering = x.ordering
+          val yOrdering = y.ordering
+          IntOption.compareBytes(yOrdering, 0, yOrdering.length, xOrdering, 0, xOrdering.length)
+        } else {
+          cmp
+        }
       }
     }
   }
@@ -298,34 +338,17 @@ object AggregateDriverSpec {
         Map(Result1 -> new TestAggregation(true))
       }
 
-      @transient var sk: ShuffleKey = _
+      @transient var sd: WritableSerDe = _
 
-      def shuffleKey = {
-        if (sk == null) {
-          sk = new ShuffleKey(Seq(new IntOption()), Seq.empty)
+      def serde = {
+        if (sd == null) {
+          sd = new WritableSerDe()
         }
-        sk
+        sd
       }
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
-        branch match {
-          case Result1 =>
-            val shuffleKey = new ShuffleKey(Seq(new IntOption()), Seq.empty)
-            shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(value.asInstanceOf[Hoge].id)
-            shuffleKey
-          case _ =>
-            shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(value.asInstanceOf[Hoge].id)
-            shuffleKey
-        }
-      }
-
-      @transient var ws: WritableSerializer = _
-
-      def serde = {
-        if (ws == null) {
-          ws = new WritableSerializer()
-        }
-        ws
+        new ShuffleKey(serde.serialize(value.asInstanceOf[Hoge].id), Array.empty)
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {

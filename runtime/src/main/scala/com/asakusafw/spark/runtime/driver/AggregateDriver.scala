@@ -20,7 +20,7 @@ abstract class AggregateDriver[V, C](
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Future[Broadcast[_]]],
   @transient prevs: Seq[Future[RDD[(ShuffleKey, V)]]],
-  @transient sort: Option[ShuffleKey.SortOrdering],
+  @transient sort: Option[Ordering[ShuffleKey]],
   @transient partitioner: Partitioner)
     extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[C] {
   assert(prevs.size > 0,
