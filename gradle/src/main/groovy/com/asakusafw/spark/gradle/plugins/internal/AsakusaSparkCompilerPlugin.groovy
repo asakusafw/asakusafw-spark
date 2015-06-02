@@ -109,12 +109,6 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             task.explore << { project.sourceSets.main.output.classesDir }
             task.attach << { project.configurations.embedded }
 
-            task.customDataModelProcessors << { spark.customDataModelProcessors }
-            task.customExternalPortProcessors << { spark.customExternalPortProcessors }
-            task.customBatchProcessors << { spark.customBatchProcessors }
-            task.customJobflowProcessors << { spark.customJobflowProcessors }
-            task.customParticipants << { spark.customParticipants }
-
             task.conventionMapping.with {
                 maxHeapSize = { convention.maxHeapSize }
                 include = { spark.include }

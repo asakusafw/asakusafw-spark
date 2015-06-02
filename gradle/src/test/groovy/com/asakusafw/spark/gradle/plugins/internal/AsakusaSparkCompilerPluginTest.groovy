@@ -61,11 +61,6 @@ class AsakusaSparkCompilerPluginTest {
         assert project.file(extension.outputDirectory) == project.file("${project.buildDir}/spark-batchapps")
         assert extension.include == null
         assert extension.exclude == null
-        assert extension.customDataModelProcessors.empty
-        assert extension.customExternalPortProcessors.empty
-        assert extension.customBatchProcessors.empty
-        assert extension.customJobflowProcessors.empty
-        assert extension.customParticipants.empty
 
         assert extension.runtimeWorkingDirectory == null
 
@@ -108,25 +103,10 @@ class AsakusaSparkCompilerPluginTest {
         spark.exclude = 'exclude.*'
         assert task.exclude == spark.exclude
 
-        spark.customDataModelProcessors.add 'custom.DMP'
-        assert task.resolvedCustomDataModelProcessors.contains('custom.DMP')
-
-        spark.customExternalPortProcessors.add 'custom.EPP'
-        assert task.resolvedCustomExternalPortProcessors.contains('custom.EPP')
-
-        spark.customBatchProcessors.add 'custom.BP'
-        assert task.resolvedCustomBatchProcessors.contains('custom.BP')
-
-        spark.customJobflowProcessors.add 'custom.JP'
-        assert task.resolvedCustomJobflowProcessors.contains('custom.JP')
-
-        spark.customParticipants.add 'custom.CP'
-        assert task.resolvedCustomParticipants.contains('custom.CP')
-
         spark.runtimeWorkingDirectory = 'RWD'
         assert task.runtimeWorkingDirectory == spark.runtimeWorkingDirectory
 
-        // NOTE: task.compilerProperties will be propagated in 'project.afterEvaluate'
+        // NOTE: 'task.compilerProperties' will be propagated in 'project.afterEvaluate'
         // spark.compilerProperties.put('TESTING', 'OK')
         // assert task.resolvedCompilerProperties.get('TESTING') == 'OK'
 
