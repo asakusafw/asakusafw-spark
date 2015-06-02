@@ -37,31 +37,6 @@ class AsakusafwCompilerExtension {
     String exclude
 
     /**
-     * The custom data model processor classes.
-     */
-    List<String> customDataModelProcessors = []
-
-    /**
-     * The custom external port processor classes.
-     */
-    List<String> customExternalPortProcessors = []
-
-    /**
-     * The custom jobflow processor classes.
-     */
-    List<String> customJobflowProcessors = []
-
-    /**
-     * The custom batch processor classes.
-     */
-    List<String> customBatchProcessors = []
-
-    /**
-     * The custom compiler participant classes.
-     */
-    List<String> customParticipants = []
-
-    /**
      * The custom runtime working directory URI.
      */
     String runtimeWorkingDirectory
