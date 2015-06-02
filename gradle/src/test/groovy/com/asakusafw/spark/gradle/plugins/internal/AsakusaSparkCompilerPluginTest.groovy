@@ -104,11 +104,26 @@ class AsakusaSparkCompilerPluginTest {
         assert task.embed.empty
         assert task.external.empty
 
+        spark.include = null
+        assert task.resolvedInclude.empty
+
         spark.include = 'include.*'
-        assert task.include == spark.include
+        assert task.resolvedInclude == [spark.include]
+
+        spark.include = ['include1.*', 'include2.*']
+        assert task.resolvedInclude.toSet() == spark.include.toSet()
+
+        spark.exclude = null
+        assert task.resolvedExclude.empty
 
         spark.exclude = 'exclude.*'
-        assert task.exclude == spark.exclude
+        assert task.resolvedExclude == [spark.exclude]
+
+        spark.exclude = ['exclude1.*', 'exclude2.*']
+        assert task.resolvedExclude.toSet() == spark.exclude.toSet()
+
+        spark.runtimeWorkingDirectory = null
+        assert task.runtimeWorkingDirectory == null
 
         spark.runtimeWorkingDirectory = 'RWD'
         assert task.runtimeWorkingDirectory == spark.runtimeWorkingDirectory
@@ -116,6 +131,9 @@ class AsakusaSparkCompilerPluginTest {
         // NOTE: 'task.compilerProperties' will be propagated in 'project.afterEvaluate'
         // spark.compilerProperties.put('TESTING', 'OK')
         // assert task.resolvedCompilerProperties.get('TESTING') == 'OK'
+
+        spark.batchIdPrefix = null
+        assert task.batchIdPrefix == null
 
         spark.batchIdPrefix = 'tprefix.'
         assert task.batchIdPrefix == spark.batchIdPrefix

@@ -17,6 +17,7 @@ package com.asakusafw.spark.gradle.plugins.internal
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 
 import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
 import com.asakusafw.gradle.plugins.AsakusafwPlugin
@@ -75,17 +76,30 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
         project.afterEvaluate {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
             AsakusafwPluginConvention asakusa = project.asakusafw
+            project.configurations {
+                asakusaSparkCompiler { Configuration conf ->
+                    base.excludeModules.each { String moduleName ->
+                        project.logger.info "excludes module for Spark compiler: ${moduleName}"
+                        conf.exclude module: moduleName
+                    }
+                }
+            }
             project.dependencies {
                 asakusaSparkCompiler "com.asakusafw.spark:asakusa-spark-compiler-core:${base.sparkProjectVersion}"
-                asakusaSparkCompiler base.sparkArtifact
+                asakusaSparkCompiler(base.sparkArtifact) {
+                    exclude module: 'hadoop-client'
+                }
 
                 asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${asakusa.asakusafwVersion}"
                 asakusaSparkCompiler "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
+                asakusaSparkCompiler "com.asakusafw:java-dom:${asakusa.asakusafwVersion}"
 
                 asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.compilerProjectVersion}"
+
                 asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.compilerProjectVersion}"
+                asakusaSparkCompiler "com.asakusafw:asakusa-yaess-core:${asakusa.asakusafwVersion}"
 
                 asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${asakusa.asakusafwVersion}"
@@ -106,15 +120,16 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             project.tasks.assemble.dependsOn task
 
             task.toolClasspath << { project.configurations.asakusaSparkCompiler }
-            task.toolClasspath << { project.sourceSets.main.compileClasspath }
+            task.toolClasspath << { project.sourceSets.main.compileClasspath - project.configurations.compile }
 
             task.explore << { project.sourceSets.main.output.classesDir }
             task.attach << { project.configurations.embedded }
 
+            task.include << { spark.include }
+            task.exclude << { spark.exclude }
+
             task.conventionMapping.with {
                 maxHeapSize = { convention.maxHeapSize }
-                include = { spark.include }
-                exclude = { spark.exclude }
                 runtimeWorkingDirectory = { spark.runtimeWorkingDirectory }
                 batchIdPrefix = { spark.batchIdPrefix }
                 outputDirectory = { project.file(spark.outputDirectory) }

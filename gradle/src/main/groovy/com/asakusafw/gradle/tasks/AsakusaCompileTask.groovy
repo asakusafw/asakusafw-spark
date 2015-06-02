@@ -111,18 +111,24 @@ class AsakusaCompileTask extends DefaultTask {
     }
 
     /**
-     * The accepting batch class name pattern ({@code "*"} as a wildcard character).
+     * The accepting batch class name patterns ({@code "*"} as a wildcard character).
      */
-    @Optional
+    List<Object> include = []
+
     @Input
-    String include
+    List<String> getResolvedInclude() {
+        return ResolutionUtils.resolveToStringList(getInclude())
+    }
 
     /**
-     * The ignoring batch class name pattern ({@code "*"} as a wildcard character).
+     * The ignoring batch class name patterns ({@code "*"} as a wildcard character).
      */
-    @Optional
+    List<Object> exclude = []
+
     @Input
-    String exclude
+    List<String> getResolvedExclude() {
+        return ResolutionUtils.resolveToStringList(getExclude())
+    }
 
     /**
      * The custom data model processor classes.
@@ -226,10 +232,8 @@ class AsakusaCompileTask extends DefaultTask {
      */
     @TaskAction
     void perform() {
-        String timestamp = new Date().format("yyyy-MM-dd HH:mm:ss (z)")
         project.delete(getOutputDirectory())
         project.mkdir(getOutputDirectory())
-
         project.javaexec { JavaExecSpec spec ->
             spec.main = 'com.asakusafw.lang.compiler.cli.BatchCompilerCli'
             spec.classpath = project.files(getToolClasspath())
@@ -237,50 +241,63 @@ class AsakusaCompileTask extends DefaultTask {
             if (getMaxHeapSize() != null) {
                 spec.maxHeapSize = getMaxHeapSize()
             }
-            spec.systemProperties += getResolvedSystemProperties()
-            spec.systemProperties += [ 'com.asakusafw.batchapp.build.timestamp' : timestamp ]
-            spec.systemProperties += [ 'com.asakusafw.batchapp.build.java.version' : System.properties['java.version'] ]
+            spec.systemProperties getResolvedSystemProperties()
+            spec.systemProperties getExtraSystemProperties()
             spec.enableAssertions = true
-
-            // project repository
-            configureFiles(spec, '--explore', getExplore())
-            configureFiles(spec, '--attach', getAttach())
-            configureFiles(spec, '--embed', getEmbed())
-            configureFiles(spec, '--external', getExternal())
-
-            // batch class detection
-            configureString(spec, '--include', getInclude())
-            configureString(spec, '--exclude', getExclude())
-
-            // custom compiler plug-ins
-            configureClasses(spec, '--dataModelProcessors', getResolvedCustomDataModelProcessors())
-            configureClasses(spec, '--externalPortProcessors', getResolvedCustomExternalPortProcessors())
-            configureClasses(spec, '--jobflowProcessors', getResolvedCustomJobflowProcessors())
-            configureClasses(spec, '--batchProcessors', getResolvedCustomBatchProcessors())
-            configureClasses(spec, '--participants', getResolvedCustomParticipants())
-
-            // other options
-            configureString(spec, '--output', getOutputDirectory().getAbsolutePath())
-            configureString(spec, '--runtimeWorkingDirectory', getRuntimeWorkingDirectory())
-            configureString(spec, '--batchIdPrefix', getBatchIdPrefix())
-            configureBoolean(spec, '--failOnError', getFailOnError())
-            getResolvedCompilerProperties().each { k, v ->
-                spec.args('--property', "${k}=${v}")
-            }
+            spec.args = createArguments()
         }
     }
 
     @PackageScope
-    void configureBoolean(JavaExecSpec spec, String key, boolean value) {
+    Map<String, String> getExtraSystemProperties() {
+        return [
+            'com.asakusafw.batchapp.build.timestamp' : new Date().format('yyyy-MM-dd HH:mm:ss (z)'),
+            'com.asakusafw.batchapp.build.java.version' : System.getProperty('java.version', '?')
+        ]
+    }
+
+    @PackageScope
+    List<String> createArguments() {
+        List<String> results = []
+
+        // project repository
+        configureFiles(results, '--explore', getExplore())
+        configureFiles(results, '--attach', getAttach())
+        configureFiles(results, '--embed', getEmbed())
+        configureFiles(results, '--external', getExternal())
+
+        // batch class detection
+        configureClasses(results, '--include', getResolvedInclude())
+        configureClasses(results, '--exclude', getResolvedExclude())
+
+        // custom compiler plug-ins
+        configureClasses(results, '--dataModelProcessors', getResolvedCustomDataModelProcessors())
+        configureClasses(results, '--externalPortProcessors', getResolvedCustomExternalPortProcessors())
+        configureClasses(results, '--jobflowProcessors', getResolvedCustomJobflowProcessors())
+        configureClasses(results, '--batchProcessors', getResolvedCustomBatchProcessors())
+        configureClasses(results, '--participants', getResolvedCustomParticipants())
+
+        // other options
+        configureString(results, '--output', getOutputDirectory().getAbsolutePath())
+        configureString(results, '--runtimeWorkingDirectory', getRuntimeWorkingDirectory())
+        configureString(results, '--batchIdPrefix', getBatchIdPrefix())
+        configureBoolean(results, '--failOnError', getFailOnError())
+        getResolvedCompilerProperties().each { k, v ->
+            results << '--property' << "${k}=${v}"
+        }
+
+        return results
+    }
+
+    private void configureBoolean(List<String> arguments, String key, boolean value) {
         if (value == false) {
             return
         }
         logger.debug("Asakusa compiler option: ${key}")
-        spec.args(key)
+        arguments << key
     }
 
-    @PackageScope
-    void configureString(JavaExecSpec spec, String key, Object value) {
+    private void configureString(List<String> arguments, String key, Object value) {
         if (value == null) {
             return
         }
@@ -289,23 +306,21 @@ class AsakusaCompileTask extends DefaultTask {
             return
         }
         logger.debug("Asakusa compiler option: ${key}=${s}")
-        spec.args(key, s)
+        arguments << key << s
     }
 
-    @PackageScope
-    void configureFiles(JavaExecSpec spec, String key, Object files) {
+    private void configureFiles(List<String> arguments, String key, Object files) {
         FileCollection f = project.files(files)
         if (f.isEmpty()) {
             return
         }
-        configureString(spec, key, f.asPath)
+        configureString(arguments, key, f.asPath)
     }
 
-    @PackageScope
-    void configureClasses(JavaExecSpec spec, String key, List<String> classes) {
+    private void configureClasses(List<String> arguments, String key, List<String> classes) {
         if (classes.isEmpty()) {
             return
         }
-        configureString(spec, key, classes.join(','))
+        configureString(arguments, key, classes.join(','))
     }
 }

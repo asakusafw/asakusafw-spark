@@ -35,4 +35,9 @@ class AsakusaSparkBaseExtension {
      * The Spark artifact notation.
      */
     String sparkArtifact
+
+    /**
+     * Excluding modules for compiler.
+     */
+    List<String> excludeModules = []
 }

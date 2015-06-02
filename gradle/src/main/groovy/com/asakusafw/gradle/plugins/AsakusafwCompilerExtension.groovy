@@ -28,13 +28,15 @@ class AsakusafwCompilerExtension {
 
     /**
      * The accepting batch class name pattern ({@code "*"} as a wildcard character).
+     * This can be a list of class name patterns.
      */
-    String include
+    Object include
 
     /**
      * The ignoring batch class name pattern ({@code "*"} as a wildcard character).
+     * This can be a list of class name patterns.
      */
-    String exclude
+    Object exclude
 
     /**
      * The custom runtime working directory URI.

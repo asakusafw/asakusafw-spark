@@ -31,6 +31,37 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
 
     private static final String SPARK_ARTIFACT = 'org.apache.spark:spark-core_2.10:1.3.1'
 
+    private static final List<String> EXCLUDE_MODULES = [
+
+        'slf4j-jdk14',
+        'slf4j-jcl',
+        'slf4j-log4j12',
+
+        'junit',
+        'mockito-all',
+
+        'ashigel-compiler',
+        'asakusa-directio-plugin',
+        'asakusa-windgate-plugin',
+        'asakusa-thundergate-plugin',
+        'asakusa-yaess-plugin',
+        'asakusa-dsl-analysis-plugin',
+
+        'asakusa-dmdl-core',
+        'asakusa-dmdl-java',
+        'asakusa-directio-dmdl',
+        'asakusa-windgate-dmdl',
+        'asakusa-thundergate-dmdl',
+
+        'asakusa-test-driver',
+        'asakusa-test-data-generator',
+        'asakusa-test-data-provider',
+        'asakusa-test-moderator',
+        'asakusa-directio-test-moderator',
+        'asakusa-windgate-test-moderator',
+        'asakusa-thundergate-test-moderator',
+    ]
+
     private Project project
 
     private AsakusaSparkBaseExtension extension
@@ -56,6 +87,7 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
         extension.compilerProjectVersion = COMPILER_PROJECT_VERSION
         extension.sparkProjectVersion = SPARK_PROJECT_VERSION
         extension.sparkArtifact = SPARK_ARTIFACT
+        extension.excludeModules.addAll(EXCLUDE_MODULES)
     }
 
     /**
@@ -63,6 +95,6 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
      * @return the extension
      */
     AsakusaSparkBaseExtension getExtension() {
-        return extension;
+        return extension
     }
 }
