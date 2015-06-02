@@ -15,7 +15,7 @@
  */
 package com.asakusafw.gradle.tasks
 
-import groovy.transform.PackageScope;
+import groovy.transform.PackageScope
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.FileCollection

@@ -15,8 +15,6 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
-import static com.asakusafw.spark.gradle.plugins.AsakusafwSparkPlugin.*
-
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
@@ -24,14 +22,12 @@ import org.gradle.api.artifacts.Dependency
 import org.gradle.util.ConfigureUtil
 
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
-import com.asakusafw.gradle.plugins.internal.AsakusafwInternalPluginConvention.DependencyConfiguration
-import com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension
 
 /**
  * An abstract implementation of processing {@link AsakusafwOrganizerProfile}.
  * FIXME merge to main
  */
-abstract class AbstractAsakusaOrganizer {
+abstract class AbstractOrganizer {
 
     /**
      * The current project.
@@ -48,7 +44,7 @@ abstract class AbstractAsakusaOrganizer {
      * @param project the current project
      * @param profile the target profile
      */
-    AbstractAsakusaOrganizer(Project project, AsakusafwOrganizerProfile profile) {
+    AbstractOrganizer(Project project, AsakusafwOrganizerProfile profile) {
         this.project = project
         this.profile = profile
     }

@@ -15,13 +15,12 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
-import static com.asakusafw.gradle.plugins.AsakusafwOrganizerPlugin.*
-
 import org.gradle.api.NamedDomainObjectCollection
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
 
+import com.asakusafw.gradle.plugins.AsakusafwOrganizerPlugin
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerPluginConvention
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
 import com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension
@@ -40,8 +39,8 @@ class AsakusaSparkOrganizerPlugin implements Plugin<Project> {
         this.project = project
         this.organizers = project.container(AsakusaSparkOrganizer)
 
-        // may be no effects
         project.apply plugin: 'asakusafw-organizer'
+        project.apply plugin: AsakusaSparkBasePlugin
 
         configureDefaultConvention()
         configureProfiles()
@@ -92,7 +91,7 @@ class AsakusaSparkOrganizerPlugin implements Plugin<Project> {
         taskMap.each { String taskName, String desc ->
             project.task(taskName) { Task task ->
                 if (desc != null) {
-                    task.group ASAKUSAFW_ORGANIZER_GROUP
+                    task.group AsakusafwOrganizerPlugin.ASAKUSAFW_ORGANIZER_GROUP
                     task.description desc
                 }
                 organizers.all { AsakusaSparkOrganizer organizer ->

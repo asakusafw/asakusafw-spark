@@ -15,8 +15,6 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
-import static org.junit.Assert.*
-
 import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Rule
@@ -46,6 +44,15 @@ class AsakusaSparkOrganizerPluginTest {
     }
 
     Project project
+
+    /**
+     * test for base plug-ins.
+     */
+    @Test
+    void base() {
+        assert project.plugins.hasPlugin('asakusafw-organizer') != null
+        assert project.plugins.hasPlugin(AsakusaSparkBasePlugin) != null
+    }
 
     /**
      * test for extension.

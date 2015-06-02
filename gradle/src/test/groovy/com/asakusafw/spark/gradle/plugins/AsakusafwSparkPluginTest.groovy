@@ -15,8 +15,6 @@
  */
 package com.asakusafw.spark.gradle.plugins
 
-import static org.junit.Assert.*
-
 import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Rule

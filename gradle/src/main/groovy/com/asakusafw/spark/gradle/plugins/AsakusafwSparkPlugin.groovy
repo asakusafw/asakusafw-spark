@@ -26,21 +26,6 @@ import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkOrganizerPlugin
  */
 class AsakusafwSparkPlugin implements Plugin<Project> {
 
-    /**
-     * The Asakusa compiler project version.
-     */
-    static final String COMPILER_PROJECT_VERSION = '0.1-SNAPSHOT'
-
-    /**
-     * The Asakusa Spark project version.
-     */
-    static final String SPARK_PROJECT_VERSION = '0.1.0-SNAPSHOT'
-
-    /**
-     * The target Spark artifact.
-     */
-    static final String SPARK_ARTIFACT = 'org.apache.spark:spark-core_2.10:1.3.1'
-
     @Override
     void apply(Project project) {
         project.plugins.withId('asakusafw') {

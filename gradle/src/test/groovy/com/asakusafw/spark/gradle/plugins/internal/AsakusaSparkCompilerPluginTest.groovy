@@ -15,8 +15,6 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
-import static org.junit.Assert.*
-
 import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Rule
@@ -25,10 +23,10 @@ import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
+import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
 import com.asakusafw.gradle.plugins.AsakusafwPluginConvention
 import com.asakusafw.gradle.tasks.AsakusaCompileTask
 import com.asakusafw.gradle.tasks.internal.ResolutionUtils
-import com.asakusafw.spark.gradle.plugins.AsakusafwCompilerExtension
 
 /**
  * Test for {@link AsakusaSparkCompilerPlugin}.
@@ -48,6 +46,15 @@ class AsakusaSparkCompilerPluginTest {
     }
 
     Project project
+
+    /**
+     * test for base plug-ins.
+     */
+    @Test
+    void base() {
+        assert project.plugins.hasPlugin('asakusafw') != null
+        assert project.plugins.hasPlugin(AsakusaSparkBasePlugin) != null
+    }
 
     /**
      * test for extension.

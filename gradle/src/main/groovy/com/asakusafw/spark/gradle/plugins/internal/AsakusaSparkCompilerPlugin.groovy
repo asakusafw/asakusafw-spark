@@ -15,16 +15,14 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
-import static com.asakusafw.spark.gradle.plugins.AsakusafwSparkPlugin.*
-
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
+import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
 import com.asakusafw.gradle.plugins.AsakusafwPlugin
 import com.asakusafw.gradle.plugins.AsakusafwPluginConvention
 import com.asakusafw.gradle.tasks.AsakusaCompileTask
 import com.asakusafw.gradle.tasks.internal.ResolutionUtils
-import com.asakusafw.spark.gradle.plugins.AsakusafwCompilerExtension
 
 /**
  * A Gradle sub plug-in for Asakusa on Spark compiler.
@@ -39,12 +37,14 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
 
     private Project project
 
+    private AsakusaSparkBaseExtension base
+
     @Override
     void apply(Project project) {
         this.project = project
 
-        // may be no effects
         project.apply plugin: 'asakusafw'
+        project.apply plugin: AsakusaSparkBasePlugin
 
         configureConvention()
         configureConfigurations()
@@ -73,23 +73,25 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             }
         }
         project.afterEvaluate {
+            AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
+            AsakusafwPluginConvention asakusa = project.asakusafw
             project.dependencies {
-                asakusaSparkCompiler "com.asakusafw.spark:asakusa-spark-compiler-core:${SPARK_PROJECT_VERSION}"
-                asakusaSparkCompiler SPARK_ARTIFACT
+                asakusaSparkCompiler "com.asakusafw.spark:asakusa-spark-compiler-core:${base.sparkProjectVersion}"
+                asakusaSparkCompiler base.sparkArtifact
 
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-cli:${COMPILER_PROJECT_VERSION}"
-                asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${project.asakusafw.asakusafwVersion}"
-                asakusaSparkCompiler "com.asakusafw:simple-graph:${project.asakusafw.asakusafwVersion}"
+                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.compilerProjectVersion}"
+                asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${asakusa.asakusafwVersion}"
+                asakusaSparkCompiler "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
 
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${COMPILER_PROJECT_VERSION}"
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${COMPILER_PROJECT_VERSION}"
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${COMPILER_PROJECT_VERSION}"
+                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.compilerProjectVersion}"
+                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.compilerProjectVersion}"
+                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.compilerProjectVersion}"
 
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${COMPILER_PROJECT_VERSION}"
-                asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${project.asakusafw.asakusafwVersion}"
+                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.compilerProjectVersion}"
+                asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${asakusa.asakusafwVersion}"
 
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${COMPILER_PROJECT_VERSION}"
-                asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${project.asakusafw.asakusafwVersion}"
+                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.compilerProjectVersion}"
+                asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${asakusa.asakusafwVersion}"
             }
         }
     }

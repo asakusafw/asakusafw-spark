@@ -15,12 +15,7 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
-import static com.asakusafw.spark.gradle.plugins.AsakusafwSparkPlugin.*
-
 import org.gradle.api.Project
-import org.gradle.api.Task
-import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.Dependency
 
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
 import com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension
@@ -28,7 +23,7 @@ import com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension
 /**
  * Processes an {@link AsakusafwOrganizerProfile} for Spark environment.
  */
-class AsakusaSparkOrganizer extends AbstractAsakusaOrganizer {
+class AsakusaSparkOrganizer extends AbstractOrganizer {
 
     /**
      * Creates a new instance.
@@ -59,11 +54,12 @@ class AsakusaSparkOrganizer extends AbstractAsakusaOrganizer {
 
     private void configureDependencies() {
         project.afterEvaluate {
+            AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
             createDependencies('asakusafw', [
-                SparkDist : "com.asakusafw.spark:asakusa-spark-assembly:${SPARK_PROJECT_VERSION}:dist@jar",
+                SparkDist : "com.asakusafw.spark:asakusa-spark-assembly:${base.sparkProjectVersion}:dist@jar",
                 SparkLib : [
-                    "com.asakusafw.bridge:asakusa-bridge-runtime-all:${COMPILER_PROJECT_VERSION}:lib@jar",
-                    "com.asakusafw.spark:asakusa-spark-runtime:${SPARK_PROJECT_VERSION}@jar",
+                    "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.compilerProjectVersion}:lib@jar",
+                    "com.asakusafw.spark:asakusa-spark-runtime:${base.sparkProjectVersion}@jar",
                 ],
             ])
         }
