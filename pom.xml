@@ -54,6 +54,7 @@
 		<module>planner</module>
 		<module>runtime</module>
 		<module>tools</module>
+		<module>assembly</module>
 	</modules>
 
 	<build>
