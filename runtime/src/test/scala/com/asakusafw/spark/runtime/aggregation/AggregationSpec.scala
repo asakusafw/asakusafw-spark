@@ -51,12 +51,20 @@ object AggregationSpec {
 
     override lazy val isSpillEnabled = false
 
-    override def createCombiner(value: Int): Seq[Int] = {
-      Seq(value)
+    override def newCombiner(): Seq[Int] = {
+      Seq.empty
+    }
+
+    override def initCombinerByValue(combiner: Seq[Int], value: Int): Seq[Int] = {
+      mergeValue(combiner, value)
     }
 
     override def mergeValue(combiner: Seq[Int], value: Int): Seq[Int] = {
       combiner :+ value
+    }
+
+    override def initCombinerByCombiner(comb1: Seq[Int], comb2: Seq[Int]): Seq[Int] = {
+      mergeCombiners(comb1, comb2)
     }
 
     override def mergeCombiners(comb1: Seq[Int], comb2: Seq[Int]): Seq[Int] = {

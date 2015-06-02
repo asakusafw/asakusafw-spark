@@ -26,7 +26,9 @@ trait PartitionersField extends ClassBuilder {
 
   def subplanOutputs: Seq[SubPlan.Output]
 
-  def defPartitionersField(fieldDef: FieldDef): Unit = {
+  override def defFields(fieldDef: FieldDef): Unit = {
+    super.defFields(fieldDef)
+
     fieldDef.newField(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
       "partitioners",
@@ -39,12 +41,9 @@ trait PartitionersField extends ClassBuilder {
         .build())
   }
 
-  def getPartitionersField(mb: MethodBuilder): Stack = {
-    import mb._
-    thisVar.push().invokeV("partitioners", classOf[Map[_, _]].asType)
-  }
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-  def defPartitioners(methodDef: MethodDef): Unit = {
     methodDef.newMethod("partitioners", classOf[Map[_, _]].asType, Seq.empty,
       new MethodSignatureBuilder()
         .newReturnType {
@@ -60,6 +59,11 @@ trait PartitionersField extends ClassBuilder {
         }
         `return`(thisVar.push().getField("partitioners", classOf[Map[_, _]].asType))
       }
+  }
+
+  def getPartitionersField(mb: MethodBuilder): Stack = {
+    import mb._
+    thisVar.push().invokeV("partitioners", classOf[Map[_, _]].asType)
   }
 
   private def initPartitioners(mb: MethodBuilder): Stack = {

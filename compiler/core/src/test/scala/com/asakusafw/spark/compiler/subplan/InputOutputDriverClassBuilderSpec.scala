@@ -28,7 +28,7 @@ import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
+import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -141,6 +141,9 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val inputSubPlan = inputPlan.getElements.head
     inputSubPlan.putAttribute(classOf[SubPlanInfo],
       new SubPlanInfo(inputSubPlan, SubPlanInfo.DriverType.INPUT, Seq.empty[SubPlanInfo.DriverOption], inputOperator))
+    val inputSubplanOutput = inputSubPlan.getOutputs.find(_.getOperator.getOriginalSerialNumber == inputMarker.getOriginalSerialNumber).get
+    inputSubplanOutput.putAttribute(classOf[SubPlanOutputInfo],
+      new SubPlanOutputInfo(inputSubplanOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
     val inputBranchKeysClassBuilder = new BranchKeysClassBuilder("inputFlowId")
     val inputBroadcastIdsClassBuilder = new BroadcastIdsClassBuilder("inputFlowId")

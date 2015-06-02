@@ -5,12 +5,14 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.NullWritable
+import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.broadcast.Broadcast
@@ -20,6 +22,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.io.WritableSerializer
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -81,16 +84,16 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     val outputs = driver.execute()
     val hoge1Result = Await.result(
       outputs(Hoge1Result).map {
-        _.map(_._2.asInstanceOf[Hoge])
+        _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
       }, Duration.Inf).collect.toSeq
     assert(hoge1Result.size === 50)
-    assert(hoge1Result.map(_.id.get) === (0 until 100 by 2))
+    assert(hoge1Result === (0 until 100 by 2))
     val hoge2Result = Await.result(
       outputs(Hoge2Result).map {
-        _.map(_._2.asInstanceOf[Hoge])
+        _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
       }, Duration.Inf).collect.toSeq
     assert(hoge2Result.size === 50)
-    assert(hoge2Result.map(_.id.get) === (1 until 100 by 2))
+    assert(hoge2Result === (1 until 100 by 2))
   }
 
   it should "map with branch and ordering" in {
@@ -116,24 +119,24 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     val outputs = driver.execute()
     val foo1Result = Await.result(
       outputs(Foo1Result).map {
-        _.map(_._2.asInstanceOf[Foo])
+        _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.ord.get))
       }, Duration.Inf).collect.toSeq
     assert(foo1Result.size === 40)
-    assert(foo1Result.map(_.id.get) === (0 until 100).map(_ % 5).filter(_ % 3 == 0))
-    assert(foo1Result.map(_.ord.get) === (0 until 100).filter(i => (i % 5) % 3 == 0))
+    assert(foo1Result.map(_._1) === (0 until 100).map(_ % 5).filter(_ % 3 == 0))
+    assert(foo1Result.map(_._2) === (0 until 100).filter(i => (i % 5) % 3 == 0))
     val foo2Result = Await.result(
       outputs(Foo2Result).map {
-        _.map(_._2.asInstanceOf[Foo])
+        _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.ord.get))
       }, Duration.Inf).collect.toSeq
     assert(foo2Result.size === 60)
-    assert(foo2Result.map(foo => (foo.id.get, foo.ord.get)) ===
+    assert(foo2Result ===
       (0 until 100).filterNot(i => (i % 5) % 3 == 0).map(i => (i % 5, i)).sortBy(t => (t._1, -t._2)))
   }
 }
 
 object MapDriverSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  class Hoge extends DataModel[Hoge] with Writable {
 
     val id = new IntOption()
 
@@ -143,9 +146,15 @@ object MapDriverSpec {
     override def copyFrom(other: Hoge): Unit = {
       id.copyFrom(other.id)
     }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+    }
   }
 
-  class Foo extends DataModel[Foo] {
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
     val ord = new IntOption()
@@ -157,6 +166,14 @@ object MapDriverSpec {
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
       ord.copyFrom(other.ord)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      ord.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      ord.write(out)
     }
   }
 
@@ -188,13 +205,21 @@ object MapDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
+      override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
+
+      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
+        ???
+      }
+
+      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+        ???
+      }
+
       override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val output = new HogeOutputFragment
         val fragment = new SimpleFragment(output)
         (fragment, Map(HogeResult -> output))
       }
-
-      override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
     }
 
     class SimpleFragment(output: Fragment[Hoge]) extends Fragment[Hoge] {
@@ -230,6 +255,35 @@ object MapDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
+      override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
+
+      @transient var ws: WritableSerializer = _
+
+      def serde = {
+        if (ws == null) {
+          ws = new WritableSerializer()
+        }
+        ws
+      }
+
+      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
+        serde.serialize(value.asInstanceOf[Writable])
+      }
+
+      @transient var h: Hoge = _
+
+      def hoge = {
+        if (h == null) {
+          h = new Hoge()
+        }
+        h
+      }
+
+      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+        serde.deserialize(value, hoge)
+        hoge
+      }
+
       override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
         val hoge1Output = new HogeOutputFragment
         val hoge2Output = new HogeOutputFragment
@@ -239,8 +293,6 @@ object MapDriverSpec {
             Hoge1Result -> hoge1Output,
             Hoge2Result -> hoge2Output))
       }
-
-      override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
     }
 
     class BranchFragment(hoge1Output: Fragment[Hoge], hoge2Output: Fragment[Hoge]) extends Fragment[Hoge] {
@@ -283,16 +335,6 @@ object MapDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
-        val foo1Output = new FooOutputFragment
-        val foo2Output = new FooOutputFragment
-        val fragment = new BranchFragment(foo1Output, foo2Output)
-        (fragment,
-          Map(
-            Foo1Result -> foo1Output,
-            Foo2Result -> foo2Output))
-      }
-
       @transient var sk: ShuffleKey = _
 
       def shuffleKey = {
@@ -307,6 +349,43 @@ object MapDriverSpec {
         shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(foo.id)
         shuffleKey.ordering(0).asInstanceOf[IntOption].copyFrom(foo.ord)
         shuffleKey
+      }
+
+      @transient var ws: WritableSerializer = _
+
+      def serde = {
+        if (ws == null) {
+          ws = new WritableSerializer()
+        }
+        ws
+      }
+
+      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
+        serde.serialize(value.asInstanceOf[Writable])
+      }
+
+      @transient var f: Foo = _
+
+      def foo = {
+        if (f == null) {
+          f = new Foo()
+        }
+        f
+      }
+
+      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+        serde.deserialize(value, foo)
+        foo
+      }
+
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val foo1Output = new FooOutputFragment
+        val foo2Output = new FooOutputFragment
+        val fragment = new BranchFragment(foo1Output, foo2Output)
+        (fragment,
+          Map(
+            Foo1Result -> foo1Output,
+            Foo2Result -> foo2Output))
       }
     }
 

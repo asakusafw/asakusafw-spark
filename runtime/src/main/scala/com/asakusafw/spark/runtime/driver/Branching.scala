@@ -12,6 +12,7 @@ import org.apache.spark.rdd.RDD
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.io._
 import com.asakusafw.spark.runtime.rdd._
 
 trait Branching[T] {
@@ -27,6 +28,10 @@ trait Branching[T] {
 
   def shuffleKey(branch: BranchKey, value: Any): ShuffleKey
 
+  def serialize(branch: BranchKey, value: Any): Array[Byte]
+
+  def deserialize(branch: BranchKey, value: Array[Byte]): Any
+
   def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
   def branch(rdd: RDD[(_, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
@@ -41,7 +46,7 @@ trait Branching[T] {
           }
         }, preservesPartitioning = true))
     } else {
-      rdd.branch[ShuffleKey, Any](
+      rdd.branch[ShuffleKey, Array[Byte]](
         branchKeys,
         { iter =>
           val combiners = aggregations.collect {
@@ -49,25 +54,34 @@ trait Branching[T] {
           }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]
 
           if (combiners.isEmpty) {
-            f(iter, broadcasts)
+            f(iter, broadcasts).map {
+              case (bk @ Branch(b, _), value) => (bk, serialize(b, value))
+            }
           } else {
             f(iter, broadcasts).flatMap {
               case (Branch(b, k), v) if combiners.contains(b) =>
                 combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]]
                   .insert(k, v)
                 Iterator.empty
-              case otherwise => Iterator(otherwise)
+              case (bk @ Branch(b, _), v) => Iterator((bk, serialize(b, v)))
             } ++ combiners.iterator.flatMap {
               case (b, combiner) =>
                 combiner.iterator.map {
-                  case (k, v) => (Branch(b, k), v)
+                  case (k, v) => (Branch(b, k), serialize(b, v))
                 }
             }
           }
         },
         partitioners = partitioners,
         keyOrderings = orderings,
-        preservesPartitioning = true)
+        preservesPartitioning = true).map {
+          case (b, rdd) =>
+            b -> rdd.mapPartitions({ iter =>
+              iter.map {
+                case (k, v) => (k, deserialize(b, v))
+              }
+            }, preservesPartitioning = true)
+        }
     }
   }
 

@@ -73,14 +73,22 @@ object ResourceBrokingIteratorSpec {
 
     override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
+    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
+
+    override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
+      ???
+    }
+
+    override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      ???
+    }
+
     override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         Result -> new HogeOutputFragment)
       val fragment = new TestFragment(outputs(Result))
       (fragment, outputs)
     }
-
-    override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
   }
 
   class Hoge extends DataModel[Hoge] {

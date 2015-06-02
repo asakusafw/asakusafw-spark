@@ -45,28 +45,21 @@ package object rdd {
         case Some(ord) =>
           zipPartitions(rdds.map(_.shuffle(part, ordering)), preservesPartitioning = true) { iters =>
             val buffs = iters.filter(_.hasNext).map(_.asInstanceOf[Iterator[(K, V)]].buffered)
-
-            type Iter = BufferedIterator[(K, V)]
-            val heap = new mutable.PriorityQueue[Iter]()(
-              new Ordering[Iter] {
-                override def compare(x: Iter, y: Iter): Int = -ord.compare(x.head._1, y.head._1)
-              })
-            heap.enqueue(buffs: _*)
-
-            new Iterator[(K, V)] {
-
-              override def hasNext: Boolean = !heap.isEmpty
-
-              override def next(): (K, V) = {
-                if (!hasNext) {
-                  throw new NoSuchElementException
-                }
-                val firstBuf = heap.dequeue()
-                val firstPair = firstBuf.next()
-                if (firstBuf.hasNext) {
-                  heap.enqueue(firstBuf)
-                }
-                firstPair
+            Iterator.continually {
+              ((None: Option[K]) /: buffs) {
+                case (opt, iter) if iter.hasNext =>
+                  opt.map { key =>
+                    ord.min(key, iter.head._1)
+                  }.orElse(Some(iter.head._1))
+                case (opt, _) => opt
+              }
+            }.takeWhile(_.isDefined).map(_.get).flatMap { key =>
+              buffs.iterator.flatMap { iter =>
+                Iterator.continually {
+                  if (iter.hasNext && ord.equiv(iter.head._1, key)) {
+                    Some(iter.next)
+                  } else None
+                }.takeWhile(_.isDefined).map(_.get)
               }
             }
           }

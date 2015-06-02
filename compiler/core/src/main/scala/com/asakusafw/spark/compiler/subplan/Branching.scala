@@ -7,28 +7,10 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.tools.asm._
 
 trait Branching
-    extends ClassBuilder
-    with BranchKeysField
-    with PartitionersField
-    with OrderingsField
-    with AggregationsField
-    with PreparingKey {
-
-  override def subplanOutputs: Seq[SubPlan.Output]
-
-  override def defFields(fieldDef: FieldDef): Unit = {
-    defBranchKeysField(fieldDef)
-    defPartitionersField(fieldDef)
-    defOrderingsField(fieldDef)
-    defAggregationsField(fieldDef)
-    defShuffleKeyFields(fieldDef)
-  }
-
-  override def defMethods(methodDef: MethodDef): Unit = {
-    defBranchKeys(methodDef)
-    defPartitioners(methodDef)
-    defOrderings(methodDef)
-    defAggregations(methodDef)
-    defShuffleKey(methodDef)
-  }
-}
+  extends ClassBuilder
+  with BranchKeysField
+  with PartitionersField
+  with OrderingsField
+  with AggregationsField
+  with PreparingKey
+  with Serializing

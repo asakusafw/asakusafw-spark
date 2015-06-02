@@ -4,6 +4,7 @@ package operator
 import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
@@ -20,6 +21,16 @@ class OutputFragmentClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/OutputFragment$$${OutputFragmentClassBuilder.nextId};"),
       Some(OutputFragmentClassBuilder.signature(dataModelType)),
       classOf[OutputFragment[_]].asType) {
+
+  override def defConstructors(ctorDef: ConstructorDef): Unit = {
+    ctorDef.newInit(Seq.empty) { mb =>
+      import mb._
+      thisVar.push().invokeInit(superType,
+        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+          .invokeV("apply", classOf[ClassTag[_]].asType,
+            ldc(dataModelType).asType(classOf[Class[_]].asType)))
+    }
+  }
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
