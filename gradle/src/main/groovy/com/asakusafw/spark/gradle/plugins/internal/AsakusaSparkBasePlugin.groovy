@@ -47,12 +47,6 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
         'asakusa-yaess-plugin',
         'asakusa-dsl-analysis-plugin',
 
-        'asakusa-dmdl-core',
-        'asakusa-dmdl-java',
-        'asakusa-directio-dmdl',
-        'asakusa-windgate-dmdl',
-        'asakusa-thundergate-dmdl',
-
         'asakusa-test-driver',
         'asakusa-test-data-generator',
         'asakusa-test-data-provider',

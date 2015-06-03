@@ -72,6 +72,9 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 description 'Asakusa DSL Compiler for Spark environment'
                 extendsFrom project.configurations.compile
             }
+            asakusaSparkCompilerLauncher {
+                description 'Asakusa DSL Compiler Launcher for Spark environment'
+            }
         }
         project.afterEvaluate {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
@@ -92,6 +95,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
 
                 asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${asakusa.asakusafwVersion}"
+                asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${asakusa.asakusafwVersion}"
                 asakusaSparkCompiler "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
                 asakusaSparkCompiler "com.asakusafw:java-dom:${asakusa.asakusafwVersion}"
 
@@ -106,6 +110,8 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
 
                 asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${asakusa.asakusafwVersion}"
+
+                asakusaSparkCompilerLauncher "com.asakusafw.lang.tool:asakusa-tool-launcher:${base.compilerProjectVersion}"
             }
         }
     }
@@ -118,6 +124,8 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             task.description 'Compiles Asakusa DSL source files for Spark environment'
             task.dependsOn 'classes'
             project.tasks.assemble.dependsOn task
+
+            task.launcherClasspath << { project.configurations.asakusaSparkCompilerLauncher }
 
             task.toolClasspath << { project.configurations.asakusaSparkCompiler }
             task.toolClasspath << { project.sourceSets.main.compileClasspath - project.configurations.compile }

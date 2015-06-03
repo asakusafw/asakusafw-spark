@@ -40,6 +40,16 @@ class AsakusaCompileTask extends DefaultTask {
     String maxHeapSize
 
     /**
+     * The tool launcher class libraries (can empty).
+     */
+    List<Object> launcherClasspath = []
+
+    @InputFiles
+    FileCollection getLauncherClasspathFiles() {
+        return collectFiles(getLauncherClasspath())
+    }
+
+    /**
      * The compiler class libraries.
      */
     List<Object> toolClasspath = []
@@ -232,11 +242,23 @@ class AsakusaCompileTask extends DefaultTask {
      */
     @TaskAction
     void perform() {
-        project.delete(getOutputDirectory())
-        project.mkdir(getOutputDirectory())
+        String javaMain = 'com.asakusafw.lang.compiler.cli.BatchCompilerCli'
+        FileCollection javaClasspath = project.files(getToolClasspath())
+        List<String> javaArguments = createArguments()
+        FileCollection launcher = project.files(getLauncherClasspath())
+        if (!launcher.empty) {
+            logger.info "Starting Asakusa DSL compiler using launcher"
+            File script = createLaunchFile(javaClasspath, javaMain, javaArguments)
+            javaMain = 'com.asakusafw.lang.tool.launcher.Launcher'
+            javaClasspath = launcher
+            javaArguments = [script.absolutePath]
+        }
+
+        project.delete getOutputDirectory()
+        project.mkdir getOutputDirectory()
         project.javaexec { JavaExecSpec spec ->
-            spec.main = 'com.asakusafw.lang.compiler.cli.BatchCompilerCli'
-            spec.classpath = project.files(getToolClasspath())
+            spec.main = javaMain
+            spec.classpath = javaClasspath
             spec.jvmArgs = getResolvedJvmArgs()
             if (getMaxHeapSize() != null) {
                 spec.maxHeapSize = getMaxHeapSize()
@@ -244,8 +266,30 @@ class AsakusaCompileTask extends DefaultTask {
             spec.systemProperties getResolvedSystemProperties()
             spec.systemProperties getExtraSystemProperties()
             spec.enableAssertions = true
-            spec.args = createArguments()
+            spec.args = javaArguments
         }
+    }
+
+    private File createLaunchFile(FileCollection classpath, String mainClass, List<String> arguments) {
+        Properties properties = new Properties()
+        properties.setProperty 'main', mainClass
+        classpath.eachWithIndex { File f, int index ->
+            properties.setProperty "classpath.${index}", f.absolutePath
+        }
+        arguments.eachWithIndex { String s, int index ->
+            properties.setProperty "argument.${index}", s
+        }
+
+        File temporary = getTemporaryDir()
+        if (temporary.exists() == false) {
+            project.mkdir temporary
+        }
+
+        File result = new File(temporary, 'launch.properties')
+        result.withOutputStream { OutputStream out ->
+            properties.store out, null
+        }
+        return result
     }
 
     @PackageScope
@@ -256,8 +300,7 @@ class AsakusaCompileTask extends DefaultTask {
         ]
     }
 
-    @PackageScope
-    List<String> createArguments() {
+    private List<String> createArguments() {
         List<String> results = []
 
         // project repository
