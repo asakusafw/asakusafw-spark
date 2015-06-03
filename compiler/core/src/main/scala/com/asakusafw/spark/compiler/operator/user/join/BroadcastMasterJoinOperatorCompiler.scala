@@ -53,8 +53,6 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
       val broadcastIds: BroadcastIds = context.broadcastIds
 
-      val shuffleKeyTypes: mutable.Set[Type] = context.shuffleKeyTypes
-
       lazy val masterInput: OperatorInput = inputs(MasterJoinOp.ID_INPUT_MASTER)
       lazy val txInput: OperatorInput = inputs(MasterJoinOp.ID_INPUT_TRANSACTION)
 

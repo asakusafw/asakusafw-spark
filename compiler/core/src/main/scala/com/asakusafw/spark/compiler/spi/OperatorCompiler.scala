@@ -38,8 +38,7 @@ object OperatorCompiler {
     flowId: String,
     jpContext: JPContext,
     branchKeys: BranchKeys,
-    broadcastIds: BroadcastIds,
-    shuffleKeyTypes: mutable.Set[Type])
+    broadcastIds: BroadcastIds)
 
   private def getCompiler(operator: Operator)(implicit context: Context): Seq[OperatorCompiler] = {
     apply(context.jpContext.getClassLoader).filter(_.support(operator))

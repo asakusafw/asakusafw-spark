@@ -34,6 +34,7 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.orderings._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -156,8 +157,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
           classServer.root.toFile),
         externalInputs = mutable.Map.empty,
         branchKeys = branchKeysClassBuilder,
-        broadcastIds = broadcastIdsClassBuilder,
-        shuffleKeyTypes = mutable.Set.empty)
+        broadcastIds = broadcastIdsClassBuilder)
 
       val compiler = resolvers.find(_.support(operator)).get
       val thisType = compiler.compile(subplan)
@@ -165,27 +165,29 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       context.jpContext.addClass(broadcastIdsClassBuilder)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
-      val hogeOrd = new ShuffleKey.SortOrdering(1, Array(true))
+      val hogeOrd = new HogeSortOrdering()
       val hogeList = sc.parallelize(0 until 10).map { i =>
         val hoge = new Hoge()
         hoge.id.modify(i)
-        (new ShuffleKey(Seq(hoge.id), Seq(new BooleanOption().modify(hoge.id.get % 3 == 0))) {}, hoge)
+        val serde = new WritableSerDe()
+        (new ShuffleKey(serde.serialize(hoge.id), serde.serialize(new BooleanOption().modify(hoge.id.get % 3 == 0))), hoge)
       }
-      val fooOrd = new ShuffleKey.SortOrdering(1, Array(true))
+      val fooOrd = new FooSortOrdering()
       val fooList = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
         val foo = new Foo()
         foo.id.modify(10 + j)
         foo.hogeId.modify(i)
-        (new ShuffleKey(Seq(foo.hogeId), Seq(new IntOption().modify(foo.id.toString.hashCode))) {}, foo)
+        val serde = new WritableSerDe()
+        (new ShuffleKey(serde.serialize(foo.hogeId), serde.serialize(new IntOption().modify(foo.id.toString.hashCode))), foo)
       })
-      val grouping = new ShuffleKey.GroupingOrdering(1)
+      val grouping = new GroupingOrdering()
       val part = new HashPartitioner(2)
       val driver = cls.getConstructor(
         classOf[SparkContext],
         classOf[Broadcast[Configuration]],
         classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])]],
-        classOf[ShuffleKey.GroupingOrdering],
+        classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]],
+        classOf[Ordering[ShuffleKey]],
         classOf[Partitioner])
         .newInstance(
           sc,
@@ -351,6 +353,37 @@ object CoGroupDriverClassBuilderSpec {
     }
 
     def getNOption: IntOption = n
+  }
+
+  class GroupingOrdering extends Ordering[ShuffleKey] {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      IntOption.compareBytes(x.grouping, 0, x.grouping.length, y.grouping, 0, y.grouping.length)
+    }
+  }
+
+  class HogeSortOrdering extends GroupingOrdering {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      val cmp = super.compare(x, y)
+      if (cmp == 0) {
+        BooleanOption.compareBytes(x.ordering, 0, x.ordering.length, y.ordering, 0, y.ordering.length)
+      } else {
+        cmp
+      }
+    }
+  }
+
+  class FooSortOrdering extends GroupingOrdering {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      val cmp = super.compare(x, y)
+      if (cmp == 0) {
+        IntOption.compareBytes(x.ordering, 0, x.ordering.length, y.ordering, 0, y.ordering.length)
+      } else {
+        cmp
+      }
+    }
   }
 
   class CoGroupOperator {

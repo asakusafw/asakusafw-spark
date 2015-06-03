@@ -9,11 +9,13 @@ import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -28,76 +30,6 @@ trait PreparingKey extends ClassBuilder {
 
   def subplanOutputs: Seq[SubPlan.Output]
 
-  lazy val shuffleKeyTypes: Map[Long, (Type, Boolean)] = {
-    val builder = Map.newBuilder[Long, (Type, Boolean)]
-    for {
-      output <- subplanOutputs
-      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-    } {
-      val op = output.getOperator
-      val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
-      val dataModelType = dataModelRef.getDeclaration.asType
-
-      outputInfo.getOutputType match {
-        case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
-          for {
-            partitionInfo <- Option(outputInfo.getPartitionInfo)
-          } {
-            val shuffleKeyType = ShuffleKeyClassBuilder.getOrCompile(jpContext)(
-              flowId,
-              dataModelType,
-              partitionInfo.getGrouping.map { grouping =>
-                val property = dataModelRef.findProperty(grouping)
-                (property.getDeclaration.getName, property.getType.asType)
-              },
-              partitionInfo.getOrdering.map { ordering =>
-                val property = dataModelRef.findProperty(ordering.getPropertyName)
-                (property.getDeclaration.getName, property.getType.asType)
-              })
-
-            val aggregation = outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED
-            builder += op.getOriginalSerialNumber -> (shuffleKeyType, aggregation)
-          }
-        case SubPlanOutputInfo.OutputType.BROADCAST =>
-          for {
-            broadcastInfo <- Option(output.getAttribute(classOf[BroadcastInfo]))
-            partitionInfo = broadcastInfo.getFormatInfo
-          } {
-            val shuffleKeyType = ShuffleKeyClassBuilder.getOrCompile(jpContext)(
-              flowId,
-              dataModelType,
-              partitionInfo.getGrouping.map { grouping =>
-                val property = dataModelRef.findProperty(grouping)
-                (property.getDeclaration.getName, property.getType.asType)
-              },
-              partitionInfo.getOrdering.map { ordering =>
-                val property = dataModelRef.findProperty(ordering.getPropertyName)
-                (property.getDeclaration.getName, property.getType.asType)
-              })
-
-            builder += op.getOriginalSerialNumber -> (shuffleKeyType, false)
-          }
-        case _ =>
-      }
-    }
-    builder.result
-  }
-
-  override def defFields(fieldDef: FieldDef): Unit = {
-    super.defFields(fieldDef)
-
-    fieldDef.newField(
-      Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
-      "shuffleKeys",
-      classOf[mutable.Map[_, _]].asType,
-      new TypeSignatureBuilder()
-        .newClassType(classOf[mutable.Map[_, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-        }
-        .build())
-  }
-
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
@@ -106,77 +38,91 @@ trait PreparingKey extends ClassBuilder {
         import mb._
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
-        `return`(thisVar.push()
-          .invokeV("shuffleKey", classOf[ShuffleKey].asType,
-            branchVar.push(),
-            valueVar.push().cast(classOf[DataModel[_]].asType)))
-      }
-
-    methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
-      Seq(classOf[BranchKey].asType, classOf[DataModel[_]].asType)) { mb =>
-        import mb._
-        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
-        val valueVar = `var`(classOf[DataModel[_]].asType, branchVar.nextLocal)
-
-        thisVar.push().getField("shuffleKeys", classOf[mutable.Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("shuffleKeys", classOf[mutable.Map[_, _]].asType,
-            getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
-              .invokeV("empty", classOf[mutable.Map[_, _]].asType))
-        }
 
         for {
-          output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
-          if shuffleKeyTypes.contains(output.getOperator.getOriginalSerialNumber)
+          (output, i) <- subplanOutputs.sortBy(_.getOperator.getSerialNumber).zipWithIndex
+          outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+          partitionInfo <- outputInfo.getOutputType match {
+            case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
+              Option(outputInfo.getPartitionInfo)
+            case SubPlanOutputInfo.OutputType.BROADCAST =>
+              Option(output.getAttribute(classOf[BroadcastInfo])).map(_.getFormatInfo)
+            case _ => None
+          }
         } {
-          val marker = output.getOperator
-          val (shuffleKeyType, aggregation) = shuffleKeyTypes(marker.getOriginalSerialNumber)
-
-          val dataModelRef = jpContext.getDataModelLoader.load(marker.getInput.getDataType)
-          val dataModelType = dataModelRef.getDeclaration.asType
-
-          branchVar.push().unlessNotEqual(branchKeys.getField(mb, marker)) {
-
-            val shuffleKey = pushNew(shuffleKeyType)
-            shuffleKey.dup().invokeInit(valueVar.push().cast(dataModelType))
-            `return`(shuffleKey)
-
-            /*
-            if (aggregation) {
-              val shuffleKey = pushNew(shuffleKeyType)
-              shuffleKey.dup().invokeInit(valueVar.push().cast(dataModelType))
-              `return`(shuffleKey)
-            } else {
-              val shuffleKeyVar = thisVar.push().getField("shuffleKeys", classOf[mutable.Map[_, _]].asType)
-                .invokeI(
-                  "get",
-                  classOf[Option[_]].asType,
-                  branchKeys.getField(mb, marker)
-                    .asType(classOf[AnyRef].asType))
-                .invokeV("orNull", classOf[AnyRef].asType,
-                  getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
-                    .invokeV("conforms", classOf[<:<[_, _]].asType))
-                .cast(shuffleKeyType)
-                .store(valueVar.nextLocal)
-              shuffleKeyVar.push().unlessNotNull {
-                pushNew0(shuffleKeyType).store(shuffleKeyVar.local)
-                thisVar.push().getField("shuffleKeys", classOf[mutable.Map[_, _]].asType)
-                  .invokeI(
-                    NameTransformer.encode("+="),
-                    classOf[mutable.MapLike[_, _, _]].asType,
-                    getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
-                      .invokeV("apply", classOf[(_, _)].asType,
-                        branchKeys.getField(mb, marker)
-                          .asType(classOf[AnyRef].asType),
-                        shuffleKeyVar.push().asType(classOf[AnyRef].asType)))
-                  .pop()
-              }
-              shuffleKeyVar.push().invokeV("copyFrom", valueVar.push().cast(dataModelType))
-              `return`(shuffleKeyVar.push())
-            }
-            */
+          val op = output.getOperator
+          branchVar.push().unlessNotEqual(branchKeys.getField(mb, op)) {
+            val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
+            val dataModelType = dataModelRef.getDeclaration.asType
+            `return`(
+              thisVar.push().invokeV(s"shuffleKey${i}", classOf[ShuffleKey].asType,
+                valueVar.push().cast(dataModelType)))
           }
         }
         `return`(pushNull(classOf[ShuffleKey].asType))
       }
+
+    for {
+      (output, i) <- subplanOutputs.sortBy(_.getOperator.getSerialNumber).zipWithIndex
+      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+      partitionInfo <- outputInfo.getOutputType match {
+        case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
+          Option(outputInfo.getPartitionInfo)
+        case SubPlanOutputInfo.OutputType.BROADCAST =>
+          Option(output.getAttribute(classOf[BroadcastInfo])).map(_.getFormatInfo)
+        case _ => None
+      }
+    } {
+      val op = output.getOperator
+      val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
+      val dataModelType = dataModelRef.getDeclaration.asType
+
+      methodDef.newMethod(s"shuffleKey${i}", classOf[ShuffleKey].asType, Seq(dataModelType)) { mb =>
+        import mb._
+        val valueVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
+
+        val dataModelVar = valueVar.push().cast(dataModelType).store(valueVar.nextLocal)
+
+        def buildSeq(propertyNames: Seq[PropertyName]): Stack = {
+          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+          propertyNames.foreach { propertyName =>
+            val property = dataModelRef.findProperty(propertyName)
+
+            builder.invokeI(
+              NameTransformer.encode("+="),
+              classOf[mutable.Builder[_, _]].asType,
+              dataModelVar.push().invokeV(
+                property.getDeclaration.getName, property.getType.asType)
+                .asType(classOf[AnyRef].asType))
+          }
+
+          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+        }
+
+        val shuffleKey = pushNew(classOf[ShuffleKey].asType)
+        shuffleKey.dup().invokeInit(
+          if (partitionInfo.getGrouping.isEmpty) {
+            getStatic(Array.getClass.asType, "MODULE$", Array.getClass.asType)
+              .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+          } else {
+            getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
+              .invokeV("serialize", classOf[Array[Byte]].asType, {
+                buildSeq(partitionInfo.getGrouping)
+              })
+          },
+          if (partitionInfo.getOrdering.isEmpty) {
+            getStatic(Array.getClass.asType, "MODULE$", Array.getClass.asType)
+              .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+          } else {
+            getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
+              .invokeV("serialize", classOf[Array[Byte]].asType, {
+                buildSeq(partitionInfo.getOrdering.map(_.getPropertyName))
+              })
+          })
+        `return`(shuffleKey)
+      }
+    }
   }
 }

@@ -32,6 +32,7 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver._
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.orderings._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
@@ -85,8 +86,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         classServer.root.toFile),
       externalInputs = mutable.Map.empty,
       branchKeys = branchKeysClassBuilder,
-      broadcastIds = broadcastIdsClassBuilder,
-      shuffleKeyTypes = mutable.Set.empty)
+      broadcastIds = broadcastIdsClassBuilder)
 
     val compiler = resolvers.find(_.support(operator)).get
     val thisType = compiler.compile(subplan)
@@ -98,21 +98,22 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       val hoge = new Hoge()
       hoge.i.modify(i % 2)
       hoge.sum.modify(i)
-      (new ShuffleKey(Seq(hoge.i), Seq.empty) {}, hoge)
+      val serde = new WritableSerDe()
+      (new ShuffleKey(serde.serialize(hoge.i), Array.empty), hoge)
     }
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
       classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Seq[Future[RDD[(ShuffleKey, _)]]]],
-      classOf[Option[ShuffleKey.SortOrdering]],
+      classOf[Option[Ordering[ShuffleKey]]],
       classOf[Partitioner])
       .newInstance(
         sc,
         hadoopConf,
         Map.empty,
         Seq(Future.successful(hoges)),
-        Option(new ShuffleKey.SortOrdering(1, Array.empty[Boolean])),
+        Option(new SortOrdering()),
         new HashPartitioner(2))
     val results = driver.execute()
 
@@ -127,14 +128,17 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
     val result = Await.result(
-      results(getBranchKey(resultMarker.getOriginalSerialNumber)).map(_.asInstanceOf[RDD[(ShuffleKey, Hoge)]]),
+      results(getBranchKey(resultMarker.getOriginalSerialNumber))
+        .map {
+          _.map(_.asInstanceOf[(_, Hoge)]._2).map(hoge => (hoge.i.get, hoge.sum.get))
+        },
       Duration.Inf)
-      .collect.toSeq.sortBy(_._1.grouping(0).asInstanceOf[IntOption].get)
+      .collect.toSeq.sortBy(_._1)
     assert(result.size === 2)
-    assert(result(0)._1.grouping(0).asInstanceOf[IntOption].get === 0)
-    assert(result(0)._2.getSumOption.get === (0 until 10 by 2).sum + 4 * 10)
-    assert(result(1)._1.grouping(0).asInstanceOf[IntOption].get === 1)
-    assert(result(1)._2.getSumOption.get === (1 until 10 by 2).sum + 4 * 10)
+    assert(result(0)._1 === 0)
+    assert(result(0)._2 === (0 until 10 by 2).sum + 4 * 10)
+    assert(result(1)._1 === 1)
+    assert(result(1)._2 === (1 until 10 by 2).sum + 4 * 10)
   }
 }
 
@@ -164,6 +168,13 @@ object AggregateDriverClassBuilderSpec {
 
     def getIOption: IntOption = i
     def getSumOption: IntOption = sum
+  }
+
+  class SortOrdering extends Ordering[ShuffleKey] {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      IntOption.compareBytes(x.grouping, 0, x.grouping.length, y.grouping, 0, y.grouping.length)
+    }
   }
 
   class FoldOperator {

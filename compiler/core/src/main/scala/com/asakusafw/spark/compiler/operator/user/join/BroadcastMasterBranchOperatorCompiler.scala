@@ -68,8 +68,6 @@ class BroadcastMasterBranchOperatorCompiler extends UserOperatorCompiler {
 
       val broadcastIds: BroadcastIds = context.broadcastIds
 
-      val shuffleKeyTypes: mutable.Set[Type] = context.shuffleKeyTypes
-
       lazy val masterInput: OperatorInput = inputs(MasterBranchOp.ID_INPUT_MASTER)
       lazy val txInput: OperatorInput = inputs(MasterBranchOp.ID_INPUT_TRANSACTION)
 

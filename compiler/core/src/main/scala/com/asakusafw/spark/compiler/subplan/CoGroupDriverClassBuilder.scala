@@ -32,8 +32,8 @@ abstract class CoGroupDriverClassBuilder(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
       classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType,
-      classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])]].asType,
-      classOf[ShuffleKey.GroupingOrdering].asType,
+      classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]].asType,
+      classOf[Ordering[ShuffleKey]].asType,
       classOf[Partitioner].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
@@ -80,14 +80,22 @@ abstract class CoGroupDriverClassBuilder(
                 }
                   .newTypeArgument(SignatureVisitor.INSTANCEOF) {
                     _.newClassType(classOf[Option[_]].asType) {
-                      _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey.SortOrdering].asType)
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                        _.newClassType(classOf[Ordering[_]].asType) {
+                          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                        }
+                      }
                     }
                   }
               }
             }
           }
         }
-        .newParameterType(classOf[ShuffleKey.GroupingOrdering].asType)
+        .newParameterType {
+          _.newClassType(classOf[Ordering[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+          }
+        }
         .newParameterType(classOf[Partitioner].asType)
         .newVoidReturnType()
         .build()) { mb =>
@@ -95,8 +103,8 @@ abstract class CoGroupDriverClassBuilder(
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
-        val inputsVar = `var`(classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[ShuffleKey.SortOrdering])]].asType, broadcastsVar.nextLocal)
-        val groupingVar = `var`(classOf[ShuffleKey.GroupingOrdering].asType, inputsVar.nextLocal)
+        val inputsVar = `var`(classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]].asType, broadcastsVar.nextLocal)
+        val groupingVar = `var`(classOf[Ordering[ShuffleKey]].asType, inputsVar.nextLocal)
         val partVar = `var`(classOf[Partitioner].asType, groupingVar.nextLocal)
 
         thisVar.push().invokeInit(

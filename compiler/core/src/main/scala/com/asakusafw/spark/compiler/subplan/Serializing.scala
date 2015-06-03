@@ -10,7 +10,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.OperatorInfo
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.runtime.rdd.BranchKey
-import com.asakusafw.spark.runtime.io.WritableSerializer
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.tools.asm._
 
 trait Serializing extends ClassBuilder {
@@ -23,11 +23,6 @@ trait Serializing extends ClassBuilder {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
-
-    fieldDef.newField(
-      Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
-      "serde",
-      classOf[WritableSerializer].asType)
 
     for {
       (output, i) <- subplanOutputs.zipWithIndex
@@ -62,8 +57,7 @@ trait Serializing extends ClassBuilder {
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[Writable].asType, branchVar.nextLocal)
         `return`(
-          thisVar.push()
-            .invokeV("serde", classOf[WritableSerializer].asType)
+          getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
             .invokeV("serialize", classOf[Array[Byte]].asType, valueVar.push()))
       }
 
@@ -76,7 +70,7 @@ trait Serializing extends ClassBuilder {
           thisVar.push()
             .invokeV("deserialize", classOf[Writable].asType,
               branchVar.push(),
-              valueVar.push().cast(classOf[Array[Byte]].asType)))
+              valueVar.push()))
       }
 
     methodDef.newMethod("deserialize", classOf[Writable].asType,
@@ -87,22 +81,13 @@ trait Serializing extends ClassBuilder {
         val valueVar =
           thisVar.push().invokeV("value", classOf[Writable].asType, branchVar.push())
             .store(sliceVar.nextLocal)
-        thisVar.push().invokeV("serde", classOf[WritableSerializer].asType)
+        getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
           .invokeV(
             "deserialize",
             sliceVar.push(),
             valueVar.push())
         `return`(valueVar.push())
       }
-
-    methodDef.newMethod("serde", classOf[WritableSerializer].asType, Seq.empty) { mb =>
-      import mb._
-      thisVar.push().getField("serde", classOf[WritableSerializer].asType).unlessNotNull {
-        thisVar.push().putField("serde", classOf[WritableSerializer].asType,
-          pushNew0(classOf[WritableSerializer].asType))
-      }
-      `return`(thisVar.push().getField("serde", classOf[WritableSerializer].asType))
-    }
 
     methodDef.newMethod("value", classOf[Writable].asType, Seq(classOf[BranchKey].asType)) { mb =>
       import mb._

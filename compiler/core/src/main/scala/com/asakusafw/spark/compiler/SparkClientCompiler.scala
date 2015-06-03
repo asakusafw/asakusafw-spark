@@ -27,6 +27,7 @@ import com.asakusafw.lang.compiler.inspection.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, TypeDescription }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
+import com.asakusafw.spark.compiler.ordering.{ GroupingOrderingClassBuilder, SortOrderingClassBuilder }
 import com.asakusafw.spark.compiler.planning.{
   BroadcastInfo,
   SparkPlanning,
@@ -76,8 +77,7 @@ class SparkClientCompiler extends JobflowProcessor {
         jpContext = jpContext,
         externalInputs = mutable.Map.empty,
         branchKeys = branchKeysClassBuilder,
-        broadcastIds = broadcastIdsClassBuilder,
-        shuffleKeyTypes = mutable.Set.empty)
+        broadcastIds = broadcastIdsClassBuilder)
 
       val builder = new SparkClientClassBuilder(source.getFlowId) {
 
@@ -257,9 +257,9 @@ class SparkClientCompiler extends JobflowProcessor {
                   val dataModelRef = context.jpContext.getDataModelLoader.load(subPlanOutput.getOperator.getInput.getDataType)
                   val key = broadcastInfo.getFormatInfo
                   val groupings = key.getGrouping.toSeq.map { grouping =>
-                    (dataModelRef.findProperty(grouping).getType.asType, true)
+                    dataModelRef.findProperty(grouping).getType.asType
                   }
-                  val orderings = groupings ++ key.getOrdering.toSeq.map { ordering =>
+                  val orderings = key.getOrdering.toSeq.map { ordering =>
                     (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                       ordering.getDirection == Group.Direction.ASCENDANT)
                   }
@@ -286,24 +286,18 @@ class SparkClientCompiler extends JobflowProcessor {
                             {
                               getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
                                 .invokeV("apply", classOf[Option[_]].asType, {
-                                  val sort = pushNew(classOf[ShuffleKey.SortOrdering].asType)
-                                  sort.dup().invokeInit(
-                                    ldc(key.getGrouping.size), {
-                                      val arr = pushNewArray(Type.BOOLEAN_TYPE, key.getOrdering.size)
-                                      key.getOrdering.zipWithIndex.foreach {
-                                        case (ordering, i) =>
-                                          arr.dup().astore(ldc(i),
-                                            ldc(ordering.getDirection == Group.Direction.ASCENDANT))
-                                      }
-                                      arr
-                                    })
-                                  sort
+                                  pushNew0(
+                                    SortOrderingClassBuilder.getOrCompile(
+                                      context.flowId,
+                                      groupings,
+                                      orderings,
+                                      context.jpContext))
                                 }.asType(classOf[AnyRef].asType))
                             },
                             {
-                              val grouping = pushNew(classOf[ShuffleKey.GroupingOrdering].asType)
-                              grouping.dup().invokeInit(ldc(key.getGrouping.size))
-                              grouping
+                              pushNew0(
+                                GroupingOrderingClassBuilder.getOrCompile(context.flowId, groupings, context.jpContext))
+                                .asType(classOf[Ordering[ShuffleKey]].asType)
                             },
                             {
                               val partitioner = pushNew(classOf[HashPartitioner].asType)
@@ -332,8 +326,7 @@ class SparkClientCompiler extends JobflowProcessor {
             OperatorUtil.collectDataTypes(
               plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
               .toSet[TypeDescription]
-              .map(_.asType) ++
-              context.shuffleKeyTypes,
+              .map(_.asType),
             jpContext.addClass(new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)),
             jpContext.addClass(new BroadcastIdSerializerClassBuilder(context.flowId, broadcastIdsType)))(
               KryoRegistratorCompiler.Context(source.getFlowId, jpContext))

@@ -51,8 +51,7 @@ class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDi
         Thread.currentThread.getContextClassLoader,
         classpath),
       branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"),
-      shuffleKeyTypes = mutable.Set.empty)
+      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Baa]])
