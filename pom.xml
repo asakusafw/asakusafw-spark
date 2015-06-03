@@ -322,10 +322,8 @@ encoding/<project>=UTF-8
 					<docencoding>UTF-8</docencoding>
 					<locale>en_US</locale>
 					<show>protected</show>
-					<doctitle>Asakusa DSL Compiler for Spark API References (Version
-						${project.version})</doctitle>
-					<windowtitle>Asakusa DSL Compiler for Spark API References (Version
-						${project.version})</windowtitle>
+					<doctitle>Asakusa DSL Compiler for Spark API References (Version ${project.version})</doctitle>
+					<windowtitle>Asakusa DSL Compiler for Spark API References (Version ${project.version})</windowtitle>
 				</configuration>
 				<reportSets>
 					<reportSet>
@@ -454,7 +452,6 @@ encoding/<project>=UTF-8
 				<groupId>org.apache.spark</groupId>
 				<artifactId>spark-core_${scala.binary.version}</artifactId>
 				<version>${spark.version}</version>
-				<scope>provided</scope>
 				<exclusions>
 					<exclusion>
 						<groupId>commons-logging</groupId>
@@ -545,19 +542,6 @@ encoding/<project>=UTF-8
 				<groupId>org.scala-lang</groupId>
 				<artifactId>scala-library</artifactId>
 				<version>${scala.version}</version>
-				<scope>provided</scope>
-			</dependency>
-			<dependency>
-				<groupId>org.scala-lang</groupId>
-				<artifactId>scala-compiler</artifactId>
-				<version>${scala.version}</version>
-				<scope>provided</scope>
-			</dependency>
-			<dependency>
-				<groupId>org.scala-lang</groupId>
-				<artifactId>scala-reflect</artifactId>
-				<version>${scala.version}</version>
-				<scope>provided</scope>
 			</dependency>
 
 			<dependency>
