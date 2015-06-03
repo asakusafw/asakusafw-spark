@@ -29,13 +29,13 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
 
     private static final String SPARK_PROJECT_VERSION = '0.1.0-SNAPSHOT'
 
-    private static final String SPARK_ARTIFACT = 'org.apache.spark:spark-core_2.10:1.3.1'
+    private static final List<Object> EXCLUDE_MODULES = [
 
-    private static final List<String> EXCLUDE_MODULES = [
+        [group: 'asm', module: 'asm'],
 
-        'slf4j-jdk14',
-        'slf4j-jcl',
-        'slf4j-log4j12',
+        [group: 'org.slf4j', module: 'slf4j-jdk14'],
+        [group: 'org.slf4j', module: 'slf4j-jcl'],
+        [group: 'org.slf4j', module: 'slf4j-log4j12'],
 
         'junit',
         'mockito-all',
@@ -80,7 +80,6 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
     private void configureExtension() {
         extension.compilerProjectVersion = COMPILER_PROJECT_VERSION
         extension.sparkProjectVersion = SPARK_PROJECT_VERSION
-        extension.sparkArtifact = SPARK_ARTIFACT
         extension.excludeModules.addAll(EXCLUDE_MODULES)
     }
 

@@ -18,6 +18,9 @@ package com.asakusafw.spark.gradle.plugins.internal
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.DependencyResolveDetails
+import org.gradle.api.artifacts.ModuleVersionSelector
+import org.gradle.api.artifacts.ResolutionStrategy
 
 import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
 import com.asakusafw.gradle.plugins.AsakusafwPlugin
@@ -81,15 +84,28 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             AsakusafwPluginConvention asakusa = project.asakusafw
             project.configurations {
                 asakusaSparkCompiler { Configuration conf ->
-                    base.excludeModules.each { String moduleName ->
-                        project.logger.info "excludes module for Spark compiler: ${moduleName}"
-                        conf.exclude module: moduleName
+                    base.excludeModules.each { Object moduleInfo ->
+                        project.logger.info "excludes module for Spark compiler: ${moduleInfo}"
+                        if (moduleInfo instanceof Map<?, ?>) {
+                            conf.exclude moduleInfo
+                        } else {
+                            conf.exclude module: moduleInfo
+                        }
+                    }
+                    if (base.customSparkArtifact != null) {
+                        conf.resolutionStrategy { ResolutionStrategy strategy ->
+                            strategy.eachDependency { DependencyResolveDetails details ->
+                                ModuleVersionSelector req = details.requested
+                                if (req.group == 'org.apache.spark' && req.name.startsWith('spark-core_')) {
+                                    details.useTarget base.customSparkArtifact
+                                }
+                            }
+                        }
                     }
                 }
             }
             project.dependencies {
-                asakusaSparkCompiler "com.asakusafw.spark:asakusa-spark-compiler-core:${base.sparkProjectVersion}"
-                asakusaSparkCompiler(base.sparkArtifact) {
+                asakusaSparkCompiler("com.asakusafw.spark:asakusa-spark-compiler-core:${base.sparkProjectVersion}") {
                     exclude module: 'hadoop-client'
                 }
 

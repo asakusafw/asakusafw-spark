@@ -32,12 +32,12 @@ class AsakusaSparkBaseExtension {
     String sparkProjectVersion
 
     /**
-     * The Spark artifact notation.
+     * The custom Spark artifact notation (nullable).
      */
-    String sparkArtifact
+    String customSparkArtifact
 
     /**
      * Excluding modules for compiler.
      */
-    List<String> excludeModules = []
+    List<Object> excludeModules = []
 }
