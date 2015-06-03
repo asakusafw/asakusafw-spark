@@ -267,17 +267,8 @@ object MapDriverSpec {
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
-
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        serde.serialize(value.asInstanceOf[Writable])
+        WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
       @transient var h: Hoge = _
@@ -290,7 +281,7 @@ object MapDriverSpec {
       }
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
-        serde.deserialize(value, hoge)
+        WritableSerDe.deserialize(value, hoge)
         hoge
       }
 
@@ -345,22 +336,15 @@ object MapDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
-
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
         val foo = value.asInstanceOf[Foo]
-        new ShuffleKey(serde.serialize(foo.id), serde.serialize(foo.ord))
+        new ShuffleKey(
+          WritableSerDe.serialize(foo.id),
+          WritableSerDe.serialize(foo.ord))
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        serde.serialize(value.asInstanceOf[Writable])
+        WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
       @transient var f: Foo = _
@@ -373,7 +357,7 @@ object MapDriverSpec {
       }
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
-        serde.deserialize(value, foo)
+        WritableSerDe.deserialize(value, foo)
         foo
       }
 

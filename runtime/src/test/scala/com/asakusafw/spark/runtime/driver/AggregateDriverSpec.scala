@@ -39,15 +39,6 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     import TotalAggregate._
     val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
 
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
-
       @transient var h: Hoge = _
 
       def hoge: Hoge = {
@@ -61,7 +52,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
         hoge.id.modify(i % 2)
         hoge.price.modify(i * 100)
         val shuffleKey = new ShuffleKey(
-          serde.serialize(hoge.id), serde.serialize(hoge.price))
+          WritableSerDe.serialize(hoge.id), WritableSerDe.serialize(hoge.price))
         (shuffleKey, hoge)
       }
     }
@@ -90,15 +81,6 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     import TotalAggregate._
     val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
 
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
-
       @transient var h: Hoge = _
 
       def hoge: Hoge = {
@@ -111,7 +93,9 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
       override def apply(i: Int): (ShuffleKey, Hoge) = {
         hoge.id.modify(i % 2)
         hoge.price.modify(i * 100)
-        val shuffleKey = new ShuffleKey(serde.serialize(hoge.id), serde.serialize(hoge.price))
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(hoge.id),
+          WritableSerDe.serialize(hoge.price))
         (shuffleKey, hoge)
       }
     }
@@ -140,15 +124,6 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     import PartialAggregate._
     val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
 
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
-
       @transient var h: Hoge = _
 
       def hoge: Hoge = {
@@ -161,7 +136,9 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
       override def apply(i: Int): (ShuffleKey, Hoge) = {
         hoge.id.modify(i % 2)
         hoge.price.modify(i * 100)
-        val shuffleKey = new ShuffleKey(serde.serialize(hoge.id), serde.serialize(hoge.price))
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(hoge.id),
+          WritableSerDe.serialize(hoge.price))
         (shuffleKey, hoge)
       }
     }
@@ -269,17 +246,8 @@ object AggregateDriverSpec {
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
-
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
-        new ShuffleKey(serde.serialize(value.asInstanceOf[Hoge].id), Array.empty)
+        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Hoge].id), Array.empty)
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
@@ -338,21 +306,12 @@ object AggregateDriverSpec {
         Map(Result1 -> new TestAggregation(true))
       }
 
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
-
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
-        new ShuffleKey(serde.serialize(value.asInstanceOf[Hoge].id), Array.empty)
+        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Hoge].id), Array.empty)
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        serde.serialize(value.asInstanceOf[Writable])
+        WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
       @transient var h: Hoge = _
@@ -365,7 +324,7 @@ object AggregateDriverSpec {
       }
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
-        serde.deserialize(value, hoge)
+        WritableSerDe.deserialize(value, hoge)
         hoge
       }
 

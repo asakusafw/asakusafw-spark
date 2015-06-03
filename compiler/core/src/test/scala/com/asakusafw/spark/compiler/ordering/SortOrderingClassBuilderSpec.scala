@@ -28,15 +28,13 @@ class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
     val cls = cl.loadClass(builder.thisType.getClassName).asSubclass(classOf[Ordering[ShuffleKey]])
     val ordering = cls.newInstance()
 
-    val serde = new WritableSerDe()
-
     {
       val x = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       val y = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       assert(ordering.equiv(x, y) === true)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === false)
@@ -45,11 +43,11 @@ class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
     }
     {
       val x = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(0))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(0))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       val y = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === true)
@@ -58,11 +56,11 @@ class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
     }
     {
       val x = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       val y = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(0))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(0))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === false)
       assert(ordering.lt(x, y) === false)
@@ -71,11 +69,11 @@ class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
     }
     {
       val x = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(0L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(0L), new StringOption().modify("abc"))))
       val y = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === true)
@@ -84,11 +82,11 @@ class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
     }
     {
       val x = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       val y = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(0L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(0L), new StringOption().modify("abc"))))
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === false)
       assert(ordering.lt(x, y) === false)
@@ -97,11 +95,11 @@ class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
     }
     {
       val x = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abd"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abd"))))
       val y = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === true)
@@ -110,11 +108,11 @@ class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
     }
     {
       val x = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abc"))))
       val y = new ShuffleKey(
-        serde.serialize(Seq(new IntOption().modify(1))),
-        serde.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abd"))))
+        WritableSerDe.serialize(Seq(new IntOption().modify(1))),
+        WritableSerDe.serialize(Seq(new LongOption().modify(1L), new StringOption().modify("abd"))))
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === false)
       assert(ordering.lt(x, y) === false)

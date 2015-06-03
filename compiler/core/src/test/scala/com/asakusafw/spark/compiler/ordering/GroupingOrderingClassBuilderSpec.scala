@@ -23,11 +23,11 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
     val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[Ordering[ShuffleKey]])
     val ordering = cls.newInstance()
 
-    val serde = new WritableSerDe()
-
     {
-      val x = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
-      val y = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+      val x = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+      val y = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
       assert(ordering.equiv(x, y) === true)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === false)
@@ -35,8 +35,10 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
       assert(ordering.gt(x, y) === false)
     }
     {
-      val x = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(0), new LongOption().modify(1L))), Array.empty)
-      val y = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+      val x = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(0), new LongOption().modify(1L))), Array.empty)
+      val y = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === true)
@@ -44,8 +46,10 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
       assert(ordering.gt(x, y) === false)
     }
     {
-      val x = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
-      val y = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(0), new LongOption().modify(1L))), Array.empty)
+      val x = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+      val y = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(0), new LongOption().modify(1L))), Array.empty)
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === false)
       assert(ordering.lt(x, y) === false)
@@ -53,8 +57,10 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
       assert(ordering.gt(x, y) === true)
     }
     {
-      val x = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(1), new LongOption().modify(0L))), Array.empty)
-      val y = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+      val x = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(0L))), Array.empty)
+      val y = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === true)
@@ -62,8 +68,10 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar {
       assert(ordering.gt(x, y) === false)
     }
     {
-      val x = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
-      val y = new ShuffleKey(serde.serialize(Seq(new IntOption().modify(1), new LongOption().modify(0L))), Array.empty)
+      val x = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+      val y = new ShuffleKey(
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(0L))), Array.empty)
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === false)
       assert(ordering.lt(x, y) === false)

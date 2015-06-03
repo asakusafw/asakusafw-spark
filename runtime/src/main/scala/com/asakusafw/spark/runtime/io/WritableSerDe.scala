@@ -22,13 +22,36 @@ class WritableSerDe {
     Arrays.copyOfRange(buffer.getData, buffer.getReadPosition, buffer.getReadLimit)
   }
 
-  def deserialize(arr: Array[Byte], value: Writable): Unit = {
-    buffer.reset(arr, 0, arr.length)
+  def deserialize(bytes: Array[Byte], value: Writable): Unit = {
+    buffer.reset(bytes, 0, bytes.length)
     value.readFields(buffer)
   }
 
-  def deserialize(arr: Array[Byte], values: Seq[Writable]): Unit = {
-    buffer.reset(arr, 0, arr.length)
+  def deserialize(bytes: Array[Byte], values: Seq[Writable]): Unit = {
+    buffer.reset(bytes, 0, bytes.length)
     values.foreach(_.readFields(buffer))
+  }
+}
+
+object WritableSerDe {
+
+  private[this] val serdes = new ThreadLocal[WritableSerDe]() {
+    override def initialValue: WritableSerDe = new WritableSerDe()
+  }
+
+  def serialize(value: Writable): Array[Byte] = {
+    serdes.get.serialize(value)
+  }
+
+  def serialize(values: Seq[Writable]): Array[Byte] = {
+    serdes.get.serialize(values)
+  }
+
+  def deserialize(bytes: Array[Byte], value: Writable): Unit = {
+    serdes.get.deserialize(bytes, value)
+  }
+
+  def deserialize(bytes: Array[Byte], values: Seq[Writable]): Unit = {
+    serdes.get.deserialize(bytes, values)
   }
 }

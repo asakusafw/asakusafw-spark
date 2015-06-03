@@ -38,15 +38,6 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
     val hogeOrd = new HogeSortOrdering()
     val fHoge = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
 
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
-
       @transient var h: Hoge = _
 
       def hoge: Hoge = {
@@ -59,8 +50,8 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
       override def apply(i: Int): (ShuffleKey, Hoge) = {
         hoge.id.modify(i)
         val shuffleKey = new ShuffleKey(
-          serde.serialize(hoge.id),
-          serde.serialize(new BooleanOption().modify(hoge.id.get % 3 == 0)))
+          WritableSerDe.serialize(hoge.id),
+          WritableSerDe.serialize(new BooleanOption().modify(hoge.id.get % 3 == 0)))
         (shuffleKey, hoge)
       }
     }
@@ -68,15 +59,6 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
 
     val fooOrd = new FooSortOrdering()
     val fFoo = new Function2[Int, Int, (ShuffleKey, Foo)] with Serializable {
-
-      @transient var sd: WritableSerDe = _
-
-      def serde = {
-        if (sd == null) {
-          sd = new WritableSerDe()
-        }
-        sd
-      }
 
       @transient var f: Foo = _
 
@@ -91,8 +73,8 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
         foo.id.modify(100 + j)
         foo.hogeId.modify(i)
         val shuffleKey = new ShuffleKey(
-          serde.serialize(foo.hogeId),
-          serde.serialize(new IntOption().modify(foo.id.toString.hashCode)))
+          WritableSerDe.serialize(foo.hogeId),
+          WritableSerDe.serialize(new IntOption().modify(foo.id.toString.hashCode)))
         (shuffleKey, foo)
       }
     }
@@ -174,17 +156,8 @@ object CoGroupDriverSpec {
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-    @transient var sd: WritableSerDe = _
-
-    def serde = {
-      if (sd == null) {
-        sd = new WritableSerDe()
-      }
-      sd
-    }
-
     override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-      serde.serialize(value.asInstanceOf[Writable])
+      WritableSerDe.serialize(value.asInstanceOf[Writable])
     }
 
     @transient var h: Hoge = _
@@ -208,10 +181,10 @@ object CoGroupDriverSpec {
     override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
       branch match {
         case HogeResult | HogeError =>
-          serde.deserialize(value, hoge)
+          WritableSerDe.deserialize(value, hoge)
           hoge
         case FooResult | FooError =>
-          serde.deserialize(value, foo)
+          WritableSerDe.deserialize(value, foo)
           foo
       }
     }
