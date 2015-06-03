@@ -9,14 +9,16 @@ import com.asakusafw.spark.runtime.driver.ShuffleKey
 class ShuffleKeySerializer extends Serializer[ShuffleKey](false, false) {
 
   override def write(kryo: Kryo, output: Output, obj: ShuffleKey) = {
-    kryo.writeClassAndObject(output, obj.grouping)
-    kryo.writeClassAndObject(output, obj.ordering)
+    output.writeInt(obj.grouping.length, true)
+    output.write(obj.grouping)
+    output.writeInt(obj.ordering.length, true)
+    output.write(obj.ordering)
   }
 
   override def read(kryo: Kryo, input: Input, t: Class[ShuffleKey]): ShuffleKey = {
     new ShuffleKey(
-      kryo.readClassAndObject(input).asInstanceOf[Seq[_ <: ValueOption[_]]],
-      kryo.readClassAndObject(input).asInstanceOf[Seq[_ <: ValueOption[_]]])
+      input.readBytes(input.readInt(true)),
+      input.readBytes(input.readInt(true)))
   }
 }
 

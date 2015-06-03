@@ -32,8 +32,7 @@ object SubPlanCompiler {
     jpContext: JPContext,
     externalInputs: mutable.Map[String, ExternalInputReference],
     branchKeys: BranchKeys,
-    broadcastIds: BroadcastIds,
-    shuffleKeyTypes: mutable.Set[Type])
+    broadcastIds: BroadcastIds)
 
   private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[SubPlanCompiler]] =
     mutable.WeakHashMap.empty

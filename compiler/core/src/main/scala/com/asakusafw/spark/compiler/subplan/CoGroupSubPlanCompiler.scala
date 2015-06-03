@@ -18,6 +18,7 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
+import com.asakusafw.spark.compiler.ordering.{ GroupingOrderingClassBuilder, SortOrderingClassBuilder }
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
@@ -38,8 +39,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
           flowId = context.flowId,
           jpContext = context.jpContext,
           branchKeys = context.branchKeys,
-          broadcastIds = context.broadcastIds,
-          shuffleKeyTypes = context.shuffleKeyTypes))
+          broadcastIds = context.broadcastIds))
   }
 
   override def instantiator: Instantiator = CoGroupSubPlanCompiler.CoGroupDriverInstantiator
@@ -113,8 +113,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
                 flowId = context.flowId,
                 jpContext = context.jpContext,
                 branchKeys = context.branchKeys,
-                broadcastIds = context.broadcastIds,
-                shuffleKeyTypes = context.shuffleKeyTypes)
+                broadcastIds = context.broadcastIds)
             val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)
             val fragmentVar = {
               val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
@@ -135,7 +134,6 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       }
     }
 
-    context.shuffleKeyTypes ++= builder.shuffleKeyTypes.map(_._2._1)
     context.jpContext.addClass(builder)
   }
 }
@@ -176,7 +174,7 @@ object CoGroupSubPlanCompiler {
         context.scVar.push(),
         context.hadoopConfVar.push(),
         context.broadcastsVar.push(), {
-          // Seq[(Seq[RDD[(K, _)]], Option[ShuffleKey.SortOrdering])]
+          // Seq[(Seq[RDD[(K, _)]], Option[Ordering[ShuffleKey]])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
           for {
@@ -211,20 +209,18 @@ object CoGroupSubPlanCompiler {
                     {
                       getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
                         .invokeV("apply", classOf[Option[_]].asType, {
-                          val sort = pushNew(classOf[ShuffleKey.SortOrdering].asType)
-                          sort.dup().invokeInit(
-                            ldc(input.getGroup.getGrouping.size), {
-                              val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
-                              for {
-                                (ordering, i) <- input.getGroup.getOrdering.zipWithIndex
-                              } {
-                                arr.dup().astore(
-                                  ldc(i),
-                                  ldc(ordering.getDirection == Group.Direction.ASCENDANT))
-                              }
-                              arr
-                            })
-                          sort
+                          val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
+                          pushNew0(
+                            SortOrderingClassBuilder.getOrCompile(
+                              context.flowId,
+                              input.getGroup.getGrouping.map { grouping =>
+                                dataModelRef.findProperty(grouping).getType.asType
+                              },
+                              input.getGroup.getOrdering.map { ordering =>
+                                (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                                  ordering.getDirection == Group.Direction.ASCENDANT)
+                              },
+                              context.jpContext))
                         }.asType(classOf[AnyRef].asType))
                     }.asType(classOf[AnyRef].asType)).asType(classOf[AnyRef].asType)
               })
@@ -232,9 +228,8 @@ object CoGroupSubPlanCompiler {
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         }, {
           // ShuffleKey.GroupingOrdering
-          val grouping = pushNew(classOf[ShuffleKey.GroupingOrdering].asType)
-          grouping.dup().invokeInit(ldc(properties.head.size))
-          grouping
+          pushNew0(GroupingOrderingClassBuilder.getOrCompile(context.flowId, properties.head, context.jpContext))
+            .asType(classOf[Ordering[ShuffleKey]].asType)
         }, {
           // Partitioner
           partitionerVar.push().asType(classOf[Partitioner].asType)

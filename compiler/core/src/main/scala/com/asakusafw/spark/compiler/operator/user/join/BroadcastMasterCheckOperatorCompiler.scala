@@ -52,8 +52,6 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
       val broadcastIds: BroadcastIds = context.broadcastIds
 
-      val shuffleKeyTypes: mutable.Set[Type] = context.shuffleKeyTypes
-
       lazy val masterInput: OperatorInput = inputs(MasterCheckOp.ID_INPUT_MASTER)
       lazy val txInput: OperatorInput = inputs(MasterCheckOp.ID_INPUT_TRANSACTION)
 

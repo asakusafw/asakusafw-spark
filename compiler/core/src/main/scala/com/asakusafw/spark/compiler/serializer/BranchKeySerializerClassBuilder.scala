@@ -47,7 +47,9 @@ class BranchKeySerializerClassBuilder(
       val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
       val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
       val branchKeyVar = `var`(classOf[BranchKey].asType, outputVar.nextLocal)
-      outputVar.push().invokeV("writeInt", branchKeyVar.push().invokeV("id", Type.INT_TYPE))
+      outputVar.push().invokeV("writeInt", Type.INT_TYPE,
+        branchKeyVar.push().invokeV("id", Type.INT_TYPE), ldc(true))
+        .pop()
       `return`()
     }
 
@@ -69,7 +71,7 @@ class BranchKeySerializerClassBuilder(
         val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
         `return`(
           invokeStatic(branchKeysType, "valueOf", classOf[BranchKey].asType,
-            inputVar.push().invokeV("readInt", Type.INT_TYPE)))
+            inputVar.push().invokeV("readInt", Type.INT_TYPE, ldc(true))))
       }
   }
 }

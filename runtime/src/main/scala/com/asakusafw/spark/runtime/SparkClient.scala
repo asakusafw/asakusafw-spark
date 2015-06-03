@@ -37,8 +37,8 @@ abstract class SparkClient {
     sc: SparkContext,
     label: String,
     prev: Future[RDD[(ShuffleKey, V)]],
-    sort: Option[ShuffleKey.SortOrdering],
-    grouping: ShuffleKey.GroupingOrdering,
+    sort: Option[Ordering[ShuffleKey]],
+    grouping: Ordering[ShuffleKey],
     part: Partitioner): Future[Broadcast[Map[ShuffleKey, Seq[V]]]] = {
 
     prev.map { p =>

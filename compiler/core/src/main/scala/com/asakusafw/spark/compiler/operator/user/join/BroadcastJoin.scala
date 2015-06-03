@@ -17,9 +17,10 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput }
 import com.asakusafw.lang.compiler.planning.PlanMarker
-import com.asakusafw.spark.compiler.subplan.{ BroadcastIds, ShuffleKeyClassBuilder }
+import com.asakusafw.spark.compiler.subplan.BroadcastIds
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.Fragment
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -29,8 +30,6 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   def jpContext: JPContext
 
   def broadcastIds: BroadcastIds
-
-  def shuffleKeyTypes: mutable.Set[Type]
 
   def masterInput: OperatorInput
   def txInput: OperatorInput
@@ -90,22 +89,34 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
       val dataModelRef = jpContext.getDataModelLoader.load(txInput.getDataType)
       val group = txInput.getGroup
 
-      val shuffleKeyType = ShuffleKeyClassBuilder.getOrCompile(jpContext)(
-        flowId,
-        dataModelType,
-        group.getGrouping.map { grouping =>
-          val property = dataModelRef.findProperty(grouping)
-          (property.getDeclaration.getName, property.getType.asType)
-        },
-        group.getOrdering.map { ordering =>
-          val property = dataModelRef.findProperty(ordering.getPropertyName)
-          (property.getDeclaration.getName, property.getType.asType)
-        })
-      shuffleKeyTypes += shuffleKeyType
+      val shuffleKey = pushNew(classOf[ShuffleKey].asType)
+      shuffleKey.dup().invokeInit(
+        if (group.getGrouping.isEmpty) {
+          getStatic(Array.getClass.asType, "MODULE$", Array.getClass.asType)
+            .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+        } else {
+          getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
+            .invokeV("serialize", classOf[Array[Byte]].asType, {
+              val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
-      val shuffleKey = pushNew(shuffleKeyType)
-      shuffleKey.dup().invokeInit(dataModelVar.push())
-      shuffleKey.invokeV("dropOrdering", classOf[ShuffleKey].asType).store(dataModelVar.nextLocal)
+              group.getGrouping.foreach { propertyName =>
+                val property = dataModelRef.findProperty(propertyName)
+
+                builder.invokeI(
+                  NameTransformer.encode("+="),
+                  classOf[mutable.Builder[_, _]].asType,
+                  dataModelVar.push().invokeV(
+                    property.getDeclaration.getName, property.getType.asType)
+                    .asType(classOf[AnyRef].asType))
+              }
+
+              builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+            })
+        },
+        getStatic(Array.getClass.asType, "MODULE$", Array.getClass.asType)
+          .invokeV("emptyByteArray", classOf[Array[Byte]].asType))
+      shuffleKey.store(dataModelVar.nextLocal)
     }
 
     val mVar = thisVar.push().getField("masters", classOf[Map[_, _]].asType)

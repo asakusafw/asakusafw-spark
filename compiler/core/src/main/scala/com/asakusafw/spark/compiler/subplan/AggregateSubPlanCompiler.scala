@@ -18,6 +18,7 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
+import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
@@ -111,8 +112,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
                 flowId = context.flowId,
                 jpContext = context.jpContext,
                 branchKeys = context.branchKeys,
-                broadcastIds = context.broadcastIds,
-                shuffleKeyTypes = context.shuffleKeyTypes))
+                broadcastIds = context.broadcastIds))
             val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
             val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
@@ -139,7 +139,6 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
       }
     }
 
-    context.shuffleKeyTypes ++= builder.shuffleKeyTypes.map(_._2._1)
     context.jpContext.addClass(builder)
   }
 }
@@ -197,19 +196,18 @@ object AggregateSubPlanCompiler {
         }, {
           getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
             .invokeV("apply", classOf[Option[_]].asType, {
-              val sort = pushNew(classOf[ShuffleKey.SortOrdering].asType)
-              sort.dup().invokeInit(
-                ldc(input.getGroup.getGrouping.size), {
-                  val arr = pushNewArray(Type.BOOLEAN_TYPE, input.getGroup.getOrdering.size)
-                  for {
-                    (ordering, i) <- input.getGroup.getOrdering.zipWithIndex
-                  } {
-                    arr.dup().astore(ldc(i),
-                      ldc(ordering.getDirection == Group.Direction.ASCENDANT))
-                  }
-                  arr
-                })
-              sort
+              val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
+              pushNew0(
+                SortOrderingClassBuilder.getOrCompile(
+                  context.flowId,
+                  input.getGroup.getGrouping.map { grouping =>
+                    dataModelRef.findProperty(grouping).getType.asType
+                  },
+                  input.getGroup.getOrdering.map { ordering =>
+                    (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                      ordering.getDirection == Group.Direction.ASCENDANT)
+                  },
+                  context.jpContext))
             }.asType(classOf[AnyRef].asType))
         },
         partitionerVar.push().asType(classOf[Partitioner].asType))

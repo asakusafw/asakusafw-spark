@@ -459,6 +459,11 @@ object MethodBuilder {
       new Stack(mb, Type.getType(`type`.getDescriptor().drop(1)))
     }
 
+    def arraylength(): Stack = {
+      mv.visitInsn(ARRAYLENGTH)
+      new Stack(mb, Type.INT_TYPE)
+    }
+
     def pop(): Unit = {
       size match {
         case 1 => mv.visitInsn(POP)

@@ -22,7 +22,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.io.WritableSerializer
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -37,13 +37,16 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
   it should "map simply" in {
     import Simple._
     val f = new Function1[Int, (_, Hoge)] with Serializable {
+
       @transient var h: Hoge = _
+
       def hoge: Hoge = {
         if (h == null) {
           h = new Hoge()
         }
         h
       }
+
       override def apply(i: Int): (_, Hoge) = {
         hoge.id.modify(i)
         (NullWritable.get, hoge)
@@ -65,13 +68,16 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
   it should "map with branch" in {
     import Branch._
     val f = new Function1[Int, (_, Hoge)] with Serializable {
+
       @transient var h: Hoge = _
+
       def hoge: Hoge = {
         if (h == null) {
           h = new Hoge()
         }
         h
       }
+
       override def apply(i: Int): (_, Hoge) = {
         hoge.id.modify(i)
         (NullWritable.get, hoge)
@@ -98,14 +104,18 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
 
   it should "map with branch and ordering" in {
     import BranchAndOrdering._
+
     val f = new Function1[Int, (_, Foo)] with Serializable {
+
       @transient var f: Foo = _
+
       def foo: Foo = {
         if (f == null) {
           f = new Foo()
         }
         f
       }
+
       override def apply(i: Int): (_, Foo) = {
         foo.id.modify(i % 5)
         foo.ord.modify(i)
@@ -257,17 +267,8 @@ object MapDriverSpec {
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-      @transient var ws: WritableSerializer = _
-
-      def serde = {
-        if (ws == null) {
-          ws = new WritableSerializer()
-        }
-        ws
-      }
-
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        serde.serialize(value.asInstanceOf[Writable])
+        WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
       @transient var h: Hoge = _
@@ -280,7 +281,7 @@ object MapDriverSpec {
       }
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
-        serde.deserialize(value, hoge)
+        WritableSerDe.deserialize(value, hoge)
         hoge
       }
 
@@ -331,37 +332,19 @@ object MapDriverSpec {
         Map(Foo2Result -> new HashPartitioner(1))
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] =
-        Map(Foo2Result -> new ShuffleKey.SortOrdering(1, Array(false)))
+        Map(Foo2Result -> new SortOrdering())
 
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
-      @transient var sk: ShuffleKey = _
-
-      def shuffleKey = {
-        if (sk == null) {
-          sk = new ShuffleKey(Seq(new IntOption()), Seq(new IntOption()))
-        }
-        sk
-      }
-
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
         val foo = value.asInstanceOf[Foo]
-        shuffleKey.grouping(0).asInstanceOf[IntOption].copyFrom(foo.id)
-        shuffleKey.ordering(0).asInstanceOf[IntOption].copyFrom(foo.ord)
-        shuffleKey
-      }
-
-      @transient var ws: WritableSerializer = _
-
-      def serde = {
-        if (ws == null) {
-          ws = new WritableSerializer()
-        }
-        ws
+        new ShuffleKey(
+          WritableSerDe.serialize(foo.id),
+          WritableSerDe.serialize(foo.ord))
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        serde.serialize(value.asInstanceOf[Writable])
+        WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
       @transient var f: Foo = _
@@ -374,7 +357,7 @@ object MapDriverSpec {
       }
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
-        serde.deserialize(value, foo)
+        WritableSerDe.deserialize(value, foo)
         foo
       }
 
@@ -402,6 +385,22 @@ object MapDriverSpec {
       override def reset(): Unit = {
         foo1Output.reset()
         foo2Output.reset()
+      }
+    }
+
+    class SortOrdering extends Ordering[ShuffleKey] {
+
+      override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+        val xGrouping = x.grouping
+        val yGrouping = y.grouping
+        val cmp = IntOption.compareBytes(xGrouping, 0, xGrouping.length, yGrouping, 0, yGrouping.length)
+        if (cmp == 0) {
+          val xOrdering = x.ordering
+          val yOrdering = y.ordering
+          IntOption.compareBytes(yOrdering, 0, yOrdering.length, xOrdering, 0, xOrdering.length)
+        } else {
+          cmp
+        }
       }
     }
   }

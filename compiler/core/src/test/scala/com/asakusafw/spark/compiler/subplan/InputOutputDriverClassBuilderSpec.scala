@@ -82,8 +82,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       jpContext = jpContext,
       externalInputs = mutable.Map.empty,
       branchKeys = outputBranchKeysClassBuilder,
-      broadcastIds = outputBroadcastIdsClassBuilder,
-      shuffleKeyTypes = mutable.Set.empty)
+      broadcastIds = outputBroadcastIdsClassBuilder)
     val outputCompiler = resolvers.find(_.support(outputOperator)(outputCompilerContext)).get
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
     outputCompilerContext.jpContext.addClass(outputBranchKeysClassBuilder)
@@ -152,8 +151,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       jpContext = jpContext,
       externalInputs = mutable.Map.empty,
       branchKeys = inputBranchKeysClassBuilder,
-      broadcastIds = inputBroadcastIdsClassBuilder,
-      shuffleKeyTypes = mutable.Set.empty)
+      broadcastIds = inputBroadcastIdsClassBuilder)
     val inputCompiler = resolvers.find(_.support(inputOperator)(inputCompilerContext)).get
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
     inputCompilerContext.jpContext.addClass(inputBranchKeysClassBuilder)
