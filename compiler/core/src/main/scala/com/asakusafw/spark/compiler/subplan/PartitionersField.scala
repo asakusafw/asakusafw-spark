@@ -5,7 +5,7 @@ import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.reflect.NameTransformer
 
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -16,7 +16,7 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait PartitionersField extends ClassBuilder {
+trait PartitionersField extends ClassBuilder with NumPartitions {
 
   def flowId: String
 
@@ -84,8 +84,7 @@ trait PartitionersField extends ClassBuilder {
                 branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
                   val partitioner = pushNew(classOf[HashPartitioner].asType)
                   partitioner.dup().invokeInit(
-                    thisVar.push().invokeV("sc", classOf[SparkContext].asType)
-                      .invokeV("defaultParallelism", Type.INT_TYPE))
+                    numPartitions(mb, thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
                   partitioner.asType(classOf[AnyRef].asType)
                 })
               .asType(classOf[AnyRef].asType))
