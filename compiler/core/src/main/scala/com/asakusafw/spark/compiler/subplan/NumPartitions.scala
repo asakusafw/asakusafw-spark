@@ -35,7 +35,11 @@ trait NumPartitions {
       .invokeV("getInt", Type.INT_TYPE,
         getStatic(Props.getClass.asType, "MODULE$", Props.getClass.asType)
           .invokeV("Parallelism", classOf[String].asType),
-        ldc(0))
+        sc.invokeV("getConf", classOf[SparkConf].asType)
+          .invokeV("getInt", Type.INT_TYPE,
+            ldc("spark.default.parallelism"),
+            getStatic(Props.getClass.asType, "MODULE$", Props.getClass.asType)
+              .invokeV("ParallelismFallback", Type.INT_TYPE)))
   }
 
   private def getParallelismScale(mb: MethodBuilder, sc: => Stack)(suffix: String): Stack = {

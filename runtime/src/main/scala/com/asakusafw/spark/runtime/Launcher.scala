@@ -31,6 +31,24 @@ object Launcher {
         sys.props("user.name"), batchId, flowId, null, executionId, batchArgs)
       sparkConf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
 
+      if (sys.props.contains(Props.Parallelism)) {
+        sparkConf.set(Props.Parallelism, sys.props(Props.Parallelism))
+      } else if (!sparkConf.contains("spark.default.parallelism")) {
+        if (Logger.isWarnEnabled) {
+          Logger.warn(s"`${Props.Parallelism}` is not set, we set parallelism to 2.")
+        }
+      }
+
+      for {
+        prop <- Seq(
+          Props.ParallelismScaleSmall,
+          Props.ParallelismScaleLarge,
+          Props.ParallelismScaleHuge)
+        value <- sys.props.get(prop)
+      } {
+        sparkConf.set(prop, value)
+      }
+
       sparkClient.execute(sparkConf)
     } catch {
       case t: Throwable =>

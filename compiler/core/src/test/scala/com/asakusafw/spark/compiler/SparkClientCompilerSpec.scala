@@ -52,6 +52,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
   for {
     (master, threshold) <- Seq(("local[8]", None), ("local[8]", Some(0)))
+    parallelism <- Seq(None, Some(8))
   } {
     def execute(graph: OperatorGraph, subplans: Int, path: File, classpath: File): Unit = {
 
@@ -98,7 +99,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
           sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
         conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
 
-        conf.set(Props.Parallelism, 8.toString)
+        parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
 
         instance.execute(conf)
       } finally {
@@ -134,7 +135,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
     }
 
     it should "compile Spark client from simple plan: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -170,7 +171,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with Extract: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -227,7 +228,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with CoGroup: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -352,7 +353,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with MasterCheck: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -448,7 +449,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with broadcast MasterCheck: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -528,7 +529,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with MasterJoin: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -624,7 +625,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with broadcast MasterJoin: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -704,7 +705,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with broadcast self MasterCheck: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -766,7 +767,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with Fold: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>
@@ -835,7 +836,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
 
     it should "compile Spark client with Summarize: " +
-      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}]" in {
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
 
         spark { sc =>

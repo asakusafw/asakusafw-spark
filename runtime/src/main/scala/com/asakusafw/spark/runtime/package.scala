@@ -14,6 +14,7 @@ package object runtime {
     val ParallelismScaleLarge = s"${AsakusafwConfPrefix}.parallelism.scala.large"
     val ParallelismScaleHuge = s"${AsakusafwConfPrefix}.parallelism.scala.huge"
 
+    val ParallelismFallback = 2
     val DefaultParallelismScaleSmall = 0.5
     val DefaultParallelismScaleLarge = 2.0
     val DefaultParallelismScaleHuge = 4.0

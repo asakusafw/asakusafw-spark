@@ -20,10 +20,6 @@ abstract class SparkClient {
     conf.set("spark.kryo.registrator", kryoRegistrator)
     conf.set("spark.kryo.referenceTracking", false.toString)
 
-    require(
-      conf.contains(Props.Parallelism),
-      s"`${Props.Parallelism}` should be set to SparkConf.")
-
     val sc = new SparkContext(conf)
     try {
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
