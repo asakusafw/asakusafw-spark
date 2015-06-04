@@ -380,15 +380,30 @@ public final class SparkPlanning {
     private static void attachSizeInfo(PlanningContext context, Plan plan) {
         PlanEstimator estimator = new PlanEstimator(context.getEstimator(), context.getOptimizerContext());
         for (SubPlan sub : plan.getElements()) {
-            for (SubPlan.Input input : sub.getInputs()) {
-                SizeInfo info = estimator.estimate(input);
+            for (SubPlan.Input port : sub.getInputs()) {
+                SizeInfo info = estimator.estimate(port);
                 assert info != null;
-                input.putAttribute(SizeInfo.class, info);
+                port.putAttribute(SizeInfo.class, info);
             }
-            for (SubPlan.Output output : sub.getOutputs()) {
-                SizeInfo info = estimator.estimate(output);
+            for (SubPlan.Output port : sub.getOutputs()) {
+                SizeInfo info = estimator.estimate(port);
                 assert info != null;
-                output.putAttribute(SizeInfo.class, info);
+                port.putAttribute(SizeInfo.class, info);
+            }
+        }
+        PartitionGroupAnalyzer groupAnalyzer = new PartitionGroupAnalyzer();
+        for (SubPlan sub : plan.getElements()) {
+            for (SubPlan.Input port : sub.getInputs()) {
+                PartitionGroupInfo info = groupAnalyzer.analyze(port);
+                if (info != null) {
+                    port.putAttribute(PartitionGroupInfo.class, info);
+                }
+            }
+            for (SubPlan.Output port : sub.getOutputs()) {
+                PartitionGroupInfo info = groupAnalyzer.analyze(port);
+                if (info != null) {
+                    port.putAttribute(PartitionGroupInfo.class, info);
+                }
             }
         }
     }
