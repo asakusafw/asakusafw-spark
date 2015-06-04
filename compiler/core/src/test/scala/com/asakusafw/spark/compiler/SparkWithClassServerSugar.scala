@@ -30,7 +30,7 @@ trait SparkWithClassServerSugar extends BeforeAndAfterEach { self: Suite =>
       cl = Thread.currentThread().getContextClassLoader()
 
       val conf = new SparkConf
-      conf.setMaster("local[*]")
+      conf.setMaster("local[8]")
       conf.setAppName(getClass.getName)
       conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       conf.set("spark.kryo.registrator", kryoRegistrator)
@@ -38,6 +38,8 @@ trait SparkWithClassServerSugar extends BeforeAndAfterEach { self: Suite =>
       val stageInfo = new StageInfo(
         sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
       conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+
+      conf.set(Props.Parallelism, 8.toString)
 
       classServer = new ClassServer(cl, conf)
       val uri = classServer.start()

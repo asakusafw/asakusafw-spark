@@ -98,6 +98,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
           sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
         conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
 
+        conf.set(Props.Parallelism, 8.toString)
+
         instance.execute(conf)
       } finally {
         Thread.currentThread.setContextClassLoader(cl)
