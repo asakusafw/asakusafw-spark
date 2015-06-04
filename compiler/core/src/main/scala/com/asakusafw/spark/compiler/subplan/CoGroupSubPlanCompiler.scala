@@ -140,7 +140,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
 object CoGroupSubPlanCompiler {
 
-  object CoGroupDriverInstantiator extends Instantiator {
+  object CoGroupDriverInstantiator extends Instantiator with NumPartitions {
 
     override def newInstance(
       driverType: Type,
@@ -165,8 +165,7 @@ object CoGroupSubPlanCompiler {
 
       val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(
-        context.scVar.push()
-          .invokeV("defaultParallelism", Type.INT_TYPE))
+        numPartitions(context.mb, context.scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner)))
       val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
 
       val cogroupDriver = pushNew(driverType)

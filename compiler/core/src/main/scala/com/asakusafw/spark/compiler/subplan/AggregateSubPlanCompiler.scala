@@ -145,7 +145,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
 object AggregateSubPlanCompiler {
 
-  object AggregateDriverInstantiator extends Instantiator {
+  object AggregateDriverInstantiator extends Instantiator with NumPartitions {
 
     override def newInstance(
       driverType: Type,
@@ -163,8 +163,7 @@ object AggregateSubPlanCompiler {
 
       val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(
-        context.scVar.push()
-          .invokeV("defaultParallelism", Type.INT_TYPE))
+        numPartitions(context.mb, context.scVar.push())(subplan.findInput(input.getOpposites.head.getOwner)))
       val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
 
       val aggregateDriver = pushNew(driverType)
