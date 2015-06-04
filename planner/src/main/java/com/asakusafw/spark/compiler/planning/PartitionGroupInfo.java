@@ -16,6 +16,7 @@
 package com.asakusafw.spark.compiler.planning;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import com.asakusafw.lang.compiler.common.ComplexAttribute;
@@ -84,10 +85,23 @@ public class PartitionGroupInfo implements ComplexAttribute {
          * Huge data-sets.
          */
         HUGE,
+        ;
 
         /**
-         * Unknown data-sets.
+         * Returns whether this is larger than the target one.
+         * @param other the target data size
+         * @return {@code true} if this is larger than the target, otherwise {@code false}
          */
-        UNKNOWN,
+        public boolean isLargetThan(DataSize other) {
+            return this.ordinal() > other.ordinal();
+        }
+
+        /**
+         * Returns the symbol of this scale.
+         * @return the symbol
+         */
+        public String getSymbol() {
+            return name().toLowerCase(Locale.ENGLISH);
+        }
     }
 }

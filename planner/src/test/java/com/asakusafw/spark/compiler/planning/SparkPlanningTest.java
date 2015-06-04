@@ -64,7 +64,7 @@ in --- *C --- out
     @Test
     public void simple() {
         PlanDetail detail = SparkPlanning.plan(context(), new MockOperators()
-            .input("in")
+            .input("in", DataSize.LARGE)
             .output("out").connect("in", "out")
             .toGraph());
         MockOperators mock = restore(detail);
@@ -106,7 +106,7 @@ in --- *C --- o0 --- *C --- out
     @Test
     public void extract_kind() {
         PlanDetail detail = SparkPlanning.plan(context(), new MockOperators()
-            .input("in")
+            .input("in", DataSize.LARGE)
             .operator(cp(), "c0").connect("in", "c0")
             .operator(op(Extract.class, "extract"), "o0").connect("c0", "o0")
             .output("out").connect("o0", "out")
@@ -147,7 +147,7 @@ in --- *G --- o0 --- *C --- out
     public void cogroup_kind() {
         MockOperators m = new MockOperators();
         PlanDetail detail = SparkPlanning.plan(context(), m
-            .input("in")
+            .input("in", DataSize.LARGE)
             .bless("o0", op(CoGroup.class, "cogroup")
                     .input("in", m.getCommonDataType(), group("=a"))
                     .output("out", m.getCommonDataType()))
@@ -164,6 +164,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(output(s0), outputType(is(OutputType.PARTITIONED)));
         assertThat(output(s0), outputPartition(is(group("=a"))));
         assertThat(output(s0), outputAggregation(is(nullValue())));
+        assertThat(output(s0), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
 
         assertThat(info(s1).toString(), s1, primaryOperator(isOperator("o0")));
         assertThat(s1, driverType(is(DriverType.COGROUP)));
@@ -171,6 +172,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(input(s1), inputType(is(InputType.PARTITIONED)));
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s1), inputPartition(is(group("=a"))));
+        assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
         assertThat(output(s1), outputType(is(OutputType.DONT_CARE)));
         assertThat(output(s1), outputPartition(is(nullValue())));
         assertThat(output(s1), outputAggregation(is(nullValue())));
@@ -188,7 +190,7 @@ in --- *G --- o0 --- *C --- out
     public void aggregate_kind_total() {
         MockOperators m = new MockOperators();
         PlanDetail detail = SparkPlanning.plan(context(), m
-            .input("in")
+            .input("in", DataSize.LARGE)
             .bless("o0", op(Fold.class, "fold_total")
                     .input("in", m.getCommonDataType(), group("=a"))
                     .output("out", m.getCommonDataType()))
@@ -205,6 +207,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(output(s0), outputType(is(OutputType.PARTITIONED)));
         assertThat(output(s0), outputPartition(is(group("=a"))));
         assertThat(output(s0), outputAggregation(is(nullValue())));
+        assertThat(output(s0), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
 
         assertThat(info(s1).toString(), s1, primaryOperator(isOperator("o0")));
         assertThat(s1, driverType(is(DriverType.AGGREGATE)));
@@ -212,13 +215,14 @@ in --- *G --- o0 --- *C --- out
         assertThat(input(s1), inputType(is(InputType.PARTITIONED)));
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s1), inputPartition(is(group("=a"))));
+        assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
         assertThat(output(s1), outputType(is(OutputType.DONT_CARE)));
         assertThat(output(s1), outputPartition(is(nullValue())));
         assertThat(output(s1), outputAggregation(is(nullValue())));
     }
 
     /**
-     * aggregate (total) kind.
+     * aggregate (partial) kind.
 <pre>{@code
 in --- o0 --- out
 ==>
@@ -229,7 +233,7 @@ in --- *G --- o0 --- *C --- out
     public void aggregate_kind_partial() {
         MockOperators m = new MockOperators();
         PlanDetail detail = SparkPlanning.plan(context(), m
-                .input("in")
+                .input("in", DataSize.LARGE)
                 .bless("o0", op(Fold.class, "fold_partial")
                         .input("in", m.getCommonDataType(), group("=a"))
                         .output("out", m.getCommonDataType()))
@@ -246,6 +250,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(output(s0), outputType(is(OutputType.AGGREGATED)));
         assertThat(output(s0), outputPartition(is(group("=a"))));
         assertThat(output(s0), outputAggregation(isOperator("o0")));
+        assertThat(output(s0), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
 
         assertThat(info(s1).toString(), s1, primaryOperator(isOperator("o0")));
         assertThat(s1, driverType(is(DriverType.AGGREGATE)));
@@ -253,6 +258,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(input(s1), inputType(is(InputType.PARTITIONED)));
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s1), inputPartition(is(group("=a"))));
+        assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
         assertThat(output(s1), outputType(is(OutputType.DONT_CARE)));
         assertThat(output(s1), outputPartition(is(nullValue())));
         assertThat(output(s1), outputAggregation(is(nullValue())));
@@ -684,8 +690,8 @@ in1 -/------/------/
     public void unify_subplan_output_gather() {
         MockOperators m = new MockOperators();
         PlanDetail detail = SparkPlanning.plan(context(), m
-            .input("in0")
-            .input("in1")
+            .input("in0", DataSize.LARGE)
+            .input("in1", DataSize.LARGE)
             .bless("o0", op(CoGroup.class, "cogroup")
                     .input("a", m.getCommonDataType(), group("=k0", "+k1"))
                     .input("b", m.getCommonDataType(), group("=k0", "-k1"))
@@ -718,6 +724,75 @@ in1 -/------/------/
         assertThat(s3.getInputs(), hasSize(2));
     }
 
+    /**
+     * compute partition group.
+<pre>{@code
+in --- o0 --- out
+==>
+in --- *G --- o0 --- *C --- out
+}</pre>
+     */
+    @Test
+    public void partition_group_simple() {
+        MockOperators m = new MockOperators();
+        PlanDetail detail = SparkPlanning.plan(context(), m
+            .input("in", DataSize.TINY)
+            .bless("o0", op(CoGroup.class, "cogroup")
+                    .input("in", m.getCommonDataType(), group("=a"))
+                    .output("out", m.getCommonDataType()))
+                .connect("in", "o0")
+            .output("out").connect("o0", "out")
+            .toGraph());
+        MockOperators mock = restore(detail);
+        Plan plan = detail.getPlan();
+        assertThat(plan.getElements(), hasSize(3));
+
+        SubPlan s0 = ownerOf(detail, mock.get("in"));
+        SubPlan s1 = ownerOf(detail, mock.get("o0"));
+
+        assertThat(output(s0), partitionGroupSize(is(PartitionGroupInfo.DataSize.TINY)));
+        assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.TINY)));
+    }
+
+    /**
+     * compute partition group.
+<pre>{@code
+in1 --\
+        o0 --- out
+in2 --/
+==>
+in --- *G --- o0 --- *C --- out
+}</pre>
+     */
+    @Test
+    public void partition_group_mix_inputs() {
+        MockOperators m = new MockOperators();
+        PlanDetail detail = SparkPlanning.plan(context(), m
+            .input("in1", DataSize.TINY)
+            .input("in2", DataSize.LARGE)
+            .bless("o0", op(CoGroup.class, "cogroup")
+                    .input("a", m.getCommonDataType(), group("=a"))
+                    .input("b", m.getCommonDataType(), group("=a"))
+                    .output("out", m.getCommonDataType()))
+                .connect("in1", "o0.a")
+                .connect("in2", "o0.b")
+            .output("out").connect("o0", "out")
+            .toGraph());
+        MockOperators mock = restore(detail);
+        Plan plan = detail.getPlan();
+        assertThat(plan.getElements(), hasSize(4));
+
+        SubPlan s0 = ownerOf(detail, mock.get("in1"));
+        SubPlan s1 = ownerOf(detail, mock.get("in2"));
+        SubPlan s2 = ownerOf(detail, mock.get("o0"));
+
+        assertThat(output(s0), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
+        assertThat(output(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
+        for (SubPlan.Input in : s2.getInputs()) {
+            assertThat(in, partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
+        }
+    }
+
     static SubPlanInfo info(SubPlan container) {
         SubPlanInfo info = container.getAttribute(SubPlanInfo.class);
         assertThat(String.valueOf(info), info, is(notNullValue()));
@@ -738,6 +813,12 @@ in1 -/------/------/
 
     static BroadcastInfo broadcast(SubPlan.Port container) {
         BroadcastInfo info = container.getAttribute(BroadcastInfo.class);
+        assertThat(String.valueOf(info), info, is(notNullValue()));
+        return info;
+    }
+
+    static PartitionGroupInfo partitionGroup(SubPlan.Port container) {
+        PartitionGroupInfo info = container.getAttribute(PartitionGroupInfo.class);
         assertThat(String.valueOf(info), info, is(notNullValue()));
         return info;
     }
@@ -837,6 +918,15 @@ in1 -/------/------/
             @Override
             protected Group featureValueOf(SubPlan.Port actual) {
                 return broadcast(actual).getFormatInfo();
+            }
+        };
+    }
+
+    static Matcher<? super SubPlan.Port> partitionGroupSize(Matcher<? super PartitionGroupInfo.DataSize> matcher) {
+        return new FeatureMatcher<SubPlan.Port, PartitionGroupInfo.DataSize>(matcher, "data size", "data size") {
+            @Override
+            protected PartitionGroupInfo.DataSize featureValueOf(SubPlan.Port actual) {
+                return partitionGroup(actual).getDataSize();
             }
         };
     }

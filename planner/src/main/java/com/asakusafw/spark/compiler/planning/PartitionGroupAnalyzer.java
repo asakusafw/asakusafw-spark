@@ -15,9 +15,26 @@
  */
 package com.asakusafw.spark.compiler.planning;
 
-import com.asakusafw.lang.compiler.planning.PlanMarker;
-import com.asakusafw.lang.compiler.planning.PlanMarkers;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.asakusafw.lang.compiler.api.CompilerOptions;
+import com.asakusafw.lang.compiler.common.util.EnumUtil;
+import com.asakusafw.lang.compiler.common.util.StringUtil;
 import com.asakusafw.lang.compiler.planning.SubPlan;
+import com.asakusafw.spark.compiler.planning.PartitionGroupInfo.DataSize;
+import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputType;
 
 /**
  * Analyzes sub-plan inputs/outputs and provides {@link PartitionGroupInfo}.
@@ -29,18 +46,86 @@ import com.asakusafw.lang.compiler.planning.SubPlan;
  */
 public class PartitionGroupAnalyzer {
 
+    static final Logger LOG = LoggerFactory.getLogger(PartitionGroupAnalyzer.class);
+
+    static final String KEY_BASE_PREFIX = "spark.parallelism."; //$NON-NLS-1$
+
+    /**
+     * The compiler property key prefix of data size limits for each {@link DataSize} scale.
+     */
+    public static final String KEY_LIMIT_PREFIX = KEY_BASE_PREFIX + "limit."; //$NON-NLS-1$
+
+    static final Map<DataSize, Double> DEFAULT_LIMITS;
+    static {
+        Map<DataSize, Double> map = new HashMap<>();
+        map.put(DataSize.TINY, Double.valueOf(20.0 * 1024 * 1024));
+        map.put(DataSize.SMALL, Double.NaN);
+        map.put(DataSize.REGULAR, Double.POSITIVE_INFINITY);
+        map.put(DataSize.LARGE, Double.POSITIVE_INFINITY);
+        map.put(DataSize.HUGE, Double.POSITIVE_INFINITY);
+        DEFAULT_LIMITS = EnumUtil.freeze(map);
+    }
+
+    private static final Set<InputType> TARGET_INPUT_TYPES = EnumUtil.freeze(InputType.PARTITIONED);
+
+    final EnumMap<DataSize, Double> limits;
+
+    private final Map<SubPlan.Input, PartitionGroupInfo> cache = new HashMap<>();
+
+    /**
+     * Returns data size limit map from the compiler options.
+     * @param options the compiler options
+     * @return the data size limit map
+     */
+    public static Map<DataSize, Double> loadLimitMap(CompilerOptions options) {
+        Map<DataSize, Double> results = new HashMap<>(DEFAULT_LIMITS);
+        for (DataSize size : DataSize.values()) {
+            String key = KEY_LIMIT_PREFIX + size.getSymbol();
+            String value = options.get(key, StringUtil.EMPTY).trim();
+            if (value.isEmpty()) {
+                continue;
+            }
+            try {
+                double bytes = Double.parseDouble(value);
+                results.put(size, bytes);
+                LOG.debug("spark parallel: {}={}", size, bytes); //$NON-NLS-1$
+            } catch (NumberFormatException e) {
+                LOG.warn(MessageFormat.format(
+                        "invalid data size: {0}={1}",
+                        key,
+                        value));
+            }
+        }
+        return EnumUtil.freeze(results);
+    }
+
+    /**
+     * Creates a new instance with default configuration.
+     */
+    public PartitionGroupAnalyzer() {
+        this(DEFAULT_LIMITS);
+    }
+
+    /**
+     * Creates a new instance.
+     * @param limits the limit map
+     */
+    public PartitionGroupAnalyzer(Map<DataSize, Double> limits) {
+        EnumMap<DataSize, Double> map = new EnumMap<>(DataSize.class);
+        map.putAll(limits);
+        this.limits = map;
+    }
+
     /**
      * Returns {@link PartitionGroupInfo} for the target sub-plan input.
      * @param port the target input port
      * @return the analyzed result, or {@code null} if the target port is not in any partition groups
      */
     public PartitionGroupInfo analyze(SubPlan.Input port) {
-        PlanMarker marker = PlanMarkers.get(port.getOperator());
-        if (marker != PlanMarker.GATHER) {
+        if (isSupported(port) == false) {
             return null;
         }
-        // FIXME implement
-        return new PartitionGroupInfo(PartitionGroupInfo.DataSize.UNKNOWN);
+        return analyze0(port);
     }
 
     /**
@@ -49,11 +134,130 @@ public class PartitionGroupAnalyzer {
      * @return the analyzed result, or {@code null} if the target port is not in any partition groups
      */
     public PartitionGroupInfo analyze(SubPlan.Output port) {
-        PlanMarker marker = PlanMarkers.get(port.getOperator());
-        if (marker != PlanMarker.GATHER) {
+        List<SubPlan.Input> supported = onlySupported(port.getOpposites());
+        if (supported.isEmpty()) {
             return null;
         }
-        // FIXME implement
-        return new PartitionGroupInfo(PartitionGroupInfo.DataSize.UNKNOWN);
+        return analyze0(supported.get(0));
+    }
+
+    private PartitionGroupInfo analyze0(SubPlan.Input port) {
+        assert isSupported(port);
+        if (cache.containsKey(port)) {
+            return cache.get(port);
+        }
+        Collector collector = new Collector();
+        collector.add(port);
+
+        DataSize size = collector.getDataSize();
+        PartitionGroupInfo info = new PartitionGroupInfo(size);
+        for (SubPlan.Input p : collector.getMembers()) {
+            assert cache.containsKey(p) == false;
+            cache.put(p, info);
+        }
+        assert cache.containsKey(port);
+        return info;
+    }
+
+    static List<SubPlan.Input> onlySupported(Collection<? extends SubPlan.Input> inputs) {
+        List<SubPlan.Input> results = new ArrayList<>();
+        for (SubPlan.Input input : inputs) {
+            if (isSupported(input)) {
+                results.add(input);
+            }
+        }
+        return results;
+    }
+
+    static boolean isSupported(SubPlan.Input port) {
+        SubPlanInputInfo info = port.getAttribute(SubPlanInputInfo.class);
+        if (info == null) {
+            return false;
+        }
+        return TARGET_INPUT_TYPES.contains(info.getInputType());
+    }
+
+    private class Collector {
+
+        final Set<SubPlan> consumers = new HashSet<>();
+
+        Collector() {
+            return;
+        }
+
+        public void add(SubPlan.Input start) {
+            assert isSupported(start);
+            Set<SubPlan> saw = new HashSet<>(consumers);
+            LinkedList<SubPlan> work = new LinkedList<>();
+            work.add(start.getOwner());
+            while (work.isEmpty() == false) {
+                SubPlan next = work.removeFirst();
+                if (saw.contains(next)) {
+                    continue;
+                }
+                saw.add(next);
+                for (SubPlan.Input input : onlySupported(next.getInputs())) {
+                    for (SubPlan.Output upstream : input.getOpposites()) {
+                        for (SubPlan.Input downstream : upstream.getOpposites()) {
+                            // NOTE: the downstream may be always supported
+                            if (isSupported(downstream)) {
+                                work.addFirst(downstream.getOwner());
+                            }
+                        }
+                    }
+                }
+            }
+            consumers.addAll(saw);
+        }
+
+        public DataSize getDataSize() {
+            DataSize current = null;
+            for (SubPlan sub : consumers) {
+                DataSize size = computeDataSize(sub);
+                if (current == null || size.isLargetThan(current)) {
+                    current = size;
+                }
+            }
+            return current == null ? DataSize.REGULAR : current;
+        }
+
+        private DataSize computeDataSize(SubPlan sub) {
+            boolean sawNaN = false;
+            double total = 0.0;
+            for (SubPlan.Input input : onlySupported(sub.getInputs())) {
+                double size = SizeInfo.getSize(input);
+                if (Double.isNaN(size)) {
+                    sawNaN = true;
+                } else {
+                    total += Math.max(0.0, size);
+                }
+            }
+            for (Map.Entry<DataSize, Double> entry : limits.entrySet()) {
+                if (entry.getValue() == null) {
+                    continue;
+                }
+                DataSize scale = entry.getKey();
+                if (sawNaN && DataSize.REGULAR.isLargetThan(scale)) {
+                    continue;
+                }
+                double value = entry.getValue();
+                if (Double.isNaN(value)) {
+                    continue;
+                }
+                if (total <= value) {
+                    return scale;
+                }
+            }
+            // unknown data size
+            return DataSize.REGULAR;
+        }
+
+        public Set<SubPlan.Input> getMembers() {
+            Set<SubPlan.Input> results = new HashSet<>();
+            for (SubPlan sub : consumers) {
+                results.addAll(onlySupported(sub.getInputs()));
+            }
+            return results;
+        }
     }
 }

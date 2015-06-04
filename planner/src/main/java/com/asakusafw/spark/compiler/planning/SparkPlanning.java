@@ -368,43 +368,13 @@ public final class SparkPlanning {
         attachBroadcastInfo(plan, analyzer);
         if (context.getOptions().contains(Option.SIZE_ESTIMATION)) {
             attachSizeInfo(context, plan);
+            attachPartitionGroupInfo(context, plan);
         }
         if (context.getOptions().contains(Option.GRAPH_STATISTICS)) {
             attachGraphStatistics(plan);
         }
         if (context.getOptions().contains(Option.PLAN_STATISTICS)) {
             attachPlanStatistics(plan);
-        }
-    }
-
-    private static void attachSizeInfo(PlanningContext context, Plan plan) {
-        PlanEstimator estimator = new PlanEstimator(context.getEstimator(), context.getOptimizerContext());
-        for (SubPlan sub : plan.getElements()) {
-            for (SubPlan.Input port : sub.getInputs()) {
-                SizeInfo info = estimator.estimate(port);
-                assert info != null;
-                port.putAttribute(SizeInfo.class, info);
-            }
-            for (SubPlan.Output port : sub.getOutputs()) {
-                SizeInfo info = estimator.estimate(port);
-                assert info != null;
-                port.putAttribute(SizeInfo.class, info);
-            }
-        }
-        PartitionGroupAnalyzer groupAnalyzer = new PartitionGroupAnalyzer();
-        for (SubPlan sub : plan.getElements()) {
-            for (SubPlan.Input port : sub.getInputs()) {
-                PartitionGroupInfo info = groupAnalyzer.analyze(port);
-                if (info != null) {
-                    port.putAttribute(PartitionGroupInfo.class, info);
-                }
-            }
-            for (SubPlan.Output port : sub.getOutputs()) {
-                PartitionGroupInfo info = groupAnalyzer.analyze(port);
-                if (info != null) {
-                    port.putAttribute(PartitionGroupInfo.class, info);
-                }
-            }
         }
     }
 
@@ -443,6 +413,43 @@ public final class SparkPlanning {
                 }
             }
         }
+    }
+
+    private static void attachSizeInfo(PlanningContext context, Plan plan) {
+        PlanEstimator estimator = new PlanEstimator(context.getEstimator(), context.getOptimizerContext());
+        for (SubPlan sub : plan.getElements()) {
+            for (SubPlan.Input port : sub.getInputs()) {
+                SizeInfo info = estimator.estimate(port);
+                assert info != null;
+                port.putAttribute(SizeInfo.class, info);
+            }
+            for (SubPlan.Output port : sub.getOutputs()) {
+                SizeInfo info = estimator.estimate(port);
+                assert info != null;
+                port.putAttribute(SizeInfo.class, info);
+            }
+        }
+    }
+
+    private static void attachPartitionGroupInfo(PlanningContext context, Plan plan) {
+        Map<PartitionGroupInfo.DataSize, Double> limits =
+                PartitionGroupAnalyzer.loadLimitMap(context.getOptimizerContext().getOptions());
+        PartitionGroupAnalyzer groupAnalyzer = new PartitionGroupAnalyzer(limits);
+        for (SubPlan sub : plan.getElements()) {
+            for (SubPlan.Input port : sub.getInputs()) {
+                PartitionGroupInfo info = groupAnalyzer.analyze(port);
+                if (info != null) {
+                    port.putAttribute(PartitionGroupInfo.class, info);
+                }
+            }
+            for (SubPlan.Output port : sub.getOutputs()) {
+                PartitionGroupInfo info = groupAnalyzer.analyze(port);
+                if (info != null) {
+                    port.putAttribute(PartitionGroupInfo.class, info);
+                }
+            }
+        }
+
     }
 
     private static void attachGraphStatistics(Plan plan) {
