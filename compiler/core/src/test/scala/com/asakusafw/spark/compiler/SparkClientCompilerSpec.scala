@@ -170,6 +170,48 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
         }
       }
 
+    it should "compile Spark client with Logging: " +
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
+        val (path, classpath) = createTempDirs()
+
+        spark { sc =>
+          prepareData("hoge", path) {
+            sc.parallelize(0 until 100).map { i =>
+              val hoge = new Hoge()
+              hoge.id.modify(i)
+              hoge.hoge.modify(s"hoge${i}")
+              hoge
+            }
+          }
+        }
+
+        val inputOperator = ExternalInput
+          .newInstance("hoge/part-*",
+            new ExternalInputInfo.Basic(
+              ClassDescription.of(classOf[Hoge]),
+              "test",
+              ClassDescription.of(classOf[Hoge]),
+              ExternalInputInfo.DataSize.UNKNOWN))
+
+        val loggingOperator = OperatorExtractor
+          .extract(classOf[Logging], classOf[Ops], "logging")
+          .input("hoge", ClassDescription.of(classOf[Hoge]), inputOperator.getOperatorPort)
+          .output("output", ClassDescription.of(classOf[Hoge]))
+          .build()
+
+        val outputOperator = ExternalOutput
+          .newInstance("output", loggingOperator.findOutput("output"))
+
+        val graph = new OperatorGraph(Seq(inputOperator, loggingOperator, outputOperator))
+        execute(graph, 2, path, classpath)
+
+        spark { sc =>
+          val result = readResult[Hoge](sc, "output", path)
+          assert(result.map(hoge => (hoge.id.get, hoge.hoge.getAsString)).collect.toSeq.sortBy(_._1) ===
+            (0 until 100).map(i => (i, s"hoge${i}")))
+        }
+      }
+
     it should "compile Spark client with Extract: " +
       s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
@@ -1361,6 +1403,11 @@ object SparkClientCompilerSpec {
   }
 
   class Ops {
+
+    @Logging(Logging.Level.INFO)
+    def logging(hoge: Hoge): String = {
+      s"Hoge(${hoge.id},${hoge.hoge})"
+    }
 
     @Extract
     def extract(hoge: Hoge, evenResult: Result[Hoge], oddResult: Result[Hoge]): Unit = {
