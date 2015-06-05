@@ -163,7 +163,11 @@ object AggregateSubPlanCompiler {
 
       val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(
-        numPartitions(context.mb, context.scVar.push())(subplan.findInput(input.getOpposites.head.getOwner)))
+        if (input.getGroup.getGrouping.isEmpty) {
+          ldc(1)
+        } else {
+          numPartitions(context.mb, context.scVar.push())(subplan.findInput(input.getOpposites.head.getOwner))
+        })
       val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
 
       val aggregateDriver = pushNew(driverType)
