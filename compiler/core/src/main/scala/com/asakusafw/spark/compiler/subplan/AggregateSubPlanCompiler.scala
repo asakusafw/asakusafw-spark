@@ -34,9 +34,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
   import AggregateSubPlanCompiler._
 
-  override def support(operator: Operator)(implicit context: Context): Boolean = {
-    AggregationCompiler.support(operator)(AggregationCompiler.Context(context.flowId, context.jpContext))
-  }
+  def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.AGGREGATE
 
   override def instantiator: Instantiator = AggregateDriverInstantiator
 

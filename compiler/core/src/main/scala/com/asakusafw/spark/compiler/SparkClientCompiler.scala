@@ -69,7 +69,6 @@ class SparkClientCompiler extends JobflowProcessor {
 
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
 
-      val subplanCompilers = SubPlanCompiler(jpContext.getClassLoader)
       val branchKeysClassBuilder = new BranchKeysClassBuilder(source.getFlowId)
       val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder(source.getFlowId)
       implicit val context = SubPlanCompiler.Context(
@@ -194,8 +193,7 @@ class SparkClientCompiler extends JobflowProcessor {
             case (subplan, i) =>
               methodDef.newMethod(s"execute${i}", Seq.empty) { mb =>
                 import mb._
-                val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
-                val compiler = subplanCompilers.find(_.support(primaryOperator)).get
+                val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
                 val driverType = compiler.compile(subplan)
 
                 val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType).store(thisVar.nextLocal)

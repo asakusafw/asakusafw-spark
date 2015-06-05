@@ -47,8 +47,6 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
   behavior of classOf[AggregateDriverClassBuilder].getSimpleName
 
-  def resolvers = SubPlanCompiler(Thread.currentThread.getContextClassLoader)
-
   for {
     (dataSize, numPartitions) <- Seq(
       (PartitionGroupInfo.DataSize.TINY, 1),
@@ -97,7 +95,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         branchKeys = branchKeysClassBuilder,
         broadcastIds = broadcastIdsClassBuilder)
 
-      val compiler = resolvers.find(_.support(operator)).get
+      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
       context.jpContext.addClass(branchKeysClassBuilder)
       context.jpContext.addClass(broadcastIdsClassBuilder)
@@ -194,7 +192,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         branchKeys = branchKeysClassBuilder,
         broadcastIds = broadcastIdsClassBuilder)
 
-      val compiler = resolvers.find(_.support(operator)).get
+      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
       context.jpContext.addClass(branchKeysClassBuilder)
       context.jpContext.addClass(broadcastIdsClassBuilder)
