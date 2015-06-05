@@ -47,8 +47,6 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val tmpDir = new File(createTempDirectory("test-").toFile, "tmp")
     val path = tmpDir.getAbsolutePath
 
-    val resolvers = SubPlanCompiler(Thread.currentThread.getContextClassLoader)
-
     val jpContext = new MockJobflowProcessorContext(
       new CompilerOptions("buildid", path, Map.empty[String, String]),
       Thread.currentThread.getContextClassLoader,
@@ -83,7 +81,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       externalInputs = mutable.Map.empty,
       branchKeys = outputBranchKeysClassBuilder,
       broadcastIds = outputBroadcastIdsClassBuilder)
-    val outputCompiler = resolvers.find(_.support(outputOperator)(outputCompilerContext)).get
+    val outputCompiler = SubPlanCompiler(outputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(outputCompilerContext)
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
     outputCompilerContext.jpContext.addClass(outputBranchKeysClassBuilder)
     outputCompilerContext.jpContext.addClass(outputBroadcastIdsClassBuilder)
@@ -152,7 +150,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       externalInputs = mutable.Map.empty,
       branchKeys = inputBranchKeysClassBuilder,
       broadcastIds = inputBroadcastIdsClassBuilder)
-    val inputCompiler = resolvers.find(_.support(inputOperator)(inputCompilerContext)).get
+    val inputCompiler = SubPlanCompiler(inputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(inputCompilerContext)
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
     inputCompilerContext.jpContext.addClass(inputBranchKeysClassBuilder)
     inputCompilerContext.jpContext.addClass(inputBroadcastIdsClassBuilder)

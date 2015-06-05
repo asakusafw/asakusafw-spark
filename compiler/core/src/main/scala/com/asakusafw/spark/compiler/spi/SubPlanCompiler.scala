@@ -9,16 +9,15 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.reference.ExternalInputReference
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.model.graph.Operator
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.subplan._
-import com.asakusafw.spark.tools.asm.ClassBuilder
 
 trait SubPlanCompiler {
 
   type Context = SubPlanCompiler.Context
 
-  def support(operator: Operator)(implicit context: Context): Boolean
+  def of: SubPlanInfo.DriverType
 
   def compile(subplan: SubPlan)(implicit context: Context): Type
 
@@ -34,16 +33,30 @@ object SubPlanCompiler {
     branchKeys: BranchKeys,
     broadcastIds: BroadcastIds)
 
-  private[this] val operatorCompilers: mutable.Map[ClassLoader, Seq[SubPlanCompiler]] =
-    mutable.WeakHashMap.empty
-
-  def apply(classLoader: ClassLoader): Seq[SubPlanCompiler] = {
-    operatorCompilers.getOrElse(classLoader, reload(classLoader))
+  def apply(driverType: SubPlanInfo.DriverType)(implicit context: Context): SubPlanCompiler = {
+    apply(context.jpContext.getClassLoader)(driverType)
   }
 
-  def reload(classLoader: ClassLoader): Seq[SubPlanCompiler] = {
-    val ors = ServiceLoader.load(classOf[SubPlanCompiler], classLoader).toSeq
-    operatorCompilers(classLoader) = ors
+  def get(driverType: SubPlanInfo.DriverType)(implicit context: Context): Option[SubPlanCompiler] = {
+    apply(context.jpContext.getClassLoader).get(driverType)
+  }
+
+  def support(driverType: SubPlanInfo.DriverType)(implicit context: Context): Boolean = {
+    get(driverType).isDefined
+  }
+
+  private[this] val subplanCompilers: mutable.Map[ClassLoader, Map[SubPlanInfo.DriverType, SubPlanCompiler]] =
+    mutable.WeakHashMap.empty
+
+  private[this] def apply(classLoader: ClassLoader): Map[SubPlanInfo.DriverType, SubPlanCompiler] = {
+    subplanCompilers.getOrElse(classLoader, reload(classLoader))
+  }
+
+  private[this] def reload(classLoader: ClassLoader): Map[SubPlanInfo.DriverType, SubPlanCompiler] = {
+    val ors = ServiceLoader.load(classOf[SubPlanCompiler], classLoader).map {
+      resolver => resolver.of -> resolver
+    }.toMap[SubPlanInfo.DriverType, SubPlanCompiler]
+    subplanCompilers(classLoader) = ors
     ors
   }
 }

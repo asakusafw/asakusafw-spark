@@ -26,9 +26,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class InputSubPlanCompiler extends SubPlanCompiler {
 
-  override def support(operator: Operator)(implicit context: Context): Boolean = {
-    operator.isInstanceOf[ExternalInput]
-  }
+  def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.INPUT
 
   override def instantiator: Instantiator = InputSubPlanCompiler.InputDriverInstantiator
 

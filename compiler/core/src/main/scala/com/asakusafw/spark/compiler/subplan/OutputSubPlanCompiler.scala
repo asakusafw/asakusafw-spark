@@ -19,9 +19,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class OutputSubPlanCompiler extends SubPlanCompiler {
 
-  override def support(operator: Operator)(implicit context: Context): Boolean = {
-    operator.isInstanceOf[ExternalOutput]
-  }
+  def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.OUTPUT
 
   override def instantiator: Instantiator = OutputSubPlanCompiler.OutputDriverInstantiator
 

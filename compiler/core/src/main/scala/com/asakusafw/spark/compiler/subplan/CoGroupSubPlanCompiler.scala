@@ -31,16 +31,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
   import CoGroupSubPlanCompiler._
 
-  override def support(operator: Operator)(implicit context: Context): Boolean = {
-    OperatorCompiler.support(
-      operator,
-      OperatorType.CoGroupType)(
-        OperatorCompiler.Context(
-          flowId = context.flowId,
-          jpContext = context.jpContext,
-          branchKeys = context.branchKeys,
-          broadcastIds = context.broadcastIds))
-  }
+  def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.COGROUP
 
   override def instantiator: Instantiator = CoGroupSubPlanCompiler.CoGroupDriverInstantiator
 
