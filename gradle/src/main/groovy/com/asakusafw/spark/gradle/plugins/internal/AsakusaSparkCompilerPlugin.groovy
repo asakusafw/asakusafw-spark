@@ -63,6 +63,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             batchIdPrefix = { (String) 'spark.' }
             failOnError = { true }
         }
+        spark.compilerProperties.put('operator.checkpoint.remove', 'true')
         REDIRECT.each { k, v ->
             spark.compilerProperties.put((String) "redirector.rule.${k}", v)
         }
