@@ -52,7 +52,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
   for {
     (master, threshold) <- Seq(("local[8]", None), ("local[8]", Some(0)))
-    parallelism <- Seq(None, Some(8))
+    parallelism <- Seq(None, Some(8), Some(0))
   } {
     def execute(graph: OperatorGraph, subplans: Int, path: File, classpath: File): Unit = {
 

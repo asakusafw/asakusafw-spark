@@ -19,13 +19,33 @@ trait NumPartitions {
       case PartitionGroupInfo.DataSize.TINY =>
         ldc(1)
       case PartitionGroupInfo.DataSize.SMALL =>
-        getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Small")).toInt
+        invokeStatic(
+          classOf[Math].asType,
+          "max",
+          Type.INT_TYPE,
+          getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Small")).toInt,
+          ldc(1))
       case PartitionGroupInfo.DataSize.REGULAR =>
-        getParallelism(mb, sc)
+        invokeStatic(
+          classOf[Math].asType,
+          "max",
+          Type.INT_TYPE,
+          getParallelism(mb, sc),
+          ldc(1))
       case PartitionGroupInfo.DataSize.LARGE =>
-        getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Large")).toInt
+        invokeStatic(
+          classOf[Math].asType,
+          "max",
+          Type.INT_TYPE,
+          getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Large")).toInt,
+          ldc(1))
       case PartitionGroupInfo.DataSize.HUGE =>
-        getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Huge")).toInt
+        invokeStatic(
+          classOf[Math].asType,
+          "max",
+          Type.INT_TYPE,
+          getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Huge")).toInt,
+          ldc(1))
     }
   }
 
