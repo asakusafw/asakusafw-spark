@@ -352,6 +352,128 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
         }
       }
 
+    it should "compile Spark client with CoGroup with grouping is empty: " +
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
+        val (path, classpath) = createTempDirs()
+
+        spark { sc =>
+          prepareData("hoge1", path) {
+            sc.parallelize(0 until 5).map { i =>
+              val hoge = new Hoge()
+              hoge.id.modify(i)
+              hoge.hoge.modify(s"hoge${i}")
+              hoge
+            }
+          }
+          prepareData("hoge2", path) {
+            sc.parallelize(5 until 10).map { i =>
+              val hoge = new Hoge()
+              hoge.id.modify(i)
+              hoge.hoge.modify(s"hoge${i}")
+              hoge
+            }
+          }
+          prepareData("foo", path) {
+            sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
+              val foo = new Foo()
+              foo.id.modify(10 + j)
+              foo.hogeId.modify(i)
+              foo.foo.modify(s"foo${10 + j}")
+              foo
+            })
+          }
+        }
+
+        val hoge1InputOperator = ExternalInput
+          .newInstance("hoge1/part-*",
+            new ExternalInputInfo.Basic(
+              ClassDescription.of(classOf[Hoge]),
+              "hoges1",
+              ClassDescription.of(classOf[Hoge]),
+              ExternalInputInfo.DataSize.UNKNOWN))
+
+        val hoge2InputOperator = ExternalInput
+          .newInstance("hoge2/part-*",
+            new ExternalInputInfo.Basic(
+              ClassDescription.of(classOf[Hoge]),
+              "hoges2",
+              ClassDescription.of(classOf[Hoge]),
+              ExternalInputInfo.DataSize.UNKNOWN))
+
+        val fooInputOperator = ExternalInput
+          .newInstance("foo/part-*",
+            new ExternalInputInfo.Basic(
+              ClassDescription.of(classOf[Foo]),
+              "foos",
+              ClassDescription.of(classOf[Foo]),
+              ExternalInputInfo.DataSize.UNKNOWN))
+
+        val cogroupOperator = OperatorExtractor
+          .extract(classOf[CoGroup], classOf[Ops], "cogroup")
+          .input("hoges", ClassDescription.of(classOf[Hoge]),
+            Groups.parse(Seq.empty[String]),
+            hoge1InputOperator.getOperatorPort, hoge2InputOperator.getOperatorPort)
+          .input("foos", ClassDescription.of(classOf[Foo]),
+            Groups.parse(Seq.empty[String], Seq("+id")),
+            fooInputOperator.getOperatorPort)
+          .output("hogeResult", ClassDescription.of(classOf[Hoge]))
+          .output("fooResult", ClassDescription.of(classOf[Foo]))
+          .output("hogeError", ClassDescription.of(classOf[Hoge]))
+          .output("fooError", ClassDescription.of(classOf[Foo]))
+          .build()
+
+        val hogeResultOutputOperator = ExternalOutput
+          .newInstance("hogeResult", cogroupOperator.findOutput("hogeResult"))
+
+        val fooResultOutputOperator = ExternalOutput
+          .newInstance("fooResult", cogroupOperator.findOutput("fooResult"))
+
+        val hogeErrorOutputOperator = ExternalOutput
+          .newInstance("hogeError", cogroupOperator.findOutput("hogeError"))
+
+        val fooErrorOutputOperator = ExternalOutput
+          .newInstance("fooError", cogroupOperator.findOutput("fooError"))
+
+        val graph = new OperatorGraph(Seq(
+          hoge1InputOperator, hoge2InputOperator, fooInputOperator,
+          cogroupOperator,
+          hogeResultOutputOperator, fooResultOutputOperator, hogeErrorOutputOperator, fooErrorOutputOperator))
+        execute(graph, 8, path, classpath)
+
+        spark { sc =>
+          {
+            val hogeResult = readResult[Hoge](sc, "hogeResult", path)
+              .map(hoge => (hoge.id.get, hoge.hoge.getAsString)).collect.toSeq.sortBy(_._1)
+            assert(hogeResult.size === 0)
+          }
+          {
+            val fooResult = readResult[Foo](sc, "fooResult", path)
+              .map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sortBy(_._1)
+            assert(fooResult.size === 0)
+          }
+          {
+            val hogeError = readResult[Hoge](sc, "hogeError", path)
+              .map(hoge => (hoge.id.get, hoge.hoge.getAsString)).collect.toSeq.sortBy(_._1)
+            assert(hogeError.size === 10)
+            for (i <- 0 until 10) {
+              assert(hogeError(i) === (i, s"hoge${i}"))
+            }
+          }
+          {
+            val fooError = readResult[Foo](sc, "fooError", path)
+              .map(foo => (foo.id.get, foo.hogeId.get, foo.foo.getAsString)).collect.toSeq.sortBy(_._1)
+              .sortBy(foo => (foo._2, foo._1))
+            assert(fooError.size === 45)
+            for {
+              i <- 0 until 10
+              j <- 0 until i
+            } {
+              assert(fooError((i * (i - 1)) / 2 + j) === (10 + j, i, s"foo${10 + j}"))
+            }
+          }
+        }
+      }
+
     it should "compile Spark client with MasterCheck: " +
       s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
@@ -835,6 +957,72 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
         }
       }
 
+    it should "compile Spark client with Fold with grouping is empty: " +
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
+        val (path, classpath) = createTempDirs()
+
+        spark { sc =>
+          prepareData("baa1", path) {
+            sc.parallelize(0 until 50).map { i =>
+              val baa = new Baa()
+              baa.id.modify(i % 2)
+              baa.price.modify(100 * i)
+              baa
+            }
+          }
+          prepareData("baa2", path) {
+            sc.parallelize(50 until 100).map { i =>
+              val baa = new Baa()
+              baa.id.modify(i % 2)
+              baa.price.modify(100 * i)
+              baa
+            }
+          }
+        }
+
+        val baa1InputOperator = ExternalInput
+          .newInstance("baa1/part-*",
+            new ExternalInputInfo.Basic(
+              ClassDescription.of(classOf[Baa]),
+              "baa1",
+              ClassDescription.of(classOf[Baa]),
+              ExternalInputInfo.DataSize.UNKNOWN))
+
+        val baa2InputOperator = ExternalInput
+          .newInstance("baa2/part-*",
+            new ExternalInputInfo.Basic(
+              ClassDescription.of(classOf[Baa]),
+              "baa2",
+              ClassDescription.of(classOf[Baa]),
+              ExternalInputInfo.DataSize.UNKNOWN))
+
+        val foldOperator = OperatorExtractor
+          .extract(classOf[Fold], classOf[Ops], "fold")
+          .input("baas", ClassDescription.of(classOf[Baa]),
+            Groups.parse(Seq.empty[String]),
+            baa1InputOperator.getOperatorPort, baa2InputOperator.getOperatorPort)
+          .output("result", ClassDescription.of(classOf[Baa]))
+          .build()
+
+        val resultOutputOperator = ExternalOutput
+          .newInstance("result", foldOperator.findOutput("result"))
+
+        val graph = new OperatorGraph(Seq(
+          baa1InputOperator, baa2InputOperator,
+          foldOperator,
+          resultOutputOperator))
+        execute(graph, 4, path, classpath)
+
+        spark { sc =>
+          {
+            val result = readResult[Baa](sc, "result", path)
+              .map { baa => (baa.id.get, baa.price.get) }.collect.toSeq.sortBy(_._1)
+            assert(result.size === 1)
+            assert(result(0)._2 === (0 until 100).map(_ * 100).sum)
+          }
+        }
+      }
+
     it should "compile Spark client with Summarize: " +
       s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
         val (path, classpath) = createTempDirs()
@@ -908,6 +1096,77 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
             assert(result(1)._3 === 99900)
             assert(result(1)._4 === 100)
             assert(result(1)._5 === 500)
+          }
+        }
+      }
+
+    it should "compile Spark client with Summarize with grouping is empty: " +
+      s"[master=${master}${threshold.map(t => s",threshold=${t}").getOrElse("")}${parallelism.map(p => s",parallelism=${p}").getOrElse("")}]" in {
+        val (path, classpath) = createTempDirs()
+
+        spark { sc =>
+          prepareData("baa1", path) {
+            sc.parallelize(0 until 500).map { i =>
+              val baa = new Baa()
+              baa.id.modify(i % 2)
+              baa.price.modify(100 * i)
+              baa
+            }
+          }
+          prepareData("baa2", path) {
+            sc.parallelize(500 until 1000).map { i =>
+              val baa = new Baa()
+              baa.id.modify(i % 2)
+              baa.price.modify(100 * i)
+              baa
+            }
+          }
+        }
+
+        val baa1InputOperator = ExternalInput
+          .newInstance("baa1/part-*",
+            new ExternalInputInfo.Basic(
+              ClassDescription.of(classOf[Baa]),
+              "baa1",
+              ClassDescription.of(classOf[Baa]),
+              ExternalInputInfo.DataSize.UNKNOWN))
+
+        val baa2InputOperator = ExternalInput
+          .newInstance("baa2/part-*",
+            new ExternalInputInfo.Basic(
+              ClassDescription.of(classOf[Baa]),
+              "baa2",
+              ClassDescription.of(classOf[Baa]),
+              ExternalInputInfo.DataSize.UNKNOWN))
+
+        val summarizeOperator = OperatorExtractor
+          .extract(classOf[Summarize], classOf[Ops], "summarize")
+          .input("baas", ClassDescription.of(classOf[Baa]),
+            Groups.parse(Seq.empty[String]),
+            baa1InputOperator.getOperatorPort, baa2InputOperator.getOperatorPort)
+          .output("result", ClassDescription.of(classOf[SummarizedBaa]))
+          .build()
+
+        val resultOutputOperator = ExternalOutput
+          .newInstance("result", summarizeOperator.findOutput("result"))
+
+        val graph = new OperatorGraph(Seq(
+          baa1InputOperator, baa2InputOperator,
+          summarizeOperator,
+          resultOutputOperator))
+        execute(graph, 4, path, classpath)
+
+        spark { sc =>
+          {
+            val result = readResult[SummarizedBaa](sc, "result", path)
+              .map { baa =>
+                (baa.id.get, baa.priceSum.get, baa.priceMax.get, baa.priceMin.get, baa.count.get)
+              }.collect.toSeq.sortBy(_._1)
+            assert(result.size === 1)
+            assert(result(0)._2 === (0 until 1000).map(_ * 100).sum)
+            assert(result(0)._3 === 99900)
+            assert(result(0)._4 === 0)
+            assert(result(0)._5 === 1000)
           }
         }
       }

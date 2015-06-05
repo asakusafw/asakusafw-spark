@@ -165,7 +165,11 @@ object CoGroupSubPlanCompiler {
 
       val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(
-        numPartitions(context.mb, context.scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner)))
+        if (properties.head.isEmpty) {
+          ldc(1)
+        } else {
+          numPartitions(context.mb, context.scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
+        })
       val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
 
       val cogroupDriver = pushNew(driverType)
