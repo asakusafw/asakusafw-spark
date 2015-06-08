@@ -26,13 +26,13 @@ import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
-class MapDriverSpecTest extends MapDriverSpec
+class ExtractDriverSpecTest extends ExtractDriverSpec
 
-class MapDriverSpec extends FlatSpec with SparkSugar {
+class ExtractDriverSpec extends FlatSpec with SparkSugar {
 
-  import MapDriverSpec._
+  import ExtractDriverSpec._
 
-  behavior of classOf[MapDriver[_]].getSimpleName
+  behavior of classOf[ExtractDriver[_]].getSimpleName
 
   it should "map simply" in {
     import Simple._
@@ -54,7 +54,7 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 100).map(f)
 
-    val driver = new SimpleMapDriver(sc, hadoopConf, Future.successful(hoges))
+    val driver = new SimpleExtractDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
     val hogeResult = Await.result(
@@ -85,7 +85,7 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 100).map(f)
 
-    val driver = new BranchMapDriver(sc, hadoopConf, Future.successful(hoges))
+    val driver = new BranchExtractDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
     val hoge1Result = Await.result(
@@ -124,7 +124,7 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 100).map(f)
 
-    val driver = new BranchAndOrderingMapDriver(sc, hadoopConf, Future.successful(hoges))
+    val driver = new BranchAndOrderingExtractDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
     val foo1Result = Await.result(
@@ -144,7 +144,7 @@ class MapDriverSpec extends FlatSpec with SparkSugar {
   }
 }
 
-object MapDriverSpec {
+object ExtractDriverSpec {
 
   class Hoge extends DataModel[Hoge] with Writable {
 
@@ -199,11 +199,11 @@ object MapDriverSpec {
 
     val HogeResult = BranchKey(0)
 
-    class SimpleMapDriver(
+    class SimpleExtractDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Hoge)]])
-        extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+        extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def label = "SimpleMap"
 
@@ -249,11 +249,11 @@ object MapDriverSpec {
     val Hoge1Result = BranchKey(0)
     val Hoge2Result = BranchKey(1)
 
-    class BranchMapDriver(
+    class BranchExtractDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Hoge)]])
-        extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+        extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def label = "BranchMap"
 
@@ -318,11 +318,11 @@ object MapDriverSpec {
     val Foo1Result = BranchKey(0)
     val Foo2Result = BranchKey(1)
 
-    class BranchAndOrderingMapDriver(
+    class BranchAndOrderingExtractDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Foo)]])
-        extends MapDriver[Foo](sc, hadoopConf, Map.empty, Seq(prev)) {
+        extends ExtractDriver[Foo](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def label = "BranchAndOrderingMap"
 
