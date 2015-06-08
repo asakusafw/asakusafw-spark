@@ -23,9 +23,11 @@ object Launcher {
         Logger.info(s"batchArgs: ${batchArgs}")
       }
 
-      val sparkClient = Class.forName(client).asSubclass(classOf[SparkClient]).newInstance()
+      val sparkClient = Class.forName(client, false, Thread.currentThread.getContextClassLoader)
+        .asSubclass(classOf[SparkClient])
+        .newInstance()
 
-      val sparkConf = new SparkConf
+      val sparkConf = new SparkConf()
 
       val stageInfo = new StageInfo(
         sys.props("user.name"), batchId, flowId, null, executionId, batchArgs)
