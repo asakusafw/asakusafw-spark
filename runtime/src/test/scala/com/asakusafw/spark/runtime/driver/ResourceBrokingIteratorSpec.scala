@@ -61,7 +61,7 @@ object ResourceBrokingIteratorSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient prev: Future[RDD[(_, Hoge)]])
-      extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+      extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def label = "TestMap"
 

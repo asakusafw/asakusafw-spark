@@ -15,15 +15,23 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, CoGroupDriver, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, ExtractDriver, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-abstract class CoGroupDriverClassBuilder(
-  val flowId: String)
+abstract class ExtractDriverClassBuilder(
+  val flowId: String,
+  val dataModelType: Type)
     extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${CoGroupDriverClassBuilder.nextId};"),
-      classOf[CoGroupDriver].asType)
+      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/ExtractDriver$$${ExtractDriverClassBuilder.nextId};"),
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[ExtractDriver[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+          }
+        }
+        .build(),
+      classOf[ExtractDriver[_]].asType)
     with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -31,9 +39,7 @@ abstract class CoGroupDriverClassBuilder(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
       classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType,
-      classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]].asType,
-      classOf[Ordering[ShuffleKey]].asType,
-      classOf[Partitioner].asType),
+      classOf[Seq[Future[RDD[(_, _)]]]].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
         .newParameterType {
@@ -58,67 +64,40 @@ abstract class CoGroupDriverClassBuilder(
         .newParameterType {
           _.newClassType(classOf[Seq[_]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(classOf[(_, _)].asType) {
+              _.newClassType(classOf[Future[_]].asType) {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                  _.newClassType(classOf[Seq[_]].asType) {
+                  _.newClassType(classOf[RDD[_]].asType) {
                     _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                      _.newClassType(classOf[Future[_]].asType) {
-                        _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                          _.newClassType(classOf[RDD[_]].asType) {
-                            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                              _.newClassType(classOf[(_, _)].asType) {
-                                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-                                  .newTypeArgument()
-                              }
-                            }
-                          }
-                        }
+                      _.newClassType(classOf[(_, _)].asType) {
+                        _.newTypeArgument()
+                          .newTypeArgument()
                       }
                     }
                   }
                 }
-                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                    _.newClassType(classOf[Option[_]].asType) {
-                      _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                        _.newClassType(classOf[Ordering[_]].asType) {
-                          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-                        }
-                      }
-                    }
-                  }
               }
             }
           }
         }
-        .newParameterType {
-          _.newClassType(classOf[Ordering[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-          }
-        }
-        .newParameterType(classOf[Partitioner].asType)
         .newVoidReturnType()
         .build()) { mb =>
         import mb._
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
-        val inputsVar = `var`(classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]].asType, broadcastsVar.nextLocal)
-        val groupingVar = `var`(classOf[Ordering[ShuffleKey]].asType, inputsVar.nextLocal)
-        val partVar = `var`(classOf[Partitioner].asType, groupingVar.nextLocal)
+        val inputsVar = `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, broadcastsVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,
           scVar.push(),
           hadoopConfVar.push(),
           broadcastsVar.push(),
-          inputsVar.push(),
-          groupingVar.push(),
-          partVar.push())
+          inputsVar.push())
       }
   }
 }
 
-object CoGroupDriverClassBuilder {
+object ExtractDriverClassBuilder {
 
   private[this] val curId: AtomicLong = new AtomicLong(0L)
 

@@ -19,7 +19,7 @@ import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.ordering.{ GroupingOrderingClassBuilder, SortOrderingClassBuilder }
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
+import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment._
@@ -42,7 +42,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       s"The dominant operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
-    val builder = new CoGroupDriverClassBuilder(context.flowId, classOf[AnyRef].asType) {
+    val builder = new CoGroupDriverClassBuilder(context.flowId) {
 
       override val jpContext = context.jpContext
 
@@ -185,6 +185,8 @@ object CoGroupSubPlanCompiler {
                       for {
                         opposite <- input.getOpposites.toSet[OperatorOutput]
                         subPlanInput <- Option(subplan.findInput(opposite.getOwner))
+                        inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
+                        if inputInfo.getInputType == SubPlanInputInfo.InputType.PARTITIONED
                         prevSubPlanOutput <- subPlanInput.getOpposites.toSeq
                         marker = prevSubPlanOutput.getOperator
                       } {

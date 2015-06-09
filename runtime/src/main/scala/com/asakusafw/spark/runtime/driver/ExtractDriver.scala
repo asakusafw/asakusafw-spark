@@ -13,7 +13,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd._
 
-abstract class MapDriver[T](
+abstract class ExtractDriver[T](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Future[Broadcast[_]]],

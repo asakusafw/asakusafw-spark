@@ -272,6 +272,69 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
       }
     }
 
+    it should s"compile Spark client with Checkpoint and Extract: ${configuration}" in {
+      val (path, classpath) = createTempDirs()
+
+      spark { sc =>
+        prepareData("hoge", path) {
+          sc.parallelize(0 until 100).map { i =>
+            val hoge = new Hoge()
+            hoge.id.modify(i)
+            hoge.hoge.modify(s"hoge${i}")
+            hoge
+          }
+        }
+      }
+
+      val inputOperator = ExternalInput
+        .newInstance("hoge/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Hoge]),
+            "test",
+            ClassDescription.of(classOf[Hoge]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val checkpointOperator = CoreOperator
+        .builder(CoreOperator.CoreOperatorKind.CHECKPOINT)
+        .input("input", ClassDescription.of(classOf[Hoge]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Hoge]))
+        .build()
+
+      val extractOperator = OperatorExtractor
+        .extract(classOf[Extract], classOf[Ops], "extract")
+        .input("hoge", ClassDescription.of(classOf[Hoge]), checkpointOperator.findOutput("output"))
+        .output("evenResult", ClassDescription.of(classOf[Hoge]))
+        .output("oddResult", ClassDescription.of(classOf[Hoge]))
+        .build()
+
+      val evenOutputOperator = ExternalOutput
+        .newInstance("even", extractOperator.findOutput("evenResult"))
+
+      val oddOutputOperator = ExternalOutput
+        .newInstance("odd", extractOperator.findOutput("oddResult"))
+
+      val graph = new OperatorGraph(Seq(
+        inputOperator,
+        checkpointOperator,
+        extractOperator,
+        evenOutputOperator,
+        oddOutputOperator))
+      execute(graph, 4, path, classpath)
+
+      spark { sc =>
+        {
+          val rdd = readResult[Hoge](sc, "even", path)
+          assert(rdd.map(hoge => (hoge.id.get, hoge.hoge.getAsString)).collect.toSeq.sortBy(_._1) ===
+            (0 until 100).filter(_ % 2 == 0).map(i => (i, s"hoge${i}")))
+        }
+        {
+          val rdd = readResult[Hoge](sc, "odd", path)
+          assert(rdd.map(hoge => (hoge.id.get, hoge.hoge.getAsString)).collect.toSeq.sortBy(_._1) ===
+            (0 until 100).filterNot(_ % 2 == 0).map(i => (i, s"hoge${i}")))
+        }
+      }
+    }
+
     it should s"compile Spark client with CoGroup: ${configuration}" in {
       val (path, classpath) = createTempDirs()
 

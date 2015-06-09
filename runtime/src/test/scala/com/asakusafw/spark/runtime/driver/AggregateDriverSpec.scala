@@ -144,7 +144,7 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
     }
     val hoges = sc.parallelize(0 until 10, 2).map(f).asInstanceOf[RDD[(_, Hoge)]]
 
-    val driver = new TestPartialAggregationMapDriver(sc, hadoopConf, Future.successful(hoges))
+    val driver = new TestPartialAggregationExtractDriver(sc, hadoopConf, Future.successful(hoges))
 
     val outputs = driver.execute()
     assert(Await.result(
@@ -286,11 +286,11 @@ object AggregateDriverSpec {
     val Result1 = BranchKey(0)
     val Result2 = BranchKey(1)
 
-    class TestPartialAggregationMapDriver(
+    class TestPartialAggregationExtractDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Hoge)]])
-        extends MapDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+        extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def label = "TestPartialAggregation"
 

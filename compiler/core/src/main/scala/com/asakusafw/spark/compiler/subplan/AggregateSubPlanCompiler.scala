@@ -15,11 +15,11 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
+import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
+import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
@@ -178,8 +178,8 @@ object AggregateSubPlanCompiler {
 
           for {
             subPlanInput <- subplan.getInputs
-            planMarker = subPlanInput.getOperator.getAttribute(classOf[PlanMarker])
-            if planMarker == PlanMarker.CHECKPOINT || planMarker == PlanMarker.GATHER
+            inputInfo = subPlanInput.getAttribute(classOf[SubPlanInputInfo])
+            if inputInfo.getInputType == SubPlanInputInfo.InputType.PARTITIONED
             prevSubPlanOutput <- subPlanInput.getOpposites
             marker = prevSubPlanOutput.getOperator
           } {
