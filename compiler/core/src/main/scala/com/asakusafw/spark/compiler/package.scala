@@ -43,12 +43,12 @@ package object compiler {
 
   implicit class AugmentedClassDescription(val desc: ClassDescription) extends AnyVal {
 
-    def asType: Type = Type.getType(s"L${desc.getName.replaceAll("\\.", "/")};")
+    def asType: Type = Type.getObjectType(desc.getInternalName)
   }
 
   implicit class AugmentedArrayTypeDescription(val desc: ArrayTypeDescription) extends AnyVal {
 
-    def asType: Type = Type.getType(s"[${desc.getComponentType.asType.getDescriptor}")
+    def asType: Type = Type.getObjectType(s"[${desc.getComponentType.asType.getDescriptor}")
   }
 
   implicit class AugmentedJobflowProcessorContext(val context: JobflowProcessor.Context) extends AnyVal {
