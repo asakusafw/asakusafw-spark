@@ -36,7 +36,7 @@ abstract class OutputDriver[T: ClassTag](
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
 
-    val stageInfo = StageInfo.deserialize(job.getConfiguration.get(Props.StageInfo))
+    val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
     TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveVariables(path)))
 
     val future = (if (prevs.size == 1) {

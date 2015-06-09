@@ -111,6 +111,8 @@ object InputOutputDriverSpec {
 
     override def paths: Option[Set[String]] = Option(Set(basePath + "/part-*"))
 
+    override def extraConfigurations: Map[String, String] = Map.empty
+
     override def branchKeys: Set[BranchKey] = Set(HogeResult)
 
     override def partitioners: Map[BranchKey, Partitioner] = Map.empty

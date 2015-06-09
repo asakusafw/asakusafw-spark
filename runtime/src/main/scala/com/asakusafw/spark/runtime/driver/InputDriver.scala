@@ -25,14 +25,20 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
 
   def paths: Option[Set[String]]
 
+  def extraConfigurations: Map[String, String]
+
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
 
     paths.foreach { ps =>
-      val stageInfo = StageInfo.deserialize(job.getConfiguration.get(Props.StageInfo))
+      val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
       FileInputFormat.setInputPaths(job, ps.map { path =>
         new Path(stageInfo.resolveVariables(path))
       }.toSeq: _*)
+    }
+
+    extraConfigurations.foreach {
+      case (k, v) => job.getConfiguration.set(k, v)
     }
 
     val future = Future {

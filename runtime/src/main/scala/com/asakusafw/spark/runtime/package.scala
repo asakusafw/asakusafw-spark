@@ -7,8 +7,6 @@ package object runtime {
   val AsakusafwConfPrefix = "com.asakusafw.spark"
 
   object Props {
-    val StageInfo = s"${AsakusafwConfPrefix}.stageInfo"
-
     val Parallelism = s"${AsakusafwConfPrefix}.parallelism"
     val ParallelismScaleSmall = s"${AsakusafwConfPrefix}.parallelism.scale.small"
     val ParallelismScaleLarge = s"${AsakusafwConfPrefix}.parallelism.scala.large"
