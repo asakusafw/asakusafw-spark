@@ -8,19 +8,14 @@ import scala.reflect.{ classTag, ClassTag }
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.mapreduce.Job
-import org.apache.spark._
+import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd._
+import org.apache.spark.rdd.{ RDD, UnionRDD }
 import org.slf4j.LoggerFactory
 
-import org.apache.spark.backdoor._
-import org.apache.spark.util.backdoor.CallSite
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
-import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
-import com.asakusafw.runtime.util.VariableTable
 import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd._
 
@@ -41,8 +36,7 @@ abstract class OutputDriver[T: ClassTag](
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
 
-    val conf = sc.getConf
-    val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
+    val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
     TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveVariables(path)))
 
     val future = (if (prevs.size == 1) {

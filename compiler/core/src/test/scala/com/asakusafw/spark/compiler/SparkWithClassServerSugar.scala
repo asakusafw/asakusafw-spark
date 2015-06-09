@@ -37,7 +37,7 @@ trait SparkWithClassServerSugar extends BeforeAndAfterEach { self: Suite =>
 
       val stageInfo = new StageInfo(
         sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
-      conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+      conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
 
       conf.set(Props.Parallelism, 8.toString)
 

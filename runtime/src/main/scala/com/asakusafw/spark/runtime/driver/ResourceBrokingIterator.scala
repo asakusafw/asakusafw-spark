@@ -15,7 +15,7 @@ class ResourceBrokingIterator[+T](val hadoopConf: Configuration, val delegate: I
     new ResourceBroker.Initializer {
       override def accept(session: ResourceSession): Unit = {
         session.put(classOf[ResourceConfiguration], new HadoopConfiguration(hadoopConf))
-        session.put(classOf[StageInfo], StageInfo.deserialize(hadoopConf.get(Props.StageInfo)))
+        session.put(classOf[StageInfo], StageInfo.deserialize(hadoopConf.get(StageInfo.KEY_NAME)))
       }
     })
 

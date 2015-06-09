@@ -31,7 +31,7 @@ object Launcher {
 
       val stageInfo = new StageInfo(
         sys.props("user.name"), batchId, flowId, null, executionId, batchArgs)
-      sparkConf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+      sparkConf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
 
       if (sys.props.contains(Props.Parallelism)) {
         sparkConf.set(Props.Parallelism, sys.props(Props.Parallelism))

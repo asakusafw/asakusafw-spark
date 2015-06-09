@@ -1,20 +1,24 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.lang.{ Boolean => JBoolean }
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.{ ClassTag, NameTransformer }
 
+import org.apache.hadoop.io.NullWritable
 import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.lang.compiler.hadoop.InputFormatInfoExtension
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
@@ -36,11 +40,34 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     assert(primaryOperator.isInstanceOf[ExternalInput],
       s"The dominant operator should be external input: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[ExternalInput]
-    val inputRef = context.externalInputs.getOrElseUpdate(
-      operator.getName,
-      context.jpContext.addExternalInput(operator.getName, operator.getInfo))
 
-    val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
+    val (keyType, valueType, inputFormatType, paths, extraConfigurations) =
+      (if (JBoolean.parseBoolean(
+        context.jpContext.getOptions.get(SparkClientCompiler.Options.SparkInputDirect, true.toString)) == true) {
+        Option(InputFormatInfoExtension.resolve(context.jpContext, operator.getName(), operator.getInfo()))
+      } else None) match {
+        case Some(info) =>
+          (info.getKeyClass.resolve(context.jpContext.getClassLoader).asType,
+            info.getValueClass.resolve(context.jpContext.getClassLoader).asType,
+            info.getFormatClass.resolve(context.jpContext.getClassLoader).asType,
+            None,
+            Some(info.getExtraConfiguration.toMap))
+        case None =>
+          val inputRef = context.externalInputs.getOrElseUpdate(
+            operator.getName,
+            context.jpContext.addExternalInput(operator.getName, operator.getInfo))
+          (classOf[NullWritable].asType,
+            operator.getDataType.asType,
+            classOf[TemporaryInputFormat[_]].asType,
+            Some(inputRef.getPaths.toSeq.sorted),
+            None)
+      }
+
+    val builder = new InputDriverClassBuilder(
+      context.flowId,
+      keyType,
+      valueType,
+      inputFormatType) {
 
       override val jpContext = context.jpContext
 
@@ -53,22 +80,70 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("paths", classOf[Set[String]].asType, Seq.empty,
+        methodDef.newMethod("paths", classOf[Option[Set[String]]].asType, Seq.empty,
           new MethodSignatureBuilder()
             .newReturnType {
-              _.newClassType(classOf[Set[_]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
+              _.newClassType(classOf[Option[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                  _.newClassType(classOf[Set[_]].asType) {
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
+                  }
+                }
               }
             }
             .build()) { mb =>
             import mb._
-            val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
-              .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-            inputRef.getPaths.toSeq.sorted.foreach { path =>
-              builder.invokeI(NameTransformer.encode("+="),
-                classOf[mutable.Builder[_, _]].asType, ldc(path).asType(classOf[AnyRef].asType))
+            `return`(
+              paths match {
+                case Some(paths) =>
+                  getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                    .invokeV("apply", classOf[Option[_]].asType, {
+                      val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
+                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                      paths.foreach { path =>
+                        builder.invokeI(NameTransformer.encode("+="),
+                          classOf[mutable.Builder[_, _]].asType, ldc(path).asType(classOf[AnyRef].asType))
+                      }
+                      builder.invokeI("result", classOf[AnyRef].asType)
+                    })
+                case None =>
+                  getStatic(None.getClass.asType, "MODULE$", None.getClass.asType)
+              })
+          }
+
+        methodDef.newMethod("extraConfigurations", classOf[Map[String, String]].asType, Seq.empty,
+          new MethodSignatureBuilder()
+            .newReturnType {
+              _.newClassType(classOf[Map[_, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
+              }
             }
-            `return`(builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType))
+            .build()) { mb =>
+            import mb._
+            `return`(
+              extraConfigurations match {
+                case Some(confs) =>
+                  val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+                    .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+
+                  confs.foreach {
+                    case (k, v) =>
+                      builder.invokeI(NameTransformer.encode("+="),
+                        classOf[mutable.Builder[_, _]].asType,
+                        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+                          .invokeV("apply", classOf[(String, String)].asType,
+                            ldc(k).asType(classOf[AnyRef].asType),
+                            ldc(v).asType(classOf[AnyRef].asType))
+                          .asType(classOf[AnyRef].asType))
+                  }
+
+                  builder.invokeI("result", classOf[AnyRef].asType)
+                    .cast(classOf[Map[String, String]].asType)
+                case None =>
+                  getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+                    .invokeV("empty", classOf[Map[String, String]].asType)
+              })
           }
 
         methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
@@ -87,7 +162,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               _.newClassType(classOf[(_, _)].asType) {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
                   _.newClassType(classOf[Fragment[_]].asType) {
-                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
                   }
                 }
                   .newTypeArgument(SignatureVisitor.INSTANCEOF) {

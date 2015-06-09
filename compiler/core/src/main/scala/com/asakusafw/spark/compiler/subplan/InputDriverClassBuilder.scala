@@ -18,17 +18,21 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class InputDriverClassBuilder(
   val flowId: String,
-  val dataModelType: Type)
+  val keyType: Type,
+  val valueType: Type,
+  val inputFormatType: Type)
     extends ClassBuilder(
       Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/InputDriver$$${InputDriverClassBuilder.nextId};"),
       new ClassSignatureBuilder()
         .newSuperclass {
-          _.newClassType(classOf[InputDriver[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+          _.newClassType(classOf[InputDriver[_, _, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, keyType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, inputFormatType)
           }
         }
         .build(),
-      classOf[InputDriver[_]].asType)
+      classOf[InputDriver[_, _, _]].asType)
     with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -70,7 +74,11 @@ abstract class InputDriverClassBuilder(
           hadoopConfVar.push(),
           broadcastsVar.push(),
           getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
+            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(keyType).asType(classOf[Class[_]].asType)),
+          getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(valueType).asType(classOf[Class[_]].asType)),
+          getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(inputFormatType).asType(classOf[Class[_]].asType)))
       }
   }
 }

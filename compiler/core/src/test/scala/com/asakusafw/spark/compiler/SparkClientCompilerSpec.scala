@@ -13,6 +13,7 @@ import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 
@@ -21,6 +22,7 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.common.Location
+import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.inspection.{ AbstractInspectionExtension, InspectionExtension }
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description.ClassDescription
@@ -103,7 +105,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
         val stageInfo = new StageInfo(
           sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
-        conf.setHadoopConf(Props.StageInfo, stageInfo.serialize)
+        conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
 
         parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
 
@@ -167,6 +169,102 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
       execute(graph, 2, path, classpath)
+
+      spark { sc =>
+        val result = readResult[Hoge](sc, "output", path)
+        assert(result.map(hoge => (hoge.id.get, hoge.hoge.getAsString)).collect.toSeq.sortBy(_._1) ===
+          (0 until 100).map(i => (i, s"hoge${i}")))
+      }
+    }
+
+    it should s"compile Spark client from simple plan with InputFormatInfo: ${configuration}" in {
+      val (path, classpath) = createTempDirs()
+
+      spark { sc =>
+        prepareData("hoge", path) {
+          sc.parallelize(0 until 100).map { i =>
+            val hoge = new Hoge()
+            hoge.id.modify(i)
+            hoge.hoge.modify(s"hoge${i}")
+            hoge
+          }
+        }
+      }
+
+      val inputOperator = ExternalInput
+        .newInstance("hoge/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Hoge]),
+            "test",
+            ClassDescription.of(classOf[Hoge]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val outputOperator = ExternalOutput
+        .newInstance("output", inputOperator.getOperatorPort)
+
+      val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
+
+      val compiler = new SparkClientCompiler {
+
+        override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+          val plan = super.preparePlan(jpContext, source)
+          assert(plan.getElements.size === 2)
+          plan
+        }
+      }
+
+      val jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", path.getPath, Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classpath)
+      jpContext.registerExtension(
+        classOf[InspectionExtension],
+        new AbstractInspectionExtension {
+
+          override def addResource(location: Location) = {
+            jpContext.addResourceFile(location)
+          }
+        })
+      jpContext.registerExtension(
+        classOf[InputFormatInfoExtension],
+        new InputFormatInfoExtension() {
+
+          override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
+            new InputFormatInfo(
+              ClassDescription.of(classOf[TemporaryInputFormat[_]]),
+              ClassDescription.of(classOf[NullWritable]),
+              ClassDescription.of(classOf[Hoge]),
+              Map(FileInputFormat.INPUT_DIR -> s"${path.getPath}/external/input/hoge/part-*"))
+          }
+        })
+
+      val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
+
+      compiler.process(jpContext, jobflow)
+
+      val cl = Thread.currentThread.getContextClassLoader
+      try {
+        val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
+        Thread.currentThread.setContextClassLoader(classloader)
+        val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
+          .asSubclass(classOf[SparkClient])
+        val instance = cls.newInstance
+
+        val conf = new SparkConf()
+        conf.setAppName("AsakusaSparkClient")
+        conf.setMaster("local[8]")
+        threshold.foreach(i => conf.set("spark.shuffle.sort.bypassMergeThreshold", i.toString))
+
+        val stageInfo = new StageInfo(
+          sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+        conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
+
+        parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
+
+        instance.execute(conf)
+      } finally {
+        Thread.currentThread.setContextClassLoader(cl)
+      }
 
       spark { sc =>
         val result = readResult[Hoge](sc, "output", path)
