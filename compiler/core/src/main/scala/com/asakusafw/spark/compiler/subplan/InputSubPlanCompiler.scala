@@ -47,11 +47,8 @@ class InputSubPlanCompiler extends SubPlanCompiler {
         Option(InputFormatInfoExtension.resolve(context.jpContext, operator.getName(), operator.getInfo()))
       } else None) match {
         case Some(info) =>
-          (info.getKeyClass.resolve(context.jpContext.getClassLoader).asType,
-            info.getValueClass.resolve(context.jpContext.getClassLoader).asType,
-            info.getFormatClass.resolve(context.jpContext.getClassLoader).asType,
-            None,
-            Some(info.getExtraConfiguration.toMap))
+          (info.getKeyClass.asType, info.getValueClass.asType, info.getFormatClass.asType,
+            None, Some(info.getExtraConfiguration.toMap))
         case None =>
           val inputRef = context.externalInputs.getOrElseUpdate(
             operator.getName,
