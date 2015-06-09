@@ -359,5 +359,7 @@ object SparkClientCompiler {
 
   object Options {
     val SparkPlanVerify = "spark.plan.verify"
+
+    val SparkInputDirect = "spark.input.direct"
   }
 }

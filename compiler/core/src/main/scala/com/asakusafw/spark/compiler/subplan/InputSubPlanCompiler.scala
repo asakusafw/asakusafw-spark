@@ -1,6 +1,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.lang.{ Boolean => JBoolean }
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
@@ -41,7 +42,10 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
     val (keyType, valueType, inputFormatType, paths, extraConfigurations) =
-      Option(InputFormatInfoExtension.resolve(context.jpContext, operator.getName(), operator.getInfo())) match {
+      (if (JBoolean.parseBoolean(
+        context.jpContext.getOptions.get(SparkClientCompiler.Options.SparkInputDirect, true.toString)) == true) {
+        Option(InputFormatInfoExtension.resolve(context.jpContext, operator.getName(), operator.getInfo()))
+      } else None) match {
         case Some(info) =>
           (info.getKeyClass.resolve(context.jpContext.getClassLoader).asType,
             info.getValueClass.resolve(context.jpContext.getClassLoader).asType,
