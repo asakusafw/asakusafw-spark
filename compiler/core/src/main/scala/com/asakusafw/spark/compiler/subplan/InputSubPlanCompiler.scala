@@ -7,6 +7,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.{ ClassTag, NameTransformer }
 
+import org.apache.hadoop.io.NullWritable
 import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
@@ -15,6 +16,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.compiler.operator._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
@@ -40,7 +42,11 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       operator.getName,
       context.jpContext.addExternalInput(operator.getName, operator.getInfo))
 
-    val builder = new InputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
+    val builder = new InputDriverClassBuilder(
+      context.flowId,
+      classOf[NullWritable].asType,
+      operator.getDataType.asType,
+      classOf[TemporaryInputFormat[_]].asType) {
 
       override val jpContext = context.jpContext
 
@@ -53,22 +59,30 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("paths", classOf[Set[String]].asType, Seq.empty,
+        methodDef.newMethod("paths", classOf[Option[Set[String]]].asType, Seq.empty,
           new MethodSignatureBuilder()
             .newReturnType {
-              _.newClassType(classOf[Set[_]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
+              _.newClassType(classOf[Option[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                  _.newClassType(classOf[Set[_]].asType) {
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
+                  }
+                }
               }
             }
             .build()) { mb =>
             import mb._
-            val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
-              .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-            inputRef.getPaths.toSeq.sorted.foreach { path =>
-              builder.invokeI(NameTransformer.encode("+="),
-                classOf[mutable.Builder[_, _]].asType, ldc(path).asType(classOf[AnyRef].asType))
-            }
-            `return`(builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType))
+            `return`(
+              getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                .invokeV("apply", classOf[Option[_]].asType, {
+                  val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
+                    .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                  inputRef.getPaths.toSeq.sorted.foreach { path =>
+                    builder.invokeI(NameTransformer.encode("+="),
+                      classOf[mutable.Builder[_, _]].asType, ldc(path).asType(classOf[AnyRef].asType))
+                  }
+                  builder.invokeI("result", classOf[AnyRef].asType)
+                }))
           }
 
         methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
@@ -87,7 +101,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               _.newClassType(classOf[(_, _)].asType) {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
                   _.newClassType(classOf[Fragment[_]].asType) {
-                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
                   }
                 }
                   .newTypeArgument(SignatureVisitor.INSTANCEOF) {

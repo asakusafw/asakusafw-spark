@@ -16,13 +16,14 @@ import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.Writable
+import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd._
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
+import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
@@ -104,11 +105,11 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     basePath: String)
-      extends InputDriver[Hoge](sc, hadoopConf, Map.empty) {
+      extends InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]](sc, hadoopConf, Map.empty) {
 
     override def label = "TestInput"
 
-    override def paths: Set[String] = Set(basePath + "/part-*")
+    override def paths: Option[Set[String]] = Option(Set(basePath + "/part-*"))
 
     override def branchKeys: Set[BranchKey] = Set(HogeResult)
 

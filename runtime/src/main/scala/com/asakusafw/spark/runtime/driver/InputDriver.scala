@@ -1,43 +1,39 @@
 package com.asakusafw.spark.runtime
 package driver
 
-import scala.collection.JavaConversions._
-import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.mapreduce.Job
-import org.apache.spark._
+import org.apache.hadoop.mapreduce.InputFormat
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import org.apache.spark.backdoor._
-import org.apache.spark.util.backdoor._
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
-abstract class InputDriver[T: ClassTag](
+abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: ClassTag](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[T] {
+    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[V] {
 
-  def paths: Set[String]
+  def paths: Option[Set[String]]
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
 
-    val conf = sc.getConf
-    val stageInfo = StageInfo.deserialize(conf.getHadoopConf(Props.StageInfo))
-    TemporaryInputFormat.setInputPaths(job, paths.map { path =>
-      new Path(stageInfo.resolveVariables(path))
-    }.toSeq)
+    paths.foreach { ps =>
+      val stageInfo = StageInfo.deserialize(job.getConfiguration.get(Props.StageInfo))
+      FileInputFormat.setInputPaths(job, ps.map { path =>
+        new Path(stageInfo.resolveVariables(path))
+      }.toSeq: _*)
+    }
 
     val future = Future {
       sc.clearCallSite()
@@ -46,11 +42,11 @@ abstract class InputDriver[T: ClassTag](
       val rdd =
         sc.newAPIHadoopRDD(
           job.getConfiguration,
-          classOf[TemporaryInputFormat[T]],
-          classOf[NullWritable],
-          classTag[T].runtimeClass.asInstanceOf[Class[T]])
+          classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
+          classTag[K].runtimeClass.asInstanceOf[Class[K]],
+          classTag[V].runtimeClass.asInstanceOf[Class[V]])
 
-      branch(rdd.asInstanceOf[RDD[(_, T)]])
+      branch(rdd.asInstanceOf[RDD[(_, V)]])
     }
     branchKeys.map(key => key -> future.map(_(key))).toMap
   }
