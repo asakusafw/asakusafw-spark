@@ -10,8 +10,8 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
+import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -70,8 +70,8 @@ object OutputSubPlanCompiler {
 
           for {
             subPlanInput <- subplan.getInputs
-            planMarker = subPlanInput.getOperator.getAttribute(classOf[PlanMarker])
-            if planMarker == PlanMarker.CHECKPOINT || planMarker == PlanMarker.GATHER
+            inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
+            if inputInfo.getInputType == SubPlanInputInfo.InputType.DONT_CARE
             prevSubPlanOutput <- subPlanInput.getOpposites
             marker = prevSubPlanOutput.getOperator
           } {
