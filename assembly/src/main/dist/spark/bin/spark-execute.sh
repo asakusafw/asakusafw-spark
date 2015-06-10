@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright 2011-2015 Asakusa Framework Team.
 #
@@ -18,7 +18,7 @@
 
 usage() {
     cat 1>&2 <<EOF
-YAESS Spark Command Line
+Asakusa on Spark Command Line
 
 Usage:
     $0 batch-id flow-id execution-id batch-arguments class-name [direct-arguments...]
@@ -37,7 +37,7 @@ Parameters:
     class-name
         Fully qualified class name of program entry
     direct-arguments...
-        Direct arguments for Spark
+        Direct arguments for Spark launcher
 EOF
 }
 
@@ -80,8 +80,9 @@ cd
 _SPARK_LAUNCHER="com.asakusafw.spark.runtime.Launcher"
 _SPARK_APP_LIB="$ASAKUSA_BATCHAPPS_HOME/$_OPT_BATCH_ID/lib/jobflow-${_OPT_FLOW_ID}.jar"
 
-import "$_SPARK_ROOT/libexec/configure-libjars.sh"
 import "$_SPARK_ROOT/libexec/configure-spark-cmd.sh"
+import "$_SPARK_ROOT/libexec/configure-libjars.sh"
+import "$_SPARK_ROOT/libexec/configure-files.sh"
 
 echo "Starting Asakusa Spark:"
 echo "      Spark Command: $SPARK_CMD"
@@ -91,27 +92,30 @@ echo "            Flow ID: $_OPT_FLOW_ID"
 echo "       Execution ID: $_OPT_EXECUTION_ID"
 echo "              Class: $_OPT_CLASS_NAME"
 echo " ASAKUSA_SPARK_OPTS: $ASAKUSA_SPARK_OPTS"
+echo "        SPARK_FILES: ${_SPARK_FILES[@]}"
+echo "    SPARK_APP_FILES: ${_SPARK_APP_FILES[@]}"
 
 export ASAKUSA_SPARK_OPTS
 "$SPARK_CMD" \
     --class "$_SPARK_LAUNCHER" \
     --jars "$_SPARK_LIBJARS" \
     --name "$_OPT_BATCH_ID/$_OPT_FLOW_ID/$_OPT_EXECUTION_ID" \
+    "${_SPARK_FILES[@]}" \
     $YS_SPARK_PROPERTIES \
-    $ASAKUSA_SPARK_OPTS \
     "$_SPARK_APP_LIB" \
     --client "$_OPT_CLASS_NAME" \
     --batch-id "$_OPT_BATCH_ID" \
     --flow-id "$_OPT_FLOW_ID" \
     --execution-id "$_OPT_EXECUTION_ID" \
     --batch-arguments "$_OPT_BATCH_ARGUMENTS," \
-    --hadoop-conf "@$ASAKUSA_HOME/core/conf/asakusa-resources.xml" \
+    "${_SPARK_APP_FILES[@]}" \
+    $ASAKUSA_SPARK_OPTS \
     "$@"
 
 _SPARK_RET=$?
 if [ $_SPARK_RET -ne 0 ]
 then
-    echo "YAESS Spark failed with exit code: $_SPARK_RET" 1>&2
+    echo "Spark failed with exit code: $_SPARK_RET" 1>&2
     echo "  Runtime Lib: $_SPARK_APP_LIB"  1>&2
     echo "     Launcher: $_SPARK_LAUNCHER"  1>&2
     echo "  Stage Class: $_OPT_CLASS_NAME" 1>&2
