@@ -105,6 +105,7 @@ export ASAKUSA_SPARK_OPTS
     --flow-id "$_OPT_FLOW_ID" \
     --execution-id "$_OPT_EXECUTION_ID" \
     --batch-arguments "$_OPT_BATCH_ARGUMENTS," \
+    --hadoop-conf "@$ASAKUSA_HOME/core/conf/asakusa-resources.xml" \
     "$@"
 
 _SPARK_RET=$?
