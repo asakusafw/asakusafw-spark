@@ -24,9 +24,9 @@ then
     then
         _SPARK_FILES_VALUES="$_SPARK_FILES_VALUES,"
     fi
-    _SPARK_FILES_VALUES="$_SPARK_FILES_VALUES$ASAKUSA_HOME/core/conf/asakusa-resources.xml#CLUSTER-asakusa-resources.xml"
+    _SPARK_FILES_VALUES="$_SPARK_FILES_VALUES$ASAKUSA_HOME/core/conf/asakusa-resources.xml"
     _SPARK_APP_FILES+=("--hadoop-conf")
-    _SPARK_APP_FILES+=("@CLUSTER-asakusa-resources.xml|$ASAKUSA_HOME/core/conf/asakusa-resources.xml")
+    _SPARK_APP_FILES+=("@asakusa-resources.xml|$ASAKUSA_HOME/core/conf/asakusa-resources.xml")
 fi
 
 if [ -e "$ASAKUSA_HOME/spark/conf/spark.properties" ]
@@ -35,9 +35,9 @@ then
     then
         _SPARK_FILES_VALUES="$_SPARK_FILES_VALUES,"
     fi
-    _SPARK_FILES_VALUES="$_SPARK_FILES_VALUES$ASAKUSA_HOME/spark/conf/spark.properties#CLUSTER-asakusa-spark.properties"
+    _SPARK_FILES_VALUES="$_SPARK_FILES_VALUES$ASAKUSA_HOME/spark/conf/spark.properties"
     _SPARK_APP_FILES+=("--engine-conf")
-    _SPARK_APP_FILES+=("@CLUSTER-asakusa-spark.properties|$ASAKUSA_HOME/spark/conf/spark.properties")
+    _SPARK_APP_FILES+=("@spark.properties|$ASAKUSA_HOME/spark/conf/spark.properties")
 fi
 
 if [ "$_SPARK_FILES_VALUES" != "" ]
