@@ -125,31 +125,73 @@ public class PlanningContext {
         /**
          * Enables to unify sub-plan I/O ports.
          */
-        UNIFY_SUBPLAN_IO,
+        UNIFY_SUBPLAN_IO(true),
 
         /**
          * Inserts {@code CHECKPOINT} after external inputs.
          */
-        CHECKPOINT_AFTER_EXTERNAL_INPUTS,
+        CHECKPOINT_AFTER_EXTERNAL_INPUTS(false),
 
         /**
          * Inserts {@code CHECKPOINT} before external outputs.
          */
-        CHECKPOINT_BEFORE_EXTERNAL_OUTPUTS,
+        CHECKPOINT_BEFORE_EXTERNAL_OUTPUTS(true),
 
         /**
          * Enables {@link SizeInfo} and {@link PartitionGroupInfo} for sub-plan I/O ports.
          */
-        SIZE_ESTIMATION,
+        SIZE_ESTIMATION(true),
 
         /**
          * Enables {@link GraphStatistics}.
          */
-        GRAPH_STATISTICS,
+        GRAPH_STATISTICS(true),
 
         /**
          * Enables {@link PlanStatistics}.
          */
-        PLAN_STATISTICS,
+        PLAN_STATISTICS(true),
+        ;
+
+        private String symbol;
+
+        private boolean defaultEnabled;
+
+        private Option(boolean defaultEnabled) {
+            this.symbol = toSymbol(name());
+            this.defaultEnabled = defaultEnabled;
+        }
+
+        private static String toSymbol(String name) {
+            boolean upper = false;
+            StringBuilder buf = new StringBuilder();
+            for (char c : name.toCharArray()) {
+                if (c == '_') {
+                    upper = true;
+                } else if (upper) {
+                    buf.append(Character.toUpperCase(c));
+                    upper = false;
+                } else {
+                    buf.append(Character.toLowerCase(c));
+                }
+            }
+            return buf.toString();
+        }
+
+        /**
+         * Returns the symbol of this option.
+         * @return the symbol
+         */
+        public String getSymbol() {
+            return symbol;
+        }
+
+        /**
+         * Returns whether this option is enabled in default or not.
+         * @return {@code true} if this option is enabled in default, otherwise {@code false}
+         */
+        public boolean isDefaultEnabled() {
+            return defaultEnabled;
+        }
     }
 }

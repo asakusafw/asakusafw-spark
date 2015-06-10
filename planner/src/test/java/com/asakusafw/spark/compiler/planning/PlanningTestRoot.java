@@ -44,7 +44,6 @@ import com.asakusafw.lang.compiler.model.info.JobflowInfo;
 import com.asakusafw.lang.compiler.model.testing.MockOperators;
 import com.asakusafw.lang.compiler.planning.PlanDetail;
 import com.asakusafw.lang.compiler.planning.SubPlan;
-import com.asakusafw.spark.compiler.planning.PlanningContext.Option;
 
 /**
  * A common test base class for planning.
@@ -56,11 +55,6 @@ public abstract class PlanningTestRoot {
      */
     @Rule
     public final TemporaryFolder temporary = new TemporaryFolder();
-
-    /**
-     * options for testing.
-     */
-    protected final Set<Option> planningOptions = new LinkedHashSet<>(SparkPlanning.DEFAULT_OPTIONS);
 
     /**
      * Returns a set of values.
@@ -231,8 +225,7 @@ public abstract class PlanningTestRoot {
                 temporary.getRoot());
         return SparkPlanning.createContext(
                 context,
-                new JobflowInfo.Basic("testing", new ClassDescription("testing")),
-                planningOptions);
+                new JobflowInfo.Basic("testing", new ClassDescription("testing")));
     }
 
     /**

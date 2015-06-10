@@ -19,6 +19,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -28,9 +29,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.asakusafw.lang.compiler.api.CompilerOptions;
 import com.asakusafw.lang.compiler.api.JobflowProcessor;
 import com.asakusafw.lang.compiler.common.AttributeContainer;
-import com.asakusafw.lang.compiler.common.util.EnumUtil;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind;
@@ -75,13 +79,13 @@ import com.asakusafw.utils.graph.Graph;
  */
 public final class SparkPlanning {
 
-    static final Set<Option> DEFAULT_OPTIONS = EnumUtil.freeze(new Option[] {
-            Option.UNIFY_SUBPLAN_IO,
-            Option.CHECKPOINT_BEFORE_EXTERNAL_OUTPUTS,
-            Option.SIZE_ESTIMATION,
-            Option.GRAPH_STATISTICS,
-            Option.PLAN_STATISTICS,
-    });
+    static final Logger LOG = LoggerFactory.getLogger(SparkPlanning.class);
+
+    /**
+     * The compiler property key prefix of planning options.
+     * @see Option
+     */
+    public static final String KEY_OPTION_PREFIX = "spark.planning.option."; //$NON-NLS-1$
 
     private SparkPlanning() {
         return;
@@ -107,8 +111,19 @@ public final class SparkPlanning {
      * @return the detail of created plan
      */
     public static PlanDetail plan(JobflowProcessor.Context parent, JobflowInfo jobflow, OperatorGraph operators) {
-        PlanningContext context = createContext(parent, jobflow, DEFAULT_OPTIONS);
+        PlanningContext context = createContext(parent, jobflow);
         return plan(context, operators);
+    }
+
+    /**
+     * Creates a new planner context.
+     * @param parent the the current jobflow processing context
+     * @param jobflow the target jobflow information
+     * @return the created context
+     */
+    public static PlanningContext createContext(JobflowProcessor.Context parent, JobflowInfo jobflow) {
+        Set<Option> options = getPlanningOptions(parent.getOptions());
+        return createContext(parent, jobflow, options);
     }
 
     /**
@@ -126,6 +141,26 @@ public final class SparkPlanning {
                 new OptimizerContextAdapter(parent, jobflow.getFlowId()),
                 options);
         return context;
+    }
+
+    private static Set<Option> getPlanningOptions(CompilerOptions options) {
+        Set<Option> results = EnumSet.noneOf(Option.class);
+        for (Option option : Option.values()) {
+            if (isEnabled(options, option)) {
+                results.add(option);
+            }
+        }
+        return results;
+    }
+
+    private static boolean isEnabled(CompilerOptions options, Option option) {
+        String key = KEY_OPTION_PREFIX + option.getSymbol();
+        boolean enabled = options.get(key, option.isDefaultEnabled());
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("{}={}", key, options.get(key, null)); //$NON-NLS-1$
+        }
+        LOG.debug("planning option: {}={}", option, enabled); //$NON-NLS-1$
+        return enabled;
     }
 
     /**
