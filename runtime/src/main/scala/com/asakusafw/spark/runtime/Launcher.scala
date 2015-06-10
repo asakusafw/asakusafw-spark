@@ -1,8 +1,11 @@
 package com.asakusafw.spark.runtime
 
+import scala.collection.JavaConversions._
+
 import org.apache.spark.SparkConf
 import org.slf4j.LoggerFactory
 
+import com.asakusafw.bridge.launch.LaunchConfiguration
 import com.asakusafw.bridge.stage.StageInfo
 
 object Launcher {
@@ -11,44 +14,26 @@ object Launcher {
 
   def main(args: Array[String]): Unit = {
     try {
-      require(args.length >= 5,
-        s"The size of arguments should be more than 5: ${args.length}")
-      val Array(client, batchId, flowId, executionId, batchArgs) = args.take(5)
+      val conf = LaunchConfiguration.parse(Thread.currentThread.getContextClassLoader, args: _*)
 
-      if (Logger.isInfoEnabled) {
-        Logger.info(s"SparkClient: ${client}")
-        Logger.info(s"batchId: ${batchId}")
-        Logger.info(s"flowId: ${flowId}")
-        Logger.info(s"executionId: ${executionId}")
-        Logger.info(s"batchArgs: ${batchArgs}")
-      }
-
-      val sparkClient = Class.forName(client, false, Thread.currentThread.getContextClassLoader)
-        .asSubclass(classOf[SparkClient])
-        .newInstance()
+      val sparkClient = conf.getStageClient.asSubclass(classOf[SparkClient]).newInstance()
 
       val sparkConf = new SparkConf()
 
-      val stageInfo = new StageInfo(
-        sys.props("user.name"), batchId, flowId, null, executionId, batchArgs)
-      sparkConf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
+      sparkConf.setHadoopConf(StageInfo.KEY_NAME, conf.getStageInfo.serialize)
 
-      if (sys.props.contains(Props.Parallelism)) {
-        sparkConf.set(Props.Parallelism, sys.props(Props.Parallelism))
-      } else if (!sparkConf.contains("spark.default.parallelism")) {
-        if (Logger.isWarnEnabled) {
-          Logger.warn(s"`${Props.Parallelism}` is not set, we set parallelism to 2.")
-        }
+      conf.getHadoopProperties.foreach {
+        case (key, value) => sparkConf.setHadoopConf(key, value)
       }
 
-      for {
-        prop <- Seq(
-          Props.ParallelismScaleSmall,
-          Props.ParallelismScaleLarge,
-          Props.ParallelismScaleHuge)
-        value <- sys.props.get(prop)
-      } {
-        sparkConf.set(prop, value)
+      conf.getEngineProperties.foreach {
+        case (key, value) => sparkConf.set(key, value)
+      }
+
+      if (!sparkConf.contains(Props.Parallelism) && !sparkConf.contains("spark.default.parallelism")) {
+        if (Logger.isWarnEnabled) {
+          Logger.warn(s"`${Props.Parallelism}` is not set, we set parallelism to ${Props.ParallelismFallback}.")
+        }
       }
 
       sparkClient.execute(sparkConf)

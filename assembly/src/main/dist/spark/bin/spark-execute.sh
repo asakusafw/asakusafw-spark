@@ -100,11 +100,11 @@ export ASAKUSA_SPARK_OPTS
     $YS_SPARK_PROPERTIES \
     $ASAKUSA_SPARK_OPTS \
     "$_SPARK_APP_LIB" \
-    "$_OPT_CLASS_NAME" \
-    "$_OPT_BATCH_ID" \
-    "$_OPT_FLOW_ID" \
-    "$_OPT_EXECUTION_ID" \
-    "$_OPT_BATCH_ARGUMENTS," \
+    --client "$_OPT_CLASS_NAME" \
+    --batch-id "$_OPT_BATCH_ID" \
+    --flow-id "$_OPT_FLOW_ID" \
+    --execution-id "$_OPT_EXECUTION_ID" \
+    --batch-arguments "$_OPT_BATCH_ARGUMENTS," \
     "$@"
 
 _SPARK_RET=$?
