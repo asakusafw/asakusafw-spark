@@ -140,6 +140,14 @@ public class SubPlanInputInfo implements ComplexAttribute {
          * </ul>
          */
         PARTITIONED,
+
+        /**
+         * Prepares for external outputs.
+         * <ul>
+         * <li> Partition Info: N/A </li>
+         * </ul>
+         */
+        PREPARE_EXTERNAL_OUTPUT,
     }
 
     /**

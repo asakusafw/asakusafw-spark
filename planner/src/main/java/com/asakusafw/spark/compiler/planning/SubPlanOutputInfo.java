@@ -170,6 +170,15 @@ public class SubPlanOutputInfo implements ComplexAttribute {
          * </ul>
          */
         AGGREGATED,
+
+        /**
+         * Prepares for external outputs.
+         * <ul>
+         * <li> Partition Info: N/A </li>
+         * <li> Aggregation Info: N/A </li>
+         * </ul>
+         */
+        PREPARE_EXTERNAL_OUTPUT,
     }
 
     /**

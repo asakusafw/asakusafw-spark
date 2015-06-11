@@ -67,7 +67,7 @@ object ResourceBrokingIteratorSpec {
 
     override def branchKeys: Set[BranchKey] = Set(Result)
 
-    override def partitioners: Map[BranchKey, Partitioner] = Map.empty
+    override def partitioners: Map[BranchKey, Option[Partitioner]] = Map.empty
 
     override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 

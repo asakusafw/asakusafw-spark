@@ -209,7 +209,7 @@ object ExtractDriverSpec {
 
       override def branchKeys: Set[BranchKey] = Set(HogeResult)
 
-      override def partitioners: Map[BranchKey, Partitioner] = Map.empty
+      override def partitioners: Map[BranchKey, Option[Partitioner]] = Map.empty
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
@@ -259,7 +259,7 @@ object ExtractDriverSpec {
 
       override def branchKeys: Set[BranchKey] = Set(Hoge1Result, Hoge2Result)
 
-      override def partitioners: Map[BranchKey, Partitioner] = Map.empty
+      override def partitioners: Map[BranchKey, Option[Partitioner]] = Map.empty
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
@@ -328,8 +328,8 @@ object ExtractDriverSpec {
 
       override def branchKeys: Set[BranchKey] = Set(Foo1Result, Foo2Result)
 
-      override def partitioners: Map[BranchKey, Partitioner] =
-        Map(Foo2Result -> new HashPartitioner(1))
+      override def partitioners: Map[BranchKey, Option[Partitioner]] =
+        Map(Foo2Result -> Some(new HashPartitioner(1)))
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] =
         Map(Foo2Result -> new SortOrdering())
