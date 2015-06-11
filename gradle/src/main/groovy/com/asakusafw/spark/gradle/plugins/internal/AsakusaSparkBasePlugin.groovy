@@ -25,7 +25,7 @@ import org.gradle.api.Project
  */
 class AsakusaSparkBasePlugin implements Plugin<Project> {
 
-    private static final String COMPILER_PROJECT_VERSION = '0.1-SNAPSHOT'
+    private static final String COMPILER_PROJECT_VERSION = '0.1.0-SNAPSHOT'
 
     private static final String SPARK_PROJECT_VERSION = '0.1.0-SNAPSHOT'
 
