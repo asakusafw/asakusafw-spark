@@ -217,6 +217,7 @@ public class SubPlanAnalyzer {
         switch (type) {
         case VOID:
         case DONT_CARE:
+        case PREPARE_EXTERNAL_OUTPUT:
             return new SubPlanInputInfo(input, type, Collections.singleton(InputOption.PRIMARY), null);
         case BROADCAST:
             return new SubPlanInputInfo(input, type, Collections.<InputOption>emptySet(), null);
@@ -241,6 +242,8 @@ public class SubPlanAnalyzer {
         case PARTITIONED:
         case AGGREGATED:
             return InputType.PARTITIONED;
+        case PREPARE_EXTERNAL_OUTPUT:
+            return InputType.PREPARE_EXTERNAL_OUTPUT;
         default:
             throw new AssertionError(type);
         }
@@ -276,6 +279,7 @@ public class SubPlanAnalyzer {
         case DISCARD:
         case DONT_CARE:
         case BROADCAST:
+        case PREPARE_EXTERNAL_OUTPUT:
             return new SubPlanOutputInfo(output, type, options, null, null);
         case PARTITIONED:
             return new SubPlanOutputInfo(output, type, options, computeOutputGroup(output), null);
@@ -315,8 +319,9 @@ public class SubPlanAnalyzer {
         SubPlanInfo info = analyze(downstream.getOwner());
         switch (info.getDriverType()) {
         case EXTRACT:
-        case OUTPUT:
             return OutputType.DONT_CARE;
+        case OUTPUT:
+            return OutputType.PREPARE_EXTERNAL_OUTPUT;
         case COGROUP:
             return OutputType.PARTITIONED;
         case AGGREGATE:

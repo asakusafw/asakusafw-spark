@@ -80,14 +80,14 @@ in --- *C --- out
         assertThat(input(s0), inputType(is(InputType.VOID)));
         assertThat(input(s0), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s0), inputPartition(is(nullValue())));
-        assertThat(output(s0), outputType(is(OutputType.DONT_CARE)));
+        assertThat(output(s0), outputType(is(OutputType.PREPARE_EXTERNAL_OUTPUT)));
         assertThat(output(s0), outputPartition(is(nullValue())));
         assertThat(output(s0), outputAggregation(is(nullValue())));
 
         assertThat(info(s1).toString(), s1, primaryOperator(isOperator("out")));
         assertThat(s1, driverType(is(DriverType.OUTPUT)));
         assertThat(s1, not(driverOption(is(DriverOption.PARTIAL))));
-        assertThat(input(s1), inputType(is(InputType.DONT_CARE)));
+        assertThat(input(s1), inputType(is(InputType.PREPARE_EXTERNAL_OUTPUT)));
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s1), inputPartition(is(nullValue())));
         assertThat(output(s1), outputType(is(OutputType.DISCARD)));
@@ -130,7 +130,7 @@ in --- *C --- o0 --- *C --- out
         assertThat(input(s1), inputType(is(InputType.DONT_CARE)));
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s1), inputPartition(is(nullValue())));
-        assertThat(output(s1), outputType(is(OutputType.DONT_CARE)));
+        assertThat(output(s1), outputType(is(OutputType.PREPARE_EXTERNAL_OUTPUT)));
         assertThat(output(s1), outputPartition(is(nullValue())));
         assertThat(output(s1), outputAggregation(is(nullValue())));
     }
@@ -173,7 +173,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s1), inputPartition(is(group("=a"))));
         assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
-        assertThat(output(s1), outputType(is(OutputType.DONT_CARE)));
+        assertThat(output(s1), outputType(is(OutputType.PREPARE_EXTERNAL_OUTPUT)));
         assertThat(output(s1), outputPartition(is(nullValue())));
         assertThat(output(s1), outputAggregation(is(nullValue())));
     }
@@ -216,7 +216,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s1), inputPartition(is(group("=a"))));
         assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
-        assertThat(output(s1), outputType(is(OutputType.DONT_CARE)));
+        assertThat(output(s1), outputType(is(OutputType.PREPARE_EXTERNAL_OUTPUT)));
         assertThat(output(s1), outputPartition(is(nullValue())));
         assertThat(output(s1), outputAggregation(is(nullValue())));
     }
@@ -259,7 +259,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
         assertThat(input(s1), inputPartition(is(group("=a"))));
         assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
-        assertThat(output(s1), outputType(is(OutputType.DONT_CARE)));
+        assertThat(output(s1), outputType(is(OutputType.PREPARE_EXTERNAL_OUTPUT)));
         assertThat(output(s1), outputPartition(is(nullValue())));
         assertThat(output(s1), outputAggregation(is(nullValue())));
     }
