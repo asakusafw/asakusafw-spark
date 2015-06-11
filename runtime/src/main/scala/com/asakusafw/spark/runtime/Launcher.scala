@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.launch.LaunchConfiguration
 import com.asakusafw.bridge.stage.StageInfo
+import com.asakusafw.runtime.core.context.RuntimeContext
 
 object Launcher {
 
@@ -14,7 +15,11 @@ object Launcher {
 
   def main(args: Array[String]): Unit = {
     try {
-      val conf = LaunchConfiguration.parse(Thread.currentThread.getContextClassLoader, args: _*)
+      val cl = Thread.currentThread.getContextClassLoader
+
+      RuntimeContext.set(RuntimeContext.DEFAULT.apply(System.getenv))
+      RuntimeContext.get.verifyApplication(cl)
+      val conf = LaunchConfiguration.parse(cl, args: _*)
 
       val sparkClient = conf.getStageClient.asSubclass(classOf[SparkClient]).newInstance()
 
@@ -36,7 +41,9 @@ object Launcher {
         }
       }
 
-      sparkClient.execute(sparkConf)
+      if (!RuntimeContext.get.isSimulation) {
+        sparkClient.execute(sparkConf)
+      }
     } catch {
       case t: Throwable =>
         Logger.error(s"SparkClient throws: ${t.getMessage}", t)
