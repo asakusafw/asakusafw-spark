@@ -135,7 +135,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         Set(resultMarker)
         .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-      assert(driver.partitioners(getBranchKey(resultMarker.getOriginalSerialNumber)).numPartitions === numPartitions)
+      assert(driver.partitioners(getBranchKey(resultMarker.getOriginalSerialNumber)).get.numPartitions === numPartitions)
 
       val result = Await.result(
         results(getBranchKey(resultMarker.getOriginalSerialNumber))
@@ -232,7 +232,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         Set(resultMarker)
         .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-      assert(driver.partitioners(getBranchKey(resultMarker.getOriginalSerialNumber)).numPartitions === 1)
+      assert(driver.partitioners(getBranchKey(resultMarker.getOriginalSerialNumber)).get.numPartitions === 1)
 
       val result = Await.result(
         results(getBranchKey(resultMarker.getOriginalSerialNumber))

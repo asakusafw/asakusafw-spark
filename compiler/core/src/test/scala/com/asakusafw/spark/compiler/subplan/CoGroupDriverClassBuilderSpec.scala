@@ -50,10 +50,13 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
 
   behavior of classOf[CoGroupDriverClassBuilder].getSimpleName
 
-  for (
+  for {
     method <- Seq("cogroup", "cogroupEscape")
-  ) {
-    it should s"build cogroup driver class ${method}" in {
+    (outputType, partitioners) <- Seq(
+      (SubPlanOutputInfo.OutputType.DONT_CARE, 7),
+      (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 0))
+  } {
+    it should s"build cogroup driver class ${method} with OutputType.${outputType}" in {
       val hogeListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
         .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
       val fooListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -119,31 +122,31 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
 
       val hogeResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeResultMarker.getOriginalSerialNumber).get
       hogeResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeResultOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val fooResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get
       fooResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooResultOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val hogeErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeErrorMarker.getOriginalSerialNumber).get
       hogeErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeErrorOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(hogeErrorOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val fooErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooErrorMarker.getOriginalSerialNumber).get
       fooErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooErrorOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(fooErrorOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val hogeAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeAllMarker.getOriginalSerialNumber).get
       hogeAllOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeAllOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(hogeAllOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val fooAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooAllMarker.getOriginalSerialNumber).get
       fooAllOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooAllOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(fooAllOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val nResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == nResultMarker.getOriginalSerialNumber).get
       nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(nResultOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(nResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
       val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
@@ -195,6 +198,8 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
           grouping,
           part)
       val results = driver.execute()
+
+      assert(driver.partitioners.size === partitioners)
 
       val branchKeyCls = classServer.loadClass(branchKeysClassBuilder.thisType.getClassName)
       def getBranchKey(osn: Long): BranchKey = {

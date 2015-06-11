@@ -12,7 +12,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, IdentityPartitioner }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -36,7 +36,11 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[Option[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
+              }
+            }
         }
         .build())
   }
@@ -49,7 +53,11 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
         .newReturnType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Option[_]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
+                }
+              }
           }
         }
         build ()) { mb =>
@@ -73,7 +81,8 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
     for {
       output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
       outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-      if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED ||
+      if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.DONT_CARE ||
+        outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED ||
         outputInfo.getOutputType == SubPlanOutputInfo.OutputType.PARTITIONED ||
         outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
     } {
@@ -83,16 +92,26 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
           invokeV("apply", classOf[(_, _)].asType,
             branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
-              val partitioner = pushNew(classOf[HashPartitioner].asType)
-              partitioner.dup().invokeInit(
-                outputInfo.getOutputType match {
-                  case SubPlanOutputInfo.OutputType.AGGREGATED |
-                    SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty =>
-                    numPartitions(mb, thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output)
-                  case _ =>
-                    ldc(1)
-                })
-              partitioner
+              outputInfo.getOutputType match {
+                case SubPlanOutputInfo.OutputType.DONT_CARE =>
+                  getStatic(None.getClass.asType, "MODULE$", None.getClass.asType)
+                case SubPlanOutputInfo.OutputType.AGGREGATED |
+                  SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty =>
+                  getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                    .invokeV("apply", classOf[Option[_]].asType, {
+                      val partitioner = pushNew(classOf[HashPartitioner].asType)
+                      partitioner.dup().invokeInit(
+                        numPartitions(mb, thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
+                      partitioner
+                    }.asType(classOf[AnyRef].asType))
+                case _ =>
+                  getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                    .invokeV("apply", classOf[Option[_]].asType, {
+                      val partitioner = pushNew(classOf[HashPartitioner].asType)
+                      partitioner.dup().invokeInit(ldc(1))
+                      partitioner
+                    }.asType(classOf[AnyRef].asType))
+              }
             }.asType(classOf[AnyRef].asType))
           .asType(classOf[AnyRef].asType))
     }

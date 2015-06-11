@@ -20,7 +20,7 @@ trait Branching[T] {
 
   def branchKeys: Set[BranchKey]
 
-  def partitioners: Map[BranchKey, Partitioner]
+  def partitioners: Map[BranchKey, Option[Partitioner]]
 
   def orderings: Map[BranchKey, Ordering[ShuffleKey]]
 
@@ -72,7 +72,10 @@ trait Branching[T] {
             }
           }
         },
-        partitioners = partitioners,
+        partitioners = partitioners.map {
+          case (branchKey, Some(part)) => branchKey -> part
+          case (branchKey, None)       => branchKey -> IdentityPartitioner(rdd.partitions.length)
+        },
         keyOrderings = orderings,
         preservesPartitioning = true).map {
           case (b, rdd) =>
