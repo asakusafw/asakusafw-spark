@@ -152,6 +152,8 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             task.include << { spark.include }
             task.exclude << { spark.exclude }
 
+            task.clean = true
+
             task.conventionMapping.with {
                 maxHeapSize = { convention.maxHeapSize }
                 runtimeWorkingDirectory = { spark.runtimeWorkingDirectory }

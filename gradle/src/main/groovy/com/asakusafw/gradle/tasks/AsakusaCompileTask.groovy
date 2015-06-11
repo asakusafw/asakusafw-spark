@@ -18,7 +18,9 @@ package com.asakusafw.gradle.tasks
 import groovy.transform.PackageScope
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.InvalidUserDataException
 import org.gradle.api.file.FileCollection
+import org.gradle.api.internal.tasks.options.Option
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Optional
@@ -44,6 +46,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> launcherClasspath = []
 
+    /**
+     * Returns each file of {@link #launcherClasspath}.
+     * @return each file
+     */
     @InputFiles
     FileCollection getLauncherClasspathFiles() {
         return collectFiles(getLauncherClasspath())
@@ -54,6 +60,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> toolClasspath = []
 
+    /**
+     * Returns each file of {@link #toolClasspath}.
+     * @return each file
+     */
     @InputFiles
     FileCollection getToolClasspathFiles() {
         return collectFiles(getToolClasspath())
@@ -64,6 +74,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     Map<Object, Object> systemProperties = [:]
 
+    /**
+     * Returns the actual values of {@link #systemProperties system properties}.
+     * @return system properties for compiler process
+     */
     @Input
     Map<String, String> getResolvedSystemProperties() {
         return ResolutionUtils.resolveToStringMap(getSystemProperties())
@@ -74,6 +88,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> jvmArgs = []
 
+    /**
+     * Returns the actual values of {@link #jvmArgs}.
+     * @return the Java VM arguments
+     */
     @Input
     List<String> getResolvedJvmArgs() {
         return ResolutionUtils.resolveToStringList(getJvmArgs())
@@ -84,6 +102,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> explore = []
 
+    /**
+     * Returns each file of {@link #explore}.
+     * @return each file
+     */
     @SkipWhenEmpty
     @InputFiles
     FileCollection getExploreFiles() {
@@ -95,6 +117,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> attach = []
 
+    /**
+     * Returns each file of {@link #attach}.
+     * @return each file
+     */
     @InputFiles
     FileCollection getAttachFiles() {
         return collectFiles(getAttach())
@@ -105,6 +131,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> embed = []
 
+    /**
+     * Returns each file of {@link #embed}.
+     * @return each file
+     */
     @InputFiles
     FileCollection getEmbedFiles() {
         return collectFiles(getEmbed())
@@ -115,6 +145,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> external = []
 
+    /**
+     * Returns each file of {@link #external}.
+     * @return each file
+     */
     @InputFiles
     FileCollection getExternalFiles() {
         return collectFiles(getExternal())
@@ -125,6 +159,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> include = []
 
+    /**
+     * Returns the actual values of {@link #include}.
+     * @return accepting batch class name patterns
+     */
     @Input
     List<String> getResolvedInclude() {
         return ResolutionUtils.resolveToStringList(getInclude())
@@ -135,6 +173,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> exclude = []
 
+    /**
+     * Returns the actual values of {@link #exclude}.
+     * @return ignoring batch class name patterns
+     */
     @Input
     List<String> getResolvedExclude() {
         return ResolutionUtils.resolveToStringList(getExclude())
@@ -145,6 +187,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> customDataModelProcessors = []
 
+    /**
+     * Returns the actual values of {@link #customDataModelProcessors}.
+     * @return the target class names
+     */
     @Input
     List<String> getResolvedCustomDataModelProcessors() {
         return ResolutionUtils.resolveToStringList(getCustomDataModelProcessors())
@@ -155,6 +201,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> customExternalPortProcessors = []
 
+    /**
+     * Returns the actual values of {@link #customExternalPortProcessors}.
+     * @return the target class names
+     */
     @Input
     List<String> getResolvedCustomExternalPortProcessors() {
         return ResolutionUtils.resolveToStringList(getCustomExternalPortProcessors())
@@ -165,6 +215,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> customJobflowProcessors = []
 
+    /**
+     * Returns the actual values of {@link #customJobflowProcessors}.
+     * @return the target class names
+     */
     @Input
     List<String> getResolvedCustomJobflowProcessors() {
         return ResolutionUtils.resolveToStringList(getCustomJobflowProcessors())
@@ -175,6 +229,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> customBatchProcessors = []
 
+    /**
+     * Returns the actual values of {@link #customBatchProcessors}.
+     * @return the target class names
+     */
     @Input
     List<String> getResolvedCustomBatchProcessors() {
         return ResolutionUtils.resolveToStringList(getCustomBatchProcessors())
@@ -185,6 +243,10 @@ class AsakusaCompileTask extends DefaultTask {
      */
     List<Object> customParticipants = []
 
+    /**
+     * Returns the actual values of {@link #customParticipants}.
+     * @return the target class names
+     */
     @Input
     List<String> getResolvedCustomParticipants() {
         return ResolutionUtils.resolveToStringList(getCustomParticipants())
@@ -202,13 +264,17 @@ class AsakusaCompileTask extends DefaultTask {
      */
     Map<Object, Object> compilerProperties = [:]
 
+    /**
+     * Returns the actual values of {@link #compilerProperties}.
+     * @return the compiler properties
+     */
     @Input
     Map<String, String> getResolvedCompilerProperties() {
         return ResolutionUtils.resolveToStringMap(getCompilerProperties())
     }
 
     /**
-     * The batch ID prefix for 'on-Spark' applications.
+     * The batch ID prefix for applications.
      */
     @Optional
     @Input
@@ -224,6 +290,81 @@ class AsakusaCompileTask extends DefaultTask {
      * Whether fails on compilation errors or not.
      */
     boolean failOnError
+
+    /**
+     * Whether clean-up output directory before compile applications or not.
+     */
+    @Input
+    boolean clean
+
+    /**
+     * Adds extra {@link #compilerProperties compiler properties}.
+     * @param encoded the encoded {@code key=value} entries separated by comma
+     */
+    @Option(option = 'compiler-properties', description = 'extra compiler properties separated by comma')
+    void setExtraCompilerPropertiesOption(String encoded) {
+        getCompilerProperties().putAll(decodeMap(encoded))
+    }
+
+    /**
+     * Set the batch ID prefix for applications.
+     * @param value the batch ID prefix
+     */
+    @Option(option = 'batch-id-prefix', description = 'the batch ID prefix')
+    void setBatchIdPrefixOption(String value) {
+        setBatchIdPrefix(value)
+    }
+
+    /**
+     * Set whether fails on compilation errors or not.
+     * @param value {@code "true"} to fail on compilation error, otherwise ignore errors
+     */
+    @Option(option = 'fail-on-error', description = 'whether fails on compilation errors or not')
+    void setFailOnErrorOption(String value) {
+        setFailOnError(Boolean.valueOf(value))
+    }
+
+    /**
+     * Set the update target batch class name.
+     * With this, the compiler only builds the target batch class,
+     * and the {@link #include} {@link #exclude} will be ignored.
+     * @param className the target class name pattern
+     */
+    @Option(option = 'update', description = 'compiles the specified batch class only')
+    void setUpdateOption(String className) {
+        setClean(false)
+        setInclude([className])
+        setExclude([])
+    }
+
+    private Map<String, String> decodeMap(String encoded) {
+        Map<String, String> map = [:]
+        StringBuilder buf = new StringBuilder()
+        boolean sawEscape = false
+        for (char c in encoded.toCharArray()) {
+            if (sawEscape) {
+                buf.append c
+                sawEscape = false
+            } else if (c == '\\') {
+                sawEscape = true
+            } else if (c == ',') {
+                addKeyValue buf.toString(), map
+                buf.setLength 0
+            } else {
+                buf.append c
+            }
+        }
+        addKeyValue buf.toString(), map
+        return map
+    }
+
+    private void addKeyValue(String string, Map<String, String> kvs) {
+        int index = string.indexOf '='
+        if (index < 0) {
+            throw new InvalidUserDataException("Invalid key-value: \"${string}\"")
+        }
+        kvs.put string.substring(0, index), string.substring(index + 1)
+    }
 
     private FileCollection collectFiles(Object files) {
         Object all = project.files(files).collect { File f ->
@@ -254,8 +395,14 @@ class AsakusaCompileTask extends DefaultTask {
             javaArguments = [script.absolutePath]
         }
 
-        project.delete getOutputDirectory()
-        project.mkdir getOutputDirectory()
+        if (isClean()) {
+            logger.info "Cleaning Asakusa DSL compiler output directory"
+            project.delete getOutputDirectory()
+        }
+        if (getOutputDirectory().exists() == false) {
+            project.mkdir getOutputDirectory()
+        }
+
         project.javaexec { JavaExecSpec spec ->
             spec.main = javaMain
             spec.classpath = javaClasspath
