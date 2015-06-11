@@ -71,7 +71,7 @@ object OutputSubPlanCompiler {
           for {
             subPlanInput <- subplan.getInputs
             inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
-            if inputInfo.getInputType == SubPlanInputInfo.InputType.DONT_CARE
+            if inputInfo.getInputType == SubPlanInputInfo.InputType.PREPARE_EXTERNAL_OUTPUT
             prevSubPlanOutput <- subPlanInput.getOpposites
             marker = prevSubPlanOutput.getOperator
           } {
