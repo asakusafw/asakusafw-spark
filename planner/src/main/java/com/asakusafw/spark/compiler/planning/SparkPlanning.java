@@ -62,6 +62,7 @@ import com.asakusafw.lang.compiler.planning.PlanMarkers;
 import com.asakusafw.lang.compiler.planning.Planning;
 import com.asakusafw.lang.compiler.planning.SubPlan;
 import com.asakusafw.lang.compiler.planning.util.GraphStatistics;
+import com.asakusafw.spark.compiler.planning.PartitionGroupInfo.DataSize;
 import com.asakusafw.spark.compiler.planning.PlanningContext.Option;
 import com.asakusafw.utils.graph.Graph;
 
@@ -467,9 +468,10 @@ public final class SparkPlanning {
     }
 
     private static void attachPartitionGroupInfo(PlanningContext context, Plan plan) {
-        Map<PartitionGroupInfo.DataSize, Double> limits =
-                PartitionGroupAnalyzer.loadLimitMap(context.getOptimizerContext().getOptions());
-        PartitionGroupAnalyzer groupAnalyzer = new PartitionGroupAnalyzer(limits);
+        CompilerOptions options = context.getOptimizerContext().getOptions();
+        Map<PartitionGroupInfo.DataSize, Double> limits = PartitionGroupAnalyzer.loadLimitMap(options);
+        Map<SubPlan, DataSize> explicits = PartitionGroupAnalyzer.loadExplicitSizeMap(options, plan);
+        PartitionGroupAnalyzer groupAnalyzer = new PartitionGroupAnalyzer(limits, explicits);
         for (SubPlan sub : plan.getElements()) {
             for (SubPlan.Input port : sub.getInputs()) {
                 PartitionGroupInfo info = groupAnalyzer.analyze(port);

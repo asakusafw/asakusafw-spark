@@ -15,9 +15,11 @@
  */
 package com.asakusafw.spark.compiler.planning;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 
 import com.asakusafw.lang.compiler.common.ComplexAttribute;
 
@@ -103,5 +105,31 @@ public class PartitionGroupInfo implements ComplexAttribute {
         public String getSymbol() {
             return name().toLowerCase(Locale.ENGLISH);
         }
+
+        /**
+         * Returns the element which has the provided symbol.
+         * @param symbol the symbol
+         * @return the related element, or {@code null} if there is no such an element
+         */
+        public static DataSize find(String symbol) {
+            return Lazy.SYMBOLS.get(symbol);
+        }
+
+        private static final class Lazy {
+
+            static final Map<String, DataSize> SYMBOLS;
+            static {
+                Map<String, DataSize> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+                for (DataSize element : values()) {
+                    map.put(element.getSymbol(), element);
+                }
+                SYMBOLS = Collections.unmodifiableMap(map);
+            }
+
+            private Lazy() {
+                return;
+            }
+        }
+
     }
 }

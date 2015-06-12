@@ -17,10 +17,13 @@ package com.asakusafw.spark.compiler.planning;
 
 import java.text.MessageFormat;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.asakusafw.lang.compiler.model.graph.Operator;
 import com.asakusafw.lang.compiler.model.graph.Operator.OperatorKind;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
+import com.asakusafw.lang.compiler.planning.SubPlan;
 
 final class Util {
 
@@ -37,6 +40,21 @@ final class Util {
 
     private Util() {
         return;
+    }
+
+    /**
+     * Collects IDs of user operators in the target sub-plan.
+     * @param sub the target sub-plan
+     * @return the operator IDs
+     */
+    static Set<OperatorId> collectOperatorIds(SubPlan sub) {
+        Set<OperatorId> results = new HashSet<>();
+        for (Operator operator : sub.getOperators()) {
+            if (operator.getOperatorKind() == OperatorKind.USER) {
+                results.add(OperatorId.of((UserOperator) operator));
+            }
+        }
+        return results;
     }
 
     static Operator findMostTypical(Collection<? extends Operator> operators) {

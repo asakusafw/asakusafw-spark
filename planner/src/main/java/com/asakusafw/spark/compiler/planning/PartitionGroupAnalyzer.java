@@ -15,12 +15,16 @@
  */
 package com.asakusafw.spark.compiler.planning;
 
+import static com.asakusafw.spark.compiler.planning.Util.*;
+
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import com.asakusafw.lang.compiler.api.CompilerOptions;
 import com.asakusafw.lang.compiler.common.util.EnumUtil;
 import com.asakusafw.lang.compiler.common.util.StringUtil;
+import com.asakusafw.lang.compiler.planning.Plan;
 import com.asakusafw.lang.compiler.planning.SubPlan;
 import com.asakusafw.spark.compiler.planning.PartitionGroupInfo.DataSize;
 import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputType;
@@ -55,6 +60,11 @@ public class PartitionGroupAnalyzer {
      */
     public static final String KEY_LIMIT_PREFIX = KEY_BASE_PREFIX + "limit."; //$NON-NLS-1$
 
+    /**
+     * The compiler property key prefix of explicit data size scales of each Asakusa operator.
+     */
+    public static final String KEY_OPERATOR_PREFIX = KEY_BASE_PREFIX + "operator."; //$NON-NLS-1$
+
     static final Map<DataSize, Double> DEFAULT_LIMITS;
     static {
         Map<DataSize, Double> map = new HashMap<>();
@@ -69,6 +79,8 @@ public class PartitionGroupAnalyzer {
     private static final Set<InputType> TARGET_INPUT_TYPES = EnumUtil.freeze(InputType.PARTITIONED);
 
     final EnumMap<DataSize, Double> limits;
+
+    final Map<SubPlan, DataSize> explicits;
 
     private final Map<SubPlan.Input, PartitionGroupInfo> cache = new HashMap<>();
 
@@ -100,20 +112,94 @@ public class PartitionGroupAnalyzer {
     }
 
     /**
+     * Returns the explicit data size map of each sub-plan from the compiler options.
+     * @param options the compiler options
+     * @param plan the target execution plan
+     * @return the explicit data size map
+     */
+    public static Map<SubPlan, DataSize> loadExplicitSizeMap(CompilerOptions options, Plan plan) {
+        Map<OperatorId, DataSize> sizeMap = extractExplicitOperatorSizeMap(options);
+        if (sizeMap.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<SubPlan, DataSize> results = new LinkedHashMap<>();
+        for (SubPlan sub : plan.getElements()) {
+            DataSize size = loadExplicitSize(sizeMap, sub);
+            if (size != null) {
+                results.put(sub, size);
+            }
+        }
+        return Collections.unmodifiableMap(results);
+    }
+
+    private static Map<OperatorId, DataSize> extractExplicitOperatorSizeMap(CompilerOptions options) {
+        Map<OperatorId, DataSize> results = new HashMap<>();
+        for (Map.Entry<String, String> entry : options.getProperties(KEY_OPERATOR_PREFIX).entrySet()) {
+            String raw = entry.getKey();
+            String key = raw.substring(KEY_OPERATOR_PREFIX.length());
+            String value = entry.getValue();
+
+            OperatorId id;
+            try {
+                id = OperatorId.of(key);
+            } catch (IllegalArgumentException e) {
+                LOG.warn(MessageFormat.format(
+                        "invalid operator descriptor: {0} ({1})",
+                        key, raw), e);
+                continue;
+            }
+
+            DataSize size = DataSize.find(value);
+            if (size == null) {
+                LOG.warn(MessageFormat.format(
+                        "invalid operator size: {0} ({1})",
+                        value, raw));
+                continue;
+            }
+
+            results.put(id, size);
+        }
+        return results;
+    }
+
+    /**
+     * Returns the explicit data size of the sub-plan.
+     * @param sizeMap explicit data size of each operator
+     * @param sub the target sub-plan
+     * @return the explicit data size for the sub-plan, or {@code null} if it is not defined
+     */
+    public static DataSize loadExplicitSize(Map<OperatorId, DataSize> sizeMap, SubPlan sub) {
+        DataSize max = null;
+        for (OperatorId id : collectOperatorIds(sub)) {
+            DataSize size = sizeMap.get(id);
+            if (size == null) {
+                continue;
+            }
+            LOG.debug("explicit size: {} -> {}", size, id);
+            if (max == null || size.compareTo(max) > 0) {
+                max = size;
+            }
+        }
+        return max;
+    }
+
+    /**
      * Creates a new instance with default configuration.
      */
     public PartitionGroupAnalyzer() {
-        this(DEFAULT_LIMITS);
+        this(DEFAULT_LIMITS, Collections.<SubPlan, DataSize>emptyMap());
     }
 
     /**
      * Creates a new instance.
      * @param limits the limit map
+     * @param explicitSizeMap the explicit data size map
      */
-    public PartitionGroupAnalyzer(Map<DataSize, Double> limits) {
+    public PartitionGroupAnalyzer(Map<DataSize, Double> limits, Map<? extends SubPlan, DataSize> explicitSizeMap) {
         EnumMap<DataSize, Double> map = new EnumMap<>(DataSize.class);
         map.putAll(limits);
         this.limits = map;
+        this.explicits = Collections.unmodifiableMap(new HashMap<>(explicitSizeMap));
     }
 
     /**
@@ -211,6 +297,28 @@ public class PartitionGroupAnalyzer {
         }
 
         public DataSize getDataSize() {
+            DataSize explicit = getExplicitDataSize();
+            if (explicit != null) {
+                return explicit;
+            }
+            return getInferedDataSize();
+        }
+
+        private DataSize getExplicitDataSize() {
+            DataSize current = null;
+            for (SubPlan sub : consumers) {
+                DataSize size = explicits.get(sub);
+                if (size == null) {
+                    continue;
+                }
+                if (current == null || size.isLargetThan(current)) {
+                    current = size;
+                }
+            }
+            return current;
+        }
+
+        private DataSize getInferedDataSize() {
             DataSize current = null;
             for (SubPlan sub : consumers) {
                 DataSize size = computeDataSize(sub);
