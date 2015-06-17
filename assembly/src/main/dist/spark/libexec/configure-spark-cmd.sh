@@ -16,8 +16,13 @@
 
 if [ "$SPARK_CMD" = "" ]
 then
-    echo '$SPARK_CMD'" is not defined" 1>&2
-    exit 1
+    SPARK_CMD="$(which spark-submit)"
+    _RET=$?
+    if [ $_RET -ne 0 ]
+    then
+        echo '$SPARK_CMD'" is not defined" 1>&2
+        exit 1
+    fi
 fi
 
 if [ ! -x "$SPARK_CMD" ]
