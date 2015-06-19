@@ -1,5 +1,11 @@
-version = '0.1.0-SNAPSHOT'
 group = 'com.asakusafw.spark'
+version = { f ->
+    if (!f.exists()) {
+        return null
+    }
+    def xml = new XmlSlurper().parse(f)
+    return xml.version.text()
+}(project.file('../pom.xml'))
 
 defaultTasks 'clean', 'build', 'install'
 
