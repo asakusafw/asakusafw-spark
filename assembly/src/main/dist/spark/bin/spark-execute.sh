@@ -96,7 +96,17 @@ echo "        SPARK_FILES: ${_SPARK_FILES[@]}"
 echo "    SPARK_APP_FILES: ${_SPARK_APP_FILES[@]}"
 
 export ASAKUSA_SPARK_OPTS
-"$SPARK_CMD" \
+
+_SPARK_EXEC=()
+
+if [ "$SPARK_CMD_LAUNCHER" != "" ]
+then
+    _SPARK_EXEC+=($SPARK_CMD_LAUNCHER)
+fi
+
+_SPARK_EXEC+=("$SPARK_CMD")
+
+"${_SPARK_EXEC[@]}" \
     --class "$_SPARK_LAUNCHER" \
     --jars "$_SPARK_LIBJARS" \
     --name "$_OPT_BATCH_ID/$_OPT_FLOW_ID/$_OPT_EXECUTION_ID" \
