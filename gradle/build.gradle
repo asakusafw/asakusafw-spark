@@ -58,6 +58,24 @@ groovydoc {
     footer "Copyright 2011-${new Date().format('yyyy')} Asakusa Framework Team."
 }
 
+processResources { t ->
+    t.inputs.property 'version', String.valueOf(project.version)
+    doLast {
+        logger.info "injecting project version info: ${project.version}"
+        File file = new File(t.destinationDir, 'META-INF/asakusa-spark-gradle/artifact.properties')
+        if (!file.parentFile.exists()) {
+            project.mkdir file.parentFile
+        }
+
+        Properties p = new Properties()
+        p.put('compiler-version', String.valueOf(project.version))
+        p.put('spark-compiler-version', String.valueOf(project.version))
+        file.withOutputStream { s ->
+            p.store(s, null)
+        }
+    }
+}
+
 task sourcesJar(type: Jar) {
     classifier 'sources'
     from sourceSets.main.allSource

@@ -15,8 +15,6 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
-import groovy.transform.PackageScope
-
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -25,9 +23,9 @@ import org.gradle.api.Project
  */
 class AsakusaSparkBasePlugin implements Plugin<Project> {
 
-    private static final String COMPILER_PROJECT_VERSION = '0.1.0-SNAPSHOT'
+    private static final String ARTIFACT_INFO_PATH = 'META-INF/asakusa-spark-gradle/artifact.properties'
 
-    private static final String SPARK_PROJECT_VERSION = '0.1.0-SNAPSHOT'
+    private static final String INVALID_VERSION = 'INVALID'
 
     private static final List<Object> EXCLUDE_MODULES = [
 
@@ -78,9 +76,34 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
     }
 
     private void configureExtension() {
-        extension.compilerProjectVersion = COMPILER_PROJECT_VERSION
-        extension.sparkProjectVersion = SPARK_PROJECT_VERSION
+        configureArtifactVersion()
         extension.excludeModules.addAll(EXCLUDE_MODULES)
+    }
+
+    private void configureArtifactVersion() {
+        InputStream input = getClass().classLoader.getResourceAsStream(ARTIFACT_INFO_PATH)
+        if (input != null) {
+            try {
+                Properties properties = new Properties()
+                properties.load(input)
+                extension.compilerProjectVersion = properties.getProperty('compiler-version', INVALID_VERSION)
+                extension.sparkProjectVersion = properties.getProperty('spark-compiler-version', INVALID_VERSION)
+            } catch (IOException e) {
+                project.logger.warn "error occurred while extracting artifact version: ${ARTIFACT_INFO_PATH}"
+            } finally {
+                input.close()
+            }
+        }
+        if (extension.compilerProjectVersion == null) {
+            project.logger.warn "failed to detect version of Asakusa DSL Compiler Core: ${ARTIFACT_INFO_PATH}"
+            extension.compilerProjectVersion = null
+        }
+        project.logger.info "Asakusa DSL Compiler Core: ${extension.compilerProjectVersion}"
+        if (extension.sparkProjectVersion == null) {
+            project.logger.warn "failed to detect version of Asakusa DSL Compiler for Spark: ${ARTIFACT_INFO_PATH}"
+            extension.sparkProjectVersion = null
+        }
+        project.logger.info "Asakusa DSL Compiler for Spark: ${extension.sparkProjectVersion}"
     }
 
     /**
