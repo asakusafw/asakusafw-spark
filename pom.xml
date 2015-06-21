@@ -24,6 +24,13 @@
 		<url>http://asakusafw.com</url>
 	</organization>
 
+  <scm>
+    <connection>scm:git:git@github.com:asakusafw/asakusafw-spark.git</connection>
+    <developerConnection>scm:git:git@github.com:asakusafw/asakusafw-spark.git</developerConnection>
+    <url>https://github.com/asakusafw/asakusafw-spark</url>
+    <tag>HEAD</tag>
+  </scm>
+
 	<properties>
 		<artifact.name>${project.artifactId}</artifact.name>
 		<artifact.version>${project.version}</artifact.version>
@@ -280,6 +287,16 @@ encoding/<project>=UTF-8
 						<configLocation>com/asakusafw/checkstyle.xml</configLocation>
 					</configuration>
 				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-release-plugin</artifactId>
+					<version>2.5.2</version>
+					<configuration>
+						<autoVersionSubmodules>true</autoVersionSubmodules>
+						<pushChanges>false</pushChanges>
+						<tagNameFormat>@{project.version}</tagNameFormat>
+					</configuration>
+				</plugin>
 			</plugins>
 		</pluginManagement>
 		<plugins>
@@ -306,6 +323,10 @@ encoding/<project>=UTF-8
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-eclipse-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>
