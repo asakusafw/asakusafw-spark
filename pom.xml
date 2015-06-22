@@ -304,6 +304,13 @@ encoding/<project>=UTF-8
 				</plugin>
 			</plugins>
 		</pluginManagement>
+		<extensions>
+			<extension>
+				<groupId>org.springframework.build</groupId>
+				<artifactId>aws-maven</artifactId>
+				<version>5.0.0.RELEASE</version>
+			</extension>
+		</extensions>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -708,6 +715,19 @@ encoding/<project>=UTF-8
 			</snapshots>
 		</repository>
 	</repositories>
+
+	<distributionManagement>
+		<repository>
+			<id>com.asakusafw.releases</id>
+			<name>Asakusa Framework Repository</name>
+			<url>s3://asakusafw/maven/releases</url>
+		</repository>
+		<snapshotRepository>
+			<id>com.asakusafw.snapshots</id>
+			<name>Asakusa Framework Snapshot Repository</name>
+			<url>s3://asakusafw/maven/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
 
 	<pluginRepositories>
 		<pluginRepository>
