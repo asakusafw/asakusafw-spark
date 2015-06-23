@@ -101,10 +101,10 @@ Asakusa on Sparkは、Asakusa Framework 0.7.3 で動作を検証しています�
 
 また運用環境で利用するAsakusa Frameworkバージョンは、Hadoop2系向けAsakusa Framework ( ``-hadoop2`` )でのみ動作を検証しています。
 
-アプリケーションのビルドで使用するGradleのバージョンは ``2.2.1`` に対応しています。
+アプリケーションのビルドで使用するGradleのバージョンは ``2.2.1`` および ``2.3`` に対応しています。
 
 ..  attention::
-    Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を ``2.2.1`` に設定してください。
+    Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を上述の対応バージョン（例: ``2.3`` ）に設定してください。
 
 ..  _`Shafu`: http://asakusafw.s3.amazonaws.com/documents/jinrikisha/ja/html/shafu.html
 
