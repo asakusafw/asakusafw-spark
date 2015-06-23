@@ -25,17 +25,17 @@ Asakusa on Spark Gradle Plugin
 ----------
 
 ``asakusafw-spark``
-    アプリケーションプロジェクトで、Asakusa on Sparkのさまざまな機能を有効する。
+    アプリケーションプロジェクトで、Asakusa on Sparkのさまざまな機能を有効する [#]_ 。
 
     このプラグインは ``asakusafw`` プラグインや ``asakusafw-organizer`` プラグインを拡張するように作られているため、それぞれのプラグインも併せて有効にする必要がある（ ``apply plugin: 'asakusafw-spark'`` だけではほとんどの機能を利用できません）。
 
-..  todo:: groovydocへのリンク
+..  [#] :asakusa-spark-gradle-groovydoc:`com.asakusafw.spark.gradle.plugins.AsakusafwSparkPlugin`
 
 タスク
 ------
 
 ``sparkCompileBatchapps``
-    Asakusa DSL Compiler for Sparkを利用してDSLをコンパイルする。
+    Asakusa DSL Compiler for Sparkを利用してDSLをコンパイルする [#]_ 。
 
     ``asakusafw`` プラグインが有効である場合にのみ利用可能。
 
@@ -53,7 +53,7 @@ Asakusa on Spark Gradle Plugin
 
     ``asakusafwOrganizer.batchapps.enabled`` に ``true`` が指定されている場合、自動的に有効になる。
 
-..  todo:: groovydocへのリンク
+..  [#] :asakusa-spark-gradle-groovydoc:`com.asakusafw.gradle.tasks.AsakusaCompileTask`
 
 タスク拡張
 ----------
@@ -76,7 +76,7 @@ Asakusa on Spark Gradle Plugin
 Batch Application Plugin ( ``asakusafw`` ) への拡張
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Asakusa on Spark Gradle Pluginは Batch Application Plugin に対して Asakusa on Sparkのビルド設定を行うための規約プロパティを追加します。この規約プロパティは、 ``asakusafw`` ブロック内の参照名 ``spark`` でアクセスできます。
+Asakusa on Spark Gradle Pluginは Batch Application Plugin に対して Asakusa on Sparkのビルド設定を行うための規約プロパティを追加します。この規約プロパティは、 ``asakusafw`` ブロック内の参照名 ``spark`` でアクセスできます [#]_ 。
 
 以下、 ``build.gradle`` の設定例です。
 
@@ -151,12 +151,12 @@ Asakusa on Spark Gradle Pluginは Batch Application Plugin に対して Asakusa 
 
     既定値: ``true`` (即座にコンパイルを停止する)
 
-..  todo:: groovydocへのリンク
+..  [#] これらのプロパティは規約オブジェクト :asakusa-spark-gradle-groovydoc:`com.asakusafw.gradle.plugins.AsakusafwCompilerExtension` が提供します。
 
 Framework Organizer Plugin ( ``asakusafwOrganizer`` ) への拡張
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Asakusa on Spark Gradle Plugin は Framework Organizer Plugin に対して Asakusa on Sparkのビルド設定を行うための規約プロパティを追加します。この規約プロパティは、 ``asakusafwOrganizer`` ブロック内の参照名 ``spark`` でアクセスできます。
+Asakusa on Spark Gradle Plugin は Framework Organizer Plugin に対して Asakusa on Sparkのビルド設定を行うための規約プロパティを追加します。この規約プロパティは、 ``asakusafwOrganizer`` ブロック内の参照名 ``spark`` でアクセスできます [#]_ 。
 
 この規約オブジェクトは以下のプロパティを持ちます。
 
@@ -174,7 +174,7 @@ Asakusa on Spark Gradle Plugin は Framework Organizer Plugin に対して Asaku
 
     既定値: ``asakusafwOrganizer.spark.enabled`` (全体のデフォルト値を利用する)
 
-..  todo:: groovydocへのリンク
+..  [#] これらのプロパティは規約オブジェクト :asakusa-spark-gradle-groovydoc:`com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension` が提供します。
 
 Asakusa DSL Compiler for Spark リファレンス
 ===========================================
