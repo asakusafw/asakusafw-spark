@@ -25,7 +25,7 @@ Asakusa on Spark Gradle Plugin
 ----------
 
 ``asakusafw-spark``
-    アプリケーションプロジェクトで、Asakusa on Sparkのさまざまな機能を有効する [#]_ 。
+    アプリケーションプロジェクトで、Asakusa on Sparkのさまざまな機能を有効にする [#]_ 。
 
     このプラグインは ``asakusafw`` プラグインや ``asakusafw-organizer`` プラグインを拡張するように作られているため、それぞれのプラグインも併せて有効にする必要がある（ ``apply plugin: 'asakusafw-spark'`` だけではほとんどの機能を利用できません）。
 
@@ -404,6 +404,15 @@ operator.estimator.* のデフォルト値
 
 ここでは、Asakusa on Spark固有の制限事項について説明します。これらの制限は将来のバージョンで緩和される可能性があります。
 
+非対応機能
+----------
+
+Asakusa on Sparkは、Asakusa Frameworkが提供する以下の機能には対応していません。
+
+* ThunderGate
+* レガシーモジュール
+* その他該当バージョンで非推奨となっている機能
+
 レポートAPIに関するプラグインの設定
 -----------------------------------
 
@@ -415,15 +424,6 @@ Asakusa FrameworkではレポートAPIの実装を差し替えるプラグイン
 ==============
 
 ここではAsakusa on Sparkを利用する場合に考慮すべき、Asakusa Frameworkやバッチアプリケーションの互換性について説明します。
-
-非対応機能
-----------
-
-Asakusa on Sparkは、Asakusa Frameworkが提供する以下の機能には対応していません。
-
-* ThunderGate
-* レガシーモジュール
-* その他該当バージョンで非推奨となっている機能
 
 演算子の互換性
 --------------
