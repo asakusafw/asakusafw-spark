@@ -53,7 +53,7 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
     }
 
     private void configureDependencies() {
-        project.afterEvaluate {
+        PluginUtils.afterEvaluate(project) {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
             createDependencies('asakusafw', [
                 SparkDist : "com.asakusafw.spark:asakusa-spark-assembly:${base.sparkProjectVersion}:dist@jar",
@@ -86,7 +86,7 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
     }
 
     private void enableTasks() {
-        project.afterEvaluate {
+        PluginUtils.afterEvaluate(project) {
             AsakusafwOrganizerSparkExtension spark = profile.spark
             if (spark.isEnabled()) {
                 project.logger.info 'Enabling Asakusa on Spark'
