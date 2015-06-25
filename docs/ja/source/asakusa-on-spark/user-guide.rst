@@ -29,6 +29,14 @@ Asakusa Frameworkの適用領域においても、いくつかのケースでSpa
 Asakusa on Sparkを利用する場合、従来のAsakusa Frameworkが提供するDSLやテスト機構をそのまま利用して開発を行います。
 アプリケーションをビルドして運用環境向けの実行モジュール（デプロイメントアーカイブ）を作成する段階ではじめてSpark用のコンパイラを利用します。
 
+..  figure:: attachment/asakusa-spark-sdk.png
+    :width: 640px
+
+また、Asakusa DSL Compiler for Sparkで生成したバッチアプリケーションは、従来と同様にYAESSを利用して実行できます。
+
+..  figure:: attachment/asakusa-spark-runtime.png
+    :width: 640px
+
 Asakusa DSL
   従来のAsakusa DSLやDMDLで記述したバッチアプリケーションは基本的に変更なしで、Asakusa DSL Compiler for Sparkを利用してSpark向けの実行モジュールを生成することができます。
 
@@ -97,11 +105,14 @@ Asakusa on Sparkは、Spark 1.4.0 で動作を検証しています。
 Asakusa Framework 対応バージョンとコンポーネント
 ------------------------------------------------
 
-Asakusa on Sparkは、Asakusa Framework 0.7.3 で動作を検証しています。
+Asakusa on Sparkは、Asakusa Framework 0.7.3 以降のバージョンが必要です。
+
+..  warning::
+    Asakusa Framework 0.7.3 より古いバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`Asakusa Gradle Plugin マイグレーションガイド <application/gradle-plugin.html#vup-gradle-plugin>` を参考にして 0.7.3 以降のバージョンにマイグレーションしてください。
 
 また運用環境で利用するAsakusa Frameworkバージョンは、Hadoop2系向けAsakusa Framework ( ``-hadoop2`` )でのみ動作を検証しています。
 
-アプリケーションのビルドで使用するGradleのバージョンは ``2.2.1`` および ``2.3`` に対応しています。
+アプリケーションのビルドで使用するGradleのバージョンは ``2.2.1`` および ``2.3`` に対応しています。これより古いGradleのバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`プロジェクトで利用するGradleのバージョンアップ <application/gradle-plugin.html#vup-gradle-wrapper>` を参考にしてバージョンをあげてください。
 
 ..  attention::
     Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を上述の対応バージョン（例: ``2.3`` ）に設定してください。
