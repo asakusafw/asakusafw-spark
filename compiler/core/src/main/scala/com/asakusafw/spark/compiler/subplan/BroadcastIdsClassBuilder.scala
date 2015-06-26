@@ -38,9 +38,9 @@ trait BroadcastIds {
 }
 
 class BroadcastIdsClassBuilder(flowId: String)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BroadcastIds;"),
-      classOf[AnyRef].asType) with BroadcastIds {
+  extends ClassBuilder(
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BroadcastIds;"),
+    classOf[AnyRef].asType) with BroadcastIds {
 
   private[this] val broadcastIds: mutable.Map[Long, Int] = mutable.Map.empty
 

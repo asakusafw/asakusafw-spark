@@ -60,7 +60,7 @@ class BranchRDDFunctions[T: ClassTag](self: RDD[T]) extends Serializable {
 }
 
 private class BranchPartitioner(branchKeys: Set[BranchKey], partitioners: Map[BranchKey, Partitioner])
-    extends Partitioner {
+  extends Partitioner {
 
   private[this] val branches = branchKeys.toSeq.sortBy(_.hashCode)
 
@@ -81,7 +81,7 @@ private class BranchPartitioner(branchKeys: Set[BranchKey], partitioners: Map[Br
 }
 
 private class BranchKeyOrdering[K](orderings: Map[BranchKey, Ordering[K]])
-    extends Ordering[Branch[K]] {
+  extends Ordering[Branch[K]] {
 
   override def compare(left: Branch[K], right: Branch[K]): Int = {
     orderings(left.branchKey).compare(left.actualKey, right.actualKey)
@@ -92,7 +92,7 @@ private class BranchedRDD[T: ClassTag](
   @transient prev: RDD[T],
   @transient part: Option[Partitioner],
   @transient partitionFilterFunc: Int => Boolean)
-    extends PartitionPruningRDD[T](prev, partitionFilterFunc) {
+  extends PartitionPruningRDD[T](prev, partitionFilterFunc) {
 
   override val partitioner = part
 }

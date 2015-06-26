@@ -221,7 +221,7 @@ final class MethodSignatureBuilder(sv: SignatureVisitor) extends SignatureBuilde
 }
 
 final class FormalTypeSignatureBuilder private[asm] (sv: SignatureVisitor)
-    extends SignatureBuilder(sv) {
+  extends SignatureBuilder(sv) {
 
   private var visitedClassBound = false
   private var visitedInterfaceBound = false
@@ -260,7 +260,7 @@ final class FormalTypeSignatureBuilder private[asm] (sv: SignatureVisitor)
 }
 
 final class TypeArgumentSignatureBuilder private[asm] (sv: SignatureVisitor)
-    extends SignatureBuilder(sv) {
+  extends SignatureBuilder(sv) {
 
   def newTypeArgument(): this.type = {
     sv.visitTypeArgument()

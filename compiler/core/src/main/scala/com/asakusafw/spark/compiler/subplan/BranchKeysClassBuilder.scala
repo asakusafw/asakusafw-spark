@@ -38,9 +38,9 @@ trait BranchKeys {
 }
 
 class BranchKeysClassBuilder(flowId: String)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BranchKeys;"),
-      classOf[AnyRef].asType) with BranchKeys {
+  extends ClassBuilder(
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BranchKeys;"),
+    classOf[AnyRef].asType) with BranchKeys {
 
   private[this] val branchKeys: mutable.Map[Long, Int] = mutable.Map.empty
 

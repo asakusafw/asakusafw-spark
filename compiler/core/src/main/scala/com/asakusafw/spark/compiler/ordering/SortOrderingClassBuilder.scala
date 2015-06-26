@@ -30,9 +30,9 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class SortOrderingClassBuilder(flowId: String, groupingOrderingType: Type, orderingTypes: Seq[(Type, Boolean)])
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/ordering/SortOrdering$$${SortOrderingClassBuilder.nextId};"),
-      groupingOrderingType) {
+  extends ClassBuilder(
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/ordering/SortOrdering$$${SortOrderingClassBuilder.nextId};"),
+    groupingOrderingType) {
   assert(orderingTypes.size > 0)
 
   override def defMethods(methodDef: MethodDef): Unit = {

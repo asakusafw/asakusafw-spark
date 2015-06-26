@@ -29,18 +29,18 @@ import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 
 class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${EdgeFragmentClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[EdgeFragment[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(dataModelType)
-            }
+  extends ClassBuilder(
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${EdgeFragmentClassBuilder.nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[EdgeFragment[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+            _.newClassType(dataModelType)
           }
         }
-        .build(),
-      classOf[EdgeFragment[_]].asType) {
+      }
+      .build(),
+    classOf[EdgeFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(classOf[Array[Fragment[_]]].asType)) { mb =>

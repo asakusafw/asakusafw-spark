@@ -23,7 +23,7 @@ import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.core.{ HadoopConfiguration, ResourceConfiguration }
 
 class ResourceBrokingIterator[+T](val hadoopConf: Configuration, val delegate: Iterator[T])
-    extends Iterator[T] {
+  extends Iterator[T] {
 
   val session = ResourceBroker.attach(
     ResourceBroker.Scope.THREAD,

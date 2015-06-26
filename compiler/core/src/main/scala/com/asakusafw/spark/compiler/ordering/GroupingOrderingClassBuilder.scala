@@ -30,16 +30,16 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class GroupingOrderingClassBuilder(flowId: String, groupingTypes: Seq[Type])
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/ordering/GroupingOrdering$$${GroupingOrderingClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[AbstractOrdering[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-          }
+  extends ClassBuilder(
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/ordering/GroupingOrdering$$${GroupingOrderingClassBuilder.nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[AbstractOrdering[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
         }
-        .build(),
-      classOf[AbstractOrdering[_]].asType) {
+      }
+      .build(),
+    classOf[AbstractOrdering[_]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
