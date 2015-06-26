@@ -44,7 +44,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
-  import CoGroupSubPlanCompiler._
+  import CoGroupSubPlanCompiler._ // scalastyle:ignore
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.COGROUP
 

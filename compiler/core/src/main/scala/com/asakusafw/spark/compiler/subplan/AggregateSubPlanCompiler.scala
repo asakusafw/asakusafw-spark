@@ -47,7 +47,7 @@ import com.asakusafw.vocabulary.operator.Fold
 
 class AggregateSubPlanCompiler extends SubPlanCompiler {
 
-  import AggregateSubPlanCompiler._
+  import AggregateSubPlanCompiler._ // scalastyle:ignore
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.AGGREGATE
 

@@ -41,7 +41,7 @@ package object compiler {
   implicit class AugmentedBasicTypeDescription(val desc: BasicTypeDescription) extends AnyVal {
 
     def asType: Type = {
-      import BasicTypeDescription.BasicTypeKind
+      import BasicTypeDescription.BasicTypeKind // scalastyle:ignore
       desc.getBasicTypeKind match {
         case BasicTypeKind.VOID    => Type.VOID_TYPE
         case BasicTypeKind.INT     => Type.INT_TYPE

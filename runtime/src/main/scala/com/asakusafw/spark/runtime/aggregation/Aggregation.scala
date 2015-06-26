@@ -22,7 +22,7 @@ import org.apache.spark.executor.backdoor._
 
 abstract class Aggregation[K, V, C] extends Serializable {
 
-  import Aggregation._
+  import Aggregation._ // scalastyle:ignore
 
   def mapSideCombine: Boolean
 

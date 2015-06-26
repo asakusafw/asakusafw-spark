@@ -68,7 +68,7 @@ class SparkClientCompiler extends JobflowProcessor {
 
   private val Logger = LoggerFactory.getLogger(getClass)
 
-  import SparkClientCompiler._
+  import SparkClientCompiler._ // scalastyle:ignore
 
   override def process(jpContext: JPContext, source: Jobflow): Unit = {
 

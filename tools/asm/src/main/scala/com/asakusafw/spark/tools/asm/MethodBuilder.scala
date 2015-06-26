@@ -39,7 +39,8 @@ import org.objectweb.asm.Opcodes._
 import org.objectweb.asm.Type
 
 class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor) {
-  import MethodBuilder._
+
+  import MethodBuilder._ // scalastyle:ignore
 
   val thisVar: Var = {
     new Var(this, thisType, 0)

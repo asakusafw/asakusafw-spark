@@ -39,7 +39,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class ExtractSubPlanCompiler extends SubPlanCompiler {
 
-  import ExtractSubPlanCompiler._
+  import ExtractSubPlanCompiler._ // scalastyle:ignore
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.EXTRACT
 
