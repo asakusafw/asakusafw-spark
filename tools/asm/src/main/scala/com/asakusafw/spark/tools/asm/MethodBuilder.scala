@@ -126,15 +126,15 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
         }
       case Type.CHAR =>
         ldc.asInstanceOf[Char].toInt match {
-          case i if i <= 5              => mv.visitInsn(ICONST_0 + i)
-          case i if i <= Byte.MaxValue  => mv.visitIntInsn(BIPUSH, i)
+          case i if i <= 5 => mv.visitInsn(ICONST_0 + i)
+          case i if i <= Byte.MaxValue => mv.visitIntInsn(BIPUSH, i)
           case i if i <= Short.MaxValue => mv.visitIntInsn(SIPUSH, i)
-          case i                        => mv.visitLdcInsn(i)
+          case i => mv.visitLdcInsn(i)
         }
       case Type.BYTE =>
         ldc.asInstanceOf[Byte] match {
           case i if i >= -1 && i <= 5 => mv.visitInsn(ICONST_0 + i)
-          case i                      => mv.visitIntInsn(BIPUSH, i)
+          case i => mv.visitIntInsn(BIPUSH, i)
         }
       case Type.SHORT =>
         ldc.asInstanceOf[Short] match {
@@ -153,20 +153,20 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
         ldc.asInstanceOf[Long] match {
           case 0L => mv.visitInsn(LCONST_0)
           case 1L => mv.visitInsn(LCONST_1)
-          case l  => mv.visitLdcInsn(l)
+          case l => mv.visitLdcInsn(l)
         }
       case Type.FLOAT =>
         ldc.asInstanceOf[Float] match {
           case 0.0f => mv.visitInsn(FCONST_0)
           case 1.0f => mv.visitInsn(FCONST_1)
           case 2.0f => mv.visitInsn(FCONST_2)
-          case f    => mv.visitLdcInsn(f)
+          case f => mv.visitLdcInsn(f)
         }
       case Type.DOUBLE =>
         ldc.asInstanceOf[Double] match {
           case 0.0d => mv.visitInsn(DCONST_0)
           case 1.0d => mv.visitInsn(DCONST_1)
-          case d    => mv.visitLdcInsn(d)
+          case d => mv.visitLdcInsn(d)
         }
       case _ =>
         mv.visitLdcInsn(ldc)
@@ -514,15 +514,15 @@ object MethodBuilder {
 
     def unbox(): Stack = {
       `type`.getClassName() match {
-        case "java.lang.Boolean"   => invokeV("booleanValue", Type.BOOLEAN_TYPE)
+        case "java.lang.Boolean" => invokeV("booleanValue", Type.BOOLEAN_TYPE)
         case "java.lang.Character" => invokeV("charValue", Type.CHAR_TYPE)
-        case "java.lang.Byte"      => invokeV("byteValue", Type.BYTE_TYPE)
-        case "java.lang.Short"     => invokeV("shortValue", Type.SHORT_TYPE)
-        case "java.lang.Integer"   => invokeV("intValue", Type.INT_TYPE)
-        case "java.lang.Long"      => invokeV("longValue", Type.LONG_TYPE)
-        case "java.lang.Float"     => invokeV("floatValue", Type.FLOAT_TYPE)
-        case "java.lang.Double"    => invokeV("doubleValue", Type.DOUBLE_TYPE)
-        case _                     => this
+        case "java.lang.Byte" => invokeV("byteValue", Type.BYTE_TYPE)
+        case "java.lang.Short" => invokeV("shortValue", Type.SHORT_TYPE)
+        case "java.lang.Integer" => invokeV("intValue", Type.INT_TYPE)
+        case "java.lang.Long" => invokeV("longValue", Type.LONG_TYPE)
+        case "java.lang.Float" => invokeV("floatValue", Type.FLOAT_TYPE)
+        case "java.lang.Double" => invokeV("doubleValue", Type.DOUBLE_TYPE)
+        case _ => this
       }
     }
 

@@ -25,7 +25,7 @@ trait CoreOperatorCompiler extends OperatorCompiler {
   override def support(operator: Operator)(implicit context: Context): Boolean = {
     operator match {
       case op: CoreOperator => support(op)
-      case _                => false
+      case _ => false
     }
   }
 

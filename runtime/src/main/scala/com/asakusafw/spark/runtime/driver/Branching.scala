@@ -89,7 +89,7 @@ trait Branching[T] {
         },
         partitioners = partitioners.map {
           case (branchKey, Some(part)) => branchKey -> part
-          case (branchKey, None)       => branchKey -> IdentityPartitioner(rdd.partitions.length)
+          case (branchKey, None) => branchKey -> IdentityPartitioner(rdd.partitions.length)
         },
         keyOrderings = orderings,
         preservesPartitioning = true).map {
