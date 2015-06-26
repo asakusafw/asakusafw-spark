@@ -43,7 +43,7 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
   override def compile(operator: CoreOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.getCoreOperatorKind}")
@@ -60,7 +60,7 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
       outputs.head.dataModelType) {
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
 
         thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
 

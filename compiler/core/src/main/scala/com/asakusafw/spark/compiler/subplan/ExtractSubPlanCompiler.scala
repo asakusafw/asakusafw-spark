@@ -102,7 +102,7 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
             val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
@@ -135,7 +135,7 @@ object ExtractSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
       val extractDriver = pushNew(driverType)
       extractDriver.dup().invokeInit(

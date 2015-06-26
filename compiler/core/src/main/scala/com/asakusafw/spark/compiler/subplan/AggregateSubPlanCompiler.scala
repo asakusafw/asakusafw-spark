@@ -61,7 +61,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(inputs.size == 1,
       s"The size of inputs should be 1: ${inputs.size}")
@@ -116,7 +116,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
             val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
@@ -145,7 +145,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             val aggregationType = AggregationClassBuilder.getOrCompile(context.flowId, operator, context.jpContext)
             `return`(pushNew0(aggregationType))
           }
@@ -163,12 +163,12 @@ object AggregateSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
       val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
 
       val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
-      import operatorInfo._
+      import operatorInfo._ // scalastyle:ignore
 
       assert(inputs.size == 1,
         s"The size of inputs should be 1: ${inputs.size}")

@@ -60,7 +60,7 @@ abstract class CoreOperatorFragmentClassBuilder(
         }
         .newVoidReturnType()
         .build()) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
         val childVar = `var`(classOf[Fragment[_]].asType, broadcastsVar.nextLocal)
 
@@ -72,7 +72,7 @@ abstract class CoreOperatorFragmentClassBuilder(
   }
 
   override def defReset(mb: MethodBuilder): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     unlessReset(mb) {
       thisVar.push().getField("child", classOf[Fragment[_]].asType).invokeV("reset")
     }

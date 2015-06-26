@@ -79,7 +79,7 @@ trait OrderingsField extends ClassBuilder {
           }
         }
         .build()) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         thisVar.push().getField("orderings", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("orderings", classOf[Map[_, _]].asType, initOrderings(mb))
         }
@@ -88,12 +88,12 @@ trait OrderingsField extends ClassBuilder {
   }
 
   def getOrderingsField(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("orderings", classOf[Map[_, _]].asType)
   }
 
   private def initOrderings(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     for {

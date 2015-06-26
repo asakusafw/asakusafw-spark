@@ -45,12 +45,12 @@ class WritableSerializerClassBuilder(flowId: String, writableType: Type)
     super.defMethods(methodDef)
 
     methodDef.newMethod("newInstance", writableType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(pushNew0(writableType))
     }
 
     methodDef.newMethod("newInstance", classOf[Writable].asType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(thisVar.push().invokeV("newInstance", writableType))
     }
   }

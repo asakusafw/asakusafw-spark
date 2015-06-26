@@ -31,12 +31,12 @@ trait OperatorField extends ClassBuilder {
   }
 
   def initOperatorField(mb: MethodBuilder): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().putField("operator", operatorType, pushNew0(operatorType))
   }
 
   def getOperatorField(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().getField("operator", operatorType)
   }
 }

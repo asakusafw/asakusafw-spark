@@ -46,7 +46,7 @@ abstract class FragmentClassBuilder(
   }
 
   protected def initReset(mb: MethodBuilder): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))
   }
 
@@ -54,14 +54,14 @@ abstract class FragmentClassBuilder(
     super.defMethods(methodDef)
 
     methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
       thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
       `return`()
     }
 
     methodDef.newMethod("add", Seq(dataModelType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(false))
       defAddMethod(mb, `var`(dataModelType, thisVar.nextLocal))
     }
@@ -73,7 +73,7 @@ abstract class FragmentClassBuilder(
   def defReset(mb: MethodBuilder): Unit
 
   protected def unlessReset(mb: MethodBuilder)(b: => Unit): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().getField("reset", Type.BOOLEAN_TYPE).unlessTrue {
       b
       thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))

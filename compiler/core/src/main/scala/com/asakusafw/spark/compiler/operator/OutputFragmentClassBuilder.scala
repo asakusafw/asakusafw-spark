@@ -39,7 +39,7 @@ class OutputFragmentClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       thisVar.push().invokeInit(superType,
         getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
           .invokeV("apply", classOf[ClassTag[_]].asType,
@@ -51,12 +51,12 @@ class OutputFragmentClassBuilder(
     super.defMethods(methodDef)
 
     methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(pushNew0(dataModelType))
     }
 
     methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(thisVar.push().invokeV("newDataModel", dataModelType))
     }
   }

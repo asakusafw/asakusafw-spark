@@ -76,7 +76,7 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
           }
         }
         build ()) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         thisVar.push().getField("partitioners", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners(mb))
         }
@@ -85,12 +85,12 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
   }
 
   def getPartitionersField(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("partitioners", classOf[Map[_, _]].asType)
   }
 
   private def initPartitioners(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     for {

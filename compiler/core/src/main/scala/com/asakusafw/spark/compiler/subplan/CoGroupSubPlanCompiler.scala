@@ -110,7 +110,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
             val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
@@ -151,12 +151,12 @@ object CoGroupSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
       val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
       val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
-      import operatorInfo._
+      import operatorInfo._ // scalastyle:ignore
 
       val properties = inputs.map { input =>
         val dataModelRef = input.dataModelRef

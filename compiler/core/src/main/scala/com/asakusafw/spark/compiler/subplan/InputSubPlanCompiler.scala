@@ -104,7 +104,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             `return`(
               paths match {
                 case Some(paths) =>
@@ -132,7 +132,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             `return`(
               extraConfigurations match {
                 case Some(confs) =>
@@ -190,7 +190,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
             val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
@@ -222,7 +222,7 @@ object InputSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
       val inputDriver = pushNew(driverType)
       inputDriver.dup().invokeInit(

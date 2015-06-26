@@ -46,7 +46,7 @@ object KryoRegistratorCompiler {
         super.defMethods(methodDef)
 
         methodDef.newMethod("registerClasses", Seq(classOf[Kryo].asType)) { mb =>
-          import mb._
+          import mb._ // scalastyle:ignore
           val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
           thisVar.push().invokeS(classOf[KryoRegistrator].asType, "registerClasses", kryoVar.push())
 

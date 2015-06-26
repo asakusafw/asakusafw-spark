@@ -29,10 +29,10 @@ import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateO
 trait MasterJoinUpdate extends JoinOperatorFragmentClassBuilder {
 
   val opInfo: OperatorInfo
-  import opInfo._
+  import opInfo._ // scalastyle:ignore
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     masterVar.push().ifNull({
       getOutputField(mb, outputs(MasterJoinUpdateOp.ID_OUTPUT_MISSED))
     }, {

@@ -44,7 +44,7 @@ class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(classOf[Array[Fragment[_]]].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val childrenVar = `var`(classOf[Array[Fragment[_]]].asType, thisVar.nextLocal)
       thisVar.push().invokeInit(superType, childrenVar.push())
     }
@@ -54,12 +54,12 @@ class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
     super.defMethods(methodDef)
 
     methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(pushNew0(dataModelType))
     }
 
     methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(thisVar.push().invokeV("newDataModel", dataModelType))
     }
   }

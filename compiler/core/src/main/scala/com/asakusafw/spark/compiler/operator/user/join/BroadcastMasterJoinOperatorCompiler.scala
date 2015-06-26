@@ -34,7 +34,7 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[MasterJoinOp]
   }
 
@@ -43,7 +43,7 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(support(operator),
       s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")

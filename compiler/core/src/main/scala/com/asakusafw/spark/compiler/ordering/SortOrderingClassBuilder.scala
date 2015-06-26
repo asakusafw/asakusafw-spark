@@ -39,7 +39,7 @@ class SortOrderingClassBuilder(flowId: String, groupingOrderingType: Type, order
     super.defMethods(methodDef)
 
     methodDef.newMethod("compare", Type.INT_TYPE, Seq(classOf[ShuffleKey].asType, classOf[ShuffleKey].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val xVar = `var`(classOf[ShuffleKey].asType, thisVar.nextLocal)
       val yVar = `var`(classOf[ShuffleKey].asType, xVar.nextLocal)
 

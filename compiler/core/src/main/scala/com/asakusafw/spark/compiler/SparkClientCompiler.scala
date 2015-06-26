@@ -165,7 +165,7 @@ class SparkClientCompiler extends JobflowProcessor {
               }
               .newReturnType(Type.INT_TYPE)
               .build()) { mb =>
-              import mb._
+              import mb._ // scalastyle:ignore
               val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
               val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
               thisVar.push().putField("sc", classOf[SparkContext].asType, scVar.push())
@@ -207,7 +207,7 @@ class SparkClientCompiler extends JobflowProcessor {
           subplans.foreach {
             case (subplan, i) =>
               methodDef.newMethod(s"execute${i}", Seq.empty) { mb =>
-                import mb._
+                import mb._ // scalastyle:ignore
                 val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
                 val driverType = compiler.compile(subplan)
 
@@ -345,7 +345,7 @@ class SparkClientCompiler extends JobflowProcessor {
               KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
 
           methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             `return`(ldc(registrator.getClassName))
           }
         }

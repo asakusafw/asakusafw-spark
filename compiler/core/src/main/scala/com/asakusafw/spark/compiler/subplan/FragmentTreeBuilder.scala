@@ -39,7 +39,7 @@ class FragmentTreeBuilder(
     mb: MethodBuilder,
     broadcastsVar: Var,
     nextLocal: AtomicInteger)(implicit context: OperatorCompiler.Context) {
-  import mb._
+  import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty
   val edgeFragmentTypes: mutable.Map[Type, Type] = mutable.Map.empty

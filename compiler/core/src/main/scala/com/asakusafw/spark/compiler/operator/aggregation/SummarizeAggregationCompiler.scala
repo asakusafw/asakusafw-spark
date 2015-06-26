@@ -40,7 +40,7 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
   def compile(operator: UserOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(annotationDesc.resolveClass == of,
       s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
@@ -57,19 +57,19 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
       outputs(Summarize.ID_OUTPUT).dataModelType) {
 
       override def defMapSideCombine(mb: MethodBuilder): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         val partialAggregation = annotationDesc.getElements()("partialAggregation")
           .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]
         `return`(ldc(partialAggregation != PartialAggregation.TOTAL))
       }
 
       override def defNewCombiner(mb: MethodBuilder): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         `return`(pushNew0(combinerType))
       }
 
       override def defInitCombinerByValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         propertyFoldings.foreach { folding =>
           val mapping = folding.getMapping
           val valuePropertyRef = inputs(Summarize.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
@@ -98,7 +98,7 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
       }
 
       override def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         propertyFoldings.foreach { folding =>
           val mapping = folding.getMapping
           val valuePropertyRef = inputs(Summarize.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
@@ -134,13 +134,13 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
       }
 
       override def defInitCombinerByCombiner(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         comb1Var.push().invokeV("copyFrom", comb2Var.push())
         `return`(comb1Var.push())
       }
 
       override def defMergeCombiners(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         propertyFoldings.foreach { folding =>
           val mapping = folding.getMapping
           val combinerPropertyRef = outputs(Summarize.ID_OUTPUT).dataModelRef.findProperty(mapping.getDestinationProperty)

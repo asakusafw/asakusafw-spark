@@ -45,7 +45,7 @@ class GroupingOrderingClassBuilder(flowId: String, groupingTypes: Seq[Type])
     super.defMethods(methodDef)
 
     methodDef.newMethod("compare", Type.INT_TYPE, Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val xVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
       val yVar = `var`(classOf[AnyRef].asType, xVar.nextLocal)
       `return`(
@@ -54,7 +54,7 @@ class GroupingOrderingClassBuilder(flowId: String, groupingTypes: Seq[Type])
     }
 
     methodDef.newMethod("compare", Type.INT_TYPE, Seq(classOf[ShuffleKey].asType, classOf[ShuffleKey].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val xVar = `var`(classOf[ShuffleKey].asType, thisVar.nextLocal)
       val yVar = `var`(classOf[ShuffleKey].asType, xVar.nextLocal)
 

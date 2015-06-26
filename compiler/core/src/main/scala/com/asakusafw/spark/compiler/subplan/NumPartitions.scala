@@ -27,7 +27,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 trait NumPartitions {
 
   def numPartitions(mb: MethodBuilder, sc: => Stack)(port: SubPlan.Port): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val dataSize = Option(port.getAttribute(classOf[PartitionGroupInfo]))
       .map(_.getDataSize).getOrElse(PartitionGroupInfo.DataSize.REGULAR)
     dataSize match {
@@ -65,7 +65,7 @@ trait NumPartitions {
   }
 
   private def getParallelism(mb: MethodBuilder, sc: => Stack): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     sc.invokeV("getConf", classOf[SparkConf].asType)
       .invokeV("getInt", Type.INT_TYPE,
         getStatic(Props.getClass.asType, "MODULE$", Props.getClass.asType)
@@ -78,7 +78,7 @@ trait NumPartitions {
   }
 
   private def getParallelismScale(mb: MethodBuilder, sc: => Stack)(suffix: String): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     sc.invokeV("getConf", classOf[SparkConf].asType)
       .invokeV("getDouble", Type.DOUBLE_TYPE,
         getStatic(Props.getClass.asType, "MODULE$", Props.getClass.asType)

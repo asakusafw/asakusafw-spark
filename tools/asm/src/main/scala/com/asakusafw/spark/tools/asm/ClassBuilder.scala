@@ -81,7 +81,7 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
   }
   def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       thisVar.push().invokeInit(superType)
     }
   }
@@ -335,7 +335,7 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
 
   private final def defToString0(methodDef: MethodDef): Unit = {
     methodDef.newMethod("toString", classOf[String].asType, Seq.empty[Type]) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val builder = pushNew0(classOf[StringBuilder].asType)
 
       val className = ldc(thisType.getClassName().substring(thisType.getClassName().lastIndexOf(".") + 1))
@@ -392,7 +392,7 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
 
   private final def defHashCode0(methodDef: MethodDef): Unit = {
     methodDef.newMethod("hashCode", Type.INT_TYPE, Seq.empty[Type]) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val result = ldc(1)
       fields.foreach {
         case (name, fieldType) =>
@@ -436,7 +436,7 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
 
   private final def defEquals0(methodDef: MethodDef): Unit = {
     methodDef.newMethod("equals", Type.BOOLEAN_TYPE, Seq(classOf[AnyRef].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val otherVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
 
       val result = thisVar.push().ifEq(otherVar.push())(ldc(true), {

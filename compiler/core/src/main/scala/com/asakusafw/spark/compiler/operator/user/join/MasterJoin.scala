@@ -31,7 +31,7 @@ import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 trait MasterJoin extends JoinOperatorFragmentClassBuilder {
 
   val opInfo: OperatorInfo
-  import opInfo._
+  import opInfo._ // scalastyle:ignore
 
   val mappings: Seq[PropertyMapping]
 
@@ -43,7 +43,7 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
   override def initFields(mb: MethodBuilder): Unit = {
     super.initFields(mb)
 
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().putField(
       "joinedDataModel",
       outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType,
@@ -51,7 +51,7 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
   }
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     block { ctrl =>
       masterVar.push().unlessNotNull {
         getOutputField(mb, outputs(MasterJoinOp.ID_OUTPUT_MISSED))

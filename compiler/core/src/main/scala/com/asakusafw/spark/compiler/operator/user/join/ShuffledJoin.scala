@@ -34,7 +34,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
 
   val opInfo: OperatorInfo
-  import opInfo._
+  import opInfo._ // scalastyle:ignore
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -50,12 +50,12 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
   override def initFields(mb: MethodBuilder): Unit = {
     super.initFields(mb)
 
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().putField("masters", classOf[ListBuffer[_]].asType, pushNew0(classOf[ArrayListBuffer[_]].asType))
   }
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val mastersVar = {
       val iter = dataModelVar.push().invokeI(
         "apply", classOf[AnyRef].asType, ldc(0).box().asType(classOf[AnyRef].asType))

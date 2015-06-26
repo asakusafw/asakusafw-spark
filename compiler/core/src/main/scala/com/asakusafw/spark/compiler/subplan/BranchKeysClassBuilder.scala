@@ -32,7 +32,7 @@ trait BranchKeys {
   this: BranchKeysClassBuilder =>
 
   def getField(mb: MethodBuilder, marker: MarkerOperator): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     getStatic(thisType, getField(marker.getSerialNumber), classOf[BranchKey].asType)
   }
 }
@@ -58,7 +58,7 @@ class BranchKeysClassBuilder(flowId: String)
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newStaticInit { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       branchKeys.values.toSeq.sorted.foreach { id =>
         putStatic(thisType, field(id), classOf[BranchKey].asType,
           getStatic(BranchKey.getClass.asType, "MODULE$", BranchKey.getClass.asType)
@@ -71,7 +71,7 @@ class BranchKeysClassBuilder(flowId: String)
     super.defMethods(methodDef)
 
     methodDef.newStaticMethod("valueOf", classOf[BranchKey].asType, Seq(Type.INT_TYPE)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val idVar = `var`(Type.INT_TYPE, 0)
 
       def bs(min: Int, max: Int): Unit = {

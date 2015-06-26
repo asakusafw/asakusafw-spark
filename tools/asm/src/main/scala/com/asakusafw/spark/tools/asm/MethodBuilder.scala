@@ -306,7 +306,7 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
 object MethodBuilder {
 
   class FlowControl private[MethodBuilder] (mb: MethodBuilder, start: Label, end: Label) {
-    import mb._
+    import mb._ // scalastyle:ignore
 
     def continue(): Unit = {
       mv.visitJumpInsn(GOTO, start)
@@ -341,7 +341,7 @@ object MethodBuilder {
   }
 
   class Stack private[MethodBuilder] (mb: MethodBuilder, `type`: Type) extends Value(`type`) {
-    import mb._
+    import mb._ // scalastyle:ignore
 
     def store(local: Int): Var = {
       mv.visitVarInsn(`type`.getOpcode(ISTORE), local)
@@ -1370,7 +1370,7 @@ object MethodBuilder {
   }
 
   class Var private[MethodBuilder] (mb: MethodBuilder, `type`: Type, val local: Int) extends Value(`type`) {
-    import mb._
+    import mb._ // scalastyle:ignore
 
     def push(): Stack = {
       mv.visitVarInsn(`type`.getOpcode(ILOAD), local)

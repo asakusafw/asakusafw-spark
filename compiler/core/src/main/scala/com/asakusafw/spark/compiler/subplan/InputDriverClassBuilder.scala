@@ -78,7 +78,7 @@ abstract class InputDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)

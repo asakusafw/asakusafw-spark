@@ -49,7 +49,7 @@ class BranchKeySerializerClassBuilder(
     super.defMethods(methodDef)
 
     methodDef.newMethod("write", Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[AnyRef].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
       val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
       val objVar = `var`(classOf[AnyRef].asType, outputVar.nextLocal)
@@ -58,7 +58,7 @@ class BranchKeySerializerClassBuilder(
     }
 
     methodDef.newMethod("write", Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[BranchKey].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
       val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
       val branchKeyVar = `var`(classOf[BranchKey].asType, outputVar.nextLocal)
@@ -70,7 +70,7 @@ class BranchKeySerializerClassBuilder(
 
     methodDef.newMethod("read", classOf[AnyRef].asType,
       Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
         val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
@@ -80,7 +80,7 @@ class BranchKeySerializerClassBuilder(
 
     methodDef.newMethod("read", classOf[BranchKey].asType,
       Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
         val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)

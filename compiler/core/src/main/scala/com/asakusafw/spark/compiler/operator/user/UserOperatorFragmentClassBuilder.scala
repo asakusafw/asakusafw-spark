@@ -60,7 +60,7 @@ abstract class UserOperatorFragmentClassBuilder(
         })
         .newVoidReturnType()
         .build()) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
         thisVar.push().invokeInit(superType)

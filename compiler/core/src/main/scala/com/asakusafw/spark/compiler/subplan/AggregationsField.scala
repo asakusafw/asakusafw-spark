@@ -81,7 +81,7 @@ trait AggregationsField extends ClassBuilder {
           }
         }
         .build()) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         thisVar.push().getField("aggregations", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("aggregations", classOf[Map[_, _]].asType, initAggregations(mb))
         }
@@ -90,12 +90,12 @@ trait AggregationsField extends ClassBuilder {
   }
 
   def getAggregationsField(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
   }
 
   private def initAggregations(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     for {

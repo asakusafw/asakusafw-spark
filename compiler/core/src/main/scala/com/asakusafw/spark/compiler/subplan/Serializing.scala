@@ -56,7 +56,7 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("serialize", classOf[Array[Byte]].asType,
       Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
         `return`(
@@ -68,7 +68,7 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("serialize", classOf[Array[Byte]].asType,
       Seq(classOf[BranchKey].asType, classOf[Writable].asType)) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[Writable].asType, branchVar.nextLocal)
         `return`(
@@ -78,7 +78,7 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("deserialize", classOf[AnyRef].asType,
       Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[Array[Byte]].asType, branchVar.nextLocal)
         `return`(
@@ -90,7 +90,7 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("deserialize", classOf[Writable].asType,
       Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val sliceVar = `var`(classOf[Array[Byte]].asType, branchVar.nextLocal)
         val valueVar =
@@ -105,7 +105,7 @@ trait Serializing extends ClassBuilder {
       }
 
     methodDef.newMethod("value", classOf[Writable].asType, Seq(classOf[BranchKey].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
       for {
         (output, i) <- subplanOutputs.zipWithIndex
@@ -132,7 +132,7 @@ trait Serializing extends ClassBuilder {
     if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED) {
       val op = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
       val operatorInfo = new OperatorInfo(op)(jpContext)
-      import operatorInfo._
+      import operatorInfo._ // scalastyle:ignore
       assert(outputs.size == 1)
       outputs.head.getDataType.asType
     } else {

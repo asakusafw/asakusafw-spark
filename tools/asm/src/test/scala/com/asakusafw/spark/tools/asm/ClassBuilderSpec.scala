@@ -113,13 +113,13 @@ class TestClassBuilder
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       thisVar.push().invokeInit(superType)
       thisVar.push().putField("char", Type.CHAR_TYPE, ldc('0'))
     }
 
     ctorDef.newStaticInit { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       putStatic(thisType, "BOOLEAN", Type.BOOLEAN_TYPE, ldc(true))
     }
   }
@@ -128,7 +128,7 @@ class TestClassBuilder
     super.defMethods(methodDef)
 
     methodDef.newMethod("testLoop", Type.INT_TYPE, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val iVar = ldc(0).store(thisVar.nextLocal)
       loop { ctrl =>
         iVar.push().unlessLessThan(ldc(10))(ctrl.break())
@@ -138,7 +138,7 @@ class TestClassBuilder
     }
 
     methodDef.newMethod("testWhileLoop", Type.INT_TYPE, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val iVar = ldc(0).store(thisVar.nextLocal)
       whileLoop(iVar.push().isLessThan(ldc(10))) { _ =>
         iVar.push().add(ldc(1)).store(iVar.local)
@@ -147,7 +147,7 @@ class TestClassBuilder
     }
 
     methodDef.newMethod("testDoWhile", Type.INT_TYPE, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val iVar = ldc(10).store(thisVar.nextLocal)
       doWhile { _ =>
         iVar.push().add(ldc(2)).store(iVar.local)
@@ -156,7 +156,7 @@ class TestClassBuilder
     }
 
     methodDef.newMethod("testTryCatch", Type.INT_TYPE, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val iVar = ldc(0).store(thisVar.nextLocal)
       tryCatch({
         invokeStatic(classOf[Integer].asType, "parseInt", Type.INT_TYPE, ldc("abc")).store(iVar.local)

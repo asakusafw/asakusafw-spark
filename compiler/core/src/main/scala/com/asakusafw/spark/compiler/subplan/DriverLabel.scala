@@ -26,7 +26,7 @@ trait DriverLabel extends ClassBuilder {
     super.defMethods(methodDef)
 
     methodDef.newMethod("label", classOf[String].asType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(ldc(label))
     }
   }

@@ -50,7 +50,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   def txInput: OperatorInput
 
   val opInfo: OperatorInfo
-  import opInfo._
+  import opInfo._ // scalastyle:ignore
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -70,7 +70,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   override def initFields(mb: MethodBuilder): Unit = {
     super.initFields(mb)
 
-    import mb._
+    import mb._ // scalastyle:ignore
     val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
     val marker: MarkerOperator = {
@@ -99,7 +99,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   }
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val keyVar = {
       val dataModelRef = jpContext.getDataModelLoader.load(txInput.getDataType)
       val group = txInput.getGroup

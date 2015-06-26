@@ -33,7 +33,7 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[Split]
   }
 
@@ -42,7 +42,7 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(support(operator),
       s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
@@ -68,7 +68,7 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
       override def initFields(mb: MethodBuilder): Unit = {
         super.initFields(mb)
 
-        import mb._
+        import mb._ // scalastyle:ignore
         thisVar.push().putField(
           "leftDataModel",
           outputs(Split.ID_OUTPUT_LEFT).dataModelType,
@@ -80,7 +80,7 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
       }
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
 
         val leftVar = thisVar.push().getField("leftDataModel", outputs(Split.ID_OUTPUT_LEFT).dataModelType)
           .store(dataModelVar.nextLocal)

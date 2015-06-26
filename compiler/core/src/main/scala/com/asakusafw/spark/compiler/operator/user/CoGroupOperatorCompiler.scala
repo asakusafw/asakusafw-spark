@@ -38,7 +38,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[CoGroup] || annotationDesc.resolveClass == classOf[GroupSort]
   }
 
@@ -47,7 +47,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(support(operator),
       s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
@@ -95,7 +95,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       override def initFields(mb: MethodBuilder): Unit = {
         super.initFields(mb)
 
-        import mb._
+        import mb._ // scalastyle:ignore
         thisVar.push().putField("buffers", classOf[Array[ListBuffer[_]]].asType, {
           val arr = pushNewArray(classOf[ListBuffer[_]].asType, inputs.size)
           inputs.zipWithIndex.foreach {
@@ -111,7 +111,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       }
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         val nextLocal = new AtomicInteger(dataModelVar.nextLocal)
 
         val bufferVars = inputs.zipWithIndex.map {
