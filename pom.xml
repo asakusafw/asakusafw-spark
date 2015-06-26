@@ -37,8 +37,8 @@
 		<artifact.id>${artifact.name}-${artifact.version}</artifact.id>
 
 		<asakusafw.version>0.7.3-hadoop2</asakusafw.version>
-		<asakusafw-lang.version>0.1.0-SNAPSHOT</asakusafw-lang.version>
-		<asakusafw-bridge.version>0.1.0-SNAPSHOT</asakusafw-bridge.version>
+		<asakusafw-lang.version>0.1.0</asakusafw-lang.version>
+		<asakusafw-bridge.version>0.1.0</asakusafw-bridge.version>
 
 		<scala.binary.version>2.10</scala.binary.version>
 		<scala.version>${scala.binary.version}.4</scala.version>
