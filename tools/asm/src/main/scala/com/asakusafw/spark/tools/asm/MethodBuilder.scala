@@ -115,63 +115,119 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
     new Stack(this, `type`.boxed)
   }
 
-  def ldc[A <: Any: ClassTag](ldc: A): Stack = {
+  def ldc[A <: Any: ClassTag](value: A): Stack = {
     val `type` = Type.getType(implicitly[ClassTag[A]].runtimeClass)
     `type`.getSort() match {
       case Type.BOOLEAN =>
-        if (ldc.asInstanceOf[Boolean]) {
-          mv.visitInsn(ICONST_1)
-        } else {
-          mv.visitInsn(ICONST_0)
-        }
+        ldc(value.asInstanceOf[Boolean])
       case Type.CHAR =>
-        ldc.asInstanceOf[Char].toInt match {
-          case i if i <= 5 => mv.visitInsn(ICONST_0 + i)
-          case i if i <= Byte.MaxValue => mv.visitIntInsn(BIPUSH, i)
-          case i if i <= Short.MaxValue => mv.visitIntInsn(SIPUSH, i)
-          case i => mv.visitLdcInsn(i)
-        }
+        ldc(value.asInstanceOf[Char])
       case Type.BYTE =>
-        ldc.asInstanceOf[Byte] match {
-          case i if i >= -1 && i <= 5 => mv.visitInsn(ICONST_0 + i)
-          case i => mv.visitIntInsn(BIPUSH, i)
-        }
+        ldc(value.asInstanceOf[Byte])
       case Type.SHORT =>
-        ldc.asInstanceOf[Short] match {
-          case i if i >= -1 && i <= 5 => mv.visitInsn(ICONST_0 + i)
-          case i if i >= Byte.MinValue && i <= Byte.MaxValue => mv.visitIntInsn(BIPUSH, i)
-          case i => mv.visitIntInsn(SIPUSH, i)
-        }
+        ldc(value.asInstanceOf[Short])
       case Type.INT =>
-        ldc.asInstanceOf[Int] match {
-          case i if i >= -1 && i <= 5 => mv.visitInsn(ICONST_0 + i)
-          case i if i >= Byte.MinValue && i <= Byte.MaxValue => mv.visitIntInsn(BIPUSH, i)
-          case i if i >= Short.MinValue && i <= Short.MaxValue => mv.visitIntInsn(SIPUSH, i)
-          case i => mv.visitLdcInsn(i)
-        }
+        ldc(value.asInstanceOf[Int])
       case Type.LONG =>
-        ldc.asInstanceOf[Long] match {
-          case 0L => mv.visitInsn(LCONST_0)
-          case 1L => mv.visitInsn(LCONST_1)
-          case l => mv.visitLdcInsn(l)
-        }
+        ldc(value.asInstanceOf[Long])
       case Type.FLOAT =>
-        ldc.asInstanceOf[Float] match {
-          case 0.0f => mv.visitInsn(FCONST_0)
-          case 1.0f => mv.visitInsn(FCONST_1)
-          case 2.0f => mv.visitInsn(FCONST_2)
-          case f => mv.visitLdcInsn(f)
-        }
+        ldc(value.asInstanceOf[Float])
       case Type.DOUBLE =>
-        ldc.asInstanceOf[Double] match {
-          case 0.0d => mv.visitInsn(DCONST_0)
-          case 1.0d => mv.visitInsn(DCONST_1)
-          case d => mv.visitLdcInsn(d)
-        }
+        ldc(value.asInstanceOf[Double])
       case _ =>
-        mv.visitLdcInsn(ldc)
+        mv.visitLdcInsn(value)
+        new Stack(this, `type`)
     }
-    new Stack(this, `type`)
+  }
+
+  def ldc(z: Boolean): Stack = {
+    if (z) {
+      mv.visitInsn(ICONST_1)
+    } else {
+      mv.visitInsn(ICONST_0)
+    }
+    new Stack(this, Type.BOOLEAN_TYPE)
+  }
+
+  def ldc(c: Char): Stack = {
+    if (c <= 5) {
+      mv.visitInsn(ICONST_0 + c)
+    } else if (c <= Byte.MaxValue) {
+      mv.visitIntInsn(BIPUSH, c)
+    } else if (c <= Short.MaxValue) {
+      mv.visitIntInsn(SIPUSH, c)
+    } else {
+      mv.visitLdcInsn(c)
+    }
+    new Stack(this, Type.CHAR_TYPE)
+  }
+
+  def ldc(b: Byte): Stack = {
+    if (b >= -1 && b <= 5) {
+      mv.visitInsn(ICONST_0 + b)
+    } else {
+      mv.visitIntInsn(BIPUSH, b)
+    }
+    new Stack(this, Type.BYTE_TYPE)
+  }
+
+  def ldc(s: Short): Stack = {
+    if (s >= -1 && s <= 5) {
+      mv.visitInsn(ICONST_0 + s)
+    } else if (s >= Byte.MinValue && s <= Byte.MaxValue) {
+      mv.visitIntInsn(BIPUSH, s)
+    } else {
+      mv.visitIntInsn(SIPUSH, s)
+    }
+    new Stack(this, Type.SHORT_TYPE)
+  }
+
+  def ldc(i: Int): Stack = {
+    if (i >= -1 && i <= 5) {
+      mv.visitInsn(ICONST_0 + i)
+    } else if (i >= Byte.MinValue && i <= Byte.MaxValue) {
+      mv.visitIntInsn(BIPUSH, i)
+    } else if (i >= Short.MinValue && i <= Short.MaxValue) {
+      mv.visitIntInsn(SIPUSH, i)
+    } else {
+      mv.visitLdcInsn(i)
+    }
+    new Stack(this, Type.INT_TYPE)
+  }
+
+  def ldc(j: Long): Stack = {
+    if (j == 0L) {
+      mv.visitInsn(LCONST_0)
+    } else if (j == 1L) {
+      mv.visitInsn(LCONST_1)
+    } else {
+      mv.visitLdcInsn(j)
+    }
+    new Stack(this, Type.LONG_TYPE)
+  }
+
+  def ldc(f: Float): Stack = {
+    if (f == 0.0f) {
+      mv.visitInsn(FCONST_0)
+    } else if (f == 1.0f) {
+      mv.visitInsn(FCONST_1)
+    } else if (f == 2.0f) {
+      mv.visitInsn(FCONST_2)
+    } else {
+      mv.visitLdcInsn(f)
+    }
+    new Stack(this, Type.FLOAT_TYPE)
+  }
+
+  def ldc(d: Double): Stack = {
+    if (d == 0.0d) {
+      mv.visitInsn(DCONST_0)
+    } else if (d == 1.0d) {
+      mv.visitInsn(DCONST_1)
+    } else {
+      mv.visitLdcInsn(d)
+    }
+    new Stack(this, Type.DOUBLE_TYPE)
   }
 
   def invokeDynamic(
