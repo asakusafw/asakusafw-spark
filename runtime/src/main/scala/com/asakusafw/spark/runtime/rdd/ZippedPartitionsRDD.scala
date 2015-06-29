@@ -36,7 +36,7 @@ class ZippedPartitionsRDD[V: ClassTag](
     })
   }
 
-  override def clearDependencies() {
+  override def clearDependencies(): Unit = {
     super.clearDependencies()
     _rdds = null // scalastyle:ignore
     f = null // scalastyle:ignore
