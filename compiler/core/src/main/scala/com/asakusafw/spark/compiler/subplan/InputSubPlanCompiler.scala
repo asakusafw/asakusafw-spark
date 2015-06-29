@@ -60,7 +60,9 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       (if (JBoolean.parseBoolean(
         context.jpContext.getOptions.get(SparkClientCompiler.Options.SparkInputDirect, true.toString)) == true) {
         Option(InputFormatInfoExtension.resolve(context.jpContext, operator.getName(), operator.getInfo()))
-      } else None) match {
+      } else {
+        None
+      }) match {
         case Some(info) =>
           (info.getKeyClass.asType, info.getValueClass.asType, info.getFormatClass.asType,
             None, Some(info.getExtraConfiguration.toMap))

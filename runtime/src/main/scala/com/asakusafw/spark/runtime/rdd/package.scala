@@ -73,7 +73,9 @@ package object rdd {
                 Iterator.continually {
                   if (iter.hasNext && ord.equiv(iter.head._1, key)) {
                     Some(iter.next)
-                  } else None
+                  } else {
+                    None
+                  }
                 }.takeWhile(_.isDefined).map(_.get)
               }
             }
