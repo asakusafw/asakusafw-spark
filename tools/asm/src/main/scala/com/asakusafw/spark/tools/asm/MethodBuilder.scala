@@ -46,19 +46,19 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
     new Var(this, thisType, 0)
   }
 
-  def `var`(`type`: Type, local: Int): Var = {
+  def `var`(`type`: Type, local: Int): Var = { // scalastyle:ignore
     new Var(this, `type`, local)
   }
 
-  def `return`(stack: Stack): Unit = {
+  def `return`(stack: Stack): Unit = { // scalastyle:ignore
     mv.visitInsn(stack.`type`.getOpcode(IRETURN))
   }
 
-  def `return`(): Unit = {
+  def `return`(): Unit = { // scalastyle:ignore
     mv.visitInsn(RETURN)
   }
 
-  def `throw`(stack: Stack): Unit = {
+  def `throw`(stack: Stack): Unit = { // scalastyle:ignore
     mv.visitInsn(ATHROW)
   }
 
