@@ -23,7 +23,7 @@ import com.asakusafw.spark.runtime.driver.ShuffleKey
 
 class ShuffleKeySerializer extends Serializer[ShuffleKey](false, false) {
 
-  override def write(kryo: Kryo, output: Output, obj: ShuffleKey) = {
+  override def write(kryo: Kryo, output: Output, obj: ShuffleKey): Unit = {
     output.writeInt(obj.grouping.length, true)
     output.write(obj.grouping)
     output.writeInt(obj.ordering.length, true)

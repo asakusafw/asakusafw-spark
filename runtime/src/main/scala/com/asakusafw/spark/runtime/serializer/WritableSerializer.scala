@@ -30,7 +30,7 @@ abstract class WritableSerializer[W <: Writable] extends Serializer[W](false, fa
 
   private[this] val outputs = new ThreadLocal[(Output, DataOutputStream)]
 
-  override def write(kryo: Kryo, output: Output, obj: W) = {
+  override def write(kryo: Kryo, output: Output, obj: W): Unit = {
     val dos = outputs.get match {
       case (lastOutput, dos) if output == lastOutput =>
         dos

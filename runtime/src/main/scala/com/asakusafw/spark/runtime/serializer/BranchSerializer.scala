@@ -23,7 +23,7 @@ import com.asakusafw.spark.runtime.rdd.{ Branch, BranchKey }
 
 class BranchSerializer[K] extends Serializer[Branch[K]](false, false) {
 
-  override def write(kryo: Kryo, output: Output, obj: Branch[K]) = {
+  override def write(kryo: Kryo, output: Output, obj: Branch[K]): Unit = {
     kryo.writeObject(output, obj.branchKey)
     kryo.writeClassAndObject(output, obj.actualKey)
   }
