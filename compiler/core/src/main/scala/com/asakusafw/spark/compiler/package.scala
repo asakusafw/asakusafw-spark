@@ -73,7 +73,9 @@ package object compiler {
     }
 
     def addClass(t: Type, bytes: Array[Byte]): Type = {
-      for (os <- managed(context.addClassFile(new ClassDescription(t.getClassName)))) {
+      for {
+        os <- managed(context.addClassFile(new ClassDescription(t.getClassName)))
+      } {
         os.write(bytes)
       }
       t
