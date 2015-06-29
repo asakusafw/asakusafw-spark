@@ -56,9 +56,10 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       s"The dominant operator should be external input: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
+    val useInputDirect = JBoolean.parseBoolean(
+      context.jpContext.getOptions.get(SparkClientCompiler.Options.SparkInputDirect, true.toString))
     val (keyType, valueType, inputFormatType, paths, extraConfigurations) =
-      (if (JBoolean.parseBoolean(
-        context.jpContext.getOptions.get(SparkClientCompiler.Options.SparkInputDirect, true.toString)) == true) {
+      (if (useInputDirect) {
         Option(InputFormatInfoExtension.resolve(context.jpContext, operator.getName(), operator.getInfo()))
       } else {
         None

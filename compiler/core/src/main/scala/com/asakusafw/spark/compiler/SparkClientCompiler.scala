@@ -80,7 +80,8 @@ class SparkClientCompiler extends JobflowProcessor {
 
     InspectionExtension.inspect(jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
 
-    if (JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString)) == false) {
+    val verifyPlan = JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString))
+    if (!verifyPlan) {
 
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
 
