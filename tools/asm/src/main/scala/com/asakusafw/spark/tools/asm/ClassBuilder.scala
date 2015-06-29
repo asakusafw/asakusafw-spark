@@ -393,10 +393,11 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
   private final def defHashCode0(methodDef: MethodDef): Unit = {
     methodDef.newMethod("hashCode", Type.INT_TYPE, Seq.empty[Type]) { mb =>
       import mb._ // scalastyle:ignore
+      val Prime = 31
       val result = ldc(1)
       fields.foreach {
         case (name, fieldType) =>
-          result.multiply(ldc(31))
+          result.multiply(ldc(Prime))
           val fieldValue = thisVar.push().getField(name, fieldType)
           val fieldHashCode = if (fieldValue.isPrimitive) {
             fieldValue.box().invokeV("hashCode", Type.INT_TYPE)
