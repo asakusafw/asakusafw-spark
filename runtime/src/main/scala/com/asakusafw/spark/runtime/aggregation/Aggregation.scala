@@ -69,12 +69,12 @@ object Aggregation {
   }
 
   private class InMemoryCombiner[K, V, C](
-      createCombiner: V => C,
-      mergeValue: (C, V) => C,
-      mergeCombiners: (C, C) => C) extends Combiner[K, V, C] {
+    createCombiner: V => C,
+    mergeValue: (C, V) => C,
+    mergeCombiners: (C, C) => C) extends Combiner[K, V, C] {
 
     val combiners = new AppendOnlyMap[K, C]
-    var kv: Product2[K, V] = null
+    var kv: Product2[K, V] = null // scalastyle:ignore
     val update = (hadValue: Boolean, oldValue: C) => {
       if (hadValue) mergeValue(oldValue, kv._2) else createCombiner(kv._2)
     }
@@ -88,9 +88,9 @@ object Aggregation {
   }
 
   private class ExternalCombiner[K, V, C](
-      createCombiner: V => C,
-      mergeValue: (C, V) => C,
-      mergeCombiners: (C, C) => C) extends Combiner[K, V, C] {
+    createCombiner: V => C,
+    mergeValue: (C, V) => C,
+    mergeCombiners: (C, C) => C) extends Combiner[K, V, C] {
 
     val combiners = new ExternalAppendOnlyMap[K, V, C](createCombiner, mergeValue, mergeCombiners)
 

@@ -140,11 +140,11 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
       newField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, `type`, signature)(block)
     }
 
-    final def newField(access: Int, name: String, `type`: Type, signature: String = null)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newField(access: Int, name: String, `type`: Type, signature: String = null)(implicit block: FieldBuilder => Unit): Unit = { // scalastyle:ignore
       if ((access & ACC_STATIC) == 0) {
         addField(name, `type`)
       }
-      val fv = cv.visitField(access, name, `type`.getDescriptor(), signature, null)
+      val fv = cv.visitField(access, name, `type`.getDescriptor(), signature, null) // scalastyle:ignore
       try {
         block(new FieldBuilder(fv))
       } finally {
