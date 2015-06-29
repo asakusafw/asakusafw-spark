@@ -52,7 +52,8 @@ class OperatorInfo(operator: Operator)(implicit jpContext: JPContext) {
 
     def name: String = methodDesc.getName
 
-    def parameterClasses: Seq[Class[_]] = methodDesc.getParameterTypes.map(_.resolve(jpContext.getClassLoader))
+    def parameterClasses: Seq[Class[_]] =
+      methodDesc.getParameterTypes.map(_.resolve(jpContext.getClassLoader))
   }
 
   lazy val inputs = operator.getInputs.toSeq
@@ -74,12 +75,14 @@ class OperatorInfo(operator: Operator)(implicit jpContext: JPContext) {
 
     def asType: Type = oa.getValue.getValueType.asType
 
-    def resolveClass: Class[_] = oa.getValue.getValueType.getErasure.resolve(jpContext.getClassLoader)
+    def resolveClass: Class[_] =
+      oa.getValue.getValueType.getErasure.resolve(jpContext.getClassLoader)
 
     def value: Any = oa.getValue.resolve(jpContext.getClassLoader)
   }
 
-  lazy val branchOutputMap = BranchOperatorUtil.getOutputMap(jpContext.getClassLoader, operator).toMap
+  lazy val branchOutputMap =
+    BranchOperatorUtil.getOutputMap(jpContext.getClassLoader, operator).toMap
 
   lazy val selectionMethod =
     Option(MasterJoinOperatorUtil.getSelection(jpContext.getClassLoader, operator))

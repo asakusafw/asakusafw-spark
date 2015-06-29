@@ -123,8 +123,11 @@ package object asm {
       classOf[JDouble] -> classOf[Double])
   }
 
-  implicit val emptyAnnotationBuilderBlock = ClassBuilder.emptyAnnotationBuilderBlock
-  implicit val emptyFieldBuilderBlock = ClassBuilder.emptyFieldBuilderBlock
+  implicit val emptyAnnotationBuilderBlock =
+    ClassBuilder.emptyAnnotationBuilderBlock
+  implicit val emptyFieldBuilderBlock =
+    ClassBuilder.emptyFieldBuilderBlock
 
-  implicit val emptyTypeArgumentSignatureBuilderBlock = TypeSignatureBuilder.emptyTypeArgumentSignatureBuilderBlock
+  implicit val emptyTypeArgumentSignatureBuilderBlock =
+    TypeSignatureBuilder.emptyTypeArgumentSignatureBuilderBlock
 }

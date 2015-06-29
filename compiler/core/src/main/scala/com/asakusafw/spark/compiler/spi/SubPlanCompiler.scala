@@ -48,26 +48,31 @@ object SubPlanCompiler {
     branchKeys: BranchKeys,
     broadcastIds: BroadcastIds)
 
-  def apply(driverType: SubPlanInfo.DriverType)(implicit context: Context): SubPlanCompiler = {
+  def apply(
+    driverType: SubPlanInfo.DriverType)(implicit context: Context): SubPlanCompiler = {
     apply(context.jpContext.getClassLoader)(driverType)
   }
 
-  def get(driverType: SubPlanInfo.DriverType)(implicit context: Context): Option[SubPlanCompiler] = {
+  def get(
+    driverType: SubPlanInfo.DriverType)(implicit context: Context): Option[SubPlanCompiler] = {
     apply(context.jpContext.getClassLoader).get(driverType)
   }
 
-  def support(driverType: SubPlanInfo.DriverType)(implicit context: Context): Boolean = {
+  def support(
+    driverType: SubPlanInfo.DriverType)(implicit context: Context): Boolean = {
     get(driverType).isDefined
   }
 
-  private[this] val subplanCompilers: mutable.Map[ClassLoader, Map[SubPlanInfo.DriverType, SubPlanCompiler]] =
+  private[this] val subplanCompilers: mutable.Map[ClassLoader, Map[SubPlanInfo.DriverType, SubPlanCompiler]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
-  private[this] def apply(classLoader: ClassLoader): Map[SubPlanInfo.DriverType, SubPlanCompiler] = {
+  private[this] def apply(
+    classLoader: ClassLoader): Map[SubPlanInfo.DriverType, SubPlanCompiler] = {
     subplanCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
-  private[this] def reload(classLoader: ClassLoader): Map[SubPlanInfo.DriverType, SubPlanCompiler] = {
+  private[this] def reload(
+    classLoader: ClassLoader): Map[SubPlanInfo.DriverType, SubPlanCompiler] = {
     val ors = ServiceLoader.load(classOf[SubPlanCompiler], classLoader).map {
       resolver => resolver.of -> resolver
     }.toMap[SubPlanInfo.DriverType, SubPlanCompiler]

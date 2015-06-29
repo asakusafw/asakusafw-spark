@@ -39,7 +39,8 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
-    annotationDesc.resolveClass == classOf[CoGroup] || annotationDesc.resolveClass == classOf[GroupSort]
+    (annotationDesc.resolveClass == classOf[CoGroup]
+      || annotationDesc.resolveClass == classOf[GroupSort])
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -70,8 +71,9 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
           ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
-    val inputBuffer = annotationDesc.getElements()("inputBuffer").resolve(context.jpContext.getClassLoader)
-      .asInstanceOf[InputBuffer]
+    val inputBuffer =
+      annotationDesc.getElements()("inputBuffer").resolve(context.jpContext.getClassLoader)
+        .asInstanceOf[InputBuffer]
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
@@ -82,7 +84,10 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       override def defFields(fieldDef: FieldDef): Unit = {
         super.defFields(fieldDef)
 
-        fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "buffers", classOf[Array[ListBuffer[_]]].asType,
+        fieldDef.newField(
+          Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
+          "buffers",
+          classOf[Array[ListBuffer[_]]].asType,
           new TypeSignatureBuilder()
             .newArrayType {
               _.newClassType(classOf[ListBuffer[_]].asType) {
@@ -117,16 +122,20 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
         val bufferVars = inputs.zipWithIndex.map {
           case (input, i) =>
             val iter = dataModelVar.push()
-              .invokeI("apply", classOf[AnyRef].asType, ldc(i).box().asType(classOf[AnyRef].asType))
+              .invokeI(
+                "apply", classOf[AnyRef].asType, ldc(i).box().asType(classOf[AnyRef].asType))
               .cast(classOf[Iterator[_]].asType)
             val iterVar = iter.store(nextLocal.getAndAdd(iter.size))
-            val buffer = thisVar.push().getField("buffers", classOf[Array[ListBuffer[_]]].asType).aload(ldc(i))
+            val buffer = thisVar.push()
+              .getField("buffers", classOf[Array[ListBuffer[_]]].asType)
+              .aload(ldc(i))
             val bufferVar = buffer.store(nextLocal.getAndAdd(buffer.size))
             bufferVar.push().invokeI("begin")
 
             whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
               bufferVar.push().invokeI("isExpandRequired", Type.BOOLEAN_TYPE).unlessFalse {
-                bufferVar.push().invokeI("expand", pushNew0(input.dataModelType).asType(classOf[AnyRef].asType))
+                bufferVar.push().invokeI(
+                  "expand", pushNew0(input.dataModelType).asType(classOf[AnyRef].asType))
               }
               bufferVar.push().invokeI("advance", classOf[AnyRef].asType)
                 .cast(input.dataModelType)
@@ -155,7 +164,9 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
         val iVar = i.store(nextLocal.getAndAdd(i.size))
         loop { ctrl =>
           iVar.push().unlessLessThan(ldc(inputs.size))(ctrl.break())
-          thisVar.push().getField("buffers", classOf[Array[ListBuffer[_]]].asType).aload(iVar.push())
+          thisVar.push()
+            .getField("buffers", classOf[Array[ListBuffer[_]]].asType)
+            .aload(iVar.push())
             .invokeI("shrink")
           iVar.inc(1)
         }

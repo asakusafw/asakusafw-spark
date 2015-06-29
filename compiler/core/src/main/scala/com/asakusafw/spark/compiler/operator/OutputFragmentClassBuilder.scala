@@ -26,16 +26,18 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.compiler.operator.OutputFragmentClassBuilder._
 import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
 
 class OutputFragmentClassBuilder(
   flowId: String,
   dataModelType: Type)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/OutputFragment$$${OutputFragmentClassBuilder.nextId};"),
-      Some(OutputFragmentClassBuilder.signature(dataModelType)),
-      classOf[OutputFragment[_]].asType) {
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/OutputFragment$$${nextId};"),
+    Some(OutputFragmentClassBuilder.signature(dataModelType)),
+    classOf[OutputFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { mb =>

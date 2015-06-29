@@ -58,7 +58,8 @@ class BranchRDDFunctions[T: ClassTag](self: RDD[T]) extends Serializable {
   }
 }
 
-private class BranchPartitioner(branchKeys: Set[BranchKey], partitioners: Map[BranchKey, Partitioner])
+private class BranchPartitioner(
+  branchKeys: Set[BranchKey], partitioners: Map[BranchKey, Partitioner])
   extends Partitioner {
 
   private[this] val branches = branchKeys.toSeq.sortBy(_.hashCode)

@@ -29,7 +29,11 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.util.TraceClassVisitor
 import org.slf4j.LoggerFactory
 
-abstract class ClassBuilder(val thisType: Type, val signature: Option[String], val superType: Type, val interfaceTypes: Type*) {
+abstract class ClassBuilder(
+  val thisType: Type,
+  val signature: Option[String],
+  val superType: Type,
+  val interfaceTypes: Type*) {
 
   val logger = LoggerFactory.getLogger(getClass)
 
@@ -90,7 +94,9 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
 
   final class AnnotationDef private[ClassBuilder] (cv: ClassVisitor) {
 
-    final def newAnnotation(desc: String, visible: Boolean)(implicit block: AnnotationBuilder => Unit): Unit = {
+    final def newAnnotation(
+      desc: String,
+      visible: Boolean)(implicit block: AnnotationBuilder => Unit): Unit = {
       val av = cv.visitAnnotation(desc, visible)
       try {
         block(new AnnotationBuilder(av))
@@ -108,39 +114,63 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
       fields += ((name, `type`))
     }
 
-    final def newField(name: String, `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newField(
+      name: String,
+      `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
       newField(ACC_PUBLIC, name, `type`)(block)
     }
 
-    final def newStaticField(name: String, `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newStaticField(
+      name: String,
+      `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
       newField(ACC_PUBLIC | ACC_STATIC, name, `type`)(block)
     }
 
-    final def newFinalField(name: String, `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newFinalField(
+      name: String,
+      `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
       newField(ACC_PUBLIC | ACC_FINAL, name, `type`)(block)
     }
 
-    final def newStaticFinalField(name: String, `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newStaticFinalField(
+      name: String,
+      `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
       newField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, `type`)(block)
     }
 
-    final def newField(name: String, `type`: Type, signature: String)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newField(
+      name: String,
+      `type`: Type,
+      signature: String)(implicit block: FieldBuilder => Unit): Unit = {
       newField(ACC_PUBLIC, name, `type`, signature)(block)
     }
 
-    final def newStaticField(name: String, `type`: Type, signature: String)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newStaticField(
+      name: String,
+      `type`: Type,
+      signature: String)(implicit block: FieldBuilder => Unit): Unit = {
       newField(ACC_PUBLIC | ACC_STATIC, name, `type`, signature)(block)
     }
 
-    final def newFinalField(name: String, `type`: Type, signature: String)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newFinalField(
+      name: String,
+      `type`: Type,
+      signature: String)(implicit block: FieldBuilder => Unit): Unit = {
       newField(ACC_PUBLIC | ACC_FINAL, name, `type`, signature)(block)
     }
 
-    final def newStaticFinalField(name: String, `type`: Type, signature: String)(implicit block: FieldBuilder => Unit): Unit = {
+    final def newStaticFinalField(
+      name: String,
+      `type`: Type,
+      signature: String)(implicit block: FieldBuilder => Unit): Unit = {
       newField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, `type`, signature)(block)
     }
 
-    final def newField(access: Int, name: String, `type`: Type, signature: String = null)(implicit block: FieldBuilder => Unit): Unit = { // scalastyle:ignore
+    final def newField(
+      access: Int,
+      name: String,
+      `type`: Type,
+      signature: String = null)(implicit block: FieldBuilder => Unit): Unit = { // scalastyle:ignore
       if ((access & ACC_STATIC) == 0) {
         addField(name, `type`)
       }
@@ -156,27 +186,46 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
   final class ConstructorDef private[ClassBuilder] (cv: ClassVisitor) {
     private val methodDef = new MethodDef(cv)
 
-    final def newInit(argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+    final def newInit(
+      argumentTypes: Seq[Type],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(ACC_PUBLIC, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
-    final def newInit(argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+    final def newInit(
+      argumentTypes: Seq[Type],
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(ACC_PUBLIC, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newInit(argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+    final def newInit(
+      argumentTypes: Seq[Type],
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(ACC_PUBLIC, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
-    final def newInit(access: Int, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+    final def newInit(
+      access: Int,
+      argumentTypes: Seq[Type],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(access, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
-    final def newInit(access: Int, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+    final def newInit(
+      access: Int,
+      argumentTypes: Seq[Type],
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(access, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newInit(access: Int, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+    final def newInit(
+      access: Int,
+      argumentTypes: Seq[Type],
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       methodDef.newMethod(access, "<init>", argumentTypes, signature, exceptionTypes: _*) { mb =>
         block(mb)
         mb.`return`()
@@ -197,111 +246,268 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
 
   final class MethodDef private[ClassBuilder] (cv: ClassVisitor) {
 
-    final def newMethod(name: String, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      argumentTypes: Seq[Type],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(name: String, retType: Type, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, retType, argumentTypes, None, exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC, name, retType, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      argumentTypes: Seq[Type],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, retType: Type, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, retType, argumentTypes, None, exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, retType, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(name: String, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      argumentTypes: Seq[Type],
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC,
+        name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newMethod(name: String, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      argumentTypes: Seq[Type],
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(name: String, retType: Type, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newMethod(name: String, retType: Type, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, retType, argumentTypes, signature, exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC, name, retType, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      argumentTypes: Seq[Type],
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      argumentTypes: Seq[Type],
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, retType: Type, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, retType: Type, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, retType, argumentTypes, signature, exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, retType, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
+    final def newMethod(
+      access: Int,
+      name: String,
+      argumentTypes: Seq[Type],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        access, name, Type.VOID_TYPE, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, retType: Type, argumentTypes: Seq[Type], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, retType, argumentTypes, None, exceptionTypes: _*)(block)
+    final def newMethod(
+      access: Int,
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        access, name, retType, argumentTypes, None, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    final def newMethod(
+      access: Int,
+      name: String,
+      argumentTypes: Seq[Type],
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        access, name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
+    final def newMethod(
+      access: Int,
+      name: String,
+      argumentTypes: Seq[Type],
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        access, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, retType: Type, argumentTypes: Seq[Type], signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
+    final def newMethod(
+      access: Int,
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        access, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, retType: Type, argumentTypes: Seq[Type], signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, Type.getMethodType(retType, argumentTypes: _*), signature, exceptionTypes: _*)(block)
+    final def newMethod(
+      access: Int,
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        access,
+        name,
+        Type.getMethodType(retType, argumentTypes: _*),
+        signature,
+        exceptionTypes: _*)(block)
     }
 
-    final def newMethod(name: String, methodType: Type, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, methodType, None, exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      methodType: Type,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC, name, methodType, None, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(name: String, methodType: Type, signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, methodType, Option(signature), exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      methodType: Type,
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC, name, methodType, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newMethod(name: String, methodType: Type, signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC, name, methodType, signature, exceptionTypes: _*)(block)
+    final def newMethod(
+      name: String,
+      methodType: Type,
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC, name, methodType, signature, exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, methodType: Type, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, methodType, None, exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      methodType: Type,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, methodType, None, exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, methodType: Type, signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, methodType, Option(signature), exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      methodType: Type,
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, methodType, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newStaticMethod(name: String, methodType: Type, signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(ACC_PUBLIC | ACC_STATIC, name, methodType, signature, exceptionTypes: _*)(block)
+    final def newStaticMethod(
+      name: String,
+      methodType: Type,
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        ACC_PUBLIC | ACC_STATIC,
+        name, methodType, signature, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, methodType: Type, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, methodType, None, exceptionTypes: _*)(block)
+    final def newMethod(
+      access: Int,
+      name: String,
+      methodType: Type,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        access, name, methodType, None, exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, methodType: Type, signature: String, exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      newMethod(access, name, methodType, Option(signature), exceptionTypes: _*)(block)
+    final def newMethod(
+      access: Int,
+      name: String,
+      methodType: Type,
+      signature: String,
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+      newMethod(
+        access, name, methodType, Option(signature), exceptionTypes: _*)(block)
     }
 
-    final def newMethod(access: Int, name: String, methodType: Type, signature: Option[String], exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
+    final def newMethod(
+      access: Int,
+      name: String,
+      methodType: Type,
+      signature: Option[String],
+      exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       assert(methodType.getSort == Type.METHOD)
       val mv = cv.visitMethod(
         access,
@@ -338,7 +544,8 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
       import mb._ // scalastyle:ignore
       val builder = pushNew0(classOf[StringBuilder].asType)
 
-      val className = ldc(thisType.getClassName().substring(thisType.getClassName().lastIndexOf(".") + 1))
+      val className = ldc(
+        thisType.getClassName().substring(thisType.getClassName().lastIndexOf(".") + 1))
       builder.invokeV("append", classOf[StringBuilder].asType, className)
 
       builder.invokeV("append", classOf[StringBuilder].asType, ldc("("))
@@ -352,7 +559,8 @@ abstract class ClassBuilder(val thisType: Type, val signature: Option[String], v
           if (fieldValue.isChar) {
             builder.invokeV("append", classOf[StringBuilder].asType, fieldValue)
           } else if (fieldValue.isInteger) {
-            builder.invokeV("append", classOf[StringBuilder].asType, fieldValue.asType(Type.INT_TYPE))
+            builder.invokeV("append", classOf[StringBuilder].asType,
+              fieldValue.asType(Type.INT_TYPE))
           } else if (fieldValue.isPrimitive) {
             builder.invokeV("append", classOf[StringBuilder].asType, fieldValue)
           } else if (fieldValue.isArray) {

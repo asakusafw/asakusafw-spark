@@ -35,11 +35,13 @@ object KryoRegistratorCompiler {
     branchKeySerializer: Type,
     broadcastIdSerializer: Type)(implicit context: Context): Type = {
     val serializers = writables.map { writable =>
-      writable -> WritableSerializerClassBuilder.getOrCompile(context.flowId, writable, context.jpContext)
+      writable ->
+        WritableSerializerClassBuilder.getOrCompile(context.flowId, writable, context.jpContext)
     }
 
     val builder = new ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/KryoRegistrator;"),
+      Type.getType(
+        s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/KryoRegistrator;"),
       classOf[KryoRegistrator].asType) {
 
       override def defMethods(methodDef: MethodDef): Unit = {

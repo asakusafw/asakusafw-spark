@@ -53,7 +53,8 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
       outputs.forall { output =>
         output.dataModelType == inputs(Branch.ID_INPUT).dataModelType
       },
-      s"All of output types should be the same: ${outputs.map(_.dataModelType).mkString("(", ",", ")")}")
+      "All of output types should be the same: "
+        + s"${outputs.map(_.dataModelType).mkString("(", ",", ")")}")
 
     assert(
       methodDesc.parameterClasses
@@ -91,7 +92,8 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
         branchOutputMap.foreach {
           case (output, enum) =>
             branch.dup().unlessNe(
-              getStatic(methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
+              getStatic(
+                methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
                 getOutputField(mb, output)
                   .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
                 `return`()

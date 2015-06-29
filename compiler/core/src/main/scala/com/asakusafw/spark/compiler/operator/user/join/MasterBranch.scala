@@ -50,7 +50,8 @@ trait MasterBranch extends JoinOperatorFragmentClassBuilder {
       branchOutputMap.foreach {
         case (output, enum) =>
           branch.dup().unlessNe(
-            getStatic(methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
+            getStatic(
+              methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
               getOutputField(mb, output)
                 .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
               branch.pop()

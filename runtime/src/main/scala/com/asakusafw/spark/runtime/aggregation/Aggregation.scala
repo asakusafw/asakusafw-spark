@@ -41,17 +41,21 @@ abstract class Aggregation[K, V, C] extends Serializable {
 
   def valueCombiner(): Combiner[K, V, C] = {
     if (!isSpillEnabled) {
-      new InMemoryCombiner(initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
+      new InMemoryCombiner(
+        initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
     } else {
-      new ExternalCombiner(initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
+      new ExternalCombiner(
+        initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
     }
   }
 
   def combinerCombiner(): Combiner[K, C, C] = {
     if (!isSpillEnabled) {
-      new InMemoryCombiner(initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
+      new InMemoryCombiner(
+        initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
     } else {
-      new ExternalCombiner(initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
+      new ExternalCombiner(
+        initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
     }
   }
 }

@@ -25,13 +25,15 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.spark.compiler.serializer.WritableSerializerClassBuilder._
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.serializer.WritableSerializer
 import com.asakusafw.spark.tools.asm._
 
 class WritableSerializerClassBuilder(flowId: String, writableType: Type)
   extends ClassBuilder(
-    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/serializer/WritableSerializer$$${WritableSerializerClassBuilder.nextId};"),
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/serializer/WritableSerializer$$${nextId};"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[WritableSerializer[_]].asType) {

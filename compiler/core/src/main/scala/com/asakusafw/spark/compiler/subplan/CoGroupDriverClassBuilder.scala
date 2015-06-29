@@ -30,16 +30,18 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.compiler.subplan.CoGroupDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, CoGroupDriver, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class CoGroupDriverClassBuilder(
   val flowId: String)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${CoGroupDriverClassBuilder.nextId};"),
-      classOf[CoGroupDriver].asType)
-    with Branching with DriverLabel {
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${nextId};"),
+    classOf[CoGroupDriver].asType)
+  with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -82,7 +84,8 @@ abstract class CoGroupDriverClassBuilder(
                           _.newClassType(classOf[RDD[_]].asType) {
                             _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
                               _.newClassType(classOf[(_, _)].asType) {
-                                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                                _.newTypeArgument(
+                                  SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
                                   .newTypeArgument()
                               }
                             }
@@ -96,7 +99,8 @@ abstract class CoGroupDriverClassBuilder(
                     _.newClassType(classOf[Option[_]].asType) {
                       _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
                         _.newClassType(classOf[Ordering[_]].asType) {
-                          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                          _.newTypeArgument(
+                            SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
                         }
                       }
                     }
@@ -114,12 +118,20 @@ abstract class CoGroupDriverClassBuilder(
         .newVoidReturnType()
         .build()) { mb =>
         import mb._ // scalastyle:ignore
-        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
-        val inputsVar = `var`(classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]].asType, broadcastsVar.nextLocal)
-        val groupingVar = `var`(classOf[Ordering[ShuffleKey]].asType, inputsVar.nextLocal)
-        val partVar = `var`(classOf[Partitioner].asType, groupingVar.nextLocal)
+        val scVar =
+          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+        val hadoopConfVar =
+          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+        val broadcastsVar =
+          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
+        val inputsVar =
+          `var`(
+            classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]].asType,
+            broadcastsVar.nextLocal)
+        val groupingVar =
+          `var`(classOf[Ordering[ShuffleKey]].asType, inputsVar.nextLocal)
+        val partVar =
+          `var`(classOf[Partitioner].asType, groupingVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,

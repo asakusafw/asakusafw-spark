@@ -17,7 +17,7 @@ package com.asakusafw.spark
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.tools.asm._
@@ -66,7 +66,7 @@ package object compiler {
     def asType: Type = Type.getObjectType(s"[${desc.getComponentType.asType.getDescriptor}")
   }
 
-  implicit class AugmentedJobflowProcessorContext(val context: JobflowProcessor.Context) extends AnyVal {
+  implicit class AugmentedJobflowProcessorContext(val context: JPContext) extends AnyVal {
 
     def addClass(builder: ClassBuilder): Type = {
       addClass(builder.thisType, builder.build())

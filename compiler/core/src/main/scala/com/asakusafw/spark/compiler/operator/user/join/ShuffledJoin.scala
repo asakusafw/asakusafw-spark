@@ -39,7 +39,10 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
 
-    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "masters", classOf[ListBuffer[_]].asType,
+    fieldDef.newField(
+      Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
+      "masters",
+      classOf[ListBuffer[_]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[ListBuffer[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, masterType)
@@ -51,7 +54,11 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
     super.initFields(mb)
 
     import mb._ // scalastyle:ignore
-    thisVar.push().putField("masters", classOf[ListBuffer[_]].asType, pushNew0(classOf[ArrayListBuffer[_]].asType))
+    thisVar.push()
+      .putField(
+        "masters",
+        classOf[ListBuffer[_]].asType,
+        pushNew0(classOf[ArrayListBuffer[_]].asType))
   }
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
@@ -102,7 +109,10 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
                   case (s, t) => s().asType(t)
                 }: _*)
         case None =>
-          getStatic(DefaultMasterSelection.getClass.asType, "MODULE$", DefaultMasterSelection.getClass.asType)
+          getStatic(
+            DefaultMasterSelection.getClass.asType,
+            "MODULE$",
+            DefaultMasterSelection.getClass.asType)
             .invokeV(
               "select",
               classOf[AnyRef].asType,

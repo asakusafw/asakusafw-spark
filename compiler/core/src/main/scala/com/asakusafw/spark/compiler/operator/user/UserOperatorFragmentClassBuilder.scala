@@ -33,13 +33,14 @@ abstract class UserOperatorFragmentClassBuilder(
   dataModelType: Type,
   val operatorType: Type,
   val operatorOutputs: Seq[OperatorOutput])
-    extends FragmentClassBuilder(flowId, dataModelType)
-    with OperatorField
-    with OutputFragments {
+  extends FragmentClassBuilder(flowId, dataModelType)
+  with OperatorField
+  with OutputFragments {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(
-      classOf[Map[BroadcastId, Broadcast[_]]].asType +: (0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
+      classOf[Map[BroadcastId, Broadcast[_]]].asType
+        +: (0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
       ((new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
@@ -61,7 +62,8 @@ abstract class UserOperatorFragmentClassBuilder(
         .newVoidReturnType()
         .build()) { mb =>
         import mb._ // scalastyle:ignore
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+        val broadcastsVar =
+          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
         thisVar.push().invokeInit(superType)
         initReset(mb)

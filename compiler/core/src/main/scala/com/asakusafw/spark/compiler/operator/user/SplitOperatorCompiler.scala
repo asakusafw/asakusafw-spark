@@ -51,7 +51,8 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
     assert(outputs.size == 2,
       s"The size of outputs should be 2: ${outputs.size}")
 
-    val mappings = JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
+    val mappings =
+      JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
 
     val builder = new UserOperatorFragmentClassBuilder(
       context.flowId,
@@ -82,9 +83,11 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
         import mb._ // scalastyle:ignore
 
-        val leftVar = thisVar.push().getField("leftDataModel", outputs(Split.ID_OUTPUT_LEFT).dataModelType)
+        val leftVar = thisVar.push()
+          .getField("leftDataModel", outputs(Split.ID_OUTPUT_LEFT).dataModelType)
           .store(dataModelVar.nextLocal)
-        val rightVar = thisVar.push().getField("rightDataModel", outputs(Split.ID_OUTPUT_RIGHT).dataModelType)
+        val rightVar = thisVar.push()
+          .getField("rightDataModel", outputs(Split.ID_OUTPUT_RIGHT).dataModelType)
           .store(leftVar.nextLocal)
         leftVar.push().invokeV("reset")
         rightVar.push().invokeV("reset")
@@ -95,14 +98,17 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
           assert(mapping.getSourcePort == inputs(Split.ID_INPUT),
             "The source port should be the same as the port for Split.ID_INPUT: " +
               s"(${mapping.getSourcePort}, ${inputs(Split.ID_INPUT)})")
-          val srcProperty = inputs(Split.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
+          val srcProperty =
+            inputs(Split.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
 
           val dest = outputs.indexOf(mapping.getDestinationPort)
           val destVar = vars(dest)
-          val destProperty = outputs(dest).dataModelRef.findProperty(mapping.getDestinationProperty)
+          val destProperty =
+            outputs(dest).dataModelRef.findProperty(mapping.getDestinationProperty)
 
           assert(srcProperty.getType.asType == destProperty.getType.asType,
-            s"The source and destination types should be the same: (${srcProperty.getType}, ${destProperty.getType}")
+            "The source and destination types should be the same: "
+              + s"(${srcProperty.getType}, ${destProperty.getType}")
 
           getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
             .invokeV(

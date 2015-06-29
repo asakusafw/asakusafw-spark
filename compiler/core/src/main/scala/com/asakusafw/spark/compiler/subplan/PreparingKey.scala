@@ -58,7 +58,8 @@ trait PreparingKey extends ClassBuilder {
           (output, i) <- subplanOutputs.sortBy(_.getOperator.getSerialNumber).zipWithIndex
           outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
           partitionInfo <- outputInfo.getOutputType match {
-            case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
+            case SubPlanOutputInfo.OutputType.AGGREGATED |
+              SubPlanOutputInfo.OutputType.PARTITIONED =>
               Option(outputInfo.getPartitionInfo)
             case SubPlanOutputInfo.OutputType.BROADCAST =>
               Option(output.getAttribute(classOf[BroadcastInfo])).map(_.getFormatInfo)

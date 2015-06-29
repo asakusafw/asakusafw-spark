@@ -108,7 +108,8 @@ final class TypeSignatureBuilder(sv: SignatureVisitor) extends SignatureBuilder(
     this
   }
 
-  def newClassType(`type`: Type)(implicit block: TypeArgumentSignatureBuilder => Unit): this.type = {
+  def newClassType(
+    `type`: Type)(implicit block: TypeArgumentSignatureBuilder => Unit): this.type = {
     assert(!typed)
     if (`type`.getSort() < Type.ARRAY) {
       sv.visitBaseType(`type`.getDescriptor().charAt(0))
@@ -125,7 +126,8 @@ final class TypeSignatureBuilder(sv: SignatureVisitor) extends SignatureBuilder(
     this
   }
 
-  def newInnnerClassType(`type`: Type)(implicit block: TypeArgumentSignatureBuilder => Unit): this.type = {
+  def newInnnerClassType(
+    `type`: Type)(implicit block: TypeArgumentSignatureBuilder => Unit): this.type = {
     assert(classType)
     sv.visitInnerClassType(`type`.getInternalName())
     block(new TypeArgumentSignatureBuilder(sv))
@@ -135,7 +137,9 @@ final class TypeSignatureBuilder(sv: SignatureVisitor) extends SignatureBuilder(
 }
 
 object TypeSignatureBuilder {
-  implicit val emptyTypeArgumentSignatureBuilderBlock: TypeArgumentSignatureBuilder => Unit = { sb => }
+  implicit val emptyTypeArgumentSignatureBuilderBlock: TypeArgumentSignatureBuilder => Unit = {
+    sb =>
+  }
 }
 
 final class MethodSignatureBuilder(sv: SignatureVisitor) extends SignatureBuilder(sv) {

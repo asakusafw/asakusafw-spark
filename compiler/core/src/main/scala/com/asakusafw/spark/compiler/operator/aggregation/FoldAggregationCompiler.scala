@@ -94,13 +94,15 @@ class FoldAggregationCompiler extends AggregationCompiler {
         `return`(pushNew0(combinerType))
       }
 
-      override def defInitCombinerByValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
+      override def defInitCombinerByValue(
+        mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
         import mb._ // scalastyle:ignore
         combinerVar.push().invokeV("copyFrom", valueVar.push())
         `return`(combinerVar.push())
       }
 
-      override def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
+      override def defMergeValue(
+        mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
         import mb._ // scalastyle:ignore
         getOperatorField(mb).invokeV(
           methodDesc.getName,
@@ -112,15 +114,18 @@ class FoldAggregationCompiler extends AggregationCompiler {
         `return`(combinerVar.push())
       }
 
-      override def defInitCombinerByCombiner(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
+      override def defInitCombinerByCombiner(
+        mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
         import mb._ // scalastyle:ignore
         comb1Var.push().invokeV("copyFrom", comb2Var.push())
         `return`(comb1Var.push())
       }
 
-      override def defMergeCombiners(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
+      override def defMergeCombiners(
+        mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
         import mb._ // scalastyle:ignore
-        `return`(thisVar.push().invokeV("mergeValue", combinerType, comb1Var.push(), comb2Var.push()))
+        `return`(
+          thisVar.push().invokeV("mergeValue", combinerType, comb1Var.push(), comb2Var.push()))
       }
     }
 

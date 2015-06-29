@@ -42,7 +42,10 @@ import com.asakusafw.lang.compiler.inspection.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, TypeDescription }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning._
-import com.asakusafw.spark.compiler.ordering.{ GroupingOrderingClassBuilder, SortOrderingClassBuilder }
+import com.asakusafw.spark.compiler.ordering.{
+  GroupingOrderingClassBuilder,
+  SortOrderingClassBuilder
+}
 import com.asakusafw.spark.compiler.planning.{
   BroadcastInfo,
   SparkPlanning,
@@ -78,9 +81,11 @@ class SparkClientCompiler extends JobflowProcessor {
 
     val plan = preparePlan(jpContext, source)
 
-    InspectionExtension.inspect(jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
+    InspectionExtension.inspect(
+      jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
 
-    val verifyPlan = JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString))
+    val verifyPlan =
+      JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString))
     if (!verifyPlan) {
 
       val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
@@ -119,7 +124,9 @@ class SparkClientCompiler extends JobflowProcessor {
                   }
               }
               .build())
-          fieldDef.newField("broadcasts", classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType,
+          fieldDef.newField(
+            "broadcasts",
+            classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType,
             new TypeSignatureBuilder()
               .newClassType(classOf[mutable.Map[_, _]].asType) {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
@@ -129,7 +136,8 @@ class SparkClientCompiler extends JobflowProcessor {
                         _.newClassType(classOf[Broadcast[_]].asType) {
                           _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
                             _.newClassType(classOf[Map[_, _]].asType) {
-                              _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+                              _.newTypeArgument(
+                                SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
                                 .newTypeArgument(SignatureVisitor.INSTANCEOF) {
                                   _.newClassType(classOf[Seq[_]].asType) {
                                     _.newTypeArgument()
@@ -156,7 +164,10 @@ class SparkClientCompiler extends JobflowProcessor {
         }
 
         override def defMethods(methodDef: MethodDef): Unit = {
-          methodDef.newMethod("execute", Type.INT_TYPE, Seq(classOf[SparkContext].asType, classOf[Broadcast[Configuration]].asType),
+          methodDef.newMethod(
+            "execute",
+            Type.INT_TYPE,
+            Seq(classOf[SparkContext].asType, classOf[Broadcast[Configuration]].asType),
             new MethodSignatureBuilder()
               .newParameterType(classOf[SparkContext].asType)
               .newParameterType {
@@ -169,24 +180,39 @@ class SparkClientCompiler extends JobflowProcessor {
               import mb._ // scalastyle:ignore
               val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
               val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-              thisVar.push().putField("sc", classOf[SparkContext].asType, scVar.push())
-              thisVar.push().putField("hadoopConf", classOf[Broadcast[Configuration]].asType, hadoopConfVar.push())
-              thisVar.push().putField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType,
-                getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
-                  .invokeV("empty", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType))
-              thisVar.push().putField("broadcasts", classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType,
-                getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
-                  .invokeV("empty", classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType))
-              thisVar.push().putField("terminators", classOf[mutable.Set[Future[Unit]]].asType,
-                getStatic(mutable.Set.getClass.asType, "MODULE$", mutable.Set.getClass.asType)
-                  .invokeV("empty", classOf[mutable.Set[Future[Unit]]].asType))
+              thisVar.push()
+                .putField("sc", classOf[SparkContext].asType, scVar.push())
+              thisVar.push()
+                .putField(
+                  "hadoopConf",
+                  classOf[Broadcast[Configuration]].asType,
+                  hadoopConfVar.push())
+              thisVar.push()
+                .putField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType,
+                  getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
+                    .invokeV("empty", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType))
+              thisVar.push()
+                .putField(
+                  "broadcasts",
+                  classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
+                    .asType,
+                  getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
+                    .invokeV(
+                      "empty",
+                      classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
+                        .asType))
+              thisVar.push()
+                .putField("terminators", classOf[mutable.Set[Future[Unit]]].asType,
+                  getStatic(mutable.Set.getClass.asType, "MODULE$", mutable.Set.getClass.asType)
+                    .invokeV("empty", classOf[mutable.Set[Future[Unit]]].asType))
 
               subplans.foreach {
                 case (_, i) =>
                   thisVar.push().invokeV(s"execute${i}")
               }
 
-              val iterVar = thisVar.push().getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
+              val iterVar = thisVar.push()
+                .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
                 .invokeI("iterator", classOf[Iterator[Future[Unit]]].asType)
                 .store(hadoopConfVar.nextLocal)
               whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
@@ -209,13 +235,22 @@ class SparkClientCompiler extends JobflowProcessor {
             case (subplan, i) =>
               methodDef.newMethod(s"execute${i}", Seq.empty) { mb =>
                 import mb._ // scalastyle:ignore
-                val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
+                val compiler =
+                  SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
                 val driverType = compiler.compile(subplan)
 
-                val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType).store(thisVar.nextLocal)
-                val hadoopConfVar = thisVar.push().getField("hadoopConf", classOf[Broadcast[Configuration]].asType).store(scVar.nextLocal)
-                val rddsVar = thisVar.push().getField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType).store(hadoopConfVar.nextLocal)
-                val terminatorsVar = thisVar.push().getField("terminators", classOf[mutable.Set[Future[Unit]]].asType).store(rddsVar.nextLocal)
+                val scVar = thisVar.push()
+                  .getField("sc", classOf[SparkContext].asType)
+                  .store(thisVar.nextLocal)
+                val hadoopConfVar = thisVar.push()
+                  .getField("hadoopConf", classOf[Broadcast[Configuration]].asType)
+                  .store(scVar.nextLocal)
+                val rddsVar = thisVar.push()
+                  .getField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType)
+                  .store(hadoopConfVar.nextLocal)
+                val terminatorsVar = thisVar.push()
+                  .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
+                  .store(rddsVar.nextLocal)
                 val nextLocal = new AtomicInteger(terminatorsVar.nextLocal)
 
                 val broadcastsVar = {
@@ -240,7 +275,10 @@ class SparkClientCompiler extends JobflowProcessor {
                           classOf[(BroadcastId, Future[Broadcast[_]])].asType,
                           context.broadcastIds.getField(mb, subPlanInput.getOperator)
                             .asType(classOf[AnyRef].asType),
-                          thisVar.push().getField("broadcasts", classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType)
+                          thisVar.push().getField(
+                            "broadcasts",
+                            classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]] // scalastyle:ignore
+                              .asType)
                             .invokeI(
                               "apply",
                               classOf[AnyRef].asType,
@@ -251,15 +289,19 @@ class SparkClientCompiler extends JobflowProcessor {
                         .asType(classOf[AnyRef].asType))
                   }
 
-                  val broadcasts = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
+                  val broadcasts = builder
+                    .invokeI("result", classOf[AnyRef].asType)
+                    .cast(classOf[Map[_, _]].asType)
                   broadcasts.store(nextLocal.getAndAdd(broadcasts.size))
                 }
 
                 val instantiator = compiler.instantiator
                 val driverVar = instantiator.newInstance(driverType, subplan)(
-                  instantiator.Context(mb, scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar,
+                  instantiator.Context(
+                    mb, scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar,
                     nextLocal, source.getFlowId, jpContext, context.branchKeys))
-                val rdds = driverVar.push().invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
+                val rdds = driverVar.push()
+                  .invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
                 val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
 
                 for {
@@ -268,7 +310,9 @@ class SparkClientCompiler extends JobflowProcessor {
                   if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
                   broadcastInfo <- Option(subPlanOutput.getAttribute(classOf[BroadcastInfo]))
                 } {
-                  val dataModelRef = context.jpContext.getDataModelLoader.load(subPlanOutput.getOperator.getInput.getDataType)
+                  val dataModelRef = context.jpContext
+                    .getDataModelLoader
+                    .load(subPlanOutput.getOperator.getInput.getDataType)
                   val key = broadcastInfo.getFormatInfo
                   val groupings = key.getGrouping.toSeq.map { grouping =>
                     dataModelRef.findProperty(grouping).getType.asType
@@ -278,7 +322,10 @@ class SparkClientCompiler extends JobflowProcessor {
                       ordering.getDirection == Group.Direction.ASCENDANT)
                   }
 
-                  thisVar.push().getField("broadcasts", classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType)
+                  thisVar.push().getField(
+                    "broadcasts",
+                    classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
+                      .asType)
                     .invokeI(
                       NameTransformer.encode("+="),
                       classOf[Growable[_]].asType,
@@ -310,7 +357,8 @@ class SparkClientCompiler extends JobflowProcessor {
                             },
                             {
                               pushNew0(
-                                GroupingOrderingClassBuilder.getOrCompile(context.flowId, groupings, context.jpContext))
+                                GroupingOrderingClassBuilder
+                                  .getOrCompile(context.flowId, groupings, context.jpContext))
                                 .asType(classOf[Ordering[ShuffleKey]].asType)
                             },
                             {
@@ -341,8 +389,10 @@ class SparkClientCompiler extends JobflowProcessor {
               plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
               .toSet[TypeDescription]
               .map(_.asType),
-            jpContext.addClass(new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)),
-            jpContext.addClass(new BroadcastIdSerializerClassBuilder(context.flowId, broadcastIdsType)))(
+            jpContext.addClass(
+              new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)),
+            jpContext.addClass(
+              new BroadcastIdSerializerClassBuilder(context.flowId, broadcastIdsType)))(
               KryoRegistratorCompiler.Context(source.getFlowId, jpContext))
 
           methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
@@ -354,8 +404,15 @@ class SparkClientCompiler extends JobflowProcessor {
 
       val client = jpContext.addClass(builder)
 
-      jpContext.addTask(ModuleName, ProfileName, Command,
-        Seq(CommandToken.BATCH_ID, CommandToken.FLOW_ID, CommandToken.EXECUTION_ID, CommandToken.BATCH_ARGUMENTS,
+      jpContext.addTask(
+        ModuleName,
+        ProfileName,
+        Command,
+        Seq(
+          CommandToken.BATCH_ID,
+          CommandToken.FLOW_ID,
+          CommandToken.EXECUTION_ID,
+          CommandToken.BATCH_ARGUMENTS,
           CommandToken.of(client.getClassName)))
     }
   }

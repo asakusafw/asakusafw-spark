@@ -27,7 +27,10 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OutputFragmentClassBuilder }
+import com.asakusafw.spark.compiler.operator.{
+  EdgeFragmentClassBuilder,
+  OutputFragmentClassBuilder
+}
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
@@ -51,7 +54,8 @@ class FragmentTreeBuilder(
       operator.getOriginalSerialNumber, {
         operator match {
           case marker: MarkerOperator =>
-            OutputFragmentClassBuilder.getOrCompile(context.flowId, marker.getInput.getDataType.asType, context.jpContext)
+            OutputFragmentClassBuilder
+              .getOrCompile(context.flowId, marker.getInput.getDataType.asType, context.jpContext)
           case operator: Operator =>
             OperatorCompiler.compile(operator, OperatorType.MapType)
         }
@@ -73,7 +77,8 @@ class FragmentTreeBuilder(
   def build(output: OperatorOutput): Var = {
     if (output.getOpposites.size == 0) {
       vars.getOrElseUpdate(-1L, {
-        val fragment = getStatic(StopFragment.getClass.asType, "MODULE$", StopFragment.getClass.asType)
+        val fragment =
+          getStatic(StopFragment.getClass.asType, "MODULE$", StopFragment.getClass.asType)
         fragment.store(nextLocal.getAndAdd(fragment.size))
       })
     } else if (output.getOpposites.size > 1) {
@@ -83,7 +88,8 @@ class FragmentTreeBuilder(
       val fragment = pushNew(
         edgeFragmentTypes.getOrElseUpdate(
           output.getDataType.asType, {
-            EdgeFragmentClassBuilder.getOrCompile(context.flowId, output.getDataType.asType, context.jpContext)
+            EdgeFragmentClassBuilder
+              .getOrCompile(context.flowId, output.getDataType.asType, context.jpContext)
           }))
       fragment.dup().invokeInit({
         val arr = pushNewArray(classOf[Fragment[_]].asType, output.getOpposites.size)

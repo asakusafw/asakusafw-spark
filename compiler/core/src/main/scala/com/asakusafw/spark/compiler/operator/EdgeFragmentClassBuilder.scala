@@ -25,12 +25,14 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.compiler.operator.EdgeFragmentClassBuilder._
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 
 class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
   extends ClassBuilder(
-    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${EdgeFragmentClassBuilder.nextId};"),
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${nextId};"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[EdgeFragment[_]].asType) {

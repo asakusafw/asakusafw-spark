@@ -77,7 +77,8 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
       val opInfo: OperatorInfo = operatorInfo
 
-      val mappings = JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
+      val mappings =
+        JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
     }
 
     context.jpContext.addClass(builder)
