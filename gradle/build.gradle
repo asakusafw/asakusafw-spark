@@ -13,14 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-group = 'com.asakusafw.spark'
-version = { f ->
+ext.parentPom = { f ->
     if (!f.exists()) {
         return null
     }
     def xml = new XmlSlurper().parse(f)
-    return xml.version.text()
+    return [
+        projectVersion : xml.version.text(),
+        pluginVersion : xml['properties']['asakusafw.version'].text().replaceFirst('-hadoop[12]', ''),
+        coreVersion : xml['properties']['asakusafw.version'].text(),
+        langVersion : xml['properties']['asakusafw-lang.version'].text(),
+    ]
 }(project.file('../pom.xml'))
+ 
+group = 'com.asakusafw.spark'
+version = parentPom.projectVersion
 
 defaultTasks 'clean', 'build', 'install'
 
@@ -40,7 +47,7 @@ repositories {
 
 dependencies {
     compile gradleApi()
-    compile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: '0.7.3'
+    compile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: parentPom.pluginVersion
     deployerJars 'org.springframework.build:aws-maven:5.0.0.RELEASE'
 }
 
@@ -74,17 +81,18 @@ groovydoc {
 }
 
 processResources { t ->
-    t.inputs.property 'version', String.valueOf(project.version)
+    t.inputs.property 'version', new HashMap<String, String>(parentPom)
     doLast {
-        logger.info "injecting project version info: ${project.version}"
+        logger.info "injecting project version info: ${project.parentPom}"
         File file = new File(t.destinationDir, 'META-INF/asakusa-spark-gradle/artifact.properties')
         if (!file.parentFile.exists()) {
             project.mkdir file.parentFile
         }
 
         Properties p = new Properties()
-        p.put('compiler-version', String.valueOf(project.version))
-        p.put('spark-compiler-version', String.valueOf(project.version))
+        p.put("core-version", parentPom.coreVersion)
+        p.put('compiler-version', parentPom.langVersion)
+        p.put('spark-compiler-version', parentPom.projectVersion)
         file.withOutputStream { s ->
             p.store(s, null)
         }
