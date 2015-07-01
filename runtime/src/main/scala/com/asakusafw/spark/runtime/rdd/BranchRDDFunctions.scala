@@ -45,16 +45,15 @@ class BranchRDDFunctions[T: ClassTag](self: RDD[T]) extends Serializable {
         new BranchKeyOrdering(keyOrderings.withDefaultValue(new NoOrdering[K])))
     }
     val branched = shuffled.map { case (Branch(_, k), u) => (k, u) }
-    branchKeys.map {
-      case branch =>
-        branch -> new BranchedRDD[(K, U)](
-          branched,
-          partitioners.get(branch).orElse(prepared.partitioner),
-          i => {
-            val offset = branchPartitioner.offsetOf(branch)
-            val numPartitions = branchPartitioner.numPartitionsOf(branch)
-            offset <= i && i < offset + numPartitions
-          })
+    branchKeys.map { branch =>
+      branch -> new BranchedRDD[(K, U)](
+        branched,
+        partitioners.get(branch).orElse(prepared.partitioner),
+        i => {
+          val offset = branchPartitioner.offsetOf(branch)
+          val numPartitions = branchPartitioner.numPartitionsOf(branch)
+          offset <= i && i < offset + numPartitions
+        })
     }.toMap
   }
 }

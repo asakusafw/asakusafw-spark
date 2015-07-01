@@ -34,7 +34,7 @@ abstract class AggregateDriver[V, C](
   @transient prevs: Seq[Future[RDD[(ShuffleKey, V)]]],
   @transient sort: Option[Ordering[ShuffleKey]],
   @transient partitioner: Partitioner)
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[C] {
+  extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[C] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
@@ -48,16 +48,17 @@ abstract class AggregateDriver[V, C](
         if (aggregation.mapSideCombine) {
           val part = Some(partitioner)
           confluent(
-            prevs.map {
-              case prev if prev.partitioner == part =>
+            prevs.map { prev =>
+              if (prev.partitioner == part) {
                 prev.asInstanceOf[RDD[(ShuffleKey, C)]]
-              case prev =>
+              } else {
                 prev.mapPartitions({ iter =>
                   val combiner = aggregation.valueCombiner
                   combiner.insertAll(iter)
                   val context = TaskContext.get
                   new InterruptibleIterator(context, combiner.iterator)
                 }, preservesPartitioning = true)
+              }
             }, partitioner, sort)
             .mapPartitions({ iter =>
               val combiner = aggregation.combinerCombiner

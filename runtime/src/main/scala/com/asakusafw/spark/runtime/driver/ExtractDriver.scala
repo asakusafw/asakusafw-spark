@@ -30,7 +30,7 @@ abstract class ExtractDriver[T](
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Future[Broadcast[_]]],
   @transient prevs: Seq[Future[RDD[(_, T)]]])
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[T] {
+  extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[T] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
@@ -43,9 +43,12 @@ abstract class ExtractDriver[T](
         val part = Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*)
         val (unioning, coalescing) = prevs.partition(_.partitions.size < part.numPartitions)
         val coalesced = zipPartitions(
-          coalescing.map {
-            case prev if prev.partitions.size == part.numPartitions => prev
-            case prev => prev.coalesce(part.numPartitions, shuffle = false)
+          coalescing.map { prev =>
+            if (prev.partitions.size == part.numPartitions) {
+              prev
+            } else {
+              prev.coalesce(part.numPartitions, shuffle = false)
+            }
           }, preservesPartitioning = false) {
             _.iterator.flatten.asInstanceOf[Iterator[(_, T)]]
           }

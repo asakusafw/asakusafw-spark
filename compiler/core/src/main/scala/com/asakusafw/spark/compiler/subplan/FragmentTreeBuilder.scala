@@ -36,9 +36,9 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class FragmentTreeBuilder(
-    mb: MethodBuilder,
-    broadcastsVar: Var,
-    nextLocal: AtomicInteger)(implicit context: OperatorCompiler.Context) {
+  mb: MethodBuilder,
+  broadcastsVar: Var,
+  nextLocal: AtomicInteger)(implicit context: OperatorCompiler.Context) {
   import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty
@@ -52,7 +52,7 @@ class FragmentTreeBuilder(
         operator match {
           case marker: MarkerOperator =>
             OutputFragmentClassBuilder.getOrCompile(context.flowId, marker.getInput.getDataType.asType, context.jpContext)
-          case operator =>
+          case operator: Operator =>
             OperatorCompiler.compile(operator, OperatorType.MapType)
         }
       })

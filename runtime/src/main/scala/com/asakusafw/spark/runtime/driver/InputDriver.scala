@@ -36,7 +36,7 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration],
   broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
-    extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[V] {
+  extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[V] {
 
   def paths: Option[Set[String]]
 
