@@ -38,7 +38,6 @@
 
 		<asakusafw.version>0.7.3-hadoop2</asakusafw.version>
 		<asakusafw-lang.version>0.1.0</asakusafw-lang.version>
-		<asakusafw-bridge.version>0.1.0</asakusafw-bridge.version>
 
 		<scala.binary.version>2.10</scala.binary.version>
 		<scala.version>${scala.binary.version}.4</scala.version>
@@ -483,11 +482,10 @@ encoding/<project>=UTF-8
 				<artifactId>asakusa-compiler-hadoop</artifactId>
 				<version>${asakusafw-lang.version}</version>
 			</dependency>
-
 			<dependency>
 				<groupId>com.asakusafw.bridge</groupId>
 				<artifactId>asakusa-bridge-runtime</artifactId>
-				<version>${asakusafw-bridge.version}</version>
+				<version>${asakusafw-lang.version}</version>
 			</dependency>
 
 			<dependency>
