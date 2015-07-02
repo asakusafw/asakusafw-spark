@@ -18,9 +18,6 @@ Asakusa on Spark Gradle Plugin リファレンス
 
 Asakusa on Spark Gradle Pluginが提供する機能とインターフェースについて個々に解説します。
 
-Asakusa on Spark Gradle Plugin
-------------------------------
-
 プラグイン
 ----------
 
