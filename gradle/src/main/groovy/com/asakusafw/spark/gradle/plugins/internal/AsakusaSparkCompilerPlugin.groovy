@@ -79,7 +79,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 description 'Asakusa DSL Compiler Launcher for Spark environment'
             }
         }
-        project.afterEvaluate {
+        PluginUtils.afterEvaluate(project) {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
             AsakusafwPluginConvention asakusa = project.asakusafw
             project.configurations {
@@ -162,7 +162,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 failOnError = { spark.failOnError }
             }
         }
-        project.afterEvaluate {
+        PluginUtils.afterEvaluate(project) {
             AsakusaCompileTask task = project.tasks.sparkCompileBatchapps
             Map<String, String> map = [:]
             map.putAll(ResolutionUtils.resolveToStringMap(spark.compilerProperties))
