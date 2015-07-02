@@ -64,7 +64,7 @@ abstract class WritableSerializer[W <: Writable] extends Serializer[W](false, fa
 object WritableSerializer {
 
   trait ConfigurationSerializer extends WritableSerializer[Configuration] {
-    override def newInstance(): Configuration = new Configuration()
+    override def newInstance(): Configuration = new Configuration(false)
   }
   object ConfigurationSerializer extends ConfigurationSerializer
 
