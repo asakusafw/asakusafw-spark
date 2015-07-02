@@ -25,26 +25,28 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.compiler.operator.EdgeFragmentClassBuilder._
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 
 class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${EdgeFragmentClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[EdgeFragment[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(dataModelType)
-            }
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[EdgeFragment[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+            _.newClassType(dataModelType)
           }
         }
-        .build(),
-      classOf[EdgeFragment[_]].asType) {
+      }
+      .build(),
+    classOf[EdgeFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(classOf[Array[Fragment[_]]].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val childrenVar = `var`(classOf[Array[Fragment[_]]].asType, thisVar.nextLocal)
       thisVar.push().invokeInit(superType, childrenVar.push())
     }
@@ -54,12 +56,12 @@ class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
     super.defMethods(methodDef)
 
     methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(pushNew0(dataModelType))
     }
 
     methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       `return`(thisVar.push().invokeV("newDataModel", dataModelType))
     }
   }

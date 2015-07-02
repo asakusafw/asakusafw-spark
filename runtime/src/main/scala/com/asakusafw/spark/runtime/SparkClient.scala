@@ -77,5 +77,5 @@ abstract class SparkClient {
 
 object SparkClient {
 
-  implicit lazy val executionContext: ExecutionContext = ExecutionContext.fromExecutor(null)
+  implicit lazy val executionContext: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
 }

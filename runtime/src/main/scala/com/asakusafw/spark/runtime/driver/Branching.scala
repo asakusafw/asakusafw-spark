@@ -47,7 +47,8 @@ trait Branching[T] {
 
   def deserialize(branch: BranchKey, value: Array[Byte]): Any
 
-  def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[T], Map[BranchKey, OutputFragment[_]])
+  def fragments(
+    broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
   def branch(rdd: RDD[(_, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     val broadcasts = this.broadcasts.map {
@@ -89,7 +90,7 @@ trait Branching[T] {
         },
         partitioners = partitioners.map {
           case (branchKey, Some(part)) => branchKey -> part
-          case (branchKey, None)       => branchKey -> IdentityPartitioner(rdd.partitions.length)
+          case (branchKey, None) => branchKey -> IdentityPartitioner(rdd.partitions.length)
         },
         keyOrderings = orderings,
         preservesPartitioning = true).map {
@@ -103,7 +104,9 @@ trait Branching[T] {
     }
   }
 
-  private def f(iter: Iterator[(_, T)], broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], _)] = {
+  private def f(
+    iter: Iterator[(_, T)],
+    broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], _)] = {
     val (fragment, outputs) = fragments(broadcasts)
     assert(outputs.keys.toSet == branchKeys,
       s"The branch keys of outputs and branch keys field should be the same: (${

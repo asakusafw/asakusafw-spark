@@ -32,15 +32,15 @@ trait BroadcastIds {
   this: BroadcastIdsClassBuilder =>
 
   def getField(mb: MethodBuilder, marker: MarkerOperator): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     getStatic(thisType, getField(marker.getOriginalSerialNumber), classOf[BroadcastId].asType)
   }
 }
 
 class BroadcastIdsClassBuilder(flowId: String)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BroadcastIds;"),
-      classOf[AnyRef].asType) with BroadcastIds {
+  extends ClassBuilder(
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BroadcastIds;"),
+    classOf[AnyRef].asType) with BroadcastIds {
 
   private[this] val broadcastIds: mutable.Map[Long, Int] = mutable.Map.empty
 
@@ -58,7 +58,7 @@ class BroadcastIdsClassBuilder(flowId: String)
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newStaticInit { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       broadcastIds.values.toSeq.sorted.foreach { id =>
         putStatic(thisType, field(id), classOf[BroadcastId].asType,
           getStatic(BroadcastId.getClass.asType, "MODULE$", BroadcastId.getClass.asType)
@@ -71,7 +71,7 @@ class BroadcastIdsClassBuilder(flowId: String)
     super.defMethods(methodDef)
 
     methodDef.newStaticMethod("valueOf", classOf[BroadcastId].asType, Seq(Type.INT_TYPE)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val idVar = `var`(Type.INT_TYPE, 0)
 
       def bs(min: Int, max: Int): Unit = {

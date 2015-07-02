@@ -57,7 +57,7 @@ trait BranchKeysField extends ClassBuilder {
           }
         }
         .build()) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         thisVar.push().getField("branchKeys", classOf[Set[_]].asType).unlessNotNull {
           thisVar.push().putField("branchKeys", classOf[Set[_]].asType, initBranchKeys(mb))
         }
@@ -66,12 +66,12 @@ trait BranchKeysField extends ClassBuilder {
   }
 
   def getBranchKeysField(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("branchKeys", classOf[Set[_]].asType)
   }
 
   private def initBranchKeys(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 

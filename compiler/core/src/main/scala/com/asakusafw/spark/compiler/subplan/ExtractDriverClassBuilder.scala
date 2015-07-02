@@ -30,6 +30,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.compiler.subplan.ExtractDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ExtractDriver, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -37,17 +38,18 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class ExtractDriverClassBuilder(
   val flowId: String,
   val dataModelType: Type)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/ExtractDriver$$${ExtractDriverClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[ExtractDriver[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-          }
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/ExtractDriver$$${nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[ExtractDriver[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
         }
-        .build(),
-      classOf[ExtractDriver[_]].asType)
-    with Branching with DriverLabel {
+      }
+      .build(),
+    classOf[ExtractDriver[_]].asType)
+  with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -96,11 +98,15 @@ abstract class ExtractDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { mb =>
-        import mb._
-        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
-        val inputsVar = `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, broadcastsVar.nextLocal)
+        import mb._ // scalastyle:ignore
+        val scVar =
+          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+        val hadoopConfVar =
+          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+        val broadcastsVar =
+          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
+        val inputsVar =
+          `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, broadcastsVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,

@@ -50,7 +50,7 @@ trait PreparingKey extends ClassBuilder {
 
     methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
       Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
 
@@ -58,7 +58,8 @@ trait PreparingKey extends ClassBuilder {
           (output, i) <- subplanOutputs.sortBy(_.getOperator.getSerialNumber).zipWithIndex
           outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
           partitionInfo <- outputInfo.getOutputType match {
-            case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
+            case SubPlanOutputInfo.OutputType.AGGREGATED |
+              SubPlanOutputInfo.OutputType.PARTITIONED =>
               Option(outputInfo.getPartitionInfo)
             case SubPlanOutputInfo.OutputType.BROADCAST =>
               Option(output.getAttribute(classOf[BroadcastInfo])).map(_.getFormatInfo)
@@ -93,7 +94,7 @@ trait PreparingKey extends ClassBuilder {
       val dataModelType = dataModelRef.getDeclaration.asType
 
       methodDef.newMethod(s"shuffleKey${i}", classOf[ShuffleKey].asType, Seq(dataModelType)) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         val valueVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
 
         val dataModelVar = valueVar.push().cast(dataModelType).store(valueVar.nextLocal)

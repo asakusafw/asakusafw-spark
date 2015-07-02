@@ -27,6 +27,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.spark.compiler.subplan.InputDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, InputDriver }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -36,19 +37,20 @@ abstract class InputDriverClassBuilder(
   val keyType: Type,
   val valueType: Type,
   val inputFormatType: Type)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/InputDriver$$${InputDriverClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[InputDriver[_, _, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, keyType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, inputFormatType)
-          }
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/InputDriver$$${nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[InputDriver[_, _, _]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, keyType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, inputFormatType)
         }
-        .build(),
-      classOf[InputDriver[_, _, _]].asType)
-    with Branching with DriverLabel {
+      }
+      .build(),
+    classOf[InputDriver[_, _, _]].asType)
+  with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -78,10 +80,13 @@ abstract class InputDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { mb =>
-        import mb._
-        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
+        import mb._ // scalastyle:ignore
+        val scVar =
+          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+        val hadoopConfVar =
+          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+        val broadcastsVar =
+          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,
@@ -89,11 +94,20 @@ abstract class InputDriverClassBuilder(
           hadoopConfVar.push(),
           broadcastsVar.push(),
           getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(keyType).asType(classOf[Class[_]].asType)),
+            .invokeV(
+              "apply",
+              classOf[ClassTag[_]].asType,
+              ldc(keyType).asType(classOf[Class[_]].asType)),
           getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(valueType).asType(classOf[Class[_]].asType)),
+            .invokeV(
+              "apply",
+              classOf[ClassTag[_]].asType,
+              ldc(valueType).asType(classOf[Class[_]].asType)),
           getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(inputFormatType).asType(classOf[Class[_]].asType)))
+            .invokeV(
+              "apply",
+              classOf[ClassTag[_]].asType,
+              ldc(inputFormatType).asType(classOf[Class[_]].asType)))
       }
   }
 }

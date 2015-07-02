@@ -39,7 +39,8 @@ object AggregationCompiler {
     flowId: String,
     jpContext: JPContext)
 
-  private def getCompiler(operator: Operator)(implicit context: Context): Option[AggregationCompiler] = {
+  private def getCompiler(
+    operator: Operator)(implicit context: Context): Option[AggregationCompiler] = {
     operator match {
       case op: UserOperator =>
         apply(context.jpContext.getClassLoader)
@@ -55,11 +56,11 @@ object AggregationCompiler {
   def compile(operator: Operator)(implicit context: Context): Type = {
     getCompiler(operator) match {
       case Some(compiler) => compiler.compile(operator.asInstanceOf[UserOperator])
-      case _              => throw new AssertionError()
+      case _ => throw new AssertionError()
     }
   }
 
-  private[this] val aggregationCompilers: mutable.Map[ClassLoader, Map[Class[_], AggregationCompiler]] =
+  private[this] val aggregationCompilers: mutable.Map[ClassLoader, Map[Class[_], AggregationCompiler]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   private[this] def apply(classLoader: ClassLoader): Map[Class[_], AggregationCompiler] = {

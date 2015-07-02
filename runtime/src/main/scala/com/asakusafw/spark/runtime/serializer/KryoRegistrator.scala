@@ -27,7 +27,7 @@ import com.asakusafw.spark.runtime.rdd.Branch
 
 class KryoRegistrator extends SparkKryoRegistrator {
 
-  import KryoRegistrator._
+  import KryoRegistrator._ // scalastyle:ignore
 
   override def registerClasses(kryo: Kryo): Unit = {
     kryo.register(classOf[Configuration], WritableSerializer.ConfigurationSerializer)

@@ -28,6 +28,7 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.spark.compiler.subplan.AggregateDriverClassBuilder._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ AggregateDriver, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
@@ -37,19 +38,20 @@ abstract class AggregateDriverClassBuilder(
   val flowId: String,
   val valueType: Type,
   val combinerType: Type)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/AggregateDriver$$${AggregateDriverClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[AggregateDriver[_, _]].asType) {
-            _
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
-          }
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/AggregateDriver$$${nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[AggregateDriver[_, _]].asType) {
+          _
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
         }
-        .build(),
-      classOf[AggregateDriver[_, _]].asType)
-    with Branching with DriverLabel {
+      }
+      .build(),
+    classOf[AggregateDriver[_, _]].asType)
+  with Branching with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -110,13 +112,19 @@ abstract class AggregateDriverClassBuilder(
         .newParameterType(classOf[Partitioner].asType)
         .newVoidReturnType()
         .build()) { mb =>
-        import mb._
-        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
-        val prevsVar = `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, broadcastsVar.nextLocal)
-        val sortVar = `var`(classOf[Option[Ordering[ShuffleKey]]].asType, prevsVar.nextLocal)
-        val partVar = `var`(classOf[Partitioner].asType, sortVar.nextLocal)
+        import mb._ // scalastyle:ignore
+        val scVar =
+          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+        val hadoopConfVar =
+          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+        val broadcastsVar =
+          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
+        val prevsVar =
+          `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, broadcastsVar.nextLocal)
+        val sortVar =
+          `var`(classOf[Option[Ordering[ShuffleKey]]].asType, prevsVar.nextLocal)
+        val partVar =
+          `var`(classOf[Partitioner].asType, sortVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,

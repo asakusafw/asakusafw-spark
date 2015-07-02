@@ -29,6 +29,7 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.spark.compiler.subplan.OutputDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.OutputDriver
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -36,16 +37,17 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class OutputDriverClassBuilder(
   val flowId: String,
   val dataModelType: Type)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/OutputDriver$$${OutputDriverClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[OutputDriver[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-          }
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/OutputDriver$$${nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[OutputDriver[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
         }
-        .build(),
-      classOf[OutputDriver[_]].asType) with DriverLabel {
+      }
+      .build(),
+    classOf[OutputDriver[_]].asType) with DriverLabel {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -89,11 +91,15 @@ abstract class OutputDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { mb =>
-        import mb._
-        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val prevsVar = `var`(classOf[Seq[Future[RDD[(_, _)]]]].asType, hadoopConfVar.nextLocal)
-        val terminatorsVar = `var`(classOf[mutable.Set[Future[Unit]]].asType, prevsVar.nextLocal)
+        import mb._ // scalastyle:ignore
+        val scVar =
+          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
+        val hadoopConfVar =
+          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+        val prevsVar =
+          `var`(classOf[Seq[Future[RDD[(_, _)]]]].asType, hadoopConfVar.nextLocal)
+        val terminatorsVar =
+          `var`(classOf[mutable.Set[Future[Unit]]].asType, prevsVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,
@@ -102,7 +108,10 @@ abstract class OutputDriverClassBuilder(
           prevsVar.push(),
           terminatorsVar.push(),
           getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV("apply", classOf[ClassTag[_]].asType, ldc(dataModelType).asType(classOf[Class[_]].asType)))
+            .invokeV(
+              "apply",
+              classOf[ClassTag[_]].asType,
+              ldc(dataModelType).asType(classOf[Class[_]].asType)))
       }
   }
 }

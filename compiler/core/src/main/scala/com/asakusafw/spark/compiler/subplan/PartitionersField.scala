@@ -76,7 +76,7 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
           }
         }
         build ()) { mb =>
-        import mb._
+        import mb._ // scalastyle:ignore
         thisVar.push().getField("partitioners", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners(mb))
         }
@@ -85,12 +85,12 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
   }
 
   def getPartitionersField(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("partitioners", classOf[Map[_, _]].asType)
   }
 
   private def initPartitioners(mb: MethodBuilder): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     for {
@@ -111,12 +111,14 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
                 case SubPlanOutputInfo.OutputType.DONT_CARE =>
                   getStatic(None.getClass.asType, "MODULE$", None.getClass.asType)
                 case SubPlanOutputInfo.OutputType.AGGREGATED |
-                  SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty =>
+                  SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
                   getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
                     .invokeV("apply", classOf[Option[_]].asType, {
                       val partitioner = pushNew(classOf[HashPartitioner].asType)
                       partitioner.dup().invokeInit(
-                        numPartitions(mb, thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
+                        numPartitions(
+                          mb,
+                          thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
                       partitioner
                     }.asType(classOf[AnyRef].asType))
                 case _ =>

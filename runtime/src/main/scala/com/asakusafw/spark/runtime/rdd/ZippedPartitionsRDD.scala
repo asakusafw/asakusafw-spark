@@ -27,7 +27,7 @@ class ZippedPartitionsRDD[V: ClassTag](
   var f: (Seq[Iterator[_]]) => Iterator[V],
   var _rdds: Seq[RDD[_]],
   preservesPartitioning: Boolean = false)
-    extends ZippedPartitionsBaseRDD[V](sc, _rdds, preservesPartitioning) {
+  extends ZippedPartitionsBaseRDD[V](sc, _rdds, preservesPartitioning) {
 
   override def compute(s: Partition, context: TaskContext): Iterator[V] = {
     val partitions = s.asInstanceOf[ZippedPartitionsPartition].partitions
@@ -36,9 +36,9 @@ class ZippedPartitionsRDD[V: ClassTag](
     })
   }
 
-  override def clearDependencies() {
+  override def clearDependencies(): Unit = {
     super.clearDependencies()
-    _rdds = null
-    f = null
+    _rdds = null // scalastyle:ignore
+    f = null // scalastyle:ignore
   }
 }

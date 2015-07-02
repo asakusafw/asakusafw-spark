@@ -29,10 +29,10 @@ import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp }
 trait MasterBranch extends JoinOperatorFragmentClassBuilder {
 
   val opInfo: OperatorInfo
-  import opInfo._
+  import opInfo._ // scalastyle:ignore
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     block { ctrl =>
       val branch = getOperatorField(mb)
         .invokeV(
@@ -50,7 +50,8 @@ trait MasterBranch extends JoinOperatorFragmentClassBuilder {
       branchOutputMap.foreach {
         case (output, enum) =>
           branch.dup().unlessNe(
-            getStatic(methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
+            getStatic(
+              methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
               getOutputField(mb, output)
                 .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
               branch.pop()

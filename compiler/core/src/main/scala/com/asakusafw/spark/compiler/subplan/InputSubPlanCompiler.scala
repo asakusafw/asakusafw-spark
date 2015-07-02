@@ -56,11 +56,18 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       s"The dominant operator should be external input: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
+    val useInputDirect = JBoolean.parseBoolean(
+      context.jpContext
+        .getOptions
+        .get(SparkClientCompiler.Options.SparkInputDirect, true.toString))
     val (keyType, valueType, inputFormatType, paths, extraConfigurations) =
-      (if (JBoolean.parseBoolean(
-        context.jpContext.getOptions.get(SparkClientCompiler.Options.SparkInputDirect, true.toString)) == true) {
-        Option(InputFormatInfoExtension.resolve(context.jpContext, operator.getName(), operator.getInfo()))
-      } else None) match {
+      (if (useInputDirect) {
+        Option(
+          InputFormatInfoExtension
+            .resolve(context.jpContext, operator.getName(), operator.getInfo()))
+      } else {
+        None
+      }) match {
         case Some(info) =>
           (info.getKeyClass.asType, info.getValueClass.asType, info.getFormatClass.asType,
             None, Some(info.getExtraConfiguration.toMap))
@@ -104,7 +111,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             `return`(
               paths match {
                 case Some(paths) =>
@@ -113,8 +120,10 @@ class InputSubPlanCompiler extends SubPlanCompiler {
                       val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
                         .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
                       paths.foreach { path =>
-                        builder.invokeI(NameTransformer.encode("+="),
-                          classOf[mutable.Builder[_, _]].asType, ldc(path).asType(classOf[AnyRef].asType))
+                        builder.invokeI(
+                          NameTransformer.encode("+="),
+                          classOf[mutable.Builder[_, _]].asType,
+                          ldc(path).asType(classOf[AnyRef].asType))
                       }
                       builder.invokeI("result", classOf[AnyRef].asType)
                     })
@@ -132,7 +141,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
+            import mb._ // scalastyle:ignore
             `return`(
               extraConfigurations match {
                 case Some(confs) =>
@@ -158,7 +167,10 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               })
           }
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
+        methodDef.newMethod(
+          "fragments",
+          classOf[(_, _)].asType,
+          Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
           new MethodSignatureBuilder()
             .newParameterType {
               _.newClassType(classOf[Map[_, _]].asType) {
@@ -190,8 +202,9 @@ class InputSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
-            val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+            import mb._ // scalastyle:ignore
+            val broadcastsVar =
+              `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
             val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
             val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)(
@@ -205,8 +218,11 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
             `return`(
               getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-                invokeV("apply", classOf[(_, _)].asType,
-                  fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
+                invokeV(
+                  "apply",
+                  classOf[(_, _)].asType,
+                  fragmentVar.push().asType(classOf[AnyRef].asType),
+                  outputsVar.push().asType(classOf[AnyRef].asType)))
           }
       }
     }
@@ -222,7 +238,7 @@ object InputSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
       val inputDriver = pushNew(driverType)
       inputDriver.dup().invokeInit(

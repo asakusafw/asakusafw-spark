@@ -50,7 +50,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   def txInput: OperatorInput
 
   val opInfo: OperatorInfo
-  import opInfo._
+  import opInfo._ // scalastyle:ignore
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -70,7 +70,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   override def initFields(mb: MethodBuilder): Unit = {
     super.initFields(mb)
 
-    import mb._
+    import mb._ // scalastyle:ignore
     val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
     val marker: MarkerOperator = {
@@ -80,7 +80,9 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
       val opposite = opposites.head.getOwner
       assert(opposite.isInstanceOf[MarkerOperator],
         s"The master input should be marker operator: ${opposite}")
-      assert(opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker]) == PlanMarker.BROADCAST,
+      assert(
+        opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
+          == PlanMarker.BROADCAST,
         s"The master input should be BROADCAST marker operator: ${
           opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
         }")
@@ -99,7 +101,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   }
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     val keyVar = {
       val dataModelRef = jpContext.getDataModelLoader.load(txInput.getDataType)
       val group = txInput.getGroup
@@ -164,8 +166,15 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
                 case (s, t) => s().asType(t)
               }: _*)
       case None =>
-        getStatic(DefaultMasterSelection.getClass.asType, "MODULE$", DefaultMasterSelection.getClass.asType)
-          .invokeV("select", classOf[AnyRef].asType, mastersVar.push(), dataModelVar.push().asType(classOf[AnyRef].asType))
+        getStatic(
+          DefaultMasterSelection.getClass.asType,
+          "MODULE$",
+          DefaultMasterSelection.getClass.asType)
+          .invokeV(
+            "select",
+            classOf[AnyRef].asType,
+            mastersVar.push(),
+            dataModelVar.push().asType(classOf[AnyRef].asType))
           .cast(masterType)
     }).store(mastersVar.nextLocal)
 

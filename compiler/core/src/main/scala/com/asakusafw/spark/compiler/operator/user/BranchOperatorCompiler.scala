@@ -31,7 +31,7 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
 
   override def support(operator: UserOperator)(implicit context: Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[Branch]
   }
 
@@ -40,7 +40,7 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(support(operator),
       s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
@@ -53,7 +53,8 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
       outputs.forall { output =>
         output.dataModelType == inputs(Branch.ID_INPUT).dataModelType
       },
-      s"All of output types should be the same: ${outputs.map(_.dataModelType).mkString("(", ",", ")")}")
+      "All of output types should be the same: "
+        + s"${outputs.map(_.dataModelType).mkString("(", ",", ")")}")
 
     assert(
       methodDesc.parameterClasses
@@ -76,7 +77,7 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
       outputs) {
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         val branch = getOperatorField(mb)
           .invokeV(
             methodDesc.name,
@@ -91,7 +92,8 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
         branchOutputMap.foreach {
           case (output, enum) =>
             branch.dup().unlessNe(
-              getStatic(methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
+              getStatic(
+                methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
                 getOutputField(mb, output)
                   .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
                 `return`()

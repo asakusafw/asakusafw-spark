@@ -22,7 +22,7 @@ import org.apache.spark.executor.backdoor._
 
 abstract class Aggregation[K, V, C] extends Serializable {
 
-  import Aggregation._
+  import Aggregation._ // scalastyle:ignore
 
   def mapSideCombine: Boolean
 
@@ -41,17 +41,21 @@ abstract class Aggregation[K, V, C] extends Serializable {
 
   def valueCombiner(): Combiner[K, V, C] = {
     if (!isSpillEnabled) {
-      new InMemoryCombiner(initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
+      new InMemoryCombiner(
+        initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
     } else {
-      new ExternalCombiner(initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
+      new ExternalCombiner(
+        initCombinerByValue(newCombiner(), _), mergeValue _, mergeCombiners _)
     }
   }
 
   def combinerCombiner(): Combiner[K, C, C] = {
     if (!isSpillEnabled) {
-      new InMemoryCombiner(initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
+      new InMemoryCombiner(
+        initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
     } else {
-      new ExternalCombiner(initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
+      new ExternalCombiner(
+        initCombinerByCombiner(newCombiner(), _), mergeCombiners _, mergeCombiners _)
     }
   }
 }
@@ -69,12 +73,12 @@ object Aggregation {
   }
 
   private class InMemoryCombiner[K, V, C](
-      createCombiner: V => C,
-      mergeValue: (C, V) => C,
-      mergeCombiners: (C, C) => C) extends Combiner[K, V, C] {
+    createCombiner: V => C,
+    mergeValue: (C, V) => C,
+    mergeCombiners: (C, C) => C) extends Combiner[K, V, C] {
 
     val combiners = new AppendOnlyMap[K, C]
-    var kv: Product2[K, V] = null
+    var kv: Product2[K, V] = null // scalastyle:ignore
     val update = (hadValue: Boolean, oldValue: C) => {
       if (hadValue) mergeValue(oldValue, kv._2) else createCombiner(kv._2)
     }
@@ -88,9 +92,9 @@ object Aggregation {
   }
 
   private class ExternalCombiner[K, V, C](
-      createCombiner: V => C,
-      mergeValue: (C, V) => C,
-      mergeCombiners: (C, C) => C) extends Combiner[K, V, C] {
+    createCombiner: V => C,
+    mergeValue: (C, V) => C,
+    mergeCombiners: (C, C) => C) extends Combiner[K, V, C] {
 
     val combiners = new ExternalAppendOnlyMap[K, V, C](createCombiner, mergeValue, mergeCombiners)
 

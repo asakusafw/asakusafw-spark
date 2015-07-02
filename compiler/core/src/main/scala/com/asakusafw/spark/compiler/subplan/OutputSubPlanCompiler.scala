@@ -57,7 +57,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
         super.defMethods(methodDef)
 
         methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
-          import mb._
+          import mb._ // scalastyle:ignore
           `return`(ldc(context.jpContext.getOptions.getRuntimeWorkingPath(operator.getName)))
         }
       }
@@ -74,7 +74,7 @@ object OutputSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
       val outputDriver = pushNew(driverType)
       outputDriver.dup().invokeInit(

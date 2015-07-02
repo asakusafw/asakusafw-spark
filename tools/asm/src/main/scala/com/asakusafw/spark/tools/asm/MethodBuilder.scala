@@ -39,25 +39,26 @@ import org.objectweb.asm.Opcodes._
 import org.objectweb.asm.Type
 
 class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor) {
-  import MethodBuilder._
+
+  import MethodBuilder._ // scalastyle:ignore
 
   val thisVar: Var = {
     new Var(this, thisType, 0)
   }
 
-  def `var`(`type`: Type, local: Int): Var = {
+  def `var`(`type`: Type, local: Int): Var = { // scalastyle:ignore
     new Var(this, `type`, local)
   }
 
-  def `return`(stack: Stack): Unit = {
+  def `return`(stack: Stack): Unit = { // scalastyle:ignore
     mv.visitInsn(stack.`type`.getOpcode(IRETURN))
   }
 
-  def `return`(): Unit = {
+  def `return`(): Unit = { // scalastyle:ignore
     mv.visitInsn(RETURN)
   }
 
-  def `throw`(stack: Stack): Unit = {
+  def `throw`(stack: Stack): Unit = { // scalastyle:ignore
     mv.visitInsn(ATHROW)
   }
 
@@ -114,63 +115,119 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
     new Stack(this, `type`.boxed)
   }
 
-  def ldc[A <: Any: ClassTag](ldc: A): Stack = {
+  def ldc[A <: Any: ClassTag](value: A): Stack = {
     val `type` = Type.getType(implicitly[ClassTag[A]].runtimeClass)
     `type`.getSort() match {
       case Type.BOOLEAN =>
-        if (ldc.asInstanceOf[Boolean]) {
-          mv.visitInsn(ICONST_1)
-        } else {
-          mv.visitInsn(ICONST_0)
-        }
+        ldc(value.asInstanceOf[Boolean])
       case Type.CHAR =>
-        ldc.asInstanceOf[Char].toInt match {
-          case i if i <= 5              => mv.visitInsn(ICONST_0 + i)
-          case i if i <= Byte.MaxValue  => mv.visitIntInsn(BIPUSH, i)
-          case i if i <= Short.MaxValue => mv.visitIntInsn(SIPUSH, i)
-          case i                        => mv.visitLdcInsn(i)
-        }
+        ldc(value.asInstanceOf[Char])
       case Type.BYTE =>
-        ldc.asInstanceOf[Byte] match {
-          case i if i >= -1 && i <= 5 => mv.visitInsn(ICONST_0 + i)
-          case i                      => mv.visitIntInsn(BIPUSH, i)
-        }
+        ldc(value.asInstanceOf[Byte])
       case Type.SHORT =>
-        ldc.asInstanceOf[Short] match {
-          case i if i >= -1 && i <= 5 => mv.visitInsn(ICONST_0 + i)
-          case i if i >= Byte.MinValue && i <= Byte.MaxValue => mv.visitIntInsn(BIPUSH, i)
-          case i => mv.visitIntInsn(SIPUSH, i)
-        }
+        ldc(value.asInstanceOf[Short])
       case Type.INT =>
-        ldc.asInstanceOf[Int] match {
-          case i if i >= -1 && i <= 5 => mv.visitInsn(ICONST_0 + i)
-          case i if i >= Byte.MinValue && i <= Byte.MaxValue => mv.visitIntInsn(BIPUSH, i)
-          case i if i >= Short.MinValue && i <= Short.MaxValue => mv.visitIntInsn(SIPUSH, i)
-          case i => mv.visitLdcInsn(i)
-        }
+        ldc(value.asInstanceOf[Int])
       case Type.LONG =>
-        ldc.asInstanceOf[Long] match {
-          case 0L => mv.visitInsn(LCONST_0)
-          case 1L => mv.visitInsn(LCONST_1)
-          case l  => mv.visitLdcInsn(l)
-        }
+        ldc(value.asInstanceOf[Long])
       case Type.FLOAT =>
-        ldc.asInstanceOf[Float] match {
-          case 0.0f => mv.visitInsn(FCONST_0)
-          case 1.0f => mv.visitInsn(FCONST_1)
-          case 2.0f => mv.visitInsn(FCONST_2)
-          case f    => mv.visitLdcInsn(f)
-        }
+        ldc(value.asInstanceOf[Float])
       case Type.DOUBLE =>
-        ldc.asInstanceOf[Double] match {
-          case 0.0d => mv.visitInsn(DCONST_0)
-          case 1.0d => mv.visitInsn(DCONST_1)
-          case d    => mv.visitLdcInsn(d)
-        }
+        ldc(value.asInstanceOf[Double])
       case _ =>
-        mv.visitLdcInsn(ldc)
+        mv.visitLdcInsn(value)
+        new Stack(this, `type`)
     }
-    new Stack(this, `type`)
+  }
+
+  def ldc(z: Boolean): Stack = {
+    if (z) {
+      mv.visitInsn(ICONST_1)
+    } else {
+      mv.visitInsn(ICONST_0)
+    }
+    new Stack(this, Type.BOOLEAN_TYPE)
+  }
+
+  def ldc(c: Char): Stack = {
+    if (c <= 5) {
+      mv.visitInsn(ICONST_0 + c)
+    } else if (c <= Byte.MaxValue) {
+      mv.visitIntInsn(BIPUSH, c)
+    } else if (c <= Short.MaxValue) {
+      mv.visitIntInsn(SIPUSH, c)
+    } else {
+      mv.visitLdcInsn(c)
+    }
+    new Stack(this, Type.CHAR_TYPE)
+  }
+
+  def ldc(b: Byte): Stack = {
+    if (b >= -1 && b <= 5) {
+      mv.visitInsn(ICONST_0 + b)
+    } else {
+      mv.visitIntInsn(BIPUSH, b)
+    }
+    new Stack(this, Type.BYTE_TYPE)
+  }
+
+  def ldc(s: Short): Stack = {
+    if (s >= -1 && s <= 5) {
+      mv.visitInsn(ICONST_0 + s)
+    } else if (s >= Byte.MinValue && s <= Byte.MaxValue) {
+      mv.visitIntInsn(BIPUSH, s)
+    } else {
+      mv.visitIntInsn(SIPUSH, s)
+    }
+    new Stack(this, Type.SHORT_TYPE)
+  }
+
+  def ldc(i: Int): Stack = {
+    if (i >= -1 && i <= 5) {
+      mv.visitInsn(ICONST_0 + i)
+    } else if (i >= Byte.MinValue && i <= Byte.MaxValue) {
+      mv.visitIntInsn(BIPUSH, i)
+    } else if (i >= Short.MinValue && i <= Short.MaxValue) {
+      mv.visitIntInsn(SIPUSH, i)
+    } else {
+      mv.visitLdcInsn(i)
+    }
+    new Stack(this, Type.INT_TYPE)
+  }
+
+  def ldc(j: Long): Stack = {
+    if (j == 0L) {
+      mv.visitInsn(LCONST_0)
+    } else if (j == 1L) {
+      mv.visitInsn(LCONST_1)
+    } else {
+      mv.visitLdcInsn(j)
+    }
+    new Stack(this, Type.LONG_TYPE)
+  }
+
+  def ldc(f: Float): Stack = {
+    if (f == 0.0f) {
+      mv.visitInsn(FCONST_0)
+    } else if (f == 1.0f) {
+      mv.visitInsn(FCONST_1)
+    } else if (f == 2.0f) {
+      mv.visitInsn(FCONST_2)
+    } else {
+      mv.visitLdcInsn(f)
+    }
+    new Stack(this, Type.FLOAT_TYPE)
+  }
+
+  def ldc(d: Double): Stack = {
+    if (d == 0.0d) {
+      mv.visitInsn(DCONST_0)
+    } else if (d == 1.0d) {
+      mv.visitInsn(DCONST_1)
+    } else {
+      mv.visitLdcInsn(d)
+    }
+    new Stack(this, Type.DOUBLE_TYPE)
   }
 
   def invokeDynamic(
@@ -183,8 +240,15 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
 
     val mt = MethodType.methodType(
       classOf[CallSite],
-      Array(classOf[MethodHandles.Lookup], classOf[String], classOf[MethodType]) ++ bootstrapArguments.map(_._1))
-    val bootstrap = new Handle(H_INVOKESTATIC, bootstrapType.getInternalName(), bootstrapMethod, mt.toMethodDescriptorString())
+      Array(
+        classOf[MethodHandles.Lookup],
+        classOf[String],
+        classOf[MethodType]) ++ bootstrapArguments.map(_._1))
+    val bootstrap = new Handle(
+      H_INVOKESTATIC,
+      bootstrapType.getInternalName(),
+      bootstrapMethod,
+      mt.toMethodDescriptorString())
     mv.visitInvokeDynamicInsn(
       name,
       Type.getMethodDescriptor(
@@ -204,23 +268,45 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
     mv.visitFieldInsn(PUTSTATIC, owner.getInternalName(), name, fieldType.getDescriptor())
   }
 
-  def invokeStatic(owner: Type, name: String, arguments: Stack*): Unit = {
+  def invokeStatic(
+    owner: Type,
+    name: String,
+    arguments: Stack*): Unit = {
     invokeStatic(owner, false, name, arguments: _*)
   }
 
-  def invokeStatic(owner: Type, itf: Boolean, name: String, arguments: Stack*): Unit = {
+  def invokeStatic(
+    owner: Type,
+    itf: Boolean,
+    name: String,
+    arguments: Stack*): Unit = {
     invoke(INVOKESTATIC, owner, itf, name, Type.VOID_TYPE, arguments: _*)
   }
 
-  def invokeStatic(owner: Type, name: String, retType: Type, arguments: Stack*): Stack = {
+  def invokeStatic(
+    owner: Type,
+    name: String,
+    retType: Type,
+    arguments: Stack*): Stack = {
     invokeStatic(owner, false, name, retType, arguments: _*)
   }
 
-  def invokeStatic(owner: Type, itf: Boolean, name: String, retType: Type, arguments: Stack*): Stack = {
+  def invokeStatic(
+    owner: Type,
+    itf: Boolean,
+    name: String,
+    retType: Type,
+    arguments: Stack*): Stack = {
     invoke(INVOKESTATIC, owner, itf, name, retType, arguments: _*).get
   }
 
-  private def invoke(opcode: Int, owner: Type, itf: Boolean, name: String, retType: Type, arguments: Stack*): Option[Stack] = {
+  private def invoke(
+    opcode: Int,
+    owner: Type,
+    itf: Boolean,
+    name: String,
+    retType: Type,
+    arguments: Stack*): Option[Stack] = {
     mv.visitMethodInsn(
       opcode,
       owner.boxed.getInternalName(),
@@ -306,7 +392,7 @@ class MethodBuilder(thisType: Type, private[MethodBuilder] val mv: MethodVisitor
 object MethodBuilder {
 
   class FlowControl private[MethodBuilder] (mb: MethodBuilder, start: Label, end: Label) {
-    import mb._
+    import mb._ // scalastyle:ignore
 
     def continue(): Unit = {
       mv.visitJumpInsn(GOTO, start)
@@ -341,7 +427,7 @@ object MethodBuilder {
   }
 
   class Stack private[MethodBuilder] (mb: MethodBuilder, `type`: Type) extends Value(`type`) {
-    import mb._
+    import mb._ // scalastyle:ignore
 
     def store(local: Int): Var = {
       mv.visitVarInsn(`type`.getOpcode(ISTORE), local)
@@ -365,75 +451,130 @@ object MethodBuilder {
       mv.visitFieldInsn(PUTFIELD, owner.getInternalName(), name, fieldType.getDescriptor())
     }
 
-    def invokeV(name: String, arguments: Stack*): Unit = {
+    def invokeV(
+      name: String,
+      arguments: Stack*): Unit = {
       invokeV(`type`, name, arguments: _*)
     }
 
-    def invokeV(name: String, retType: Type, arguments: Stack*): Stack = {
+    def invokeV(
+      name: String,
+      retType: Type,
+      arguments: Stack*): Stack = {
       invokeV(`type`, name, retType, arguments: _*)
     }
 
-    def invokeV(owner: Type, name: String, arguments: Stack*): Unit = {
+    def invokeV(
+      owner: Type,
+      name: String,
+      arguments: Stack*): Unit = {
       invoke(INVOKEVIRTUAL, owner, false, name, Type.VOID_TYPE, arguments: _*)
     }
 
-    def invokeV(owner: Type, name: String, retType: Type, arguments: Stack*): Stack = {
+    def invokeV(
+      owner: Type,
+      name: String,
+      retType: Type,
+      arguments: Stack*): Stack = {
       invoke(INVOKEVIRTUAL, owner, false, name, retType, arguments: _*).get
     }
 
-    def invokeI(name: String, arguments: Stack*): Unit = {
+    def invokeI(
+      name: String,
+      arguments: Stack*): Unit = {
       invokeI(`type`, name, arguments: _*)
     }
 
-    def invokeI(name: String, retType: Type, arguments: Stack*): Stack = {
+    def invokeI(
+      name: String,
+      retType: Type,
+      arguments: Stack*): Stack = {
       invokeI(`type`, name, retType, arguments: _*)
     }
 
-    def invokeI(owner: Type, name: String, arguments: Stack*): Unit = {
+    def invokeI(
+      owner: Type,
+      name: String,
+      arguments: Stack*): Unit = {
       invoke(INVOKEINTERFACE, owner, true, name, Type.VOID_TYPE, arguments: _*)
     }
 
-    def invokeI(owner: Type, name: String, retType: Type, arguments: Stack*): Stack = {
+    def invokeI(
+      owner: Type,
+      name: String,
+      retType: Type,
+      arguments: Stack*): Stack = {
       invoke(INVOKEINTERFACE, owner, true, name, retType, arguments: _*).get
     }
 
-    def invokeS(name: String, arguments: Stack*): Unit = {
+    def invokeS(
+      name: String,
+      arguments: Stack*): Unit = {
       invokeS(`type`, false, name, arguments: _*)
     }
 
-    def invokeS(itf: Boolean, name: String, arguments: Stack*): Unit = {
+    def invokeS(
+      itf: Boolean,
+      name: String,
+      arguments: Stack*): Unit = {
       invokeS(`type`, itf, name, arguments: _*)
     }
 
-    def invokeS(name: String, retType: Type, arguments: Stack*): Stack = {
+    def invokeS(
+      name: String,
+      retType: Type,
+      arguments: Stack*): Stack = {
       invokeS(`type`, false, name, retType, arguments: _*)
     }
 
-    def invokeS(itf: Boolean, name: String, retType: Type, arguments: Stack*): Stack = {
+    def invokeS(
+      itf: Boolean,
+      name: String,
+      retType: Type,
+      arguments: Stack*): Stack = {
       invokeS(`type`, itf, name, retType, arguments: _*)
     }
 
-    def invokeS(owner: Type, name: String, arguments: Stack*): Unit = {
+    def invokeS(
+      owner: Type,
+      name: String,
+      arguments: Stack*): Unit = {
       invokeS(owner, false, name, arguments: _*)
     }
 
-    def invokeS(owner: Type, itf: Boolean, name: String, arguments: Stack*): Unit = {
+    def invokeS(
+      owner: Type,
+      itf: Boolean,
+      name: String,
+      arguments: Stack*): Unit = {
       invoke(INVOKESPECIAL, owner, itf, name, Type.VOID_TYPE, arguments: _*)
     }
 
-    def invokeS(owner: Type, name: String, retType: Type, arguments: Stack*): Stack = {
+    def invokeS(
+      owner: Type,
+      name: String,
+      retType: Type,
+      arguments: Stack*): Stack = {
       invokeS(owner, false, name, retType, arguments: _*)
     }
 
-    def invokeS(owner: Type, itf: Boolean, name: String, retType: Type, arguments: Stack*): Stack = {
+    def invokeS(
+      owner: Type,
+      itf: Boolean,
+      name: String,
+      retType: Type,
+      arguments: Stack*): Stack = {
       invoke(INVOKESPECIAL, owner, itf, name, retType, arguments: _*).get
     }
 
-    def invokeInit(arguments: Stack*): Unit = {
+    def invokeInit(
+      arguments: Stack*): Unit = {
       invokeInit(`type`, arguments: _*)
     }
 
-    def invokeInit(owner: Type, arguments: Stack*): Unit = {
+    def invokeInit(
+      owner: Type,
+      arguments: Stack*): Unit = {
       invokeS(owner, "<init>", arguments: _*)
     }
 
@@ -513,15 +654,15 @@ object MethodBuilder {
 
     def unbox(): Stack = {
       `type`.getClassName() match {
-        case "java.lang.Boolean"   => invokeV("booleanValue", Type.BOOLEAN_TYPE)
+        case "java.lang.Boolean" => invokeV("booleanValue", Type.BOOLEAN_TYPE)
         case "java.lang.Character" => invokeV("charValue", Type.CHAR_TYPE)
-        case "java.lang.Byte"      => invokeV("byteValue", Type.BYTE_TYPE)
-        case "java.lang.Short"     => invokeV("shortValue", Type.SHORT_TYPE)
-        case "java.lang.Integer"   => invokeV("intValue", Type.INT_TYPE)
-        case "java.lang.Long"      => invokeV("longValue", Type.LONG_TYPE)
-        case "java.lang.Float"     => invokeV("floatValue", Type.FLOAT_TYPE)
-        case "java.lang.Double"    => invokeV("doubleValue", Type.DOUBLE_TYPE)
-        case _                     => this
+        case "java.lang.Byte" => invokeV("byteValue", Type.BYTE_TYPE)
+        case "java.lang.Short" => invokeV("shortValue", Type.SHORT_TYPE)
+        case "java.lang.Integer" => invokeV("intValue", Type.INT_TYPE)
+        case "java.lang.Long" => invokeV("longValue", Type.LONG_TYPE)
+        case "java.lang.Float" => invokeV("floatValue", Type.FLOAT_TYPE)
+        case "java.lang.Double" => invokeV("doubleValue", Type.DOUBLE_TYPE)
+        case _ => this
       }
     }
 
@@ -672,7 +813,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         ifelse(IFEQ)(`then`, `else`)
       } else {
-        ifEq(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
+        ifEq(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
       }
     }
 
@@ -685,7 +827,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         unless(IFEQ)(block)
       } else {
-        unlessEq(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
+        unlessEq(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
       }
     }
 
@@ -694,7 +837,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         ifelse(IFNE)(`then`, `else`)
       } else {
-        ifNe(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
+        ifNe(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
       }
     }
 
@@ -707,7 +851,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         unless(IFNE)(block)
       } else {
-        unlessNe(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
+        unlessNe(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
       }
     }
 
@@ -716,7 +861,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         ifelse(IFLE)(`then`, `else`)
       } else {
-        ifLessThanOrEqual(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
+        ifLessThanOrEqual(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
       }
     }
 
@@ -729,7 +875,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         unless(IFLE)(block)
       } else {
-        unlessLessThanOrEqual(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
+        unlessLessThanOrEqual(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
       }
     }
 
@@ -738,7 +885,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         ifelse(IFLT)(`then`, `else`)
       } else {
-        ifLessThan(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
+        ifLessThan(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
       }
     }
 
@@ -751,7 +899,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         unless(IFLT)(block)
       } else {
-        unlessLessThan(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
+        unlessLessThan(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
       }
     }
 
@@ -760,7 +909,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         ifelse(IFGE)(`then`, `else`)
       } else {
-        ifGreaterThanOrEqual(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
+        ifGreaterThanOrEqual(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
       }
     }
 
@@ -773,7 +923,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         unless(IFGE)(block)
       } else {
-        unlessGreaterThanOrEqual(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
+        unlessGreaterThanOrEqual(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
       }
     }
 
@@ -782,7 +933,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         ifelse(IFGT)(`then`, `else`)
       } else {
-        ifGreaterThan(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
+        ifGreaterThan(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(`then`, `else`)
       }
     }
 
@@ -795,7 +947,8 @@ object MethodBuilder {
       if (isBoolean || isChar || isInteger) {
         unless(IFGT)(block)
       } else {
-        unlessGreaterThan(if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
+        unlessGreaterThan(
+          if (isLong) ldc(0L) else if (isFloat) ldc(0.0f) else ldc(0.0d))(block)
       }
     }
 
@@ -1369,8 +1522,9 @@ object MethodBuilder {
     }
   }
 
-  class Var private[MethodBuilder] (mb: MethodBuilder, `type`: Type, val local: Int) extends Value(`type`) {
-    import mb._
+  class Var private[MethodBuilder] (
+    mb: MethodBuilder, `type`: Type, val local: Int) extends Value(`type`) {
+    import mb._ // scalastyle:ignore
 
     def push(): Stack = {
       mv.visitVarInsn(`type`.getOpcode(ILOAD), local)

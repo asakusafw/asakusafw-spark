@@ -29,10 +29,10 @@ import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 trait MasterCheck extends JoinOperatorFragmentClassBuilder {
 
   val opInfo: OperatorInfo
-  import opInfo._
+  import opInfo._ // scalastyle:ignore
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     masterVar.push().ifNull({
       getOutputField(mb, outputs(MasterCheckOp.ID_OUTPUT_MISSED))
     }, {

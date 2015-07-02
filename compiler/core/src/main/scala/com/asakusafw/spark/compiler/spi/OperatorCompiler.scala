@@ -55,20 +55,24 @@ object OperatorCompiler {
     branchKeys: BranchKeys,
     broadcastIds: BroadcastIds)
 
-  private def getCompiler(operator: Operator)(implicit context: Context): Seq[OperatorCompiler] = {
+  private def getCompiler(
+    operator: Operator)(implicit context: Context): Seq[OperatorCompiler] = {
     apply(context.jpContext.getClassLoader).filter(_.support(operator))
   }
 
-  def support(operator: Operator, operatorType: OperatorType)(implicit context: Context): Boolean = {
+  def support(
+    operator: Operator, operatorType: OperatorType)(implicit context: Context): Boolean = {
     getCompiler(operator).exists(_.operatorType == operatorType)
   }
 
-  def compile(operator: Operator, operatorType: OperatorType)(implicit context: Context): Type = {
+  def compile(
+    operator: Operator, operatorType: OperatorType)(implicit context: Context): Type = {
     val compilers = getCompiler(operator).filter(_.operatorType == operatorType)
     assert(compilers.size != 0,
       s"The compiler supporting operator (${operator}, ${operatorType}) is not found.")
     assert(compilers.size == 1,
-      s"The number of compiler supporting operator (${operator}, ${operatorType}) should be 1: ${compilers.size}")
+      "The number of compiler supporting operator "
+        + s"(${operator}, ${operatorType}) should be 1: ${compilers.size}")
     compilers.head.compile(operator)
   }
 

@@ -20,7 +20,9 @@ import org.objectweb.asm.FieldVisitor
 
 class FieldBuilder(fv: FieldVisitor) {
 
-  def newAnnotation(desc: String, visible: Boolean)(implicit block: AnnotationBuilder => Unit): Unit = {
+  def newAnnotation(
+    desc: String,
+    visible: Boolean)(implicit block: AnnotationBuilder => Unit): Unit = {
     val av = fv.visitAnnotation(desc, visible)
     try {
       block(new AnnotationBuilder(av))

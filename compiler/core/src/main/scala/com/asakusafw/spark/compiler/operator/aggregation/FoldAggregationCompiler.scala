@@ -36,7 +36,7 @@ class FoldAggregationCompiler extends AggregationCompiler {
   def compile(operator: UserOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(annotationDesc.resolveClass == of,
       s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
@@ -76,32 +76,34 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
       override def defConstructors(ctorDef: ConstructorDef): Unit = {
         ctorDef.newInit(Seq.empty) { mb =>
-          import mb._
+          import mb._ // scalastyle:ignore
           thisVar.push().invokeInit(superType)
           initOperatorField(mb)
         }
       }
 
       override def defMapSideCombine(mb: MethodBuilder): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         val partialAggregation = annotationDesc.getElements()("partialAggregation")
           .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]
         `return`(ldc(partialAggregation == PartialAggregation.PARTIAL))
       }
 
       override def defNewCombiner(mb: MethodBuilder): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
         `return`(pushNew0(combinerType))
       }
 
-      override def defInitCombinerByValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
-        import mb._
+      override def defInitCombinerByValue(
+        mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
+        import mb._ // scalastyle:ignore
         combinerVar.push().invokeV("copyFrom", valueVar.push())
         `return`(combinerVar.push())
       }
 
-      override def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
-        import mb._
+      override def defMergeValue(
+        mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
+        import mb._ // scalastyle:ignore
         getOperatorField(mb).invokeV(
           methodDesc.getName,
           combinerVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
@@ -112,15 +114,18 @@ class FoldAggregationCompiler extends AggregationCompiler {
         `return`(combinerVar.push())
       }
 
-      override def defInitCombinerByCombiner(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
-        import mb._
+      override def defInitCombinerByCombiner(
+        mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
+        import mb._ // scalastyle:ignore
         comb1Var.push().invokeV("copyFrom", comb2Var.push())
         `return`(comb1Var.push())
       }
 
-      override def defMergeCombiners(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
-        import mb._
-        `return`(thisVar.push().invokeV("mergeValue", combinerType, comb1Var.push(), comb2Var.push()))
+      override def defMergeCombiners(
+        mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
+        import mb._ // scalastyle:ignore
+        `return`(
+          thisVar.push().invokeV("mergeValue", combinerType, comb1Var.push(), comb2Var.push()))
       }
     }
 

@@ -43,7 +43,7 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
   override def compile(operator: CoreOperator)(implicit context: Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.getCoreOperatorKind}")
@@ -52,7 +52,9 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
     assert(outputs.size == 1,
       s"The size of outputs should be 1: ${outputs.size}")
 
-    val mappings = ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator).toSeq
+    val mappings =
+      ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator)
+        .toSeq
 
     val builder = new CoreOperatorFragmentClassBuilder(
       context.flowId,
@@ -60,7 +62,7 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
       outputs.head.dataModelType) {
 
       override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._
+        import mb._ // scalastyle:ignore
 
         thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
 
@@ -70,7 +72,8 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
           val destProperty = mapping.getDestinationPort.dataModelRef
             .findProperty(mapping.getDestinationProperty)
           assert(srcProperty.getType.asType == destProperty.getType.asType,
-            s"The source and destination types should be the same: (${srcProperty.getType}, ${destProperty.getType}")
+            "The source and destination types should be the same: " +
+              s"(${srcProperty.getType}, ${destProperty.getType}")
 
           getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
             .invokeV(

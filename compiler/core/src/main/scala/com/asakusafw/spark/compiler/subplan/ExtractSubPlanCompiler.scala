@@ -31,6 +31,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, SubPlanCompiler }
+import com.asakusafw.spark.compiler.subplan.ExtractSubPlanCompiler._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -38,8 +39,6 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class ExtractSubPlanCompiler extends SubPlanCompiler {
-
-  import ExtractSubPlanCompiler._
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.EXTRACT
 
@@ -66,7 +65,10 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
+        methodDef.newMethod(
+          "fragments",
+          classOf[(_, _)].asType,
+          Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
           new MethodSignatureBuilder()
             .newParameterType {
               _.newClassType(classOf[Map[_, _]].asType) {
@@ -102,8 +104,9 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
-            val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+            import mb._ // scalastyle:ignore
+            val broadcastsVar =
+              `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
             val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
             implicit val compilerContext =
@@ -118,8 +121,11 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
 
             `return`(
               getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-                invokeV("apply", classOf[(_, _)].asType,
-                  fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
+                invokeV(
+                  "apply",
+                  classOf[(_, _)].asType,
+                  fragmentVar.push().asType(classOf[AnyRef].asType),
+                  outputsVar.push().asType(classOf[AnyRef].asType)))
           }
       }
     }
@@ -135,7 +141,7 @@ object ExtractSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
       val extractDriver = pushNew(driverType)
       extractDriver.dup().invokeInit(

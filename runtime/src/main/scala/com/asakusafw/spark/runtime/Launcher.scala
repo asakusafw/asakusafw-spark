@@ -50,9 +50,12 @@ object Launcher {
         case (key, value) => sparkConf.set(key, value)
       }
 
-      if (!sparkConf.contains(Props.Parallelism) && !sparkConf.contains("spark.default.parallelism")) {
+      if (!sparkConf.contains(Props.Parallelism)
+        && !sparkConf.contains("spark.default.parallelism")) {
         if (Logger.isWarnEnabled) {
-          Logger.warn(s"`${Props.Parallelism}` is not set, we set parallelism to ${Props.ParallelismFallback}.")
+          Logger.warn(
+            s"`${Props.Parallelism}` is not set, " +
+              s"we set parallelism to ${Props.ParallelismFallback}.")
         }
       }
 

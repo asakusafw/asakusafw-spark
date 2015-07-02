@@ -31,11 +31,21 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.operator.{ EdgeFragmentClassBuilder, OperatorInfo, OutputFragmentClassBuilder }
+import com.asakusafw.spark.compiler.operator.{
+  EdgeFragmentClassBuilder,
+  OperatorInfo,
+  OutputFragmentClassBuilder
+}
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, OperatorType, SubPlanCompiler }
+import com.asakusafw.spark.compiler.spi.{
+  AggregationCompiler,
+  OperatorCompiler,
+  OperatorType,
+  SubPlanCompiler
+}
+import com.asakusafw.spark.compiler.subplan.AggregateSubPlanCompiler._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
@@ -46,8 +56,6 @@ import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator.Fold
 
 class AggregateSubPlanCompiler extends SubPlanCompiler {
-
-  import AggregateSubPlanCompiler._
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.AGGREGATE
 
@@ -61,7 +69,7 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._
+    import operatorInfo._ // scalastyle:ignore
 
     assert(inputs.size == 1,
       s"The size of inputs should be 1: ${inputs.size}")
@@ -84,7 +92,10 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
+        methodDef.newMethod(
+          "fragments",
+          classOf[(_, _)].asType,
+          Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
           new MethodSignatureBuilder()
             .newParameterType {
               _.newClassType(classOf[Map[_, _]].asType) {
@@ -116,8 +127,9 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
-            val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+            import mb._ // scalastyle:ignore
+            val broadcastsVar =
+              `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
             val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
             val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)(
@@ -131,8 +143,11 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
             `return`(
               getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-                invokeV("apply", classOf[(_, _)].asType,
-                  fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
+                invokeV(
+                  "apply",
+                  classOf[(_, _)].asType,
+                  fragmentVar.push().asType(classOf[AnyRef].asType),
+                  outputsVar.push().asType(classOf[AnyRef].asType)))
           }
 
         methodDef.newMethod("aggregation", classOf[Aggregation[_, _, _]].asType, Seq.empty,
@@ -145,8 +160,9 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
-            val aggregationType = AggregationClassBuilder.getOrCompile(context.flowId, operator, context.jpContext)
+            import mb._ // scalastyle:ignore
+            val aggregationType =
+              AggregationClassBuilder.getOrCompile(context.flowId, operator, context.jpContext)
             `return`(pushNew0(aggregationType))
           }
       }
@@ -163,12 +179,13 @@ object AggregateSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
-      val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
+      val primaryOperator =
+        subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
 
       val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
-      import operatorInfo._
+      import operatorInfo._ // scalastyle:ignore
 
       assert(inputs.size == 1,
         s"The size of inputs should be 1: ${inputs.size}")
@@ -179,7 +196,9 @@ object AggregateSubPlanCompiler {
         if (input.getGroup.getGrouping.isEmpty) {
           ldc(1)
         } else {
-          numPartitions(context.mb, context.scVar.push())(subplan.findInput(input.getOpposites.head.getOwner))
+          numPartitions(
+            context.mb,
+            context.scVar.push())(subplan.findInput(input.getOpposites.head.getOwner))
         })
       val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
 

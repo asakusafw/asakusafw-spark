@@ -35,14 +35,14 @@ package object asm {
     def boxed: Type = {
       `type`.getSort() match {
         case Type.BOOLEAN => classOf[JBoolean].asType
-        case Type.CHAR    => classOf[JChar].asType
-        case Type.BYTE    => classOf[JByte].asType
-        case Type.SHORT   => classOf[JShort].asType
-        case Type.INT     => classOf[JInt].asType
-        case Type.LONG    => classOf[JLong].asType
-        case Type.FLOAT   => classOf[JFloat].asType
-        case Type.DOUBLE  => classOf[JDouble].asType
-        case _            => `type`
+        case Type.CHAR => classOf[JChar].asType
+        case Type.BYTE => classOf[JByte].asType
+        case Type.SHORT => classOf[JShort].asType
+        case Type.INT => classOf[JInt].asType
+        case Type.LONG => classOf[JLong].asType
+        case Type.FLOAT => classOf[JFloat].asType
+        case Type.DOUBLE => classOf[JDouble].asType
+        case _ => `type`
       }
     }
 
@@ -123,8 +123,11 @@ package object asm {
       classOf[JDouble] -> classOf[Double])
   }
 
-  implicit val emptyAnnotationBuilderBlock = ClassBuilder.emptyAnnotationBuilderBlock
-  implicit val emptyFieldBuilderBlock = ClassBuilder.emptyFieldBuilderBlock
+  implicit val emptyAnnotationBuilderBlock =
+    ClassBuilder.emptyAnnotationBuilderBlock
+  implicit val emptyFieldBuilderBlock =
+    ClassBuilder.emptyFieldBuilderBlock
 
-  implicit val emptyTypeArgumentSignatureBuilderBlock = TypeSignatureBuilder.emptyTypeArgumentSignatureBuilderBlock
+  implicit val emptyTypeArgumentSignatureBuilderBlock =
+    TypeSignatureBuilder.emptyTypeArgumentSignatureBuilderBlock
 }

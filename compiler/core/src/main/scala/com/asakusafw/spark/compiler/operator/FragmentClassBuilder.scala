@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicLong
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.spark.compiler.operator.FragmentClassBuilder._
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -28,16 +29,17 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class FragmentClassBuilder(
   val flowId: String,
   val dataModelType: Type)
-    extends ClassBuilder(
-      Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/Fragment$$${FragmentClassBuilder.nextId};"),
-      new ClassSignatureBuilder()
-        .newSuperclass {
-          _.newClassType(classOf[Fragment[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-          }
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/Fragment$$${nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[Fragment[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
         }
-        .build(),
-      classOf[Fragment[_]].asType) {
+      }
+      .build(),
+    classOf[Fragment[_]].asType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -46,7 +48,7 @@ abstract class FragmentClassBuilder(
   }
 
   protected def initReset(mb: MethodBuilder): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))
   }
 
@@ -54,14 +56,14 @@ abstract class FragmentClassBuilder(
     super.defMethods(methodDef)
 
     methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
       thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
       `return`()
     }
 
     methodDef.newMethod("add", Seq(dataModelType)) { mb =>
-      import mb._
+      import mb._ // scalastyle:ignore
       thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(false))
       defAddMethod(mb, `var`(dataModelType, thisVar.nextLocal))
     }
@@ -73,7 +75,7 @@ abstract class FragmentClassBuilder(
   def defReset(mb: MethodBuilder): Unit
 
   protected def unlessReset(mb: MethodBuilder)(b: => Unit): Unit = {
-    import mb._
+    import mb._ // scalastyle:ignore
     thisVar.push().getField("reset", Type.BOOLEAN_TYPE).unlessTrue {
       b
       thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))

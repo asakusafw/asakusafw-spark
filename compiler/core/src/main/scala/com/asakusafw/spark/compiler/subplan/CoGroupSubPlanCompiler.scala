@@ -33,9 +33,13 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator._
-import com.asakusafw.spark.compiler.ordering.{ GroupingOrderingClassBuilder, SortOrderingClassBuilder }
+import com.asakusafw.spark.compiler.ordering.{
+  GroupingOrderingClassBuilder,
+  SortOrderingClassBuilder
+}
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
+import com.asakusafw.spark.compiler.subplan.CoGroupSubPlanCompiler._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -43,8 +47,6 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class CoGroupSubPlanCompiler extends SubPlanCompiler {
-
-  import CoGroupSubPlanCompiler._
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.COGROUP
 
@@ -70,7 +72,10 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       override def defMethods(methodDef: MethodDef): Unit = {
         super.defMethods(methodDef)
 
-        methodDef.newMethod("fragments", classOf[(_, _)].asType, Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
+        methodDef.newMethod(
+          "fragments",
+          classOf[(_, _)].asType,
+          Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
           new MethodSignatureBuilder()
             .newParameterType {
               _.newClassType(classOf[Map[_, _]].asType) {
@@ -110,8 +115,9 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
               }
             }
             .build()) { mb =>
-            import mb._
-            val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+            import mb._ // scalastyle:ignore
+            val broadcastsVar =
+              `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
             val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
             implicit val compilerContext =
@@ -134,8 +140,11 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
             `return`(
               getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-                invokeV("apply", classOf[(_, _)].asType,
-                  fragmentVar.push().asType(classOf[AnyRef].asType), outputsVar.push().asType(classOf[AnyRef].asType)))
+                invokeV(
+                  "apply",
+                  classOf[(_, _)].asType,
+                  fragmentVar.push().asType(classOf[AnyRef].asType),
+                  outputsVar.push().asType(classOf[AnyRef].asType)))
           }
       }
     }
@@ -151,12 +160,12 @@ object CoGroupSubPlanCompiler {
     override def newInstance(
       driverType: Type,
       subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._
+      import context.mb._ // scalastyle:ignore
 
       val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
       val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
-      import operatorInfo._
+      import operatorInfo._ // scalastyle:ignore
 
       val properties = inputs.map { input =>
         val dataModelRef = input.dataModelRef
@@ -174,7 +183,9 @@ object CoGroupSubPlanCompiler {
         if (properties.head.isEmpty) {
           ldc(1)
         } else {
-          numPartitions(context.mb, context.scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
+          numPartitions(
+            context.mb,
+            context.scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
         })
       val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
 
@@ -205,7 +216,9 @@ object CoGroupSubPlanCompiler {
                         prevSubPlanOutput <- subPlanInput.getOpposites.toSeq
                         marker = prevSubPlanOutput.getOperator
                       } {
-                        builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+                        builder.invokeI(
+                          NameTransformer.encode("+="),
+                          classOf[mutable.Builder[_, _]].asType,
                           context.rddsVar.push().invokeI(
                             "apply",
                             classOf[AnyRef].asType,
@@ -215,12 +228,15 @@ object CoGroupSubPlanCompiler {
                             .asType(classOf[AnyRef].asType))
                       }
 
-                      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+                      builder
+                        .invokeI("result", classOf[AnyRef].asType)
+                        .cast(classOf[Seq[_]].asType)
                     }.asType(classOf[AnyRef].asType),
                     {
                       getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
                         .invokeV("apply", classOf[Option[_]].asType, {
-                          val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
+                          val dataModelRef =
+                            context.jpContext.getDataModelLoader.load(input.getDataType)
                           pushNew0(
                             SortOrderingClassBuilder.getOrCompile(
                               context.flowId,
@@ -239,7 +255,9 @@ object CoGroupSubPlanCompiler {
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         }, {
           // ShuffleKey.GroupingOrdering
-          pushNew0(GroupingOrderingClassBuilder.getOrCompile(context.flowId, properties.head, context.jpContext))
+          pushNew0(
+            GroupingOrderingClassBuilder
+              .getOrCompile(context.flowId, properties.head, context.jpContext))
             .asType(classOf[Ordering[ShuffleKey]].asType)
         }, {
           // Partitioner
