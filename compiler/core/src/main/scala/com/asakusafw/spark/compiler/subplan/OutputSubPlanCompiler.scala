@@ -24,11 +24,10 @@ import scala.reflect.NameTransformer
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph._
+import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -49,19 +48,11 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
       operator.getName, operator.getInfo,
       Seq(context.jpContext.getOptions.getRuntimeWorkingPath(s"${operator.getName}/part-*")))
 
-    val builder = new OutputDriverClassBuilder(context.flowId, operator.getDataType.asType) {
-
-      override val label: String = subPlanInfo.getLabel
-
-      override def defMethods(methodDef: MethodDef): Unit = {
-        super.defMethods(methodDef)
-
-        methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
-          import mb._ // scalastyle:ignore
-          `return`(ldc(context.jpContext.getOptions.getRuntimeWorkingPath(operator.getName)))
-        }
-      }
-    }
+    val builder = new OutputDriverClassBuilder(
+      operator)(
+      subPlanInfo.getLabel)(
+      context.flowId,
+      context.jpContext)
 
     context.jpContext.addClass(builder)
   }

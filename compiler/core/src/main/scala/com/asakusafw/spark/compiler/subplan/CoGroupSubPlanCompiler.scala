@@ -16,33 +16,26 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.reflect.{ ClassTag, NameTransformer }
+import scala.reflect.NameTransformer
 
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
-import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.compiler.operator._
+import com.asakusafw.lang.compiler.model.graph.{ Group, OperatorOutput, UserOperator }
+import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.operator.OperatorInfo
 import com.asakusafw.spark.compiler.ordering.{
   GroupingOrderingClassBuilder,
   SortOrderingClassBuilder
 }
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
-import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
-import com.asakusafw.spark.compiler.subplan.CoGroupSubPlanCompiler._
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
-import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -59,95 +52,14 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       s"The dominant operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
-    val builder = new CoGroupDriverClassBuilder(context.flowId) {
-
-      override val jpContext = context.jpContext
-
-      override val branchKeys: BranchKeys = context.branchKeys
-
-      override val label: String = subPlanInfo.getLabel
-
-      override val subplanOutputs: Seq[SubPlan.Output] = subplan.getOutputs.toSeq
-
-      override def defMethods(methodDef: MethodDef): Unit = {
-        super.defMethods(methodDef)
-
-        methodDef.newMethod(
-          "fragments",
-          classOf[(_, _)].asType,
-          Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
-          new MethodSignatureBuilder()
-            .newParameterType {
-              _.newClassType(classOf[Map[_, _]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
-                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                    _.newClassType(classOf[Broadcast[_]].asType) {
-                      _.newTypeArgument()
-                    }
-                  }
-              }
-            }
-            .newReturnType {
-              _.newClassType(classOf[(_, _)].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                  _.newClassType(classOf[Fragment[_]].asType) {
-                    _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                      _.newClassType(classOf[Seq[_]].asType) {
-                        _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                          _.newClassType(classOf[Iterable[_]].asType) {
-                            _.newTypeArgument()
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                    _.newClassType(classOf[Map[_, _]].asType) {
-                      _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-                        .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                          _.newClassType(classOf[OutputFragment[_]].asType) {
-                            _.newTypeArgument()
-                          }
-                        }
-                    }
-                  }
-              }
-            }
-            .build()) { mb =>
-            import mb._ // scalastyle:ignore
-            val broadcastsVar =
-              `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-            val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
-
-            implicit val compilerContext =
-              OperatorCompiler.Context(
-                flowId = context.flowId,
-                jpContext = context.jpContext,
-                branchKeys = context.branchKeys,
-                broadcastIds = context.broadcastIds)
-            val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)
-            val fragmentVar = {
-              val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-              val outputs = operator.getOutputs.map(fragmentBuilder.build)
-              val fragment = pushNew(t)
-              fragment.dup().invokeInit(
-                broadcastsVar.push()
-                  +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
-              fragment.store(nextLocal.getAndAdd(fragment.size))
-            }
-            val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
-
-            `return`(
-              getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-                invokeV(
-                  "apply",
-                  classOf[(_, _)].asType,
-                  fragmentVar.push().asType(classOf[AnyRef].asType),
-                  outputsVar.push().asType(classOf[AnyRef].asType)))
-          }
-      }
-    }
+    val builder = new CoGroupDriverClassBuilder(
+      operator)(
+      subPlanInfo.getLabel,
+      subplan.getOutputs.toSeq)(
+      context.flowId,
+      context.jpContext,
+      context.branchKeys,
+      context.broadcastIds)
 
     context.jpContext.addClass(builder)
   }
