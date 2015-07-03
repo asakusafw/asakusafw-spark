@@ -56,7 +56,8 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
       case (k, v) => job.getConfiguration.set(k, v)
     }
 
-    val future = Future {
+    val future = zipBroadcasts().map { broadcasts =>
+
       sc.clearCallSite()
       sc.setCallSite(label)
 
@@ -67,7 +68,7 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
           classTag[K].runtimeClass.asInstanceOf[Class[K]],
           classTag[V].runtimeClass.asInstanceOf[Class[V]])
 
-      branch(rdd.asInstanceOf[RDD[(_, V)]])
+      branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts)
     }
     branchKeys.map(key => key -> future.map(_(key))).toMap
   }

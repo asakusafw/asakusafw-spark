@@ -50,50 +50,32 @@ trait Branching[T] {
   def fragments(
     broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
-  def branch(rdd: RDD[(_, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
-    val broadcasts = this.broadcasts.map {
-      case (key, future) => key -> Await.result(future, Duration.Inf)
-    }.toMap[BroadcastId, Broadcast[_]]
+  def branch(
+    rdd: RDD[(_, T)],
+    broadcasts: Map[BroadcastId, Broadcast[_]]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
         rdd.mapPartitions({ iter =>
-          f(iter, broadcasts).map {
+          iterateFragments(iter, broadcasts).map {
             case (Branch(_, k), v) => (k, v)
           }
         }, preservesPartitioning = true))
     } else {
       rdd.branch[ShuffleKey, Array[Byte]](
         branchKeys,
-        { iter =>
-          val combiners = aggregations.collect {
-            case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
-          }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]
-
-          if (combiners.isEmpty) {
-            f(iter, broadcasts).map {
-              case (bk @ Branch(b, _), value) => (bk, serialize(b, value))
-            }
-          } else {
-            f(iter, broadcasts).flatMap {
-              case (Branch(b, k), v) if combiners.contains(b) =>
-                combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]]
-                  .insert(k, v)
-                Iterator.empty
-              case (bk @ Branch(b, _), v) => Iterator((bk, serialize(b, v)))
-            } ++ combiners.iterator.flatMap {
-              case (b, combiner) =>
-                combiner.iterator.map {
-                  case (k, v) => (Branch(b, k), serialize(b, v))
-                }
-            }
-          }
+        if (aggregations.values.exists(_.mapSideCombine)) {
+          iterateWithCombiner(_, broadcasts)
+        } else {
+          iterateWithoutCombiner(_, broadcasts)
         },
-        partitioners = partitioners.map {
-          case (branchKey, Some(part)) => branchKey -> part
-          case (branchKey, None) => branchKey -> IdentityPartitioner(rdd.partitions.length)
-        },
+        partitioners =
+          partitioners.map {
+            case (branchKey, Some(part)) => branchKey -> part
+            case (branchKey, None) => branchKey -> IdentityPartitioner(rdd.partitions.length)
+          },
         keyOrderings = orderings,
-        preservesPartitioning = true).map {
+        preservesPartitioning = true)
+        .map {
           case (b, rdd) =>
             b -> rdd.mapPartitions({ iter =>
               iter.map {
@@ -104,7 +86,36 @@ trait Branching[T] {
     }
   }
 
-  private def f(
+  private def iterateWithCombiner(
+    iter: Iterator[(_, T)],
+    broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
+    val combiners = aggregations.collect {
+      case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
+    }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]
+
+    iterateFragments(iter, broadcasts).flatMap {
+      case (Branch(b, k), v) if combiners.contains(b) =>
+        combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]]
+          .insert(k, v)
+        Iterator.empty
+      case (bk @ Branch(b, _), v) => Iterator((bk, serialize(b, v)))
+    } ++ combiners.iterator.flatMap {
+      case (b, combiner) =>
+        combiner.iterator.map {
+          case (k, v) => (Branch(b, k), serialize(b, v))
+        }
+    }
+  }
+
+  private def iterateWithoutCombiner(
+    iter: Iterator[(_, T)],
+    broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
+    iterateFragments(iter, broadcasts).map {
+      case (bk @ Branch(b, _), value) => (bk, serialize(b, value))
+    }
+  }
+
+  private def iterateFragments(
     iter: Iterator[(_, T)],
     broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], _)] = {
     val (fragment, outputs) = fragments(broadcasts)

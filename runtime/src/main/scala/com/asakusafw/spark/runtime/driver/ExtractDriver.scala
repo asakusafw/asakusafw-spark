@@ -36,33 +36,37 @@ abstract class ExtractDriver[T](
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
 
-    val future = (if (prevs.size == 1) {
-      prevs.head
-    } else {
-      Future.sequence(prevs).map { prevs =>
-        val part = Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*)
-        val (unioning, coalescing) = prevs.partition(_.partitions.size < part.numPartitions)
-        val coalesced = zipPartitions(
-          coalescing.map { prev =>
-            if (prev.partitions.size == part.numPartitions) {
-              prev
-            } else {
-              prev.coalesce(part.numPartitions, shuffle = false)
+    val future = zipBroadcasts().zip {
+      if (prevs.size == 1) {
+        prevs.head
+      } else {
+        Future.sequence(prevs).map { prevs =>
+          val part = Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*)
+          val (unioning, coalescing) = prevs.partition(_.partitions.size < part.numPartitions)
+          val coalesced = zipPartitions(
+            coalescing.map { prev =>
+              if (prev.partitions.size == part.numPartitions) {
+                prev
+              } else {
+                prev.coalesce(part.numPartitions, shuffle = false)
+              }
+            }, preservesPartitioning = false) {
+              _.iterator.flatten.asInstanceOf[Iterator[(_, T)]]
             }
-          }, preservesPartitioning = false) {
-            _.iterator.flatten.asInstanceOf[Iterator[(_, T)]]
+          if (unioning.isEmpty) {
+            coalesced
+          } else {
+            new UnionRDD(sc, coalesced +: unioning)
           }
-        if (unioning.isEmpty) {
-          coalesced
-        } else {
-          new UnionRDD(sc, coalesced +: unioning)
         }
       }
-    }).map { prev =>
-      sc.clearCallSite()
-      sc.setCallSite(label)
+    }.map {
+      case (broadcasts, prev) =>
 
-      branch(prev)
+        sc.clearCallSite()
+        sc.setCallSite(label)
+
+        branch(prev, broadcasts)
     }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

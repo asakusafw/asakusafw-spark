@@ -24,14 +24,25 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class SubPlanDriver(
-    @transient val sc: SparkContext,
-    val hadoopConf: Broadcast[Configuration],
-    @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]]) extends Serializable {
+  @transient val sc: SparkContext,
+  val hadoopConf: Broadcast[Configuration],
+  @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]]) extends Serializable {
 
   def label: String
 
   def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]
+
+  protected def zipBroadcasts(): Future[Map[BroadcastId, Broadcast[_]]] = {
+    (Future.successful(Map.empty[BroadcastId, Broadcast[_]]) /: broadcasts) {
+      case (broadcasts, (broadcastId, broadcast)) =>
+        broadcasts.zip(broadcast).map {
+          case (broadcasts, broadcast) =>
+            broadcasts + (broadcastId -> broadcast)
+        }
+    }
+  }
 }

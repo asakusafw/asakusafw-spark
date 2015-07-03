@@ -40,44 +40,46 @@ abstract class AggregateDriver[V, C](
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
 
-    val future = Future.sequence(prevs).map { prevs =>
-      sc.clearCallSite()
-      sc.setCallSite(label)
+    val future = zipBroadcasts().zip(Future.sequence(prevs)).map {
+      case (broadcasts, prevs) =>
 
-      val aggregated = {
-        if (aggregation.mapSideCombine) {
-          val part = Some(partitioner)
-          confluent(
-            prevs.map { prev =>
-              if (prev.partitioner == part) {
-                prev.asInstanceOf[RDD[(ShuffleKey, C)]]
-              } else {
-                prev.mapPartitions({ iter =>
-                  val combiner = aggregation.valueCombiner
-                  combiner.insertAll(iter)
-                  val context = TaskContext.get
-                  new InterruptibleIterator(context, combiner.iterator)
-                }, preservesPartitioning = true)
-              }
-            }, partitioner, sort)
-            .mapPartitions({ iter =>
-              val combiner = aggregation.combinerCombiner
-              combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })
-              val context = TaskContext.get
-              new InterruptibleIterator(context, combiner.iterator)
-            }, preservesPartitioning = true)
-        } else {
-          confluent(prevs, partitioner, sort)
-            .mapPartitions({ iter =>
-              val combiner = aggregation.valueCombiner
-              combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })
-              val context = TaskContext.get
-              new InterruptibleIterator(context, combiner.iterator)
-            }, preservesPartitioning = true)
+        sc.clearCallSite()
+        sc.setCallSite(label)
+
+        val aggregated = {
+          if (aggregation.mapSideCombine) {
+            val part = Some(partitioner)
+            confluent(
+              prevs.map { prev =>
+                if (prev.partitioner == part) {
+                  prev.asInstanceOf[RDD[(ShuffleKey, C)]]
+                } else {
+                  prev.mapPartitions({ iter =>
+                    val combiner = aggregation.valueCombiner
+                    combiner.insertAll(iter)
+                    val context = TaskContext.get
+                    new InterruptibleIterator(context, combiner.iterator)
+                  }, preservesPartitioning = true)
+                }
+              }, partitioner, sort)
+              .mapPartitions({ iter =>
+                val combiner = aggregation.combinerCombiner
+                combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })
+                val context = TaskContext.get
+                new InterruptibleIterator(context, combiner.iterator)
+              }, preservesPartitioning = true)
+          } else {
+            confluent(prevs, partitioner, sort)
+              .mapPartitions({ iter =>
+                val combiner = aggregation.valueCombiner
+                combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })
+                val context = TaskContext.get
+                new InterruptibleIterator(context, combiner.iterator)
+              }, preservesPartitioning = true)
+          }
         }
-      }
 
-      branch(aggregated.asInstanceOf[RDD[(_, C)]])
+        branch(aggregated.asInstanceOf[RDD[(_, C)]], broadcasts)
     }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap
