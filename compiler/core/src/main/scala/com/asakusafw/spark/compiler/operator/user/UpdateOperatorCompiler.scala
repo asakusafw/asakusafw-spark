@@ -21,7 +21,7 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -70,29 +70,38 @@ class UpdateOperatorCompiler extends UserOperatorCompiler {
           ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
-    val builder = new UserOperatorFragmentClassBuilder(
-      context.flowId,
+    val builder = new UpdateOperatorFragmentClassBuilder(
       inputs(Update.ID_INPUT).dataModelType,
       implementationClassType,
-      outputs) {
-
-      override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._ // scalastyle:ignore
-        getOperatorField(mb)
-          .invokeV(
-            methodDesc.getName,
-            dataModelVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
-              +: arguments.map { argument =>
-                ldc(argument.value)(ClassTag(argument.resolveClass))
-              }: _*)
-
-        getOutputField(mb, outputs.head)
-          .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
-
-        `return`()
-      }
-    }
+      outputs)(operatorInfo)
 
     context.jpContext.addClass(builder)
+  }
+}
+
+private class UpdateOperatorFragmentClassBuilder(
+  dataModelType: Type,
+  operatorType: Type,
+  opeartorOutputs: Seq[OperatorOutput])(
+    operatorInfo: OperatorInfo)(implicit context: UpdateOperatorCompiler#Context)
+  extends UserOperatorFragmentClassBuilder(
+    context.flowId, dataModelType, operatorType, opeartorOutputs) {
+
+  import operatorInfo._ // scalastyle:ignore
+
+  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+    import mb._ // scalastyle:ignore
+    getOperatorField(mb)
+      .invokeV(
+        methodDesc.getName,
+        dataModelVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
+          +: arguments.map { argument =>
+            ldc(argument.value)(ClassTag(argument.resolveClass))
+          }: _*)
+
+    getOutputField(mb, outputs.head)
+      .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
+
+    `return`()
   }
 }
