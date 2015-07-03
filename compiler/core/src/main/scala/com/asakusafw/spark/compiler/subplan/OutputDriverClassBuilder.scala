@@ -26,24 +26,28 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.objectweb.asm._
+import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.spark.compiler.subplan.OutputDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.OutputDriver
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-abstract class OutputDriverClassBuilder(
-  val flowId: String,
-  val dataModelType: Type)
+class OutputDriverClassBuilder(
+  val operator: ExternalOutput)(
+    val label: String)(
+      val flowId: String,
+      val jpContext: JPContext)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${flowId}/driver/OutputDriver$$${nextId};"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[OutputDriver[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, operator.getDataType.asType)
         }
       }
       .build(),
@@ -71,7 +75,9 @@ abstract class OutputDriverClassBuilder(
                     _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
                       _.newClassType(classOf[(_, _)].asType) {
                         _.newTypeArgument()
-                          .newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+                          .newTypeArgument(
+                            SignatureVisitor.INSTANCEOF,
+                            operator.getDataType.asType)
                       }
                     }
                   }
@@ -111,8 +117,17 @@ abstract class OutputDriverClassBuilder(
             .invokeV(
               "apply",
               classOf[ClassTag[_]].asType,
-              ldc(dataModelType).asType(classOf[Class[_]].asType)))
+              ldc(operator.getDataType.asType).asType(classOf[Class[_]].asType)))
       }
+  }
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
+      import mb._ // scalastyle:ignore
+      `return`(ldc(jpContext.getOptions.getRuntimeWorkingPath(operator.getName)))
+    }
   }
 }
 

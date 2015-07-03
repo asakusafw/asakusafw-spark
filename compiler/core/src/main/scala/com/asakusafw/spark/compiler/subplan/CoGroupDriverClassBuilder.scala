@@ -16,27 +16,37 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
 
+import scala.collection.JavaConversions._
 import scala.concurrent.Future
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
-import org.objectweb.asm._
+import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.MarkerOperator
-import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.compiler.subplan.CoGroupDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, CoGroupDriver, ShuffleKey }
+import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-abstract class CoGroupDriverClassBuilder(
-  val flowId: String)
+class CoGroupDriverClassBuilder(
+  val operator: UserOperator)(
+    val label: String,
+    val subplanOutputs: Seq[SubPlan.Output])(
+      val flowId: String,
+      val jpContext: JPContext,
+      val branchKeys: BranchKeys,
+      val broadcastIds: BroadcastIds)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${nextId};"),
@@ -141,6 +151,85 @@ abstract class CoGroupDriverClassBuilder(
           inputsVar.push(),
           groupingVar.push(),
           partVar.push())
+      }
+  }
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod(
+      "fragments",
+      classOf[(_, _)].asType,
+      Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcast[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
+          }
+        }
+        .newReturnType {
+          _.newClassType(classOf[(_, _)].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[Fragment[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                  _.newClassType(classOf[Seq[_]].asType) {
+                    _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                      _.newClassType(classOf[Iterable[_]].asType) {
+                        _.newTypeArgument()
+                      }
+                    }
+                  }
+                }
+              }
+            }
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Map[_, _]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+                    .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                      _.newClassType(classOf[OutputFragment[_]].asType) {
+                        _.newTypeArgument()
+                      }
+                    }
+                }
+              }
+          }
+        }
+        .build()) { mb =>
+        import mb._ // scalastyle:ignore
+        val broadcastsVar =
+          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+        val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
+
+        implicit val compilerContext =
+          OperatorCompiler.Context(
+            flowId = flowId,
+            jpContext = jpContext,
+            branchKeys = branchKeys,
+            broadcastIds = broadcastIds)
+        val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)
+        val fragmentVar = {
+          val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+          val outputs = operator.getOutputs.map(fragmentBuilder.build)
+          val fragment = pushNew(t)
+          fragment.dup().invokeInit(
+            broadcastsVar.push()
+              +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
+          fragment.store(nextLocal.getAndAdd(fragment.size))
+        }
+        val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
+
+        `return`(
+          getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
+            invokeV(
+              "apply",
+              classOf[(_, _)].asType,
+              fragmentVar.push().asType(classOf[AnyRef].asType),
+              outputsVar.push().asType(classOf[AnyRef].asType)))
       }
   }
 }

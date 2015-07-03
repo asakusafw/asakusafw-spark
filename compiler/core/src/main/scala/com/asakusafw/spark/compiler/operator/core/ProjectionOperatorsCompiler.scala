@@ -21,7 +21,7 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.analyzer.util.ProjectionOperatorUtil
+import com.asakusafw.lang.compiler.analyzer.util.{ ProjectionOperatorUtil, PropertyMapping }
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.spark.compiler.spi.OperatorType
@@ -56,42 +56,51 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
       ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator)
         .toSeq
 
-    val builder = new CoreOperatorFragmentClassBuilder(
-      context.flowId,
+    val builder = new ProjectionOperatorsFragmentClassBuilder(
       inputs.head.dataModelType,
-      outputs.head.dataModelType) {
-
-      override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._ // scalastyle:ignore
-
-        thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
-
-        mappings.foreach { mapping =>
-          val srcProperty = mapping.getSourcePort.dataModelRef
-            .findProperty(mapping.getSourceProperty)
-          val destProperty = mapping.getDestinationPort.dataModelRef
-            .findProperty(mapping.getDestinationProperty)
-          assert(srcProperty.getType.asType == destProperty.getType.asType,
-            "The source and destination types should be the same: " +
-              s"(${srcProperty.getType}, ${destProperty.getType}")
-
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
-            .invokeV(
-              "copy",
-              dataModelVar.push()
-                .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
-              thisVar.push().getField("childDataModel", childDataModelType)
-                .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
-        }
-
-        thisVar.push().getField("child", classOf[Fragment[_]].asType)
-          .invokeV("add", thisVar.push()
-            .getField("childDataModel", childDataModelType)
-            .asType(classOf[AnyRef].asType))
-        `return`()
-      }
-    }
+      outputs.head.dataModelType,
+      mappings)(operatorInfo)
 
     context.jpContext.addClass(builder)
+  }
+}
+
+private class ProjectionOperatorsFragmentClassBuilder(
+  dataModelType: Type,
+  childDataModelType: Type,
+  val mappings: Seq[PropertyMapping])(
+    operatorInfo: OperatorInfo)(implicit context: ProjectionOperatorsCompiler#Context)
+  extends CoreOperatorFragmentClassBuilder(context.flowId, dataModelType, childDataModelType) {
+
+  import operatorInfo._ // scalastyle:ignore
+
+  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+    import mb._ // scalastyle:ignore
+
+    thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
+
+    mappings.foreach { mapping =>
+      val srcProperty = mapping.getSourcePort.dataModelRef
+        .findProperty(mapping.getSourceProperty)
+      val destProperty = mapping.getDestinationPort.dataModelRef
+        .findProperty(mapping.getDestinationProperty)
+      assert(srcProperty.getType.asType == destProperty.getType.asType,
+        "The source and destination types should be the same: " +
+          s"(${srcProperty.getType}, ${destProperty.getType}")
+
+      getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+        .invokeV(
+          "copy",
+          dataModelVar.push()
+            .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
+          thisVar.push().getField("childDataModel", childDataModelType)
+            .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
+    }
+
+    thisVar.push().getField("child", classOf[Fragment[_]].asType)
+      .invokeV("add", thisVar.push()
+        .getField("childDataModel", childDataModelType)
+        .asType(classOf[AnyRef].asType))
+    `return`()
   }
 }

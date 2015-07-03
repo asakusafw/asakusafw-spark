@@ -23,7 +23,7 @@ import scala.reflect.ClassTag
 import org.objectweb.asm.Type
 
 import com.asakusafw.bridge.api.Report
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -69,31 +69,42 @@ class LoggingOperatorCompiler extends UserOperatorCompiler {
       .map(_.resolve(context.jpContext.getClassLoader).asInstanceOf[Logging.Level])
       .getOrElse(Logging.Level.getDefault)
 
-    val builder = new UserOperatorFragmentClassBuilder(
-      context.flowId,
+    val builder = new LoggingOperatorFragmentClassBuilder(
       inputs(Logging.ID_INPUT).dataModelType,
       implementationClassType,
-      outputs) {
-
-      override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._ // scalastyle:ignore
-        invokeStatic(
-          classOf[Report].asType,
-          level.name.toLowerCase,
-          getOperatorField(mb)
-            .invokeV(
-              methodDesc.getName,
-              classOf[String].asType,
-              dataModelVar.push()
-                +: arguments.map { argument =>
-                  ldc(argument.value)(ClassTag(argument.resolveClass))
-                }: _*))
-        getOutputField(mb, outputs(Logging.ID_OUTPUT))
-          .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
-        `return`()
-      }
-    }
+      outputs,
+      level)(operatorInfo)
 
     context.jpContext.addClass(builder)
+  }
+}
+
+private class LoggingOperatorFragmentClassBuilder(
+  dataModelType: Type,
+  operatorType: Type,
+  opeartorOutputs: Seq[OperatorOutput],
+  val level: Logging.Level)(
+    operatorInfo: OperatorInfo)(implicit context: LoggingOperatorCompiler#Context)
+  extends UserOperatorFragmentClassBuilder(
+    context.flowId, dataModelType, operatorType, opeartorOutputs) {
+
+  import operatorInfo._ // scalastyle:ignore
+
+  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+    import mb._ // scalastyle:ignore
+    invokeStatic(
+      classOf[Report].asType,
+      level.name.toLowerCase,
+      getOperatorField(mb)
+        .invokeV(
+          methodDesc.getName,
+          classOf[String].asType,
+          dataModelVar.push()
+            +: arguments.map { argument =>
+              ldc(argument.value)(ClassTag(argument.resolveClass))
+            }: _*))
+    getOutputField(mb, outputs(Logging.ID_OUTPUT))
+      .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
+    `return`()
   }
 }

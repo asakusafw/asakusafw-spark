@@ -21,7 +21,7 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.spark.compiler.spi.OperatorType
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -63,31 +63,40 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
           ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
-    val builder = new UserOperatorFragmentClassBuilder(
-      context.flowId,
+    val builder = new ConvertOperatorFragmentClassBuilder(
       inputs(Convert.ID_INPUT).dataModelType,
       implementationClassType,
-      outputs) {
-
-      override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-        import mb._ // scalastyle:ignore
-        getOutputField(mb, outputs(Convert.ID_OUTPUT_ORIGINAL))
-          .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
-        getOutputField(mb, outputs(Convert.ID_OUTPUT_CONVERTED))
-          .invokeV("add",
-            getOperatorField(mb)
-              .invokeV(
-                methodDesc.getName,
-                outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
-                dataModelVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
-                  +: arguments.map { argument =>
-                    ldc(argument.value)(ClassTag(argument.resolveClass))
-                  }: _*)
-              .asType(classOf[AnyRef].asType))
-        `return`()
-      }
-    }
+      outputs)(operatorInfo)
 
     context.jpContext.addClass(builder)
+  }
+}
+
+private class ConvertOperatorFragmentClassBuilder(
+  dataModelType: Type,
+  operatorType: Type,
+  opeartorOutputs: Seq[OperatorOutput])(
+    operatorInfo: OperatorInfo)(implicit context: ConvertOperatorCompiler#Context)
+  extends UserOperatorFragmentClassBuilder(
+    context.flowId, dataModelType, operatorType, opeartorOutputs) {
+
+  import operatorInfo._ // scalastyle:ignore
+
+  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+    import mb._ // scalastyle:ignore
+    getOutputField(mb, outputs(Convert.ID_OUTPUT_ORIGINAL))
+      .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
+    getOutputField(mb, outputs(Convert.ID_OUTPUT_CONVERTED))
+      .invokeV("add",
+        getOperatorField(mb)
+          .invokeV(
+            methodDesc.getName,
+            outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
+            dataModelVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
+              +: arguments.map { argument =>
+                ldc(argument.value)(ClassTag(argument.resolveClass))
+              }: _*)
+          .asType(classOf[AnyRef].asType))
+    `return`()
   }
 }
