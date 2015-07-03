@@ -50,10 +50,9 @@ trait Branching[T] {
   def fragments(
     broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
-  def branch(rdd: RDD[(_, T)]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
-    val broadcasts = this.broadcasts.map {
-      case (key, future) => key -> Await.result(future, Duration.Inf)
-    }.toMap[BroadcastId, Broadcast[_]]
+  def branch(
+    rdd: RDD[(_, T)],
+    broadcasts: Map[BroadcastId, Broadcast[_]]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
         rdd.mapPartitions({ iter =>

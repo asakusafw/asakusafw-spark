@@ -38,13 +38,15 @@ abstract class CoGroupDriver(
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
     val future =
-      ((prevs :\ Future.successful(
+      zipBroadcasts().zip((prevs :\ Future.successful(
         List.empty[(Seq[RDD[(ShuffleKey, _)]], Option[Ordering[ShuffleKey]])])) {
           case ((prevs, sort), list) =>
             Future.sequence(prevs).map((_, sort)).zip(list).map {
               case (p, l) => p :: l
             }
-        }).map { prevs =>
+        }).map {
+        case (broadcasts, prevs) =>
+
           sc.clearCallSite()
           sc.setCallSite(label)
 
@@ -56,8 +58,8 @@ abstract class CoGroupDriver(
             part,
             grouping)
 
-          branch(cogrouped.asInstanceOf[RDD[(_, Seq[Iterator[_]])]])
-        }
+          branch(cogrouped.asInstanceOf[RDD[(_, Seq[Iterator[_]])]], broadcasts)
+      }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap
   }
