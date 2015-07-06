@@ -105,7 +105,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 }
             }
             project.dependencies {
-                asakusaSparkCompiler("com.asakusafw.spark:asakusa-spark-compiler-core:${base.sparkProjectVersion}") {
+                asakusaSparkCompiler("com.asakusafw.spark:asakusa-spark-compiler:${base.sparkProjectVersion}") {
                     exclude module: 'hadoop-client'
                 }
 
