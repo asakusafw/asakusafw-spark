@@ -35,13 +35,13 @@ todo_include_todos = True
 extlinks = {
     'issue-compiler': ('https://github.com/asakusafw/asakusafw-compiler/issues/%s', '#'),
     'issue-spark': ('https://github.com/asakusafw/asakusafw-spark/issues/%s', '#'),
-    'asakusafw': ('http://asakusafw.s3.amazonaws.com/documents/latest/release/ja/html/%s', None),
-    'jinrikisha': ('http://asakusafw.s3.amazonaws.com/documents/jinrikisha/ja/html/%s', None),
+    'asakusafw': ('http://docs.asakusafw.com/latest/release/ja/html/%s', None),
+    'jinrikisha': ('http://docs.asakusafw.com/jinrikisha/ja/html/%s', None),
 }
 javadoclinks = {
-    'asakusafw-compiler-javadoc': ('http://asakusafw.s3.amazonaws.com/documents/preview/asakusafw-compiler-javadoc/api/%s.html', ""),
-    'asakusafw-spark-planner-javadoc': ('http://asakusafw.s3.amazonaws.com/documents/preview/asakusafw-spark-planner/api/%s.html', ""),
-    'asakusa-spark-gradle-groovydoc': ('http://asakusafw.s3.amazonaws.com/documents/preview/asakusa-spark-gradle/api/%s.html', ""),
+    'asakusafw-compiler-javadoc': ('http://docs.asakusafw.com/preview/asakusafw-compiler-javadoc/api/%s.html', ""),
+    'asakusafw-spark-planner-javadoc': ('http://docs.asakusafw.com/preview/asakusafw-spark-planner/api/%s.html', ""),
+    'asakusa-spark-gradle-groovydoc': ('http://docs.asakusafw.com/preview/asakusa-spark-gradle/api/%s.html', ""),
 }
 
 # The max depth of sidebar toctree.
