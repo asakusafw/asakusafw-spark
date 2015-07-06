@@ -11,7 +11,7 @@ Asakusa on Spark ユーザガイド
     * 本機能は今後、予告なしに仕様を変更する可能性があります。
     * 本機能は今後、予告なしに対応プラットフォームを変更する可能性があります。
 
-..  _`Asakusa Framework`: http://asakusafw.s3.amazonaws.com/documents/latest/release/ja/html/index.html
+..  _`Asakusa Framework`: http://docs.asakusafw.com/latest/release/ja/html/index.html
 ..  _`Apache Spark`: http://spark.apache.org/
 
 概要
@@ -117,7 +117,7 @@ Asakusa on Sparkは、Asakusa Framework 0.7.3 以降のバージョンが必要�
 ..  attention::
     Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を上述の対応バージョン（例: ``2.3`` ）に設定してください。
 
-..  _`Shafu`: http://asakusafw.s3.amazonaws.com/documents/jinrikisha/ja/html/shafu.html
+..  _`Shafu`: http://docs.asakusafw.com/jinrikisha/ja/html/shafu.html
 
 ..  seealso::
     Asakusa Frameworkバージョンについては、 :asakusafw:`Asakusa Framework デプロイメントガイド <administration/deployment-guide.html>` などを参照してください。
