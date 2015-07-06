@@ -25,7 +25,7 @@ cd gradle
 ```
 
 ## Resources
-* Document (ja): [Asakusa on Spark](http://asakusafw.s3.amazonaws.com/documents/preview/ja/html/asakusa-on-spark/index.html) (Developer Preview)
+* Document (ja): [Asakusa on Spark](http://docs.asakusafw.com/preview/ja/html/asakusa-on-spark/index.html) (Developer Preview)
 
 ## License
 * [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
