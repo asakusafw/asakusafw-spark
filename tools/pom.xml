@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-	<parent>
-		<groupId>com.asakusafw.spark</groupId>
-		<artifactId>asakusa-spark</artifactId>
-		<version>0.1.1-SNAPSHOT</version>
-	</parent>
+  <parent>
+    <groupId>com.asakusafw.spark</groupId>
+    <artifactId>asakusa-spark</artifactId>
+    <version>0.1.1-SNAPSHOT</version>
+  </parent>
 
-	<modelVersion>4.0.0</modelVersion>
-	<name>Utilities for Asakusa DSL Compiler for Spark</name>
-	<artifactId>asakusa-spark-tools</artifactId>
-	<packaging>pom</packaging>
+  <modelVersion>4.0.0</modelVersion>
+  <name>Utilities for Asakusa DSL Compiler for Spark</name>
+  <artifactId>asakusa-spark-tools</artifactId>
+  <packaging>pom</packaging>
 
-	<description>Utilities for Asakusa DSL Compiler for Spark</description>
+  <description>Utilities for Asakusa DSL Compiler for Spark</description>
 
-	<modules>
-		<module>asm</module>
-	</modules>
+  <modules>
+    <module>asm</module>
+  </modules>
 
 </project>
