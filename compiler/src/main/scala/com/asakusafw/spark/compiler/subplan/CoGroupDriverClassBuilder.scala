@@ -211,7 +211,7 @@ class CoGroupDriverClassBuilder(
             jpContext = jpContext,
             branchKeys = branchKeys,
             broadcastIds = broadcastIds)
-        val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)
+        val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)
         val fragmentVar = {
           val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
           val outputs = operator.getOutputs.map(fragmentBuilder.build)

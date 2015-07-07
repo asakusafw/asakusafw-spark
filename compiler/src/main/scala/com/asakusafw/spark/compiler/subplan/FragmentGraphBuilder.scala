@@ -38,7 +38,7 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-class FragmentTreeBuilder(
+class FragmentGraphBuilder(
   mb: MethodBuilder,
   broadcastsVar: Var,
   nextLocal: AtomicInteger)(implicit context: OperatorCompiler.Context) {
