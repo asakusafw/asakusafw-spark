@@ -237,7 +237,7 @@ class InputDriverClassBuilder(
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
         val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
-        val fragmentBuilder = new FragmentTreeBuilder(mb, broadcastsVar, nextLocal)(
+        val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)(
           OperatorCompiler.Context(
             flowId = flowId,
             jpContext = jpContext,
