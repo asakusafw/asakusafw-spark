@@ -15,8 +15,11 @@
  */
 package com.asakusafw.spark
 
+import java.lang.{ Boolean => JBoolean }
+
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.runtime.value._
@@ -79,6 +82,19 @@ package object compiler {
         os.write(bytes)
       }
       t
+    }
+  }
+
+  implicit class AugmentedCompilerOptions(val options: CompilerOptions) extends AnyVal {
+
+    import SparkClientCompiler.Options._ // scalastyle:ignore
+
+    def verifyPlan: Boolean = {
+      JBoolean.parseBoolean(options.get(SparkPlanVerify, false.toString))
+    }
+
+    def useInputDirect: Boolean = {
+      JBoolean.parseBoolean(options.get(SparkInputDirect, true.toString))
     }
   }
 }

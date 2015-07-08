@@ -35,8 +35,6 @@ class SparkClientCompiler extends JobflowProcessor {
 
   private val Logger = LoggerFactory.getLogger(getClass)
 
-  import SparkClientCompiler._ // scalastyle:ignore
-
   override def process(jpContext: JPContext, source: Jobflow): Unit = {
 
     if (Logger.isDebugEnabled) {
@@ -48,18 +46,16 @@ class SparkClientCompiler extends JobflowProcessor {
     InspectionExtension.inspect(
       jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
 
-    val verifyPlan =
-      JBoolean.parseBoolean(jpContext.getOptions.get(Options.SparkPlanVerify, false.toString))
-    if (!verifyPlan) {
+    if (!jpContext.getOptions.verifyPlan) {
 
       val builder = new SparkClientClassBuilder(plan)(source.getFlowId, jpContext)
 
       val client = jpContext.addClass(builder)
 
       jpContext.addTask(
-        ModuleName,
-        ProfileName,
-        Command,
+        SparkClientCompiler.ModuleName,
+        SparkClientCompiler.ProfileName,
+        SparkClientCompiler.Command,
         Seq(
           CommandToken.BATCH_ID,
           CommandToken.FLOW_ID,
@@ -84,7 +80,6 @@ object SparkClientCompiler {
 
   object Options {
     val SparkPlanVerify = "spark.plan.verify"
-
     val SparkInputDirect = "spark.input.direct"
   }
 }
