@@ -37,7 +37,9 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
 
   override def instantiator: Instantiator = ExtractSubPlanCompiler.ExtractDriverInstantiator
 
-  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def compile(
+    subplan: SubPlan)(
+      implicit context: SparkClientCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
 
     val inputs = subplan.getInputs.toSet[SubPlan.Input]

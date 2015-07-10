@@ -39,11 +39,10 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 class OutputDriverClassBuilder(
   val operator: ExternalOutput)(
     val label: String)(
-      val flowId: String,
-      val jpContext: JPContext)
+      implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/OutputDriver$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/OutputDriver$$${nextId};"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[OutputDriver[_]].asType) {
@@ -126,7 +125,7 @@ class OutputDriverClassBuilder(
 
     methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
       import mb._ // scalastyle:ignore
-      `return`(ldc(jpContext.getOptions.getRuntimeWorkingPath(operator.getName)))
+      `return`(ldc(context.jpContext.getOptions.getRuntimeWorkingPath(operator.getName)))
     }
   }
 }

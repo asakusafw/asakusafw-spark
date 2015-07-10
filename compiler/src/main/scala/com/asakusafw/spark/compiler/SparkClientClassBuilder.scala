@@ -131,13 +131,6 @@ class SparkClientClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
 
-    implicit val ctxt = SubPlanCompiler.Context(
-      flowId = context.flowId,
-      jpContext = context.jpContext,
-      externalInputs = context.externalInputs,
-      branchKeys = context.branchKeys,
-      broadcastIds = context.broadcastIds)
-
     methodDef.newMethod(
       "execute",
       Type.INT_TYPE,

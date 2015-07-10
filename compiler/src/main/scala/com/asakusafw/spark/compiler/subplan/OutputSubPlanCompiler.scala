@@ -37,7 +37,9 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
   override def instantiator: Instantiator = OutputSubPlanCompiler.OutputDriverInstantiator
 
-  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def compile(
+    subplan: SubPlan)(
+      implicit context: SparkClientCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalOutput],
@@ -50,9 +52,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
     val builder = new OutputDriverClassBuilder(
       operator)(
-      subPlanInfo.getLabel)(
-      context.flowId,
-      context.jpContext)
+      subPlanInfo.getLabel)
 
     context.jpContext.addClass(builder)
   }
