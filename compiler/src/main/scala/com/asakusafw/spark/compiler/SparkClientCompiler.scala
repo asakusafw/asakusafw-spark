@@ -15,20 +15,23 @@
  */
 package com.asakusafw.spark.compiler
 
-import java.lang.{ Boolean => JBoolean }
-
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import org.slf4j.LoggerFactory
 
 import com.asakusafw.lang.compiler.api.{ Exclusive, JobflowProcessor }
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.api.reference.CommandToken
+import com.asakusafw.lang.compiler.api.reference.{ CommandToken, ExternalInputReference }
 import com.asakusafw.lang.compiler.common.Location
 import com.asakusafw.lang.compiler.inspection.InspectionExtension
 import com.asakusafw.lang.compiler.model.graph.Jobflow
 import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.spark.compiler.planning.SparkPlanning
+import com.asakusafw.spark.compiler.subplan.{
+  BranchKeysClassBuilder,
+  BroadcastIdsClassBuilder
+}
 
 @Exclusive
 class SparkClientCompiler extends JobflowProcessor {
@@ -48,7 +51,14 @@ class SparkClientCompiler extends JobflowProcessor {
 
     if (!jpContext.getOptions.verifyPlan) {
 
-      val builder = new SparkClientClassBuilder(plan)(source.getFlowId, jpContext)
+      val flowId = source.getFlowId
+      val builder = new SparkClientClassBuilder(plan)(
+        SparkClientCompiler.Context(
+          flowId = flowId,
+          jpContext = jpContext,
+          externalInputs = mutable.Map.empty,
+          branchKeys = new BranchKeysClassBuilder(flowId),
+          broadcastIds = new BroadcastIdsClassBuilder(flowId)))
 
       val client = jpContext.addClass(builder)
 
@@ -82,4 +92,11 @@ object SparkClientCompiler {
     val SparkPlanVerify = "spark.plan.verify"
     val SparkInputDirect = "spark.input.direct"
   }
+
+  case class Context(
+    flowId: String,
+    jpContext: JPContext,
+    externalInputs: mutable.Map[String, ExternalInputReference],
+    branchKeys: BranchKeysClassBuilder,
+    broadcastIds: BroadcastIdsClassBuilder)
 }

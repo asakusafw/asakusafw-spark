@@ -52,7 +52,6 @@ import com.asakusafw.spark.compiler.serializer.{
   KryoRegistratorCompiler
 }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.SparkClient
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -62,10 +61,9 @@ import com.asakusafw.utils.graph.Graphs
 
 class SparkClientClassBuilder(
   val plan: Plan)(
-    val flowId: String,
-    val jpContext: JPContext)
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
-    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/SparkClient;"),
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/SparkClient;"),
     classOf[SparkClient].asType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
@@ -133,14 +131,12 @@ class SparkClientClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
 
-    val branchKeysClassBuilder = new BranchKeysClassBuilder(flowId)
-    val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder(flowId)
-    implicit val context = SubPlanCompiler.Context(
-      flowId = flowId,
-      jpContext = jpContext,
-      externalInputs = mutable.Map.empty,
-      branchKeys = branchKeysClassBuilder,
-      broadcastIds = broadcastIdsClassBuilder)
+    implicit val ctxt = SubPlanCompiler.Context(
+      flowId = context.flowId,
+      jpContext = context.jpContext,
+      externalInputs = context.externalInputs,
+      branchKeys = context.branchKeys,
+      broadcastIds = context.broadcastIds)
 
     methodDef.newMethod(
       "execute",
@@ -277,7 +273,7 @@ class SparkClientClassBuilder(
           val driverVar = instantiator.newInstance(driverType, subplan)(
             instantiator.Context(
               mb, scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar,
-              nextLocal, flowId, jpContext, context.branchKeys))
+              nextLocal, context.flowId, context.jpContext, context.branchKeys))
           val rdds = driverVar.push()
             .invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
           val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
@@ -359,19 +355,19 @@ class SparkClientClassBuilder(
         }
     }
 
-    val branchKeysType = jpContext.addClass(branchKeysClassBuilder)
-    val broadcastIdsType = jpContext.addClass(broadcastIdsClassBuilder)
+    val branchKeysType = context.jpContext.addClass(context.branchKeys)
+    val broadcastIdsType = context.jpContext.addClass(context.broadcastIds)
 
     val registrator = KryoRegistratorCompiler.compile(
       OperatorUtil.collectDataTypes(
         plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
         .toSet[TypeDescription]
         .map(_.asType),
-      jpContext.addClass(
+      context.jpContext.addClass(
         new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)),
-      jpContext.addClass(
+      context.jpContext.addClass(
         new BroadcastIdSerializerClassBuilder(context.flowId, broadcastIdsType)))(
-        KryoRegistratorCompiler.Context(flowId, jpContext))
+        KryoRegistratorCompiler.Context(context.flowId, context.jpContext))
 
     methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
       import mb._ // scalastyle:ignore
