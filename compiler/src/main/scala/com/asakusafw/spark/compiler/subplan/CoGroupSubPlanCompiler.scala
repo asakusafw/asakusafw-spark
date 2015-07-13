@@ -160,15 +160,13 @@ object CoGroupSubPlanCompiler {
                             context.jpContext.getDataModelLoader.load(input.getDataType)
                           pushNew0(
                             SortOrderingClassBuilder.getOrCompile(
-                              context.flowId,
                               input.getGroup.getGrouping.map { grouping =>
                                 dataModelRef.findProperty(grouping).getType.asType
                               },
                               input.getGroup.getOrdering.map { ordering =>
                                 (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                                   ordering.getDirection == Group.Direction.ASCENDANT)
-                              },
-                              context.jpContext))
+                              }))
                         }.asType(classOf[AnyRef].asType))
                     }.asType(classOf[AnyRef].asType)).asType(classOf[AnyRef].asType)
               })
@@ -177,8 +175,7 @@ object CoGroupSubPlanCompiler {
         }, {
           // ShuffleKey.GroupingOrdering
           pushNew0(
-            GroupingOrderingClassBuilder
-              .getOrCompile(context.flowId, properties.head, context.jpContext))
+            GroupingOrderingClassBuilder.getOrCompile(properties.head))
             .asType(classOf[Ordering[ShuffleKey]].asType)
         }, {
           // Partitioner

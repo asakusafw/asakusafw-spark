@@ -25,12 +25,12 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class JoinOperatorFragmentClassBuilder(
-  flowId: String,
   dataModelType: Type,
   operatorType: Type,
-  operatorOutputs: Seq[OperatorOutput])
+  operatorOutputs: Seq[OperatorOutput])(
+    implicit context: SparkClientCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
-    flowId, dataModelType, operatorType, operatorOutputs) {
+    dataModelType, operatorType, operatorOutputs) {
 
   def masterType: Type
   def txType: Type

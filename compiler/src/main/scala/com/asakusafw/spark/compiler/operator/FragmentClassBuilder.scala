@@ -27,11 +27,11 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class FragmentClassBuilder(
-  val flowId: String,
-  val dataModelType: Type)
+  val dataModelType: Type)(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/Fragment$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/Fragment$$${nextId};"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[Fragment[_]].asType) {

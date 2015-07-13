@@ -313,18 +313,11 @@ class SparkClientClassBuilder(
                       {
                         getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
                           .invokeV("apply", classOf[Option[_]].asType, {
-                            pushNew0(
-                              SortOrderingClassBuilder.getOrCompile(
-                                context.flowId,
-                                groupings,
-                                orderings,
-                                context.jpContext))
+                            pushNew0(SortOrderingClassBuilder.getOrCompile(groupings, orderings))
                           }.asType(classOf[AnyRef].asType))
                       },
                       {
-                        pushNew0(
-                          GroupingOrderingClassBuilder
-                            .getOrCompile(context.flowId, groupings, context.jpContext))
+                        pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupings))
                           .asType(classOf[Ordering[ShuffleKey]].asType)
                       },
                       {
@@ -355,11 +348,8 @@ class SparkClientClassBuilder(
         plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
         .toSet[TypeDescription]
         .map(_.asType),
-      context.jpContext.addClass(
-        new BranchKeySerializerClassBuilder(context.flowId, branchKeysType)),
-      context.jpContext.addClass(
-        new BroadcastIdSerializerClassBuilder(context.flowId, broadcastIdsType)))(
-        KryoRegistratorCompiler.Context(context.flowId, context.jpContext))
+      context.jpContext.addClass(new BranchKeySerializerClassBuilder(branchKeysType)),
+      context.jpContext.addClass(new BroadcastIdSerializerClassBuilder(broadcastIdsType)))
 
     methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
       import mb._ // scalastyle:ignore

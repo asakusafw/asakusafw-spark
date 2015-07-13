@@ -97,7 +97,7 @@ private class CoGroupOperatorFragmentClassBuilder(
     operatorInfo: OperatorInfo)(
       implicit context: SparkClientCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
-    context.flowId, dataModelType, operatorType, opeartorOutputs) {
+    dataModelType, operatorType, opeartorOutputs) {
 
   import operatorInfo._ // scalastyle:ignore
 

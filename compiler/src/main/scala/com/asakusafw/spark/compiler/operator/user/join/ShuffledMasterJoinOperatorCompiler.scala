@@ -62,7 +62,6 @@ class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
     val builder =
       new ShuffledJoinOperatorFragmentClassBuilder(
-        context.flowId,
         classOf[Seq[Iterable[_]]].asType,
         implementationClassType,
         outputs)(

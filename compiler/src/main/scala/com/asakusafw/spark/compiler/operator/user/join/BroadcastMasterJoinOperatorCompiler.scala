@@ -61,7 +61,6 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
     val builder =
       new BroadcastJoinOperatorFragmentClassBuilder(
-        context.flowId,
         inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
         implementationClassType,
         outputs)(

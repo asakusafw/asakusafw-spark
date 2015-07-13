@@ -32,11 +32,11 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 
 class BranchKeySerializerClassBuilder(
-  flowId: String,
-  branchKeysType: Type)
+  branchKeysType: Type)(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/serializer/BranchKeySerializer;"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/BranchKeySerializer;"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[Serializer[_]].asType) {

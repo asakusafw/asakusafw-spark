@@ -143,15 +143,13 @@ object AggregateSubPlanCompiler {
               val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
               pushNew0(
                 SortOrderingClassBuilder.getOrCompile(
-                  context.flowId,
                   input.getGroup.getGrouping.map { grouping =>
                     dataModelRef.findProperty(grouping).getType.asType
                   },
                   input.getGroup.getOrdering.map { ordering =>
                     (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                       ordering.getDirection == Group.Direction.ASCENDANT)
-                  },
-                  context.jpContext))
+                  }))
             }.asType(classOf[AnyRef].asType))
         },
         partitionerVar.push().asType(classOf[Partitioner].asType))

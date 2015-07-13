@@ -23,7 +23,6 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, OperatorOutput }
 
 abstract class BroadcastJoinOperatorFragmentClassBuilder(
-  flowId: String,
   dataModelType: Type,
   operatorType: Type,
   operatorOutputs: Seq[OperatorOutput])(
@@ -35,5 +34,5 @@ abstract class BroadcastJoinOperatorFragmentClassBuilder(
         val operatorInfo: OperatorInfo)(
           implicit val context: SparkClientCompiler.Context)
   extends JoinOperatorFragmentClassBuilder(
-    flowId, dataModelType, operatorType, operatorOutputs)
+    dataModelType, operatorType, operatorOutputs)
   with BroadcastJoin

@@ -75,7 +75,7 @@ private class ProjectionOperatorsFragmentClassBuilder(
   val mappings: Seq[PropertyMapping])(
     operatorInfo: OperatorInfo)(
       implicit context: SparkClientCompiler.Context)
-  extends CoreOperatorFragmentClassBuilder(context.flowId, dataModelType, childDataModelType) {
+  extends CoreOperatorFragmentClassBuilder(dataModelType, childDataModelType) {
 
   import operatorInfo._ // scalastyle:ignore
 

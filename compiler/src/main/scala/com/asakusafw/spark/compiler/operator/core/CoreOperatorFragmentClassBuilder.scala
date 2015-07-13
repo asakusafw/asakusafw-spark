@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 package core
 
 import org.apache.spark.broadcast.Broadcast
@@ -26,10 +27,10 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class CoreOperatorFragmentClassBuilder(
-  flowId: String,
   dataModelType: Type,
-  val childDataModelType: Type)
-    extends FragmentClassBuilder(flowId, dataModelType) {
+  val childDataModelType: Type)(
+    implicit context: SparkClientCompiler.Context)
+  extends FragmentClassBuilder(dataModelType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)

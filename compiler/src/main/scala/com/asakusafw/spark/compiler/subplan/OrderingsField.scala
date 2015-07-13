@@ -35,7 +35,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait OrderingsField extends ClassBuilder {
 
-  def context: SparkClientCompiler.Context
+  implicit def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -112,15 +112,13 @@ trait OrderingsField extends ClassBuilder {
             context.branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
               pushNew0(
                 SortOrderingClassBuilder.getOrCompile(
-                  context.flowId,
                   partitionInfo.getGrouping.map { grouping =>
                     dataModelRef.findProperty(grouping).getType.asType
                   },
                   partitionInfo.getOrdering.map { ordering =>
                     (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                       ordering.getDirection == Group.Direction.ASCENDANT)
-                  },
-                  context.jpContext))
+                  }))
                 .asType(classOf[AnyRef].asType)
             })
           .asType(classOf[AnyRef].asType))

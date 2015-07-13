@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -29,14 +30,17 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class OutputFragmentClassBuilderSpecTest extends OutputFragmentClassBuilderSpec
 
-class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
+class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import OutputFragmentClassBuilderSpec._
 
   behavior of classOf[OutputFragmentClassBuilder].getSimpleName
 
   it should "compile OutputFragment" in {
-    val builder = new OutputFragmentClassBuilder("flowId", classOf[TestModel].asType)
+    val classpath = createTempDirectory("OutputFragmentClassBuilderSpec").toFile
+    implicit val context = newContext("flowId", classpath)
+
+    val builder = new OutputFragmentClassBuilder(classOf[TestModel].asType)
     val cls = loadClass(builder.thisType.getClassName, builder.build())
       .asSubclass(classOf[OutputFragment[TestModel]])
 

@@ -31,12 +31,18 @@ import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
 
 class OutputFragmentClassBuilder(
-  flowId: String,
-  dataModelType: Type)
+  dataModelType: Type)(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/OutputFragment$$${nextId};"),
-    Some(OutputFragmentClassBuilder.signature(dataModelType)),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/OutputFragment$$${nextId};"),
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[OutputFragment[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+        }
+      }
+      .build(),
     classOf[OutputFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -70,25 +76,14 @@ object OutputFragmentClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  def signature(dataModelType: Type): String = {
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[OutputFragment[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-        }
-      }
-      .build()
-  }
-
   private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Type), Type]] =
     mutable.WeakHashMap.empty
 
   def getOrCompile(
-    flowId: String,
-    dataModelType: Type,
-    jpContext: JPContext): Type = {
-    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
-      (flowId, dataModelType),
-      jpContext.addClass(new OutputFragmentClassBuilder(flowId, dataModelType)))
+    dataModelType: Type)(
+      implicit context: SparkClientCompiler.Context): Type = {
+    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+      (context.flowId, dataModelType),
+      context.jpContext.addClass(new OutputFragmentClassBuilder(dataModelType)))
   }
 }

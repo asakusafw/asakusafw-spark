@@ -23,14 +23,14 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.OperatorOutput
 
 abstract class ShuffledJoinOperatorFragmentClassBuilder(
-  flowId: String,
   dataModelType: Type,
   operatorType: Type,
   operatorOutputs: Seq[OperatorOutput])(
     val masterType: Type,
     val txType: Type,
     val masterSelection: Option[(String, Type)])(
-      val operatorInfo: OperatorInfo)
+      val operatorInfo: OperatorInfo)(
+        implicit context: SparkClientCompiler.Context)
   extends JoinOperatorFragmentClassBuilder(
-    flowId, dataModelType, operatorType, operatorOutputs)
+    dataModelType, operatorType, operatorOutputs)
   with ShuffledJoin

@@ -58,7 +58,6 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
     val builder =
       new BroadcastJoinOperatorFragmentClassBuilder(
-        context.flowId,
         inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType,
         implementationClassType,
         outputs)(
