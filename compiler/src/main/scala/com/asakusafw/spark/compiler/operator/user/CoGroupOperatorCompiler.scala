@@ -25,7 +25,7 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm.{ Opcodes, Type }
 
-import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
 import com.asakusafw.spark.compiler.spi.OperatorType
@@ -39,10 +39,8 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
   override def support(
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Boolean = {
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-    (annotationDesc.resolveClass == classOf[CoGroup]
-      || annotationDesc.resolveClass == classOf[GroupSort])
+    (operator.annotationDesc.resolveClass == classOf[CoGroup]
+      || operator.annotationDesc.resolveClass == classOf[GroupSort])
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -51,55 +49,44 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Type = {
 
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-
     assert(support(operator),
-      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
-    assert(inputs.size > 0,
-      s"The size of inputs should be greater than 0: ${inputs.size}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+    assert(operator.inputs.size > 0,
+      s"The size of inputs should be greater than 0: ${operator.inputs.size}")
 
     assert(
-      methodDesc.parameterClasses
-        .zip(inputs.map(_ => classOf[JList[_]])
-          ++: outputs.map(_ => classOf[Result[_]])
-          ++: arguments.map(_.resolveClass))
+      operator.methodDesc.parameterClasses
+        .zip(operator.inputs.map(_ => classOf[JList[_]])
+          ++: operator.outputs.map(_ => classOf[Result[_]])
+          ++: operator.arguments.map(_.resolveClass))
         .forall {
           case (method, model) => method.isAssignableFrom(model)
         },
       s"The operator method parameter types are not compatible: (${
-        methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
+        operator.methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
       }, ${
-        (inputs.map(_ => classOf[JList[_]])
-          ++: outputs.map(_ => classOf[Result[_]])
-          ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
+        (operator.inputs.map(_ => classOf[JList[_]])
+          ++: operator.outputs.map(_ => classOf[Result[_]])
+          ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
-    val inputBuffer =
-      annotationDesc.getElements()("inputBuffer").resolve(context.jpContext.getClassLoader)
-        .asInstanceOf[InputBuffer]
-
-    val builder = new CoGroupOperatorFragmentClassBuilder(
-      classOf[Seq[Iterator[_]]].asType,
-      implementationClassType,
-      outputs,
-      inputBuffer)(operatorInfo)
+    val builder = new CoGroupOperatorFragmentClassBuilder(operator)
 
     context.jpContext.addClass(builder)
   }
 }
 
 private class CoGroupOperatorFragmentClassBuilder(
-  dataModelType: Type,
-  operatorType: Type,
-  opeartorOutputs: Seq[OperatorOutput],
-  val inputBuffer: InputBuffer)(
-    operatorInfo: OperatorInfo)(
-      implicit context: SparkClientCompiler.Context)
+  operator: UserOperator)(
+    implicit context: SparkClientCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
-    dataModelType, operatorType, opeartorOutputs) {
+    classOf[Seq[Iterator[_]]].asType,
+    operator.implementationClass.asType,
+    operator.outputs) {
 
-  import operatorInfo._ // scalastyle:ignore
+  val inputBuffer =
+    operator.annotationDesc.getElements()("inputBuffer").resolve(context.jpContext.getClassLoader)
+      .asInstanceOf[InputBuffer]
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -122,8 +109,8 @@ private class CoGroupOperatorFragmentClassBuilder(
 
     import mb._ // scalastyle:ignore
     thisVar.push().putField("buffers", classOf[Array[ListBuffer[_]]].asType, {
-      val arr = pushNewArray(classOf[ListBuffer[_]].asType, inputs.size)
-      inputs.zipWithIndex.foreach {
+      val arr = pushNewArray(classOf[ListBuffer[_]].asType, operator.inputs.size)
+      operator.inputs.zipWithIndex.foreach {
         case (input, i) =>
           arr.dup().astore(ldc(i), pushNew0(
             inputBuffer match {
@@ -139,7 +126,7 @@ private class CoGroupOperatorFragmentClassBuilder(
     import mb._ // scalastyle:ignore
     val nextLocal = new AtomicInteger(dataModelVar.nextLocal)
 
-    val bufferVars = inputs.zipWithIndex.map {
+    val bufferVars = operator.inputs.zipWithIndex.map {
       case (input, i) =>
         val iter = dataModelVar.push()
           .invokeI(
@@ -171,19 +158,19 @@ private class CoGroupOperatorFragmentClassBuilder(
 
     getOperatorField(mb)
       .invokeV(
-        methodDesc.getName,
+        operator.methodDesc.getName,
         bufferVars.map(_.push().asType(classOf[JList[_]].asType))
-          ++ outputs.map { output =>
+          ++ operator.outputs.map { output =>
             getOutputField(mb, output).asType(classOf[Result[_]].asType)
           }
-          ++ arguments.map { argument =>
+          ++ operator.arguments.map { argument =>
             ldc(argument.value)(ClassTag(argument.resolveClass))
           }: _*)
 
     val i = ldc(0)
     val iVar = i.store(nextLocal.getAndAdd(i.size))
     loop { ctrl =>
-      iVar.push().unlessLessThan(ldc(inputs.size))(ctrl.break())
+      iVar.push().unlessLessThan(ldc(operator.inputs.size))(ctrl.break())
       thisVar.push()
         .getField("buffers", classOf[Array[ListBuffer[_]]].asType)
         .aload(iVar.push())

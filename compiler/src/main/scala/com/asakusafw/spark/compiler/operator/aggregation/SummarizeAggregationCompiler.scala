@@ -17,15 +17,12 @@ package com.asakusafw.spark.compiler
 package operator
 package aggregation
 
-import java.math.{ BigDecimal => JBigDecimal }
-
 import scala.collection.JavaConversions._
-import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.analyzer.util.{ PropertyFolding, SummarizedModelUtil }
-import com.asakusafw.lang.compiler.model.graph._
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
@@ -41,42 +38,34 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Type = {
 
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
+    assert(operator.annotationDesc.resolveClass == of,
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+    assert(operator.inputs.size == 1,
+      s"The size of inputs should be 1: ${operator.inputs.size}")
+    assert(operator.outputs.size == 1,
+      s"The size of outputs should be 1: ${operator.outputs.size}")
 
-    assert(annotationDesc.resolveClass == of,
-      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
-    assert(inputs.size == 1,
-      s"The size of inputs should be 1: ${inputs.size}")
-    assert(outputs.size == 1,
-      s"The size of outputs should be 1: ${outputs.size}")
-
-    val propertyFoldings =
-      SummarizedModelUtil.getPropertyFoldings(context.jpContext.getClassLoader, operator).toSeq
-
-    val builder = new SummarizeAggregationClassBuilder(
-      inputs(Summarize.ID_INPUT).dataModelType,
-      outputs(Summarize.ID_OUTPUT).dataModelType,
-      propertyFoldings)(operatorInfo)
+    val builder = new SummarizeAggregationClassBuilder(operator)
 
     context.jpContext.addClass(builder)
   }
 }
 
 private class SummarizeAggregationClassBuilder(
-  valueType: Type,
-  combinerType: Type,
-  propertyFoldings: Seq[PropertyFolding])(
-    operatorInfo: OperatorInfo)(
-      implicit context: SparkClientCompiler.Context)
-  extends AggregationClassBuilder(valueType, combinerType) {
+  operator: UserOperator)(
+    implicit context: SparkClientCompiler.Context)
+  extends AggregationClassBuilder(
+    operator.inputs(Summarize.ID_INPUT).dataModelType,
+    operator.outputs(Summarize.ID_OUTPUT).dataModelType) {
 
-  import operatorInfo._ // scalastyle:ignore
+  val propertyFoldings =
+    SummarizedModelUtil.getPropertyFoldings(context.jpContext.getClassLoader, operator).toSeq
 
   override def defMapSideCombine(mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
-    val partialAggregation = annotationDesc.getElements()("partialAggregation")
-      .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]
+    val partialAggregation =
+      operator.annotationDesc.elements("partialAggregation")
+        .value.asInstanceOf[PartialAggregation]
     `return`(ldc(partialAggregation != PartialAggregation.TOTAL))
   }
 
@@ -91,9 +80,11 @@ private class SummarizeAggregationClassBuilder(
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val valuePropertyRef =
-        inputs(Summarize.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
+        operator.inputs(Summarize.ID_INPUT)
+          .dataModelRef.findProperty(mapping.getSourceProperty)
       val combinerPropertyRef =
-        outputs(Summarize.ID_OUTPUT).dataModelRef.findProperty(mapping.getDestinationProperty)
+        operator.outputs(Summarize.ID_OUTPUT)
+          .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.ANY =>
           getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
@@ -132,9 +123,11 @@ private class SummarizeAggregationClassBuilder(
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val valuePropertyRef =
-        inputs(Summarize.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
+        operator.inputs(Summarize.ID_INPUT)
+          .dataModelRef.findProperty(mapping.getSourceProperty)
       val combinerPropertyRef =
-        outputs(Summarize.ID_OUTPUT).dataModelRef.findProperty(mapping.getDestinationProperty)
+        operator.outputs(Summarize.ID_OUTPUT)
+          .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.SUM =>
           getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
@@ -192,7 +185,8 @@ private class SummarizeAggregationClassBuilder(
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val combinerPropertyRef =
-        outputs(Summarize.ID_OUTPUT).dataModelRef.findProperty(mapping.getDestinationProperty)
+        operator.outputs(Summarize.ID_OUTPUT)
+          .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.SUM =>
           getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)

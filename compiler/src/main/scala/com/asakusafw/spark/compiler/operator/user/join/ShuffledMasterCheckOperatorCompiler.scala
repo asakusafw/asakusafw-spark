@@ -30,9 +30,7 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
   override def support(
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Boolean = {
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-    annotationDesc.resolveClass == classOf[MasterCheckOp]
+    operator.annotationDesc.resolveClass == classOf[MasterCheckOp]
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -41,31 +39,23 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Type = {
 
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-
     assert(support(operator),
-      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
-    assert(inputs.size == 2, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 2: ${inputs.size}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+    assert(operator.inputs.size == 2, // FIXME to take multiple inputs for side data?
+      s"The size of inputs should be 2: ${operator.inputs.size}")
 
     assert(
-      outputs.forall { output =>
-        output.dataModelType == inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType
-      },
+      operator.outputs.forall(output =>
+        output.dataModelType == operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType),
       s"All of output types should be the same as the transaction type: ${
-        outputs.map(_.dataModelType).mkString("(", ",", ")")
+        operator.outputs.map(_.dataModelType).mkString("(", ",", ")")
       }")
 
     val builder =
       new ShuffledJoinOperatorFragmentClassBuilder(
-        classOf[Seq[Iterable[_]]].asType,
-        implementationClassType,
-        outputs)(
-        inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType,
-        inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType,
-        selectionMethod)(
-        operatorInfo) with MasterCheck
+        operator,
+        operator.inputs(MasterCheckOp.ID_INPUT_MASTER),
+        operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION)) with MasterCheck
 
     context.jpContext.addClass(builder)
   }

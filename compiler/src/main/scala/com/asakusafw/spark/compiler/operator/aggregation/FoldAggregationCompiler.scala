@@ -22,7 +22,7 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph._
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -37,56 +37,52 @@ class FoldAggregationCompiler extends AggregationCompiler {
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Type = {
 
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-
-    assert(annotationDesc.resolveClass == of,
-      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
-    assert(inputs.size == 1,
-      s"The size of inputs should be 1: ${inputs.size}")
-    assert(outputs.size == 1,
-      s"The size of outputs should be 1: ${outputs.size}")
-    assert(inputs(Fold.ID_INPUT).dataModelType == outputs(Fold.ID_OUTPUT).dataModelType,
+    assert(operator.annotationDesc.resolveClass == of,
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+    assert(operator.inputs.size == 1,
+      s"The size of inputs should be 1: ${operator.inputs.size}")
+    assert(operator.outputs.size == 1,
+      s"The size of outputs should be 1: ${operator.outputs.size}")
+    assert(
+      operator.inputs(Fold.ID_INPUT).dataModelType
+        == operator.outputs(Fold.ID_OUTPUT).dataModelType,
       s"The data models are not the same type: (${
-        inputs(Fold.ID_INPUT).dataModelType
+        operator.inputs(Fold.ID_INPUT).dataModelType
       }, ${
-        outputs(Fold.ID_OUTPUT).dataModelType
+        operator.outputs(Fold.ID_OUTPUT).dataModelType
       })")
 
     assert(
-      methodDesc.parameterClasses
-        .zip(inputs.map(_.dataModelClass)
-          ++: outputs.map(_.dataModelClass)
-          ++: arguments.map(_.resolveClass))
+      operator.methodDesc.parameterClasses
+        .zip(operator.inputs.map(_.dataModelClass)
+          ++: operator.outputs.map(_.dataModelClass)
+          ++: operator.arguments.map(_.resolveClass))
         .forall {
           case (method, model) => method.isAssignableFrom(model)
         },
       s"The operator method parameter types are not compatible: (${
-        methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
+        operator.methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
       }, ${
-        (inputs.map(_.dataModelClass)
-          ++: outputs.map(_.dataModelClass)
-          ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
+        (operator.inputs.map(_.dataModelClass)
+          ++: operator.outputs.map(_.dataModelClass)
+          ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
-    val builder = new FoldAggregationClassBuilder(
-      inputs(Fold.ID_INPUT).dataModelType,
-      outputs(Fold.ID_OUTPUT).dataModelType,
-      implementationClassType)(operatorInfo)
+    val builder = new FoldAggregationClassBuilder(operator)
 
     context.jpContext.addClass(builder)
   }
 }
 
 private class FoldAggregationClassBuilder(
-  valueType: Type,
-  combinerType: Type,
-  val operatorType: Type)(
-    operatorInfo: OperatorInfo)(
-      implicit context: SparkClientCompiler.Context)
-  extends AggregationClassBuilder(valueType, combinerType) with OperatorField {
+  operator: UserOperator)(
+    implicit context: SparkClientCompiler.Context)
+  extends AggregationClassBuilder(
+    operator.inputs(Fold.ID_INPUT).dataModelType,
+    operator.outputs(Fold.ID_OUTPUT).dataModelType)
+  with OperatorField {
 
-  import operatorInfo._ // scalastyle:ignore
+  val operatorType = operator.implementationClass.asType
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { mb =>
@@ -98,8 +94,9 @@ private class FoldAggregationClassBuilder(
 
   override def defMapSideCombine(mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
-    val partialAggregation = annotationDesc.getElements()("partialAggregation")
-      .resolve(context.jpContext.getClassLoader).asInstanceOf[PartialAggregation]
+    val partialAggregation =
+      operator.annotationDesc.elements("partialAggregation")
+        .value.asInstanceOf[PartialAggregation]
     `return`(ldc(partialAggregation == PartialAggregation.PARTIAL))
   }
 
@@ -119,10 +116,10 @@ private class FoldAggregationClassBuilder(
     mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     getOperatorField(mb).invokeV(
-      methodDesc.getName,
-      combinerVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
-        +: valueVar.push().asType(methodDesc.asType.getArgumentTypes()(1))
-        +: arguments.map { argument =>
+      operator.methodDesc.getName,
+      combinerVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+        +: valueVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
+        +: operator.arguments.map { argument =>
           ldc(argument.value)(ClassTag(argument.resolveClass))
         }: _*)
     `return`(combinerVar.push())

@@ -33,9 +33,7 @@ class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
   override def support(
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Boolean = {
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-    annotationDesc.resolveClass == classOf[MasterJoinOp]
+    operator.annotationDesc.resolveClass == classOf[MasterJoinOp]
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -44,31 +42,24 @@ class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Type = {
 
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-
     assert(support(operator),
-      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
-    assert(inputs.size == 2, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 2: ${inputs.size}")
-    assert(outputs.size == 2,
-      s"The size of outputs should be greater than 2: ${outputs.size}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+    assert(operator.inputs.size == 2, // FIXME to take multiple inputs for side data?
+      s"The size of inputs should be 2: ${operator.inputs.size}")
+    assert(operator.outputs.size == 2,
+      s"The size of outputs should be greater than 2: ${operator.outputs.size}")
 
-    assert(outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
-      == inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
+    assert(operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
+      == operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
       s"The `missed` output type should be the same as the transaction type: ${
-        outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
+        operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
       }")
 
     val builder =
       new ShuffledJoinOperatorFragmentClassBuilder(
-        classOf[Seq[Iterable[_]]].asType,
-        implementationClassType,
-        outputs)(
-        inputs(MasterJoinOp.ID_INPUT_MASTER).dataModelType,
-        inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
-        selectionMethod)(
-        operatorInfo) with MasterJoin {
+        operator,
+        operator.inputs(MasterJoinOp.ID_INPUT_MASTER),
+        operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION)) with MasterJoin {
 
         val mappings =
           JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq

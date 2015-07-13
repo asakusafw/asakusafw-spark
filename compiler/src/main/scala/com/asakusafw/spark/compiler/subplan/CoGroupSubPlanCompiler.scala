@@ -30,7 +30,6 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.{ Group, OperatorOutput, UserOperator }
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.operator.OperatorInfo
 import com.asakusafw.spark.compiler.ordering.{
   GroupingOrderingClassBuilder,
   SortOrderingClassBuilder
@@ -81,10 +80,7 @@ object CoGroupSubPlanCompiler {
 
       val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
-      val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
-      import operatorInfo._ // scalastyle:ignore
-
-      val properties = inputs.map { input =>
+      val properties = primaryOperator.inputs.map { input =>
         val dataModelRef = input.dataModelRef
         input.getGroup.getGrouping.map { grouping =>
           dataModelRef.findProperty(grouping).getType.asType
@@ -102,7 +98,8 @@ object CoGroupSubPlanCompiler {
         } else {
           numPartitions(
             mb,
-            vars.sc.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
+            vars.sc.push())(
+              subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner))
         })
       val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
 

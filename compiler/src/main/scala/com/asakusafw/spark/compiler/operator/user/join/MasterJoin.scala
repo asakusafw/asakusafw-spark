@@ -23,6 +23,7 @@ import scala.reflect.ClassTag
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.analyzer.util.PropertyMapping
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -30,14 +31,17 @@ import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
 trait MasterJoin extends JoinOperatorFragmentClassBuilder {
 
-  val operatorInfo: OperatorInfo
-  import operatorInfo._ // scalastyle:ignore
+  implicit def context: SparkClientCompiler.Context
 
-  val mappings: Seq[PropertyMapping]
+  def operator: UserOperator
+
+  def mappings: Seq[PropertyMapping]
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
-    fieldDef.newField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
+    fieldDef.newField(
+      "joinedDataModel",
+      operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
   }
 
   override def initFields(mb: MethodBuilder): Unit = {
@@ -46,15 +50,15 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
     import mb._ // scalastyle:ignore
     thisVar.push().putField(
       "joinedDataModel",
-      outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType,
-      pushNew0(outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType))
+      operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType,
+      pushNew0(operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType))
   }
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     block { ctrl =>
       masterVar.push().unlessNotNull {
-        getOutputField(mb, outputs(MasterJoinOp.ID_OUTPUT_MISSED))
+        getOutputField(mb, operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED))
           .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
         ctrl.break()
       }
@@ -62,20 +66,21 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
       val vars = Seq(masterVar, txVar)
 
       thisVar.push()
-        .getField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
+        .getField("joinedDataModel", operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
         .invokeV("reset")
 
       mappings.foreach { mapping =>
-        val src = inputs.indexOf(mapping.getSourcePort)
+        val src = operator.inputs.indexOf(mapping.getSourcePort)
         val srcVar = vars(src)
         val srcProperty =
-          inputs(src).dataModelRef.findProperty(mapping.getSourceProperty)
+          operator.inputs(src).dataModelRef.findProperty(mapping.getSourceProperty)
 
-        assert(mapping.getDestinationPort == outputs(MasterJoinOp.ID_OUTPUT_JOINED),
+        assert(mapping.getDestinationPort == operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED),
           "The destination port should be the same as the port for MasterJoinOp.ID_OUTPUT_JOINED: "
-            + s"(${mapping.getDestinationPort}, ${outputs(MasterJoinOp.ID_OUTPUT_JOINED)})")
+            + s"(${mapping.getDestinationPort}, "
+            + s"${operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED)})")
         val destProperty =
-          outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelRef
+          operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelRef
             .findProperty(mapping.getDestinationProperty)
 
         assert(srcProperty.getType.asType == destProperty.getType.asType,
@@ -88,14 +93,18 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
             srcVar.push()
               .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
             thisVar.push()
-              .getField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
+              .getField(
+                "joinedDataModel",
+                operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
               .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
       }
 
-      getOutputField(mb, outputs(MasterJoinOp.ID_OUTPUT_JOINED))
+      getOutputField(mb, operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED))
         .invokeV("add",
           thisVar.push()
-            .getField("joinedDataModel", outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
+            .getField(
+              "joinedDataModel",
+              operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
             .asType(classOf[AnyRef].asType))
     }
   }

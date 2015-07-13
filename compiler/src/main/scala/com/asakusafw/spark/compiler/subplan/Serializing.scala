@@ -21,7 +21,6 @@ import org.objectweb.asm.{ Opcodes, Type }
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.operator.OperatorInfo
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
@@ -128,10 +127,8 @@ trait Serializing extends ClassBuilder {
     val outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
     if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED) {
       val op = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
-      val operatorInfo = new OperatorInfo(op)(context.jpContext)
-      import operatorInfo._ // scalastyle:ignore
-      assert(outputs.size == 1)
-      outputs.head.getDataType.asType
+      assert(op.outputs.size == 1)
+      op.outputs.head.getDataType.asType
     } else {
       output.getOperator.getDataType.asType
     }

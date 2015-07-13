@@ -22,29 +22,31 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateOp }
 
 trait MasterJoinUpdate extends JoinOperatorFragmentClassBuilder {
 
-  val operatorInfo: OperatorInfo
-  import operatorInfo._ // scalastyle:ignore
+  implicit def context: SparkClientCompiler.Context
+
+  def operator: UserOperator
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     masterVar.push().ifNull({
-      getOutputField(mb, outputs(MasterJoinUpdateOp.ID_OUTPUT_MISSED))
+      getOutputField(mb, operator.outputs(MasterJoinUpdateOp.ID_OUTPUT_MISSED))
     }, {
       getOperatorField(mb)
         .invokeV(
-          methodDesc.getName,
-          masterVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
-            +: txVar.push().asType(methodDesc.asType.getArgumentTypes()(1))
-            +: arguments.map { argument =>
+          operator.methodDesc.getName,
+          masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+            +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
+            +: operator.arguments.map { argument =>
               ldc(argument.value)(ClassTag(argument.resolveClass))
             }: _*)
-      getOutputField(mb, outputs(MasterJoinUpdateOp.ID_OUTPUT_UPDATED))
+      getOutputField(mb, operator.outputs(MasterJoinUpdateOp.ID_OUTPUT_UPDATED))
     }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
   }
 }

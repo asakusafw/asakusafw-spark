@@ -17,11 +17,16 @@ package com.asakusafw.spark
 
 import java.lang.{ Boolean => JBoolean }
 
+import scala.collection.JavaConversions._
+
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.analyzer.util.{ BranchOperatorUtil, MasterJoinOperatorUtil }
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.api.reference.DataModelReference
 import com.asakusafw.lang.compiler.model.description._
+import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.tools.asm._
 
@@ -39,6 +44,15 @@ package object compiler {
         case desc: ClassDescription => desc.asType
         case desc: ArrayTypeDescription => desc.asType
       }
+  }
+
+  implicit class AugmentedReifiableTypeDescription(
+    val desc: ReifiableTypeDescription) extends AnyVal {
+
+    def resolveClass(
+      implicit context: SparkClientCompiler.Context): Class[_] = {
+      desc.resolve(context.jpContext.getClassLoader)
+    }
   }
 
   implicit class AugmentedBasicTypeDescription(val desc: BasicTypeDescription) extends AnyVal {
@@ -95,6 +109,110 @@ package object compiler {
 
     def useInputDirect: Boolean = {
       JBoolean.parseBoolean(options.get(SparkInputDirect, true.toString))
+    }
+  }
+
+  implicit class AugmentedOperator(val operator: Operator) extends AnyVal {
+
+    def annotationDesc: AnnotationDescription = {
+      operator.asInstanceOf[UserOperator].getAnnotation
+    }
+
+    def implementationClass: ClassDescription = {
+      operator.asInstanceOf[UserOperator].getImplementationClass
+    }
+
+    def methodDesc: MethodDescription = {
+      operator.asInstanceOf[UserOperator].getMethod
+    }
+
+    def inputs: Seq[OperatorInput] = {
+      operator.getInputs
+    }
+
+    def outputs: Seq[OperatorOutput] = {
+      operator.getOutputs
+    }
+
+    def arguments: Seq[OperatorArgument] = {
+      operator.getArguments
+    }
+
+    def branchOutputMap(
+      implicit context: SparkClientCompiler.Context): Map[OperatorOutput, Enum[_]] = {
+      BranchOperatorUtil.getOutputMap(context.jpContext.getClassLoader, operator).toMap
+    }
+
+    def selectionMethod(
+      implicit context: SparkClientCompiler.Context): Option[(String, Type)] = {
+      Option(MasterJoinOperatorUtil.getSelection(context.jpContext.getClassLoader, operator))
+        .map(method => (method.getName, Type.getType(method)))
+    }
+  }
+
+  implicit class AugmentedAnnotationDescription(val ad: AnnotationDescription) extends AnyVal {
+
+    def elements: Map[String, ValueDescription] = ad.getElements.toMap
+
+    def resolveClass(
+      implicit context: SparkClientCompiler.Context): Class[_] = {
+      ad.getDeclaringClass.resolveClass
+    }
+  }
+
+  implicit class AugmentedMethodDescirption(val md: MethodDescription) extends AnyVal {
+
+    def asType(
+      implicit context: SparkClientCompiler.Context): Type = {
+      Type.getType(md.resolve(context.jpContext.getClassLoader))
+    }
+
+    def name: String = md.getName
+
+    def parameterClasses(
+      implicit context: SparkClientCompiler.Context): Seq[Class[_]] = {
+      md.getParameterTypes.map(_.resolve(context.jpContext.getClassLoader))
+    }
+  }
+
+  implicit class AugmentedOperatorInput(val op: OperatorPort) extends AnyVal {
+
+    def dataModelRef(
+      implicit context: SparkClientCompiler.Context): DataModelReference = {
+      context.jpContext.getDataModelLoader.load(op.getDataType)
+    }
+
+    def dataModelType(
+      implicit context: SparkClientCompiler.Context): Type = {
+      dataModelRef.getDeclaration.asType
+    }
+
+    def dataModelClass(
+      implicit context: SparkClientCompiler.Context): Class[_] = {
+      dataModelRef.getDeclaration.resolve(context.jpContext.getClassLoader)
+    }
+  }
+
+  implicit class AugmentedOperatorArgument(val oa: OperatorArgument) extends AnyVal {
+
+    def asType: Type = oa.getValue.getValueType.asType
+
+    def resolveClass(
+      implicit context: SparkClientCompiler.Context): Class[_] = {
+      oa.getValue.getValueType.getErasure.resolve(context.jpContext.getClassLoader)
+    }
+
+    def value(
+      implicit context: SparkClientCompiler.Context): Any = {
+      oa.getValue.value
+    }
+  }
+
+  implicit class AugmentedValueDescription(val vd: ValueDescription) extends AnyVal {
+
+    def value(
+      implicit context: SparkClientCompiler.Context): Any = {
+      vd.resolve(context.jpContext.getClassLoader)
     }
   }
 }

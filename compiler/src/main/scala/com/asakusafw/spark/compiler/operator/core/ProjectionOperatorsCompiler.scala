@@ -21,7 +21,7 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.analyzer.util.{ ProjectionOperatorUtil, PropertyMapping }
+import com.asakusafw.lang.compiler.analyzer.util.ProjectionOperatorUtil
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.spark.compiler.spi.OperatorType
@@ -46,38 +46,29 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
     operator: CoreOperator)(
       implicit context: SparkClientCompiler.Context): Type = {
 
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-
     assert(support(operator),
       s"The operator type is not supported: ${operator.getCoreOperatorKind}")
-    assert(inputs.size == 1,
-      s"The size of inputs should be 1: ${inputs.size}")
-    assert(outputs.size == 1,
-      s"The size of outputs should be 1: ${outputs.size}")
+    assert(operator.inputs.size == 1,
+      s"The size of inputs should be 1: ${operator.inputs.size}")
+    assert(operator.outputs.size == 1,
+      s"The size of outputs should be 1: ${operator.outputs.size}")
 
-    val mappings =
-      ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator)
-        .toSeq
-
-    val builder = new ProjectionOperatorsFragmentClassBuilder(
-      inputs.head.dataModelType,
-      outputs.head.dataModelType,
-      mappings)(operatorInfo)
+    val builder = new ProjectionOperatorsFragmentClassBuilder(operator)
 
     context.jpContext.addClass(builder)
   }
 }
 
 private class ProjectionOperatorsFragmentClassBuilder(
-  dataModelType: Type,
-  childDataModelType: Type,
-  val mappings: Seq[PropertyMapping])(
-    operatorInfo: OperatorInfo)(
-      implicit context: SparkClientCompiler.Context)
-  extends CoreOperatorFragmentClassBuilder(dataModelType, childDataModelType) {
+  operator: CoreOperator)(
+    implicit context: SparkClientCompiler.Context)
+  extends CoreOperatorFragmentClassBuilder(
+    operator.inputs.head.dataModelType,
+    operator.outputs.head.dataModelType) {
 
-  import operatorInfo._ // scalastyle:ignore
+  val mappings =
+    ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator)
+      .toSeq
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
     import mb._ // scalastyle:ignore
