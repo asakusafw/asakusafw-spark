@@ -27,7 +27,9 @@ import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateO
 
 class ShuffledMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
 
-  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[MasterJoinUpdateOp]
@@ -35,7 +37,9 @@ class ShuffledMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
 
-  override def compile(operator: UserOperator)(implicit context: Context): Type = {
+  override def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -69,18 +73,16 @@ class ShuffledMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
           ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
-    val builder = new JoinOperatorFragmentClassBuilder(
-      context.flowId,
-      classOf[Seq[Iterable[_]]].asType,
-      implementationClassType,
-      outputs) with ShuffledJoin with MasterJoinUpdate {
-
-      val masterType: Type = inputs(MasterJoinUpdateOp.ID_INPUT_MASTER).dataModelType
-      val txType: Type = inputs(MasterJoinUpdateOp.ID_INPUT_TRANSACTION).dataModelType
-      val masterSelection: Option[(String, Type)] = selectionMethod
-
-      val opInfo: OperatorInfo = operatorInfo
-    }
+    val builder =
+      new ShuffledJoinOperatorFragmentClassBuilder(
+        context.flowId,
+        classOf[Seq[Iterable[_]]].asType,
+        implementationClassType,
+        outputs)(
+        inputs(MasterJoinUpdateOp.ID_INPUT_MASTER).dataModelType,
+        inputs(MasterJoinUpdateOp.ID_INPUT_TRANSACTION).dataModelType,
+        selectionMethod)(
+        operatorInfo) with MasterJoinUpdate
 
     context.jpContext.addClass(builder)
   }

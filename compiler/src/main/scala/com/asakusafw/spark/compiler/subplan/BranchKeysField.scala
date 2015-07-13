@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
 import scala.collection.mutable
 import scala.reflect.NameTransformer
@@ -28,7 +29,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait BranchKeysField extends ClassBuilder {
 
-  def branchKeys: BranchKeys
+  def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -79,7 +80,7 @@ trait BranchKeysField extends ClassBuilder {
       builder.invokeI(
         NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
-        branchKeys.getField(mb, marker).asType(classOf[AnyRef].asType))
+        context.branchKeys.getField(mb, marker).asType(classOf[AnyRef].asType))
     }
 
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType)

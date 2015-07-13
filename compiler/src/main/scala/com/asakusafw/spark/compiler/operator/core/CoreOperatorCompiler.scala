@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.operator.core
+package com.asakusafw.spark.compiler
+package operator.core
 
 import org.objectweb.asm.Type
 
@@ -22,20 +23,28 @@ import com.asakusafw.spark.compiler.spi.OperatorCompiler
 
 trait CoreOperatorCompiler extends OperatorCompiler {
 
-  override def support(operator: Operator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: Operator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     operator match {
       case op: CoreOperator => support(op)
       case _ => false
     }
   }
 
-  def support(operator: CoreOperator)(implicit context: Context): Boolean
+  def support(
+    operator: CoreOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean
 
-  override def compile(operator: Operator)(implicit context: Context): Type = {
+  override def compile(
+    operator: Operator)(
+      implicit context: SparkClientCompiler.Context): Type = {
     operator match {
       case op: CoreOperator => compile(op)
     }
   }
 
-  def compile(operator: CoreOperator)(implicit context: Context): Type
+  def compile(
+    operator: CoreOperator)(
+      implicit context: SparkClientCompiler.Context): Type
 }

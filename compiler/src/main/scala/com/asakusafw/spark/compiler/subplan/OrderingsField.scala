@@ -24,7 +24,6 @@ import org.apache.spark.Partitioner
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.Group
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
@@ -36,11 +35,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait OrderingsField extends ClassBuilder {
 
-  def flowId: String
-
-  def jpContext: JPContext
-
-  def branchKeys: BranchKeys
+  def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -107,16 +102,17 @@ trait OrderingsField extends ClassBuilder {
         case _ => None
       }
     } {
-      val dataModelRef = jpContext.getDataModelLoader.load(output.getOperator.getInput.getDataType)
+      val dataModelRef =
+        context.jpContext.getDataModelLoader.load(output.getOperator.getInput.getDataType)
       builder.invokeI(
         NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
           invokeV("apply", classOf[(_, _)].asType,
-            branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
+            context.branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
               pushNew0(
                 SortOrderingClassBuilder.getOrCompile(
-                  flowId,
+                  context.flowId,
                   partitionInfo.getGrouping.map { grouping =>
                     dataModelRef.findProperty(grouping).getType.asType
                   },
@@ -124,7 +120,7 @@ trait OrderingsField extends ClassBuilder {
                     (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                       ordering.getDirection == Group.Direction.ASCENDANT)
                   },
-                  jpContext))
+                  context.jpContext))
                 .asType(classOf[AnyRef].asType)
             })
           .asType(classOf[AnyRef].asType))

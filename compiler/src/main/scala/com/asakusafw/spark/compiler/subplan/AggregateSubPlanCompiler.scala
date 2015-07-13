@@ -59,16 +59,13 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     assert(outputs.size == 1,
       s"The size of outputs should be 1: ${outputs.size}")
 
-    val builder = new AggregateDriverClassBuilder(
-      inputs.head.dataModelType,
-      outputs.head.dataModelType,
-      operator)(
-      subPlanInfo.getLabel,
-      subplan.getOutputs.toSeq)(
-      context.flowId,
-      context.jpContext,
-      context.branchKeys,
-      context.broadcastIds)
+    val builder =
+      new AggregateDriverClassBuilder(
+        inputs.head.dataModelType,
+        outputs.head.dataModelType,
+        operator)(
+        subPlanInfo.getLabel,
+        subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
   }

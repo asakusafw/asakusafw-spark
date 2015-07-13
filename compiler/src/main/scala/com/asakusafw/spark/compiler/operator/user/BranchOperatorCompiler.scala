@@ -29,7 +29,9 @@ import com.asakusafw.vocabulary.operator.Branch
 
 class BranchOperatorCompiler extends UserOperatorCompiler {
 
-  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[Branch]
@@ -37,7 +39,9 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
 
   override def operatorType: OperatorType = OperatorType.MapType
 
-  override def compile(operator: UserOperator)(implicit context: Context): Type = {
+  override def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -83,7 +87,8 @@ private class BranchOperatorFragmentClassBuilder(
   dataModelType: Type,
   operatorType: Type,
   opeartorOutputs: Seq[OperatorOutput])(
-    operatorInfo: OperatorInfo)(implicit context: BranchOperatorCompiler#Context)
+    operatorInfo: OperatorInfo)(
+      implicit context: SparkClientCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
     context.flowId, dataModelType, operatorType, opeartorOutputs) {
 

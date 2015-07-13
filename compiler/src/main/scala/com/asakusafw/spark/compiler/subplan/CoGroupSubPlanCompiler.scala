@@ -54,14 +54,11 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
       s"The dominant operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
-    val builder = new CoGroupDriverClassBuilder(
-      operator)(
-      subPlanInfo.getLabel,
-      subplan.getOutputs.toSeq)(
-      context.flowId,
-      context.jpContext,
-      context.branchKeys,
-      context.broadcastIds)
+    val builder =
+      new CoGroupDriverClassBuilder(
+        operator)(
+        subPlanInfo.getLabel,
+        subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
   }

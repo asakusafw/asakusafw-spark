@@ -28,7 +28,6 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
@@ -43,13 +42,10 @@ class CoGroupDriverClassBuilder(
   val operator: UserOperator)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
-      val flowId: String,
-      val jpContext: JPContext,
-      val branchKeys: BranchKeys,
-      val broadcastIds: BroadcastIds)
+      implicit val context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/CoGroupDriver$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/CoGroupDriver$$${nextId};"),
     classOf[CoGroupDriver].asType)
   with Branching with DriverLabel {
 
@@ -205,12 +201,6 @@ class CoGroupDriverClassBuilder(
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
         val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
-        implicit val compilerContext =
-          OperatorCompiler.Context(
-            flowId = flowId,
-            jpContext = jpContext,
-            branchKeys = branchKeys,
-            broadcastIds = broadcastIds)
         val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)
         val fragmentVar = {
           val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)

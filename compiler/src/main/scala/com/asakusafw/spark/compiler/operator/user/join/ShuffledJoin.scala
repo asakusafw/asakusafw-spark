@@ -33,8 +33,8 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
 
-  val opInfo: OperatorInfo
-  import opInfo._ // scalastyle:ignore
+  val operatorInfo: OperatorInfo
+  import operatorInfo._ // scalastyle:ignore
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)

@@ -70,19 +70,16 @@ class InputSubPlanCompiler extends SubPlanCompiler {
             None)
       }
 
-    val builder = new InputDriverClassBuilder(
-      operator,
-      keyType,
-      valueType,
-      inputFormatType,
-      paths,
-      extraConfigurations)(
-      subPlanInfo.getLabel,
-      subplan.getOutputs.toSeq)(
-      context.flowId,
-      context.jpContext,
-      context.branchKeys,
-      context.broadcastIds)
+    val builder =
+      new InputDriverClassBuilder(
+        operator,
+        keyType,
+        valueType,
+        inputFormatType,
+        paths,
+        extraConfigurations)(
+        subPlanInfo.getLabel,
+        subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
   }

@@ -43,7 +43,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class ProjectionOperatorsCompilerSpecTest extends ProjectionOperatorsCompilerSpec
 
-class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import ProjectionOperatorsCompilerSpec._
 
@@ -56,14 +56,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       .build()
 
     val classpath = createTempDirectory("ProjectionOperatorsCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ProjectInputModel]])
@@ -96,14 +89,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       .build()
 
     val classpath = createTempDirectory("ExtendOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ExtendInputModel]])
@@ -136,14 +122,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       .build()
 
     val classpath = createTempDirectory("RestructureOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[RestructureInputModel]])

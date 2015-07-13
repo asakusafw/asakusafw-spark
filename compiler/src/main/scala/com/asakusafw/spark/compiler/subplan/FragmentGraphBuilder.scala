@@ -41,7 +41,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 class FragmentGraphBuilder(
   mb: MethodBuilder,
   broadcastsVar: Var,
-  nextLocal: AtomicInteger)(implicit context: OperatorCompiler.Context) {
+  nextLocal: AtomicInteger)(implicit context: SparkClientCompiler.Context) {
   import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty

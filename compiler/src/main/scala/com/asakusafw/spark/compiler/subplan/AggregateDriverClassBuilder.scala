@@ -28,11 +28,9 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
-import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.compiler.subplan.AggregateDriverClassBuilder._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ AggregateDriver, BroadcastId, ShuffleKey }
@@ -47,13 +45,10 @@ class AggregateDriverClassBuilder(
   val operator: UserOperator)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
-      val flowId: String,
-      val jpContext: JPContext,
-      val branchKeys: BranchKeys,
-      val broadcastIds: BroadcastIds)
+      implicit val context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/AggregateDriver$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/AggregateDriver$$${nextId};"), // scalastyle:ignore
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[AggregateDriver[_, _]].asType) {
@@ -193,12 +188,7 @@ class AggregateDriverClassBuilder(
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
         val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
-        val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)(
-          OperatorCompiler.Context(
-            flowId = flowId,
-            jpContext = jpContext,
-            branchKeys = branchKeys,
-            broadcastIds = broadcastIds))
+        val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)
         val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
@@ -223,7 +213,7 @@ class AggregateDriverClassBuilder(
         .build()) { mb =>
         import mb._ // scalastyle:ignore
         val aggregationType =
-          AggregationClassBuilder.getOrCompile(flowId, operator, jpContext)
+          AggregationClassBuilder.getOrCompile(operator)
         `return`(pushNew0(aggregationType))
       }
   }

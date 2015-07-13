@@ -28,8 +28,8 @@ import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp }
 
 trait MasterBranch extends JoinOperatorFragmentClassBuilder {
 
-  val opInfo: OperatorInfo
-  import opInfo._ // scalastyle:ignore
+  val operatorInfo: OperatorInfo
+  import operatorInfo._ // scalastyle:ignore
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
     import mb._ // scalastyle:ignore

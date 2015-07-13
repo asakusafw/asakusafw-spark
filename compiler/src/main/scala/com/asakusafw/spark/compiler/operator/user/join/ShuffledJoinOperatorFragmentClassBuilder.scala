@@ -21,20 +21,16 @@ package join
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.OperatorOutput
-import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-abstract class JoinOperatorFragmentClassBuilder(
+abstract class ShuffledJoinOperatorFragmentClassBuilder(
   flowId: String,
   dataModelType: Type,
   operatorType: Type,
-  operatorOutputs: Seq[OperatorOutput])
-  extends UserOperatorFragmentClassBuilder(
-    flowId, dataModelType, operatorType, operatorOutputs) {
-
-  def masterType: Type
-  def txType: Type
-  def masterSelection: Option[(String, Type)]
-
-  def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit
-}
+  operatorOutputs: Seq[OperatorOutput])(
+    val masterType: Type,
+    val txType: Type,
+    val masterSelection: Option[(String, Type)])(
+      val operatorInfo: OperatorInfo)
+  extends JoinOperatorFragmentClassBuilder(
+    flowId, dataModelType, operatorType, operatorOutputs)
+  with ShuffledJoin

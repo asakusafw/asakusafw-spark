@@ -47,14 +47,11 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
 
     val marker = inputs.head.getOperator
 
-    val builder = new ExtractDriverClassBuilder(
-      marker)(
-      subPlanInfo.getLabel,
-      subplan.getOutputs.toSeq)(
-      context.flowId,
-      context.jpContext,
-      context.branchKeys,
-      context.broadcastIds)
+    val builder =
+      new ExtractDriverClassBuilder(
+        marker)(
+        subPlanInfo.getLabel,
+        subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
   }

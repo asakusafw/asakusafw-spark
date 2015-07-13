@@ -47,7 +47,7 @@ import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp, MasterS
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterCheckOperatorCompilerSpecTest extends ShuffledMasterCheckOperatorCompilerSpec
 
-class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import ShuffledMasterCheckOperatorCompilerSpec._
 
@@ -65,14 +65,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       .build()
 
     val classpath = createTempDirectory("MasterCheckOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
@@ -132,14 +125,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
       .build()
 
     val classpath = createTempDirectory("MasterCheckOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])

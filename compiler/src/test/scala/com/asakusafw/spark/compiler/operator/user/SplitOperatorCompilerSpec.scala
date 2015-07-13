@@ -44,7 +44,7 @@ import com.asakusafw.vocabulary.operator.Split
 @RunWith(classOf[JUnitRunner])
 class SplitOperatorCompilerSpecTest extends SplitOperatorCompilerSpec
 
-class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import SplitOperatorCompilerSpec._
 
@@ -59,14 +59,7 @@ class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDi
       .build()
 
     val classpath = createTempDirectory("SplitOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Baa]])

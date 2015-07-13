@@ -36,7 +36,9 @@ import com.asakusafw.vocabulary.operator.{ CoGroup, GroupSort }
 
 class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
-  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
     (annotationDesc.resolveClass == classOf[CoGroup]
@@ -45,7 +47,9 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
 
-  override def compile(operator: UserOperator)(implicit context: Context): Type = {
+  override def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -90,7 +94,8 @@ private class CoGroupOperatorFragmentClassBuilder(
   operatorType: Type,
   opeartorOutputs: Seq[OperatorOutput],
   val inputBuffer: InputBuffer)(
-    operatorInfo: OperatorInfo)(implicit context: CoGroupOperatorCompiler#Context)
+    operatorInfo: OperatorInfo)(
+      implicit context: SparkClientCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
     context.flowId, dataModelType, operatorType, opeartorOutputs) {
 

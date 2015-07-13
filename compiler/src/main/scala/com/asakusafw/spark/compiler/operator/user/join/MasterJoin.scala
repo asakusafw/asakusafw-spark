@@ -30,8 +30,8 @@ import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
 trait MasterJoin extends JoinOperatorFragmentClassBuilder {
 
-  val opInfo: OperatorInfo
-  import opInfo._ // scalastyle:ignore
+  val operatorInfo: OperatorInfo
+  import operatorInfo._ // scalastyle:ignore
 
   val mappings: Seq[PropertyMapping]
 

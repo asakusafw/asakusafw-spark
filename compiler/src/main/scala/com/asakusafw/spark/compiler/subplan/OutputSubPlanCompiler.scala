@@ -50,9 +50,10 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
       operator.getName, operator.getInfo,
       Seq(context.jpContext.getOptions.getRuntimeWorkingPath(s"${operator.getName}/part-*")))
 
-    val builder = new OutputDriverClassBuilder(
-      operator)(
-      subPlanInfo.getLabel)
+    val builder =
+      new OutputDriverClassBuilder(
+        operator)(
+        subPlanInfo.getLabel)
 
     context.jpContext.addClass(builder)
   }

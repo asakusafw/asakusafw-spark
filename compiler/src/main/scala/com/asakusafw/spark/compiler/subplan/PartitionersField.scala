@@ -24,7 +24,6 @@ import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext 
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, IdentityPartitioner }
@@ -33,11 +32,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait PartitionersField extends ClassBuilder with NumPartitions {
 
-  def flowId: String
-
-  def jpContext: JPContext
-
-  def branchKeys: BranchKeys
+  def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -106,7 +101,7 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
         classOf[mutable.Builder[_, _]].asType,
         getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
           invokeV("apply", classOf[(_, _)].asType,
-            branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
+            context.branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
               outputInfo.getOutputType match {
                 case SubPlanOutputInfo.OutputType.DONT_CARE =>
                   getStatic(None.getClass.asType, "MODULE$", None.getClass.asType)

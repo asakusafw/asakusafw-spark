@@ -37,7 +37,9 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
 
   def of: Class[_] = classOf[Summarize]
 
-  def compile(operator: UserOperator)(implicit context: Context): Type = {
+  def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -65,8 +67,9 @@ private class SummarizeAggregationClassBuilder(
   valueType: Type,
   combinerType: Type,
   propertyFoldings: Seq[PropertyFolding])(
-    operatorInfo: OperatorInfo)(implicit context: SummarizeAggregationCompiler#Context)
-  extends AggregationClassBuilder(context.flowId, valueType, combinerType) {
+    operatorInfo: OperatorInfo)(
+      implicit context: SparkClientCompiler.Context)
+  extends AggregationClassBuilder(valueType, combinerType) {
 
   import operatorInfo._ // scalastyle:ignore
 
