@@ -38,7 +38,7 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
       operator.getCoreOperatorKind == CoreOperatorKind.RESTRUCTURE
   }
 
-  override def operatorType: OperatorType = OperatorType.MapType
+  override def operatorType: OperatorType = OperatorType.ExtractType
 
   override def compile(operator: CoreOperator)(implicit context: Context): Type = {
 

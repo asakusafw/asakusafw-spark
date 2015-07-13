@@ -65,7 +65,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       branchKeys = new BranchKeysClassBuilder("flowId"),
       broadcastIds = new BroadcastIdsClassBuilder("flowId"))
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ProjectInputModel]])
 
     val out = new GenericOutputFragment[ProjectOutputModel]
@@ -105,7 +105,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       branchKeys = new BranchKeysClassBuilder("flowId"),
       broadcastIds = new BroadcastIdsClassBuilder("flowId"))
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ExtendInputModel]])
 
     val out = new GenericOutputFragment[ExtendOutputModel]
@@ -145,7 +145,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       branchKeys = new BranchKeysClassBuilder("flowId"),
       broadcastIds = new BroadcastIdsClassBuilder("flowId"))
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[RestructureInputModel]])
 
     val out = new GenericOutputFragment[RestructureOutputModel]

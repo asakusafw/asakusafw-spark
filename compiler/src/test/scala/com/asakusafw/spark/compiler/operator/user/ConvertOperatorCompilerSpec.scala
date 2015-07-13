@@ -68,7 +68,7 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       branchKeys = new BranchKeysClassBuilder("flowId"),
       broadcastIds = new BroadcastIdsClassBuilder("flowId"))
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = new GenericOutputFragment[InputModel]
@@ -119,7 +119,7 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       branchKeys = new BranchKeysClassBuilder("flowId"),
       broadcastIds = new BroadcastIdsClassBuilder("flowId"))
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = new GenericOutputFragment[InputModel]

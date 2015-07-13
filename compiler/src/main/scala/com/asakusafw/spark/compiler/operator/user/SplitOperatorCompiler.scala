@@ -37,7 +37,7 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
     annotationDesc.resolveClass == classOf[Split]
   }
 
-  override def operatorType: OperatorType = OperatorType.MapType
+  override def operatorType: OperatorType = OperatorType.ExtractType
 
   override def compile(operator: UserOperator)(implicit context: Context): Type = {
 

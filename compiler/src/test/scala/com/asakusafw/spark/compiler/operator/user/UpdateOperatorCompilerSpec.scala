@@ -66,7 +66,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       branchKeys = new BranchKeysClassBuilder("flowId"),
       broadcastIds = new BroadcastIdsClassBuilder("flowId"))
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath)
       .asSubclass(classOf[Fragment[TestModel]])
 
@@ -110,7 +110,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       branchKeys = new BranchKeysClassBuilder("flowId"),
       broadcastIds = new BroadcastIdsClassBuilder("flowId"))
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath)
       .asSubclass(classOf[Fragment[TestModel]])
 
