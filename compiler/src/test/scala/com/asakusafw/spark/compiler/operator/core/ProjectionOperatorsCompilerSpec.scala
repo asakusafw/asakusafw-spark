@@ -58,7 +58,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
     val classpath = createTempDirectory("ProjectionOperatorsCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ProjectInputModel]])
 
     val out = new GenericOutputFragment[ProjectOutputModel]
@@ -91,7 +91,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
     val classpath = createTempDirectory("ExtendOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ExtendInputModel]])
 
     val out = new GenericOutputFragment[ExtendOutputModel]
@@ -124,7 +124,7 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
     val classpath = createTempDirectory("RestructureOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[RestructureInputModel]])
 
     val out = new GenericOutputFragment[RestructureOutputModel]

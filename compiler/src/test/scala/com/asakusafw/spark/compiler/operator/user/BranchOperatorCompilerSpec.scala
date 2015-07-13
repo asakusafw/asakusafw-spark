@@ -61,7 +61,7 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
     val classpath = createTempDirectory("BranchOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = new GenericOutputFragment[InputModel]
@@ -104,7 +104,7 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
     val classpath = createTempDirectory("BranchOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = new GenericOutputFragment[InputModel]

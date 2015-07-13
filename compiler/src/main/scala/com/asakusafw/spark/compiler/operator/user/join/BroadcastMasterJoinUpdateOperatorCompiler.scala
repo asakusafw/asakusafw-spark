@@ -34,7 +34,7 @@ class BroadcastMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
     annotationDesc.resolveClass == classOf[MasterJoinUpdateOp]
   }
 
-  override def operatorType: OperatorType = OperatorType.MapType
+  override def operatorType: OperatorType = OperatorType.ExtractType
 
   override def compile(
     operator: UserOperator)(

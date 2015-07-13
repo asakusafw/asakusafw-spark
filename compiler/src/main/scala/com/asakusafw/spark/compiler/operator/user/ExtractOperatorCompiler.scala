@@ -38,7 +38,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
     annotationDesc.resolveClass == classOf[Extract]
   }
 
-  override def operatorType: OperatorType = OperatorType.MapType
+  override def operatorType: OperatorType = OperatorType.ExtractType
 
   override def compile(
     operator: UserOperator)(

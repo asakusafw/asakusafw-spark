@@ -29,7 +29,7 @@ sealed trait OperatorType
 
 object OperatorType {
 
-  case object MapType extends OperatorType
+  case object ExtractType extends OperatorType
   case object CoGroupType extends OperatorType
   case object AggregationType extends OperatorType
 }

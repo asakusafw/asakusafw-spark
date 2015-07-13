@@ -57,7 +57,7 @@ class FragmentGraphBuilder(
           case marker: MarkerOperator =>
             OutputFragmentClassBuilder.getOrCompile(marker.getInput.getDataType.asType)
           case operator: Operator =>
-            OperatorCompiler.compile(operator, OperatorType.MapType)
+            OperatorCompiler.compile(operator, OperatorType.ExtractType)
         }
       })
     val fragment = operator match {
