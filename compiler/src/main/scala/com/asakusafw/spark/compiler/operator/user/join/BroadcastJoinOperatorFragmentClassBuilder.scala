@@ -18,25 +18,21 @@ package operator
 package user
 package join
 
-import scala.reflect.ClassTag
-
 import org.objectweb.asm.Type
 
-import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
+import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, OperatorOutput }
 
-trait MasterCheck extends JoinOperatorFragmentClassBuilder {
-
-  val operatorInfo: OperatorInfo
-  import operatorInfo._ // scalastyle:ignore
-
-  override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
-    masterVar.push().ifNull({
-      getOutputField(mb, outputs(MasterCheckOp.ID_OUTPUT_MISSED))
-    }, {
-      getOutputField(mb, outputs(MasterCheckOp.ID_OUTPUT_FOUND))
-    }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
-  }
-}
+abstract class BroadcastJoinOperatorFragmentClassBuilder(
+  dataModelType: Type,
+  operatorType: Type,
+  operatorOutputs: Seq[OperatorOutput])(
+    val masterType: Type,
+    val txType: Type,
+    val masterSelection: Option[(String, Type)])(
+      val masterInput: OperatorInput,
+      val txInput: OperatorInput)(
+        val operatorInfo: OperatorInfo)(
+          implicit val context: SparkClientCompiler.Context)
+  extends JoinOperatorFragmentClassBuilder(
+    dataModelType, operatorType, operatorOutputs)
+  with BroadcastJoin

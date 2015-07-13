@@ -53,7 +53,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverClassBuilderSpecTest extends InputOutputDriverClassBuilderSpec
 
-class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with TempDir {
+class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with TempDir with CompilerContext {
 
   import InputOutputDriverClassBuilderSpec._
 
@@ -89,18 +89,12 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     outputSubPlan.putAttribute(classOf[SubPlanInfo],
       new SubPlanInfo(outputSubPlan, SubPlanInfo.DriverType.OUTPUT, Seq.empty[SubPlanInfo.DriverOption], outputOperator))
 
-    val outputBranchKeysClassBuilder = new BranchKeysClassBuilder("outputFlowId")
-    val outputBroadcastIdsClassBuilder = new BroadcastIdsClassBuilder("outputFlowId")
-    val outputCompilerContext = SubPlanCompiler.Context(
-      flowId = "outtputFlowId",
-      jpContext = jpContext,
-      externalInputs = mutable.Map.empty,
-      branchKeys = outputBranchKeysClassBuilder,
-      broadcastIds = outputBroadcastIdsClassBuilder)
+    val outputCompilerContext = newContext("outtputFlowId", jpContext)
+
     val outputCompiler = SubPlanCompiler(outputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(outputCompilerContext)
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
-    outputCompilerContext.jpContext.addClass(outputBranchKeysClassBuilder)
-    outputCompilerContext.jpContext.addClass(outputBroadcastIdsClassBuilder)
+    outputCompilerContext.jpContext.addClass(outputCompilerContext.branchKeys)
+    outputCompilerContext.jpContext.addClass(outputCompilerContext.broadcastIds)
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -158,18 +152,12 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     inputSubplanOutput.putAttribute(classOf[SubPlanOutputInfo],
       new SubPlanOutputInfo(inputSubplanOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-    val inputBranchKeysClassBuilder = new BranchKeysClassBuilder("inputFlowId")
-    val inputBroadcastIdsClassBuilder = new BroadcastIdsClassBuilder("inputFlowId")
-    val inputCompilerContext = SubPlanCompiler.Context(
-      flowId = "inputFlowId",
-      jpContext = jpContext,
-      externalInputs = mutable.Map.empty,
-      branchKeys = inputBranchKeysClassBuilder,
-      broadcastIds = inputBroadcastIdsClassBuilder)
+    val inputCompilerContext = newContext("inputFlowId", jpContext = jpContext)
+
     val inputCompiler = SubPlanCompiler(inputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(inputCompilerContext)
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
-    inputCompilerContext.jpContext.addClass(inputBranchKeysClassBuilder)
-    inputCompilerContext.jpContext.addClass(inputBroadcastIdsClassBuilder)
+    inputCompilerContext.jpContext.addClass(inputCompilerContext.branchKeys)
+    inputCompilerContext.jpContext.addClass(inputCompilerContext.broadcastIds)
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]]])
     val inputDriver = inputDriverCls.getConstructor(
       classOf[SparkContext],
@@ -181,10 +169,10 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
         Map.empty)
     val inputs = inputDriver.execute()
 
-    val branchKeyCls = classServer.loadClass(inputBranchKeysClassBuilder.thisType.getClassName)
+    val branchKeyCls = classServer.loadClass(inputCompilerContext.branchKeys.thisType.getClassName)
     def getBranchKey(osn: Long): BranchKey = {
       val sn = inputSubPlan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
-      branchKeyCls.getField(inputBranchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
+      branchKeyCls.getField(inputCompilerContext.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
     }
 
     assert(inputDriver.branchKeys ===

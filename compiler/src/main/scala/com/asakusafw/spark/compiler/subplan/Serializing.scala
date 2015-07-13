@@ -19,7 +19,6 @@ package subplan
 import org.apache.hadoop.io.Writable
 import org.objectweb.asm.{ Opcodes, Type }
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.OperatorInfo
@@ -30,9 +29,7 @@ import com.asakusafw.spark.tools.asm._
 
 trait Serializing extends ClassBuilder {
 
-  def jpContext: JPContext
-
-  def branchKeys: BranchKeys
+  def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -110,7 +107,7 @@ trait Serializing extends ClassBuilder {
       for {
         (output, i) <- subplanOutputs.zipWithIndex
       } {
-        branchVar.push().unlessNotEqual(branchKeys.getField(mb, output.getOperator)) {
+        branchVar.push().unlessNotEqual(context.branchKeys.getField(mb, output.getOperator)) {
           val t = outputType(output)
           val outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
           if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST) {
@@ -131,7 +128,7 @@ trait Serializing extends ClassBuilder {
     val outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
     if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED) {
       val op = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
-      val operatorInfo = new OperatorInfo(op)(jpContext)
+      val operatorInfo = new OperatorInfo(op)(context.jpContext)
       import operatorInfo._ // scalastyle:ignore
       assert(outputs.size == 1)
       outputs.head.getDataType.asType

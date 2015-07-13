@@ -32,7 +32,9 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
 
-  override def support(operator: CoreOperator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: CoreOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     operator.getCoreOperatorKind == CoreOperatorKind.PROJECT ||
       operator.getCoreOperatorKind == CoreOperatorKind.EXTEND ||
       operator.getCoreOperatorKind == CoreOperatorKind.RESTRUCTURE
@@ -40,7 +42,9 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
 
   override def operatorType: OperatorType = OperatorType.MapType
 
-  override def compile(operator: CoreOperator)(implicit context: Context): Type = {
+  override def compile(
+    operator: CoreOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -69,8 +73,9 @@ private class ProjectionOperatorsFragmentClassBuilder(
   dataModelType: Type,
   childDataModelType: Type,
   val mappings: Seq[PropertyMapping])(
-    operatorInfo: OperatorInfo)(implicit context: ProjectionOperatorsCompiler#Context)
-  extends CoreOperatorFragmentClassBuilder(context.flowId, dataModelType, childDataModelType) {
+    operatorInfo: OperatorInfo)(
+      implicit context: SparkClientCompiler.Context)
+  extends CoreOperatorFragmentClassBuilder(dataModelType, childDataModelType) {
 
   import operatorInfo._ // scalastyle:ignore
 

@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.spi
+package com.asakusafw.spark.compiler
+package spi
 
 import java.util.ServiceLoader
 
@@ -22,25 +23,21 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.model.graph._
+import com.asakusafw.lang.compiler.model.graph.{ Operator, UserOperator }
 
 trait AggregationCompiler {
 
-  type Context = AggregationCompiler.Context
-
   def of: Class[_]
-  def compile(operator: UserOperator)(implicit context: Context): Type
+  def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type
 }
 
 object AggregationCompiler {
 
-  case class Context(
-    flowId: String,
-    jpContext: JPContext)
-
   private def getCompiler(
-    operator: Operator)(implicit context: Context): Option[AggregationCompiler] = {
+    operator: Operator)(
+      implicit context: SparkClientCompiler.Context): Option[AggregationCompiler] = {
     operator match {
       case op: UserOperator =>
         apply(context.jpContext.getClassLoader)
@@ -49,11 +46,15 @@ object AggregationCompiler {
     }
   }
 
-  def support(operator: Operator)(implicit context: Context): Boolean = {
+  def support(
+    operator: Operator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     getCompiler(operator).isDefined
   }
 
-  def compile(operator: Operator)(implicit context: Context): Type = {
+  def compile(
+    operator: Operator)(
+      implicit context: SparkClientCompiler.Context): Type = {
     getCompiler(operator) match {
       case Some(compiler) => compiler.compile(operator.asInstanceOf[UserOperator])
       case _ => throw new AssertionError()

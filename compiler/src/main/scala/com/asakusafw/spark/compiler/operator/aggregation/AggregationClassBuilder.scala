@@ -33,12 +33,12 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class AggregationClassBuilder(
-  val flowId: String,
   val valueType: Type,
-  val combinerType: Type)
+  val combinerType: Type)(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/Aggregation$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/Aggregation$$${nextId};"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[Aggregation[_, _, _]].asType) {
@@ -169,12 +169,12 @@ object AggregationClassBuilder {
     mutable.WeakHashMap.empty
 
   def getOrCompile(
-    flowId: String,
-    operator: UserOperator,
-    jpContext: JPContext): Type = {
-    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
-      (flowId, operator.getOriginalSerialNumber), {
-        AggregationCompiler.compile(operator)(AggregationCompiler.Context(flowId, jpContext))
-      })
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
+    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty)
+      .getOrElseUpdate(
+        (context.flowId, operator.getOriginalSerialNumber), {
+          AggregationCompiler.compile(operator)
+        })
   }
 }

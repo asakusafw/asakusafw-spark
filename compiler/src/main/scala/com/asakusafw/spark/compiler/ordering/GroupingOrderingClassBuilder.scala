@@ -30,10 +30,12 @@ import com.asakusafw.spark.runtime.orderings.AbstractOrdering
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-class GroupingOrderingClassBuilder(flowId: String, groupingTypes: Seq[Type])
+class GroupingOrderingClassBuilder(
+  groupingTypes: Seq[Type])(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/ordering/GroupingOrdering$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/ordering/GroupingOrdering$$${nextId};"), // scalastyle:ignore
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[AbstractOrdering[_]].asType) {
@@ -130,12 +132,11 @@ object GroupingOrderingClassBuilder {
     mutable.WeakHashMap.empty
 
   def getOrCompile(
-    flowId: String,
-    groupingTypes: Seq[Type],
-    jpContext: JPContext): Type = {
-    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
-      (flowId, groupingTypes), {
-        jpContext.addClass(new GroupingOrderingClassBuilder(flowId, groupingTypes))
+    groupingTypes: Seq[Type])(
+      implicit context: SparkClientCompiler.Context): Type = {
+    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+      (context.flowId, groupingTypes), {
+        context.jpContext.addClass(new GroupingOrderingClassBuilder(groupingTypes))
       })
   }
 }

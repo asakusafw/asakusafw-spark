@@ -42,7 +42,7 @@ import com.asakusafw.vocabulary.operator.Update
 @RunWith(classOf[JUnitRunner])
 class UpdateOperatorCompilerSpecTest extends UpdateOperatorCompilerSpec
 
-class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import UpdateOperatorCompilerSpec._
 
@@ -57,14 +57,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       .build();
 
     val classpath = createTempDirectory("UpdateOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath)
@@ -101,14 +94,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       .build();
 
     val classpath = createTempDirectory("UpdateOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath)

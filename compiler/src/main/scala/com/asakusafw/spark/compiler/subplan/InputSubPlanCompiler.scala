@@ -16,6 +16,8 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import java.lang.{ Boolean => JBoolean }
 
 import scala.collection.JavaConversions._
@@ -39,7 +41,9 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
   override def instantiator: Instantiator = InputSubPlanCompiler.InputDriverInstantiator
 
-  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def compile(
+    subplan: SubPlan)(
+      implicit context: SparkClientCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalInput],
@@ -68,19 +72,16 @@ class InputSubPlanCompiler extends SubPlanCompiler {
             None)
       }
 
-    val builder = new InputDriverClassBuilder(
-      operator,
-      keyType,
-      valueType,
-      inputFormatType,
-      paths,
-      extraConfigurations)(
-      subPlanInfo.getLabel,
-      subplan.getOutputs.toSeq)(
-      context.flowId,
-      context.jpContext,
-      context.branchKeys,
-      context.broadcastIds)
+    val builder =
+      new InputDriverClassBuilder(
+        operator,
+        keyType,
+        valueType,
+        inputFormatType,
+        paths,
+        extraConfigurations)(
+        subPlanInfo.getLabel,
+        subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
   }
@@ -92,15 +93,19 @@ object InputSubPlanCompiler {
 
     override def newInstance(
       driverType: Type,
-      subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._ // scalastyle:ignore
+      subplan: SubPlan)(
+        mb: MethodBuilder,
+        vars: Instantiator.Vars,
+        nextLocal: AtomicInteger)(
+          implicit context: SparkClientCompiler.Context): Var = {
+      import mb._ // scalastyle:ignore
 
       val inputDriver = pushNew(driverType)
       inputDriver.dup().invokeInit(
-        context.scVar.push(),
-        context.hadoopConfVar.push(),
-        context.broadcastsVar.push())
-      inputDriver.store(context.nextLocal.getAndAdd(inputDriver.size))
+        vars.sc.push(),
+        vars.hadoopConf.push(),
+        vars.broadcasts.push())
+      inputDriver.store(nextLocal.getAndAdd(inputDriver.size))
     }
   }
 }

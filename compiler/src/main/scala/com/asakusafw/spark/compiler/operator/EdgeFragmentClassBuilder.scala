@@ -29,10 +29,12 @@ import com.asakusafw.spark.compiler.operator.EdgeFragmentClassBuilder._
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 
-class EdgeFragmentClassBuilder(flowId: String, dataModelType: Type)
+class EdgeFragmentClassBuilder(
+  dataModelType: Type)(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/fragment/EdgeFragment$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/EdgeFragment$$${nextId};"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[EdgeFragment[_]].asType) {
@@ -77,12 +79,11 @@ object EdgeFragmentClassBuilder {
     mutable.WeakHashMap.empty
 
   def getOrCompile(
-    flowId: String,
-    dataModelType: Type,
-    jpContext: JPContext): Type = {
-    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
-      (flowId, dataModelType), {
-        jpContext.addClass(new EdgeFragmentClassBuilder(flowId, dataModelType))
+    dataModelType: Type)(
+      implicit context: SparkClientCompiler.Context): Type = {
+    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+      (context.flowId, dataModelType), {
+        context.jpContext.addClass(new EdgeFragmentClassBuilder(dataModelType))
       })
   }
 }

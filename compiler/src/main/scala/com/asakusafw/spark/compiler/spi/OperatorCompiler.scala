@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.spi
+package com.asakusafw.spark.compiler
+package spi
 
 import java.util.ServiceLoader
 
@@ -22,10 +23,7 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.spark.compiler.subplan.{ BranchKeys, BroadcastIds }
-import com.asakusafw.spark.tools.asm.ClassBuilder
+import com.asakusafw.lang.compiler.model.graph.Operator
 
 sealed trait OperatorType
 
@@ -38,35 +36,36 @@ object OperatorType {
 
 trait OperatorCompiler {
 
-  type Context = OperatorCompiler.Context
-
-  def support(operator: Operator)(implicit context: Context): Boolean
+  def support(
+    operator: Operator)(
+      implicit context: SparkClientCompiler.Context): Boolean
 
   def operatorType: OperatorType
 
-  def compile(operator: Operator)(implicit context: Context): Type
+  def compile(
+    operator: Operator)(
+      implicit context: SparkClientCompiler.Context): Type
 }
 
 object OperatorCompiler {
 
-  case class Context(
-    flowId: String,
-    jpContext: JPContext,
-    branchKeys: BranchKeys,
-    broadcastIds: BroadcastIds)
-
   private def getCompiler(
-    operator: Operator)(implicit context: Context): Seq[OperatorCompiler] = {
+    operator: Operator)(
+      implicit context: SparkClientCompiler.Context): Seq[OperatorCompiler] = {
     apply(context.jpContext.getClassLoader).filter(_.support(operator))
   }
 
   def support(
-    operator: Operator, operatorType: OperatorType)(implicit context: Context): Boolean = {
+    operator: Operator,
+    operatorType: OperatorType)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     getCompiler(operator).exists(_.operatorType == operatorType)
   }
 
   def compile(
-    operator: Operator, operatorType: OperatorType)(implicit context: Context): Type = {
+    operator: Operator,
+    operatorType: OperatorType)(
+      implicit context: SparkClientCompiler.Context): Type = {
     val compilers = getCompiler(operator).filter(_.operatorType == operatorType)
     assert(compilers.size != 0,
       s"The compiler supporting operator (${operator}, ${operatorType}) is not found.")

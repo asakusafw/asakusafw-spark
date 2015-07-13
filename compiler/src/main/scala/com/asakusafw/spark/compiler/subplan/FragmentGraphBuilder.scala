@@ -41,7 +41,8 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 class FragmentGraphBuilder(
   mb: MethodBuilder,
   broadcastsVar: Var,
-  nextLocal: AtomicInteger)(implicit context: OperatorCompiler.Context) {
+  nextLocal: AtomicInteger)(
+    implicit context: SparkClientCompiler.Context) {
   import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty
@@ -54,8 +55,7 @@ class FragmentGraphBuilder(
       operator.getOriginalSerialNumber, {
         operator match {
           case marker: MarkerOperator =>
-            OutputFragmentClassBuilder
-              .getOrCompile(context.flowId, marker.getInput.getDataType.asType, context.jpContext)
+            OutputFragmentClassBuilder.getOrCompile(marker.getInput.getDataType.asType)
           case operator: Operator =>
             OperatorCompiler.compile(operator, OperatorType.MapType)
         }
@@ -88,8 +88,7 @@ class FragmentGraphBuilder(
       val fragment = pushNew(
         edgeFragmentTypes.getOrElseUpdate(
           output.getDataType.asType, {
-            EdgeFragmentClassBuilder
-              .getOrCompile(context.flowId, output.getDataType.asType, context.jpContext)
+            EdgeFragmentClassBuilder.getOrCompile(output.getDataType.asType)
           }))
       fragment.dup().invokeInit({
         val arr = pushNewArray(classOf[Fragment[_]].asType, output.getOpposites.size)

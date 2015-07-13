@@ -37,7 +37,7 @@ import com.asakusafw.vocabulary.operator.Fold
 @RunWith(classOf[JUnitRunner])
 class FoldAggregationCompilerSpecTest extends FoldAggregationCompilerSpec
 
-class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import FoldAggregationCompilerSpec._
 
@@ -52,12 +52,7 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .build()
 
     val classpath = createTempDirectory("FoldAggregationCompilerSpec").toFile
-    implicit val context = AggregationCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = AggregationCompiler.compile(operator)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Hoge, Hoge]])
@@ -93,12 +88,7 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .build()
 
     val classpath = createTempDirectory("FoldAggregationCompilerSpec").toFile
-    implicit val context = AggregationCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = AggregationCompiler.compile(operator)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Hoge, Hoge]])

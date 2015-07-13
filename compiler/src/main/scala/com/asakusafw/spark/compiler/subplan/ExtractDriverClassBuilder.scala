@@ -27,7 +27,6 @@ import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
@@ -42,13 +41,10 @@ class ExtractDriverClassBuilder(
   val marker: MarkerOperator)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
-      val flowId: String,
-      val jpContext: JPContext,
-      val branchKeys: BranchKeys,
-      val broadcastIds: BroadcastIds)
+      implicit val context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/driver/ExtractDriver$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/ExtractDriver$$${nextId};"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[ExtractDriver[_]].asType) {
@@ -172,12 +168,6 @@ class ExtractDriverClassBuilder(
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
         val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
-        implicit val compilerContext =
-          OperatorCompiler.Context(
-            flowId = flowId,
-            jpContext = jpContext,
-            branchKeys = branchKeys,
-            broadcastIds = broadcastIds)
         val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)
         val fragmentVar = fragmentBuilder.build(marker.getOutput)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)

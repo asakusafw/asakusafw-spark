@@ -29,10 +29,8 @@ import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput }
 import com.asakusafw.lang.compiler.planning.PlanMarker
-import com.asakusafw.spark.compiler.subplan.BroadcastIds
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.io.WritableSerDe
@@ -42,15 +40,13 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
 
-  def jpContext: JPContext
-
-  def broadcastIds: BroadcastIds
+  def context: SparkClientCompiler.Context
 
   def masterInput: OperatorInput
   def txInput: OperatorInput
 
-  val opInfo: OperatorInfo
-  import opInfo._ // scalastyle:ignore
+  val operatorInfo: OperatorInfo
+  import operatorInfo._ // scalastyle:ignore
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -94,7 +90,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
       classOf[Map[_, _]].asType,
       broadcastsVar.push()
         .invokeI("apply", classOf[AnyRef].asType,
-          broadcastIds.getField(mb, marker).asType(classOf[AnyRef].asType))
+          context.broadcastIds.getField(mb, marker).asType(classOf[AnyRef].asType))
         .cast(classOf[Broadcast[_]].asType)
         .invokeV("value", classOf[AnyRef].asType)
         .cast(classOf[Map[_, _]].asType))
@@ -103,7 +99,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     val keyVar = {
-      val dataModelRef = jpContext.getDataModelLoader.load(txInput.getDataType)
+      val dataModelRef = context.jpContext.getDataModelLoader.load(txInput.getDataType)
       val group = txInput.getGroup
 
       val shuffleKey = pushNew(classOf[ShuffleKey].asType)

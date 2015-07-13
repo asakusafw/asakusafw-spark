@@ -16,6 +16,8 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -42,7 +44,9 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
   override def instantiator: Instantiator = AggregateSubPlanCompiler.AggregateDriverInstantiator
 
-  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def compile(
+    subplan: SubPlan)(
+      implicit context: SparkClientCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[UserOperator],
@@ -57,16 +61,13 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
     assert(outputs.size == 1,
       s"The size of outputs should be 1: ${outputs.size}")
 
-    val builder = new AggregateDriverClassBuilder(
-      inputs.head.dataModelType,
-      outputs.head.dataModelType,
-      operator)(
-      subPlanInfo.getLabel,
-      subplan.getOutputs.toSeq)(
-      context.flowId,
-      context.jpContext,
-      context.branchKeys,
-      context.broadcastIds)
+    val builder =
+      new AggregateDriverClassBuilder(
+        inputs.head.dataModelType,
+        outputs.head.dataModelType,
+        operator)(
+        subPlanInfo.getLabel,
+        subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
   }
@@ -78,8 +79,12 @@ object AggregateSubPlanCompiler {
 
     override def newInstance(
       driverType: Type,
-      subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._ // scalastyle:ignore
+      subplan: SubPlan)(
+        mb: MethodBuilder,
+        vars: Instantiator.Vars,
+        nextLocal: AtomicInteger)(
+          implicit context: SparkClientCompiler.Context): Var = {
+      import mb._ // scalastyle:ignore
 
       val primaryOperator =
         subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
@@ -97,16 +102,16 @@ object AggregateSubPlanCompiler {
           ldc(1)
         } else {
           numPartitions(
-            context.mb,
-            context.scVar.push())(subplan.findInput(input.getOpposites.head.getOwner))
+            mb,
+            vars.sc.push())(subplan.findInput(input.getOpposites.head.getOwner))
         })
-      val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
+      val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
 
       val aggregateDriver = pushNew(driverType)
       aggregateDriver.dup().invokeInit(
-        context.scVar.push(),
-        context.hadoopConfVar.push(),
-        context.broadcastsVar.push(), {
+        vars.sc.push(),
+        vars.hadoopConf.push(),
+        vars.broadcasts.push(), {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
@@ -118,10 +123,10 @@ object AggregateSubPlanCompiler {
             marker = prevSubPlanOutput.getOperator
           } {
             builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-              context.rddsVar.push().invokeI(
+              vars.rdds.push().invokeI(
                 "apply",
                 classOf[AnyRef].asType,
-                context.branchKeys.getField(context.mb, marker)
+                context.branchKeys.getField(mb, marker)
                   .asType(classOf[AnyRef].asType))
                 .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
                 .asType(classOf[AnyRef].asType))
@@ -134,19 +139,17 @@ object AggregateSubPlanCompiler {
               val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
               pushNew0(
                 SortOrderingClassBuilder.getOrCompile(
-                  context.flowId,
                   input.getGroup.getGrouping.map { grouping =>
                     dataModelRef.findProperty(grouping).getType.asType
                   },
                   input.getGroup.getOrdering.map { ordering =>
                     (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                       ordering.getDirection == Group.Direction.ASCENDANT)
-                  },
-                  context.jpContext))
+                  }))
             }.asType(classOf[AnyRef].asType))
         },
         partitionerVar.push().asType(classOf[Partitioner].asType))
-      aggregateDriver.store(context.nextLocal.getAndAdd(aggregateDriver.size))
+      aggregateDriver.store(nextLocal.getAndAdd(aggregateDriver.size))
     }
   }
 }

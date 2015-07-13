@@ -43,7 +43,7 @@ import com.asakusafw.vocabulary.operator.Extract
 @RunWith(classOf[JUnitRunner])
 class ExtractOperatorCompilerSpecTest extends ExtractOperatorCompilerSpec
 
-class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import ExtractOperatorCompilerSpec._
 
@@ -59,14 +59,7 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .build()
 
     val classpath = createTempDirectory("ExtractOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
@@ -110,14 +103,7 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .build()
 
     val classpath = createTempDirectory("ExtractOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.MapType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])

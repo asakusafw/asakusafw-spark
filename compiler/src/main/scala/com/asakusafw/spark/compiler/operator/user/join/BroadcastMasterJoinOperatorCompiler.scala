@@ -19,20 +19,19 @@ package user
 package join
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput, UserOperator }
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
-import com.asakusafw.spark.compiler.subplan.BroadcastIds
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
 class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
-  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[MasterJoinOp]
@@ -40,7 +39,9 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
   override def operatorType: OperatorType = OperatorType.MapType
 
-  override def compile(operator: UserOperator)(implicit context: Context): Type = {
+  override def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -58,28 +59,21 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
         outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
       }")
 
-    val builder = new JoinOperatorFragmentClassBuilder(
-      context.flowId,
-      inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
-      implementationClassType,
-      outputs) with BroadcastJoin with MasterJoin {
+    val builder =
+      new BroadcastJoinOperatorFragmentClassBuilder(
+        inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
+        implementationClassType,
+        outputs)(
+        inputs(MasterJoinOp.ID_INPUT_MASTER).dataModelType,
+        inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
+        selectionMethod)(
+        inputs(MasterJoinOp.ID_INPUT_MASTER),
+        inputs(MasterJoinOp.ID_INPUT_TRANSACTION))(
+        operatorInfo) with MasterJoin {
 
-      val jpContext: JPContext = context.jpContext
-
-      val broadcastIds: BroadcastIds = context.broadcastIds
-
-      lazy val masterInput: OperatorInput = inputs(MasterJoinOp.ID_INPUT_MASTER)
-      lazy val txInput: OperatorInput = inputs(MasterJoinOp.ID_INPUT_TRANSACTION)
-
-      lazy val masterType: Type = masterInput.dataModelType
-      lazy val txType: Type = dataModelType
-      lazy val masterSelection: Option[(String, Type)] = selectionMethod
-
-      val opInfo: OperatorInfo = operatorInfo
-
-      val mappings =
-        JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
-    }
+        val mappings =
+          JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
+      }
 
     context.jpContext.addClass(builder)
   }

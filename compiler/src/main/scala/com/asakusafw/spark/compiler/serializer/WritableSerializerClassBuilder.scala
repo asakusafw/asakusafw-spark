@@ -30,10 +30,12 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.serializer.WritableSerializer
 import com.asakusafw.spark.tools.asm._
 
-class WritableSerializerClassBuilder(flowId: String, writableType: Type)
+class WritableSerializerClassBuilder(
+  writableType: Type)(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/serializer/WritableSerializer$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/WritableSerializer$$${nextId};"), // scalastyle:ignore
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[WritableSerializer[_]].asType) {
@@ -68,12 +70,11 @@ object WritableSerializerClassBuilder {
     mutable.WeakHashMap.empty
 
   def getOrCompile(
-    flowId: String,
-    writableType: Type,
-    jpContext: JPContext): Type = {
-    cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
-      (flowId, writableType), {
-        jpContext.addClass(new WritableSerializerClassBuilder(flowId, writableType))
+    writableType: Type)(
+      implicit context: SparkClientCompiler.Context): Type = {
+    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+      (context.flowId, writableType), {
+        context.jpContext.addClass(new WritableSerializerClassBuilder(writableType))
       })
   }
 }

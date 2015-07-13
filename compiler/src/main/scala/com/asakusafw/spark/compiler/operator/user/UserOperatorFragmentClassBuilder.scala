@@ -29,11 +29,11 @@ import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 
 abstract class UserOperatorFragmentClassBuilder(
-  flowId: String,
   dataModelType: Type,
   val operatorType: Type,
-  val operatorOutputs: Seq[OperatorOutput])
-  extends FragmentClassBuilder(flowId, dataModelType)
+  val operatorOutputs: Seq[OperatorOutput])(
+    implicit context: SparkClientCompiler.Context)
+  extends FragmentClassBuilder(dataModelType)
   with OperatorField
   with OutputFragments {
 

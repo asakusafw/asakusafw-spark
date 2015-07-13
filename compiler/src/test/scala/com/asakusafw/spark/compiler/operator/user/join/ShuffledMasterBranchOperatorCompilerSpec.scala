@@ -48,7 +48,7 @@ import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp, Maste
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterBranchOperatorCompilerSpecTest extends ShuffledMasterBranchOperatorCompilerSpec
 
-class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import ShuffledMasterBranchOperatorCompilerSpec._
 
@@ -66,14 +66,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .build()
 
     val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
@@ -133,14 +126,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .build()
 
     val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
@@ -203,14 +189,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .build()
 
     val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
@@ -270,14 +249,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .build()
 
     val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])

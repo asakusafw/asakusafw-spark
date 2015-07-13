@@ -23,7 +23,6 @@ import scala.reflect.NameTransformer
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
@@ -38,11 +37,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait PreparingKey extends ClassBuilder {
 
-  def flowId: String
-
-  def jpContext: JPContext
-
-  def branchKeys: BranchKeys
+  def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -68,7 +63,7 @@ trait PreparingKey extends ClassBuilder {
           }
         } {
           val op = output.getOperator
-          val dataModelRef = jpContext.getDataModelLoader.load(op.getInput.getDataType)
+          val dataModelRef = context.jpContext.getDataModelLoader.load(op.getInput.getDataType)
           val dataModelType = dataModelRef.getDeclaration.asType
 
           val methodName = s"shuffleKey${i}"
@@ -79,7 +74,7 @@ trait PreparingKey extends ClassBuilder {
               defShuffleKey(mb, dataModelRef, partitionInfo)
             }
 
-          branchVar.push().unlessNotEqual(branchKeys.getField(mb, op)) {
+          branchVar.push().unlessNotEqual(context.branchKeys.getField(mb, op)) {
             `return`(
               thisVar.push().invokeV(
                 methodName,

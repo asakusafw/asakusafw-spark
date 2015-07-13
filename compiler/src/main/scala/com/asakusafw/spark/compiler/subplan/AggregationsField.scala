@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
 import scala.collection.mutable
 import scala.reflect.NameTransformer
@@ -21,7 +22,6 @@ import scala.reflect.NameTransformer
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
@@ -35,11 +35,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait AggregationsField extends ClassBuilder {
 
-  def flowId: String
-
-  def jpContext: JPContext
-
-  def branchKeys: BranchKeys
+  implicit def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -103,15 +99,15 @@ trait AggregationsField extends ClassBuilder {
       outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
       if outputInfo.getAggregationInfo.isInstanceOf[UserOperator]
       operator = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
-      if (AggregationCompiler.support(operator)(AggregationCompiler.Context(flowId, jpContext)))
+      if (AggregationCompiler.support(operator))
     } {
       builder.invokeI(NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType, {
           getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
             .invokeV("apply", classOf[(_, _)].asType,
-              branchKeys.getField(mb, output.getOperator)
+              context.branchKeys.getField(mb, output.getOperator)
                 .asType(classOf[AnyRef].asType),
-              pushNew0(AggregationClassBuilder.getOrCompile(flowId, operator, jpContext))
+              pushNew0(AggregationClassBuilder.getOrCompile(operator))
                 .asType(classOf[AnyRef].asType))
         }.asType(classOf[AnyRef].asType))
     }

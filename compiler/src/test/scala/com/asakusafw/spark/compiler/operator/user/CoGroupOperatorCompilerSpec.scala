@@ -47,7 +47,7 @@ import com.asakusafw.vocabulary.operator.CoGroup
 @RunWith(classOf[JUnitRunner])
 class CoGroupOperatorCompilerSpecTest extends CoGroupOperatorCompilerSpec
 
-class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import CoGroupOperatorCompilerSpec._
 
@@ -69,14 +69,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .build()
 
     val classpath = createTempDirectory("CoGroupOperatorCompilerSpec").toFile
-    implicit val context = OperatorCompiler.Context(
-      flowId = "flowId",
-      jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", "", Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath),
-      branchKeys = new BranchKeysClassBuilder("flowId"),
-      broadcastIds = new BroadcastIdsClassBuilder("flowId"))
+    implicit val context = newContext("flowId", classpath)
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])

@@ -16,6 +16,8 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -37,7 +39,9 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
 
   override def instantiator: Instantiator = ExtractSubPlanCompiler.ExtractDriverInstantiator
 
-  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def compile(
+    subplan: SubPlan)(
+      implicit context: SparkClientCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
 
     val inputs = subplan.getInputs.toSet[SubPlan.Input]
@@ -45,14 +49,11 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
 
     val marker = inputs.head.getOperator
 
-    val builder = new ExtractDriverClassBuilder(
-      marker)(
-      subPlanInfo.getLabel,
-      subplan.getOutputs.toSeq)(
-      context.flowId,
-      context.jpContext,
-      context.branchKeys,
-      context.broadcastIds)
+    val builder =
+      new ExtractDriverClassBuilder(
+        marker)(
+        subPlanInfo.getLabel,
+        subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
   }
@@ -64,14 +65,18 @@ object ExtractSubPlanCompiler {
 
     override def newInstance(
       driverType: Type,
-      subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._ // scalastyle:ignore
+      subplan: SubPlan)(
+        mb: MethodBuilder,
+        vars: Instantiator.Vars,
+        nextLocal: AtomicInteger)(
+          implicit context: SparkClientCompiler.Context): Var = {
+      import mb._ // scalastyle:ignore
 
       val extractDriver = pushNew(driverType)
       extractDriver.dup().invokeInit(
-        context.scVar.push(),
-        context.hadoopConfVar.push(),
-        context.broadcastsVar.push(), {
+        vars.sc.push(),
+        vars.hadoopConf.push(),
+        vars.broadcasts.push(), {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
@@ -83,10 +88,10 @@ object ExtractSubPlanCompiler {
             marker = prevSubPlanOutput.getOperator
           } {
             builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-              context.rddsVar.push().invokeI(
+              vars.rdds.push().invokeI(
                 "apply",
                 classOf[AnyRef].asType,
-                context.branchKeys.getField(context.mb, marker)
+                context.branchKeys.getField(mb, marker)
                   .asType(classOf[AnyRef].asType))
                 .cast(classOf[Future[RDD[(_, _)]]].asType)
                 .asType(classOf[AnyRef].asType))
@@ -94,7 +99,7 @@ object ExtractSubPlanCompiler {
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         })
-      extractDriver.store(context.nextLocal.getAndAdd(extractDriver.size))
+      extractDriver.store(nextLocal.getAndAdd(extractDriver.size))
     }
   }
 }

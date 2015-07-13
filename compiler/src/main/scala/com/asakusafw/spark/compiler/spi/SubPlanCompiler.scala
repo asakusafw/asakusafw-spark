@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.spi
+package com.asakusafw.spark.compiler
+package spi
 
 import java.util.ServiceLoader
 
@@ -30,36 +31,32 @@ import com.asakusafw.spark.compiler.subplan._
 
 trait SubPlanCompiler {
 
-  type Context = SubPlanCompiler.Context
-
   def of: SubPlanInfo.DriverType
 
-  def compile(subplan: SubPlan)(implicit context: Context): Type
+  def compile(
+    subplan: SubPlan)(
+      implicit context: SparkClientCompiler.Context): Type
 
   def instantiator: Instantiator
 }
 
 object SubPlanCompiler {
 
-  case class Context(
-    flowId: String,
-    jpContext: JPContext,
-    externalInputs: mutable.Map[String, ExternalInputReference],
-    branchKeys: BranchKeys,
-    broadcastIds: BroadcastIds)
-
   def apply(
-    driverType: SubPlanInfo.DriverType)(implicit context: Context): SubPlanCompiler = {
+    driverType: SubPlanInfo.DriverType)(
+      implicit context: SparkClientCompiler.Context): SubPlanCompiler = {
     apply(context.jpContext.getClassLoader)(driverType)
   }
 
   def get(
-    driverType: SubPlanInfo.DriverType)(implicit context: Context): Option[SubPlanCompiler] = {
+    driverType: SubPlanInfo.DriverType)(
+      implicit context: SparkClientCompiler.Context): Option[SubPlanCompiler] = {
     apply(context.jpContext.getClassLoader).get(driverType)
   }
 
   def support(
-    driverType: SubPlanInfo.DriverType)(implicit context: Context): Boolean = {
+    driverType: SubPlanInfo.DriverType)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     get(driverType).isDefined
   }
 

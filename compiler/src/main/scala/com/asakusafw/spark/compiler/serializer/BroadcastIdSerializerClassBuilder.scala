@@ -32,11 +32,11 @@ import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
 
 class BroadcastIdSerializerClassBuilder(
-  flowId: String,
-  broadcastIdsType: Type)
+  broadcastIdsType: Type)(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/serializer/BroadcastIdSerializer;"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/BroadcastIdSerializer;"),
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[Serializer[_]].asType) {

@@ -22,7 +22,6 @@ import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -34,8 +33,6 @@ import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, Groups, MarkerOperator }
@@ -56,7 +53,7 @@ import com.asakusafw.vocabulary.operator.Fold
 @RunWith(classOf[JUnitRunner])
 class AggregateDriverClassBuilderSpecTest extends AggregateDriverClassBuilderSpec
 
-class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar {
+class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with CompilerContext {
 
   import AggregateDriverClassBuilderSpec._
 
@@ -98,22 +95,12 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("i")), operator))
       subplanOutput.putAttribute(classOf[PartitionGroupInfo], new PartitionGroupInfo(dataSize))
 
-      val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
-      val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
-      implicit val context = SubPlanCompiler.Context(
-        flowId = "flowId",
-        jpContext = new MockJobflowProcessorContext(
-          new CompilerOptions("buildid", "", Map.empty[String, String]),
-          Thread.currentThread.getContextClassLoader,
-          classServer.root.toFile),
-        externalInputs = mutable.Map.empty,
-        branchKeys = branchKeysClassBuilder,
-        broadcastIds = broadcastIdsClassBuilder)
+      implicit val context = newContext("flowId", classServer.root.toFile)
 
       val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(branchKeysClassBuilder)
-      context.jpContext.addClass(broadcastIdsClassBuilder)
+      context.jpContext.addClass(context.branchKeys)
+      context.jpContext.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
 
       val hoges = sc.parallelize(0 until 10).map { i =>
@@ -140,10 +127,10 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
       val results = driver.execute()
 
-      val branchKeyCls = classServer.loadClass(branchKeysClassBuilder.thisType.getClassName)
+      val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
       def getBranchKey(osn: Long): BranchKey = {
         val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
-        branchKeyCls.getField(branchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
+        branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
       assert(driver.branchKeys ===
@@ -195,22 +182,12 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq.empty[String]), operator))
       subplanOutput.putAttribute(classOf[PartitionGroupInfo], new PartitionGroupInfo(dataSize))
 
-      val branchKeysClassBuilder = new BranchKeysClassBuilder("flowId")
-      val broadcastIdsClassBuilder = new BroadcastIdsClassBuilder("flowId")
-      implicit val context = SubPlanCompiler.Context(
-        flowId = "flowId",
-        jpContext = new MockJobflowProcessorContext(
-          new CompilerOptions("buildid", "", Map.empty[String, String]),
-          Thread.currentThread.getContextClassLoader,
-          classServer.root.toFile),
-        externalInputs = mutable.Map.empty,
-        branchKeys = branchKeysClassBuilder,
-        broadcastIds = broadcastIdsClassBuilder)
+      implicit val context = newContext("flowId", classServer.root.toFile)
 
       val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(branchKeysClassBuilder)
-      context.jpContext.addClass(broadcastIdsClassBuilder)
+      context.jpContext.addClass(context.branchKeys)
+      context.jpContext.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
 
       val hoges = sc.parallelize(0 until 10).map { i =>
@@ -237,10 +214,10 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
       val results = driver.execute()
 
-      val branchKeyCls = classServer.loadClass(branchKeysClassBuilder.thisType.getClassName)
+      val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
       def getBranchKey(osn: Long): BranchKey = {
         val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
-        branchKeyCls.getField(branchKeysClassBuilder.getField(sn)).get(null).asInstanceOf[BranchKey]
+        branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
       assert(driver.branchKeys ===

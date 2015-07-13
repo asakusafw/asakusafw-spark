@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.compiler
+package operator
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -27,7 +28,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class EdgeFragmentClassBuilderSpecTest extends EdgeFragmentClassBuilderSpec
 
-class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
+class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
 
   import EdgeFragmentClassBuilderSpec._
 
@@ -37,7 +38,10 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar {
     val out1 = new GenericOutputFragment[TestModel]
     val out2 = new GenericOutputFragment[TestModel]
 
-    val builder = new EdgeFragmentClassBuilder("flowId", classOf[TestModel].asType)
+    val classpath = createTempDirectory("EdgeFragmentClassBuilderSpec").toFile
+    implicit val context = newContext("flowId", classpath)
+
+    val builder = new EdgeFragmentClassBuilder(classOf[TestModel].asType)
     val cls = loadClass(builder.thisType.getClassName, builder.build())
       .asSubclass(classOf[EdgeFragment[TestModel]])
 

@@ -30,7 +30,9 @@ import com.asakusafw.vocabulary.operator.Extract
 
 class ExtractOperatorCompiler extends UserOperatorCompiler {
 
-  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[Extract]
@@ -38,7 +40,9 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
   override def operatorType: OperatorType = OperatorType.MapType
 
-  override def compile(operator: UserOperator)(implicit context: Context): Type = {
+  override def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -79,9 +83,10 @@ private class ExtractOperatorFragmentClassBuilder(
   dataModelType: Type,
   operatorType: Type,
   opeartorOutputs: Seq[OperatorOutput])(
-    operatorInfo: OperatorInfo)(implicit context: ExtractOperatorCompiler#Context)
+    operatorInfo: OperatorInfo)(
+      implicit context: SparkClientCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
-    context.flowId, dataModelType, operatorType, opeartorOutputs) {
+    dataModelType, operatorType, opeartorOutputs) {
 
   import operatorInfo._ // scalastyle:ignore
 

@@ -22,12 +22,14 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
-import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 
 class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
-  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[MasterCheckOp]
@@ -35,7 +37,9 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
 
-  override def compile(operator: UserOperator)(implicit context: Context): Type = {
+  override def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -53,18 +57,15 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
         outputs.map(_.dataModelType).mkString("(", ",", ")")
       }")
 
-    val builder = new JoinOperatorFragmentClassBuilder(
-      context.flowId,
-      classOf[Seq[Iterable[_]]].asType,
-      implementationClassType,
-      outputs) with ShuffledJoin with MasterCheck {
-
-      val masterType: Type = inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType
-      val txType: Type = inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType
-      val masterSelection: Option[(String, Type)] = selectionMethod
-
-      val opInfo: OperatorInfo = operatorInfo
-    }
+    val builder =
+      new ShuffledJoinOperatorFragmentClassBuilder(
+        classOf[Seq[Iterable[_]]].asType,
+        implementationClassType,
+        outputs)(
+        inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType,
+        inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType,
+        selectionMethod)(
+        operatorInfo) with MasterCheck
 
     context.jpContext.addClass(builder)
   }

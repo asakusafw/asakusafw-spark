@@ -22,12 +22,14 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorType
-import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp }
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp }
 
 class ShuffledMasterBranchOperatorCompiler extends UserOperatorCompiler {
 
-  override def support(operator: UserOperator)(implicit context: Context): Boolean = {
+  override def support(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Boolean = {
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
     annotationDesc.resolveClass == classOf[MasterBranchOp]
@@ -35,7 +37,9 @@ class ShuffledMasterBranchOperatorCompiler extends UserOperatorCompiler {
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
 
-  override def compile(operator: UserOperator)(implicit context: Context): Type = {
+  override def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -69,18 +73,15 @@ class ShuffledMasterBranchOperatorCompiler extends UserOperatorCompiler {
           ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
-    val builder = new JoinOperatorFragmentClassBuilder(
-      context.flowId,
-      classOf[Seq[Iterable[_]]].asType,
-      implementationClassType,
-      outputs) with ShuffledJoin with MasterBranch {
-
-      val masterType: Type = inputs(MasterBranchOp.ID_INPUT_MASTER).dataModelType
-      val txType: Type = inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType
-      val masterSelection: Option[(String, Type)] = selectionMethod
-
-      val opInfo: OperatorInfo = operatorInfo
-    }
+    val builder =
+      new ShuffledJoinOperatorFragmentClassBuilder(
+        classOf[Seq[Iterable[_]]].asType,
+        implementationClassType,
+        outputs)(
+        inputs(MasterBranchOp.ID_INPUT_MASTER).dataModelType,
+        inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType,
+        selectionMethod)(
+        operatorInfo) with MasterBranch
 
     context.jpContext.addClass(builder)
   }

@@ -16,6 +16,8 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -45,21 +47,20 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
   override def instantiator: Instantiator = CoGroupSubPlanCompiler.CoGroupDriverInstantiator
 
-  override def compile(subplan: SubPlan)(implicit context: Context): Type = {
+  override def compile(
+    subplan: SubPlan)(
+      implicit context: SparkClientCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[UserOperator],
       s"The dominant operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
-    val builder = new CoGroupDriverClassBuilder(
-      operator)(
-      subPlanInfo.getLabel,
-      subplan.getOutputs.toSeq)(
-      context.flowId,
-      context.jpContext,
-      context.branchKeys,
-      context.broadcastIds)
+    val builder =
+      new CoGroupDriverClassBuilder(
+        operator)(
+        subPlanInfo.getLabel,
+        subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
   }
@@ -71,8 +72,12 @@ object CoGroupSubPlanCompiler {
 
     override def newInstance(
       driverType: Type,
-      subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._ // scalastyle:ignore
+      subplan: SubPlan)(
+        mb: MethodBuilder,
+        vars: Instantiator.Vars,
+        nextLocal: AtomicInteger)(
+          implicit context: SparkClientCompiler.Context): Var = {
+      import mb._ // scalastyle:ignore
 
       val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
@@ -96,16 +101,16 @@ object CoGroupSubPlanCompiler {
           ldc(1)
         } else {
           numPartitions(
-            context.mb,
-            context.scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
+            mb,
+            vars.sc.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
         })
-      val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
+      val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
 
       val cogroupDriver = pushNew(driverType)
       cogroupDriver.dup().invokeInit(
-        context.scVar.push(),
-        context.hadoopConfVar.push(),
-        context.broadcastsVar.push(), {
+        vars.sc.push(),
+        vars.hadoopConf.push(),
+        vars.broadcasts.push(), {
           // Seq[(Seq[RDD[(K, _)]], Option[Ordering[ShuffleKey]])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
@@ -131,10 +136,10 @@ object CoGroupSubPlanCompiler {
                         builder.invokeI(
                           NameTransformer.encode("+="),
                           classOf[mutable.Builder[_, _]].asType,
-                          context.rddsVar.push().invokeI(
+                          vars.rdds.push().invokeI(
                             "apply",
                             classOf[AnyRef].asType,
-                            context.branchKeys.getField(context.mb, marker)
+                            context.branchKeys.getField(mb, marker)
                               .asType(classOf[AnyRef].asType))
                             .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
                             .asType(classOf[AnyRef].asType))
@@ -151,15 +156,13 @@ object CoGroupSubPlanCompiler {
                             context.jpContext.getDataModelLoader.load(input.getDataType)
                           pushNew0(
                             SortOrderingClassBuilder.getOrCompile(
-                              context.flowId,
                               input.getGroup.getGrouping.map { grouping =>
                                 dataModelRef.findProperty(grouping).getType.asType
                               },
                               input.getGroup.getOrdering.map { ordering =>
                                 (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                                   ordering.getDirection == Group.Direction.ASCENDANT)
-                              },
-                              context.jpContext))
+                              }))
                         }.asType(classOf[AnyRef].asType))
                     }.asType(classOf[AnyRef].asType)).asType(classOf[AnyRef].asType)
               })
@@ -168,14 +171,13 @@ object CoGroupSubPlanCompiler {
         }, {
           // ShuffleKey.GroupingOrdering
           pushNew0(
-            GroupingOrderingClassBuilder
-              .getOrCompile(context.flowId, properties.head, context.jpContext))
+            GroupingOrderingClassBuilder.getOrCompile(properties.head))
             .asType(classOf[Ordering[ShuffleKey]].asType)
         }, {
           // Partitioner
           partitionerVar.push().asType(classOf[Partitioner].asType)
         })
-      cogroupDriver.store(context.nextLocal.getAndAdd(cogroupDriver.size))
+      cogroupDriver.store(nextLocal.getAndAdd(cogroupDriver.size))
     }
   }
 }

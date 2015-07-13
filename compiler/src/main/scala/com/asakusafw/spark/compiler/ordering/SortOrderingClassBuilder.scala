@@ -30,12 +30,12 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class SortOrderingClassBuilder(
-  flowId: String,
   groupingOrderingType: Type,
-  orderingTypes: Seq[(Type, Boolean)])
+  orderingTypes: Seq[(Type, Boolean)])(
+    implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${flowId}/ordering/SortOrdering$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/ordering/SortOrdering$$${nextId};"),
     groupingOrderingType) {
   assert(orderingTypes.size > 0)
 
@@ -124,29 +124,25 @@ object SortOrderingClassBuilder {
     mutable.WeakHashMap.empty
 
   def getOrCompile(
-    flowId: String,
     groupingTypes: Seq[Type],
-    orderingTypes: Seq[(Type, Boolean)],
-    jpContext: JPContext): Type = {
+    orderingTypes: Seq[(Type, Boolean)])(
+      implicit context: SparkClientCompiler.Context): Type = {
     getOrCompile(
-      flowId,
-      GroupingOrderingClassBuilder.getOrCompile(flowId, groupingTypes, jpContext),
-      orderingTypes,
-      jpContext)
+      GroupingOrderingClassBuilder.getOrCompile(groupingTypes),
+      orderingTypes)
   }
 
   def getOrCompile(
-    flowId: String,
     groupingOrderingType: Type,
-    orderingTypes: Seq[(Type, Boolean)],
-    jpContext: JPContext): Type = {
+    orderingTypes: Seq[(Type, Boolean)])(
+      implicit context: SparkClientCompiler.Context): Type = {
     if (orderingTypes.isEmpty) {
       groupingOrderingType
     } else {
-      cache.getOrElseUpdate(jpContext, mutable.Map.empty).getOrElseUpdate(
-        (flowId, groupingOrderingType, orderingTypes), {
-          jpContext.addClass(
-            new SortOrderingClassBuilder(flowId, groupingOrderingType, orderingTypes))
+      cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+        (context.flowId, groupingOrderingType, orderingTypes), {
+          context.jpContext.addClass(
+            new SortOrderingClassBuilder(groupingOrderingType, orderingTypes))
         })
     }
   }

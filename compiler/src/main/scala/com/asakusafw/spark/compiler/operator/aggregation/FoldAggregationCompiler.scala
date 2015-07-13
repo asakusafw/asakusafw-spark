@@ -33,7 +33,9 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
   def of: Class[_] = classOf[Fold]
 
-  def compile(operator: UserOperator)(implicit context: Context): Type = {
+  def compile(
+    operator: UserOperator)(
+      implicit context: SparkClientCompiler.Context): Type = {
 
     val operatorInfo = new OperatorInfo(operator)(context.jpContext)
     import operatorInfo._ // scalastyle:ignore
@@ -80,8 +82,9 @@ private class FoldAggregationClassBuilder(
   valueType: Type,
   combinerType: Type,
   val operatorType: Type)(
-    operatorInfo: OperatorInfo)(implicit context: FoldAggregationCompiler#Context)
-  extends AggregationClassBuilder(context.flowId, valueType, combinerType) with OperatorField {
+    operatorInfo: OperatorInfo)(
+      implicit context: SparkClientCompiler.Context)
+  extends AggregationClassBuilder(valueType, combinerType) with OperatorField {
 
   import operatorInfo._ // scalastyle:ignore
 

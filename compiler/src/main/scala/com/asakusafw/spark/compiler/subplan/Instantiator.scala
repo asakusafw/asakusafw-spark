@@ -29,19 +29,22 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait Instantiator {
 
-  case class Context(
-    mb: MethodBuilder,
-    scVar: Var, // SparkContext
-    hadoopConfVar: Var, // Broadcast[Configuration]
-    broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
-    rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
-    terminatorsVar: Var, // mutable.Set[Future[Unit]]
-    nextLocal: AtomicInteger,
-    flowId: String,
-    jpContext: JPContext,
-    branchKeys: BranchKeys)
-
   def newInstance(
     driverType: Type,
-    subplan: SubPlan)(implicit context: Context): Var
+    subplan: SubPlan)(
+      mb: MethodBuilder,
+      vars: Instantiator.Vars,
+      nextLocal: AtomicInteger)(
+        implicit context: SparkClientCompiler.Context): Var
+}
+
+object Instantiator {
+
+  case class Vars(
+    sc: Var, // SparkContext
+    hadoopConf: Var, // Broadcast[Configuration]
+    broadcasts: Var, // Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]
+    rdds: Var, // mutable.Map[BranchKey, Future[RDD[_]]]
+    terminators: Var // mutable.Set[Future[Unit]]
+    )
 }
