@@ -16,6 +16,8 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -70,8 +72,16 @@ object CoGroupSubPlanCompiler {
 
     override def newInstance(
       driverType: Type,
-      subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._ // scalastyle:ignore
+      subplan: SubPlan)(
+        mb: MethodBuilder,
+        scVar: Var, // SparkContext
+        hadoopConfVar: Var, // Broadcast[Configuration]
+        broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
+        rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
+        terminatorsVar: Var, // mutable.Set[Future[Unit]]
+        nextLocal: AtomicInteger)(
+          implicit context: SparkClientCompiler.Context): Var = {
+      import mb._ // scalastyle:ignore
 
       val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
@@ -95,16 +105,16 @@ object CoGroupSubPlanCompiler {
           ldc(1)
         } else {
           numPartitions(
-            context.mb,
-            context.scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
+            mb,
+            scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
         })
-      val partitionerVar = partitioner.store(context.nextLocal.getAndAdd(partitioner.size))
+      val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
 
       val cogroupDriver = pushNew(driverType)
       cogroupDriver.dup().invokeInit(
-        context.scVar.push(),
-        context.hadoopConfVar.push(),
-        context.broadcastsVar.push(), {
+        scVar.push(),
+        hadoopConfVar.push(),
+        broadcastsVar.push(), {
           // Seq[(Seq[RDD[(K, _)]], Option[Ordering[ShuffleKey]])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
@@ -130,10 +140,10 @@ object CoGroupSubPlanCompiler {
                         builder.invokeI(
                           NameTransformer.encode("+="),
                           classOf[mutable.Builder[_, _]].asType,
-                          context.rddsVar.push().invokeI(
+                          rddsVar.push().invokeI(
                             "apply",
                             classOf[AnyRef].asType,
-                            context.branchKeys.getField(context.mb, marker)
+                            context.branchKeys.getField(mb, marker)
                               .asType(classOf[AnyRef].asType))
                             .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
                             .asType(classOf[AnyRef].asType))
@@ -174,7 +184,7 @@ object CoGroupSubPlanCompiler {
           // Partitioner
           partitionerVar.push().asType(classOf[Partitioner].asType)
         })
-      cogroupDriver.store(context.nextLocal.getAndAdd(cogroupDriver.size))
+      cogroupDriver.store(nextLocal.getAndAdd(cogroupDriver.size))
     }
   }
 }

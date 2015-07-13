@@ -16,6 +16,8 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import java.lang.{ Boolean => JBoolean }
 
 import scala.collection.JavaConversions._
@@ -91,15 +93,23 @@ object InputSubPlanCompiler {
 
     override def newInstance(
       driverType: Type,
-      subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._ // scalastyle:ignore
+      subplan: SubPlan)(
+        mb: MethodBuilder,
+        scVar: Var, // SparkContext
+        hadoopConfVar: Var, // Broadcast[Configuration]
+        broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
+        rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
+        terminatorsVar: Var, // mutable.Set[Future[Unit]]
+        nextLocal: AtomicInteger)(
+          implicit context: SparkClientCompiler.Context): Var = {
+      import mb._ // scalastyle:ignore
 
       val inputDriver = pushNew(driverType)
       inputDriver.dup().invokeInit(
-        context.scVar.push(),
-        context.hadoopConfVar.push(),
-        context.broadcastsVar.push())
-      inputDriver.store(context.nextLocal.getAndAdd(inputDriver.size))
+        scVar.push(),
+        hadoopConfVar.push(),
+        broadcastsVar.push())
+      inputDriver.store(nextLocal.getAndAdd(inputDriver.size))
     }
   }
 }

@@ -16,6 +16,8 @@
 package com.asakusafw.spark.compiler
 package subplan
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -65,13 +67,21 @@ object OutputSubPlanCompiler {
 
     override def newInstance(
       driverType: Type,
-      subplan: SubPlan)(implicit context: Context): Var = {
-      import context.mb._ // scalastyle:ignore
+      subplan: SubPlan)(
+        mb: MethodBuilder,
+        scVar: Var, // SparkContext
+        hadoopConfVar: Var, // Broadcast[Configuration]
+        broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
+        rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
+        terminatorsVar: Var, // mutable.Set[Future[Unit]]
+        nextLocal: AtomicInteger)(
+          implicit context: SparkClientCompiler.Context): Var = {
+      import mb._ // scalastyle:ignore
 
       val outputDriver = pushNew(driverType)
       outputDriver.dup().invokeInit(
-        context.scVar.push(),
-        context.hadoopConfVar.push(), {
+        scVar.push(),
+        hadoopConfVar.push(), {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
@@ -83,10 +93,10 @@ object OutputSubPlanCompiler {
             marker = prevSubPlanOutput.getOperator
           } {
             builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-              context.rddsVar.push().invokeI(
+              rddsVar.push().invokeI(
                 "apply",
                 classOf[AnyRef].asType,
-                context.branchKeys.getField(context.mb, marker)
+                context.branchKeys.getField(mb, marker)
                   .asType(classOf[AnyRef].asType))
                 .cast(classOf[Future[RDD[(_, _)]]].asType)
                 .asType(classOf[AnyRef].asType))
@@ -94,8 +104,8 @@ object OutputSubPlanCompiler {
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         },
-        context.terminatorsVar.push())
-      outputDriver.store(context.nextLocal.getAndAdd(outputDriver.size))
+        terminatorsVar.push())
+      outputDriver.store(nextLocal.getAndAdd(outputDriver.size))
     }
   }
 }

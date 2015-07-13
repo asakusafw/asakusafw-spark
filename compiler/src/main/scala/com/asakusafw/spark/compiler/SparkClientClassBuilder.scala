@@ -263,10 +263,9 @@ class SparkClientClassBuilder(
           }
 
           val instantiator = compiler.instantiator
-          val driverVar = instantiator.newInstance(driverType, subplan)(
-            instantiator.Context(
-              mb, scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar,
-              nextLocal, context.flowId, context.jpContext, context.branchKeys))
+          val driverVar = instantiator.newInstance(
+            driverType, subplan)(
+              mb, scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar, nextLocal)
           val rdds = driverVar.push()
             .invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
           val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
