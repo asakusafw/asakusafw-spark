@@ -74,11 +74,7 @@ object CoGroupSubPlanCompiler {
       driverType: Type,
       subplan: SubPlan)(
         mb: MethodBuilder,
-        scVar: Var, // SparkContext
-        hadoopConfVar: Var, // Broadcast[Configuration]
-        broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
-        rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
-        terminatorsVar: Var, // mutable.Set[Future[Unit]]
+        vars: Instantiator.Vars,
         nextLocal: AtomicInteger)(
           implicit context: SparkClientCompiler.Context): Var = {
       import mb._ // scalastyle:ignore
@@ -106,15 +102,15 @@ object CoGroupSubPlanCompiler {
         } else {
           numPartitions(
             mb,
-            scVar.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
+            vars.sc.push())(subplan.findInput(inputs.head.getOpposites.head.getOwner))
         })
       val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
 
       val cogroupDriver = pushNew(driverType)
       cogroupDriver.dup().invokeInit(
-        scVar.push(),
-        hadoopConfVar.push(),
-        broadcastsVar.push(), {
+        vars.sc.push(),
+        vars.hadoopConf.push(),
+        vars.broadcasts.push(), {
           // Seq[(Seq[RDD[(K, _)]], Option[Ordering[ShuffleKey]])]
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
@@ -140,7 +136,7 @@ object CoGroupSubPlanCompiler {
                         builder.invokeI(
                           NameTransformer.encode("+="),
                           classOf[mutable.Builder[_, _]].asType,
-                          rddsVar.push().invokeI(
+                          vars.rdds.push().invokeI(
                             "apply",
                             classOf[AnyRef].asType,
                             context.branchKeys.getField(mb, marker)

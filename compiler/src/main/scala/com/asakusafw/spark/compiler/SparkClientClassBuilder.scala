@@ -52,6 +52,7 @@ import com.asakusafw.spark.compiler.serializer.{
   KryoRegistratorCompiler
 }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.compiler.subplan.Instantiator
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.SparkClient
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -265,7 +266,9 @@ class SparkClientClassBuilder(
           val instantiator = compiler.instantiator
           val driverVar = instantiator.newInstance(
             driverType, subplan)(
-              mb, scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar, nextLocal)
+              mb,
+              Instantiator.Vars(scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar),
+              nextLocal)
           val rdds = driverVar.push()
             .invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
           val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))

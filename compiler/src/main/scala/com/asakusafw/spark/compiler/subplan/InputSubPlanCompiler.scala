@@ -95,20 +95,16 @@ object InputSubPlanCompiler {
       driverType: Type,
       subplan: SubPlan)(
         mb: MethodBuilder,
-        scVar: Var, // SparkContext
-        hadoopConfVar: Var, // Broadcast[Configuration]
-        broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
-        rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
-        terminatorsVar: Var, // mutable.Set[Future[Unit]]
+        vars: Instantiator.Vars,
         nextLocal: AtomicInteger)(
           implicit context: SparkClientCompiler.Context): Var = {
       import mb._ // scalastyle:ignore
 
       val inputDriver = pushNew(driverType)
       inputDriver.dup().invokeInit(
-        scVar.push(),
-        hadoopConfVar.push(),
-        broadcastsVar.push())
+        vars.sc.push(),
+        vars.hadoopConf.push(),
+        vars.broadcasts.push())
       inputDriver.store(nextLocal.getAndAdd(inputDriver.size))
     }
   }

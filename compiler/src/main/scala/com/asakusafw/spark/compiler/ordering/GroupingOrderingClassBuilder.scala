@@ -35,7 +35,7 @@ class GroupingOrderingClassBuilder(
     implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${context.flowId}/ordering/GroupingOrdering$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/ordering/GroupingOrdering$$${nextId};"), // scalastyle:ignore
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[AbstractOrdering[_]].asType) {

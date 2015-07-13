@@ -81,11 +81,7 @@ object AggregateSubPlanCompiler {
       driverType: Type,
       subplan: SubPlan)(
         mb: MethodBuilder,
-        scVar: Var, // SparkContext
-        hadoopConfVar: Var, // Broadcast[Configuration]
-        broadcastsVar: Var, // Map[BroadcastId, Broadcast[Map[ShuffleKey, Seq[_]]]]
-        rddsVar: Var, // mutable.Map[BranchKey, RDD[_]]
-        terminatorsVar: Var, // mutable.Set[Future[Unit]]
+        vars: Instantiator.Vars,
         nextLocal: AtomicInteger)(
           implicit context: SparkClientCompiler.Context): Var = {
       import mb._ // scalastyle:ignore
@@ -107,15 +103,15 @@ object AggregateSubPlanCompiler {
         } else {
           numPartitions(
             mb,
-            scVar.push())(subplan.findInput(input.getOpposites.head.getOwner))
+            vars.sc.push())(subplan.findInput(input.getOpposites.head.getOwner))
         })
       val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
 
       val aggregateDriver = pushNew(driverType)
       aggregateDriver.dup().invokeInit(
-        scVar.push(),
-        hadoopConfVar.push(),
-        broadcastsVar.push(), {
+        vars.sc.push(),
+        vars.hadoopConf.push(),
+        vars.broadcasts.push(), {
           val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
@@ -127,7 +123,7 @@ object AggregateSubPlanCompiler {
             marker = prevSubPlanOutput.getOperator
           } {
             builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-              rddsVar.push().invokeI(
+              vars.rdds.push().invokeI(
                 "apply",
                 classOf[AnyRef].asType,
                 context.branchKeys.getField(mb, marker)

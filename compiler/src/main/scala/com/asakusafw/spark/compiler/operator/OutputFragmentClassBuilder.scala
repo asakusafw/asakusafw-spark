@@ -35,7 +35,7 @@ class OutputFragmentClassBuilder(
     implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/OutputFragment$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/OutputFragment$$${nextId};"), // scalastyle:ignore
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[OutputFragment[_]].asType) {

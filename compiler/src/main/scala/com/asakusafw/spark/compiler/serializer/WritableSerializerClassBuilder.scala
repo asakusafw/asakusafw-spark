@@ -35,7 +35,7 @@ class WritableSerializerClassBuilder(
     implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/WritableSerializer$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/WritableSerializer$$${nextId};"), // scalastyle:ignore
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[WritableSerializer[_]].asType) {
