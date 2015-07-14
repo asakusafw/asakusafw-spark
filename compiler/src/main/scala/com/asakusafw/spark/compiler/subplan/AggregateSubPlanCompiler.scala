@@ -71,7 +71,10 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
 object AggregateSubPlanCompiler {
 
-  object AggregateDriverInstantiator extends Instantiator with NumPartitions {
+  object AggregateDriverInstantiator
+    extends Instantiator
+    with NumPartitions
+    with ScalaIdioms {
 
     override def newInstance(
       driverType: Type,
@@ -105,7 +108,7 @@ object AggregateSubPlanCompiler {
         vars.sc.push(),
         vars.hadoopConf.push(),
         vars.broadcasts.push(), {
-          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+          val builder = pushObject(mb)(Seq)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
           for {
@@ -127,7 +130,7 @@ object AggregateSubPlanCompiler {
 
           builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         }, {
-          getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+          pushObject(mb)(Option)
             .invokeV("apply", classOf[Option[_]].asType, {
               val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
               pushNew0(

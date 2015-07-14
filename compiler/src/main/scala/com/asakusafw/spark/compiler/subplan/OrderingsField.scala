@@ -33,7 +33,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait OrderingsField extends ClassBuilder {
+trait OrderingsField
+  extends ClassBuilder
+  with ScalaIdioms {
 
   implicit def context: SparkClientCompiler.Context
 
@@ -89,7 +91,7 @@ trait OrderingsField extends ClassBuilder {
 
   private def initOrderings(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+    val builder = pushObject(mb)(Map)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     for {
       output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
@@ -107,8 +109,8 @@ trait OrderingsField extends ClassBuilder {
       builder.invokeI(
         NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
-        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-          invokeV("apply", classOf[(_, _)].asType,
+        pushObject(mb)(Tuple2)
+          .invokeV("apply", classOf[(_, _)].asType,
             context.branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
               pushNew0(
                 SortOrderingClassBuilder.getOrCompile(

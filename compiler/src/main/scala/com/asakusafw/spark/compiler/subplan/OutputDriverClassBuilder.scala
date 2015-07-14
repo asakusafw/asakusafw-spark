@@ -49,7 +49,9 @@ class OutputDriverClassBuilder(
         }
       }
       .build(),
-    classOf[OutputDriver[_]].asType) with DriverLabel {
+    classOf[OutputDriver[_]].asType)
+  with DriverLabel
+  with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -111,7 +113,7 @@ class OutputDriverClassBuilder(
           hadoopConfVar.push(),
           prevsVar.push(),
           terminatorsVar.push(),
-          getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+          pushObject(mb)(ClassTag)
             .invokeV(
               "apply",
               classOf[ClassTag[_]].asType,

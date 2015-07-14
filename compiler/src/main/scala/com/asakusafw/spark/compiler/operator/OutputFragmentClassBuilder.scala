@@ -43,13 +43,14 @@ class OutputFragmentClassBuilder(
         }
       }
       .build(),
-    classOf[OutputFragment[_]].asType) {
+    classOf[OutputFragment[_]].asType)
+  with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { mb =>
       import mb._ // scalastyle:ignore
       thisVar.push().invokeInit(superType,
-        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
+        pushObject(mb)(ClassTag)
           .invokeV("apply", classOf[ClassTag[_]].asType,
             ldc(dataModelType).asType(classOf[Class[_]].asType)))
     }

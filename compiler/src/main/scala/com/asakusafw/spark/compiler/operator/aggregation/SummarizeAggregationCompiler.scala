@@ -56,7 +56,8 @@ private class SummarizeAggregationClassBuilder(
     implicit context: SparkClientCompiler.Context)
   extends AggregationClassBuilder(
     operator.inputs(Summarize.ID_INPUT).dataModelType,
-    operator.outputs(Summarize.ID_OUTPUT).dataModelType) {
+    operator.outputs(Summarize.ID_OUTPUT).dataModelType)
+  with ScalaIdioms {
 
   val propertyFoldings =
     SummarizedModelUtil.getPropertyFoldings(context.jpContext.getClassLoader, operator).toSeq
@@ -87,7 +88,7 @@ private class SummarizeAggregationClassBuilder(
           .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.ANY =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("copy",
               valueVar.push().invokeV(
                 valuePropertyRef.getDeclaration.getName,
@@ -97,14 +98,14 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.SUM =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("setZero",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.COUNT =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("setZero",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -130,7 +131,7 @@ private class SummarizeAggregationClassBuilder(
           .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.SUM =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("add",
               valueVar.push().invokeV(
                 valuePropertyRef.getDeclaration.getName,
@@ -140,7 +141,7 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.MAX =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("max",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -150,7 +151,7 @@ private class SummarizeAggregationClassBuilder(
                 valuePropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.MIN =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("min",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -160,7 +161,7 @@ private class SummarizeAggregationClassBuilder(
                 valuePropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.COUNT =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("inc",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -189,7 +190,7 @@ private class SummarizeAggregationClassBuilder(
           .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.SUM =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("add",
               comb2Var.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -199,7 +200,7 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.MAX =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("max",
               comb1Var.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -209,7 +210,7 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.MIN =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("min",
               comb1Var.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -219,7 +220,7 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.COUNT =>
-          getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+          pushObject(mb)(ValueOptionOps)
             .invokeV("add",
               comb2Var.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,

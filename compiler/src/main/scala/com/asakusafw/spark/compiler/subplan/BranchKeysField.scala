@@ -27,7 +27,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait BranchKeysField extends ClassBuilder {
+trait BranchKeysField
+  extends ClassBuilder
+  with ScalaIdioms {
 
   def context: SparkClientCompiler.Context
 
@@ -73,7 +75,7 @@ trait BranchKeysField extends ClassBuilder {
 
   private def initBranchKeys(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
+    val builder = pushObject(mb)(Set)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
     subplanOutputs.map(_.getOperator).sortBy(_.getSerialNumber).foreach { marker =>

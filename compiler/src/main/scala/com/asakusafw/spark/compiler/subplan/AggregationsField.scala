@@ -33,7 +33,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait AggregationsField extends ClassBuilder {
+trait AggregationsField
+  extends ClassBuilder
+  with ScalaIdioms {
 
   implicit def context: SparkClientCompiler.Context
 
@@ -92,7 +94,7 @@ trait AggregationsField extends ClassBuilder {
 
   private def initAggregations(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+    val builder = pushObject(mb)(Map)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     for {
       output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
@@ -103,7 +105,7 @@ trait AggregationsField extends ClassBuilder {
     } {
       builder.invokeI(NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType, {
-          getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+          pushObject(mb)(Tuple2)
             .invokeV("apply", classOf[(_, _)].asType,
               context.branchKeys.getField(mb, output.getOperator)
                 .asType(classOf[AnyRef].asType),

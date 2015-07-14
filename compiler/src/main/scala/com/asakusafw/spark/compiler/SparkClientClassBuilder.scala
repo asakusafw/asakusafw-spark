@@ -65,7 +65,8 @@ class SparkClientClassBuilder(
     implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/SparkClient;"),
-    classOf[SparkClient].asType) {
+    classOf[SparkClient].asType)
+  with ScalaIdioms {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     fieldDef.newField("sc", classOf[SparkContext].asType)
@@ -157,21 +158,21 @@ class SparkClientClassBuilder(
             hadoopConfVar.push())
         thisVar.push()
           .putField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType,
-            getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
+            pushObject(mb)(mutable.Map)
               .invokeV("empty", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType))
         thisVar.push()
           .putField(
             "broadcasts",
             classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
               .asType,
-            getStatic(mutable.Map.getClass.asType, "MODULE$", mutable.Map.getClass.asType)
+            pushObject(mb)(mutable.Map)
               .invokeV(
                 "empty",
                 classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
                   .asType))
         thisVar.push()
           .putField("terminators", classOf[mutable.Set[Future[Unit]]].asType,
-            getStatic(mutable.Set.getClass.asType, "MODULE$", mutable.Set.getClass.asType)
+            pushObject(mb)(mutable.Set)
               .invokeV("empty", classOf[mutable.Set[Future[Unit]]].asType))
 
         subplans.foreach {
@@ -184,13 +185,13 @@ class SparkClientClassBuilder(
           .invokeI("iterator", classOf[Iterator[Future[Unit]]].asType)
           .store(hadoopConfVar.nextLocal)
         whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
-          getStatic(Await.getClass.asType, "MODULE$", Await.getClass.asType)
+          pushObject(mb)(Await)
             .invokeV("result", classOf[AnyRef].asType,
               iterVar.push()
                 .invokeI("next", classOf[AnyRef].asType)
                 .cast(classOf[Future[Unit]].asType)
                 .asType(classOf[Awaitable[_]].asType),
-              getStatic(Duration.getClass.asType, "MODULE$", Duration.getClass.asType)
+              pushObject(mb)(Duration)
                 .invokeV("Inf", classOf[Duration.Infinite].asType)
                 .asType(classOf[Duration].asType))
             .pop()
@@ -222,7 +223,7 @@ class SparkClientClassBuilder(
           val nextLocal = new AtomicInteger(terminatorsVar.nextLocal)
 
           val broadcastsVar = {
-            val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+            val builder = pushObject(mb)(Map)
               .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
             for {
@@ -237,7 +238,7 @@ class SparkClientClassBuilder(
               builder.invokeI(
                 NameTransformer.encode("+="),
                 classOf[mutable.Builder[_, _]].asType,
-                getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+                pushObject(mb)(Tuple2)
                   .invokeV(
                     "apply",
                     classOf[(BroadcastId, Future[Broadcast[_]])].asType,
@@ -298,7 +299,7 @@ class SparkClientClassBuilder(
               .invokeI(
                 NameTransformer.encode("+="),
                 classOf[Growable[_]].asType,
-                getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+                pushObject(mb)(Tuple2)
                   .invokeV("apply", classOf[(_, _)].asType,
                     context.broadcastIds.getField(mb, subPlanOutput.getOperator)
                       .asType(classOf[AnyRef].asType),
@@ -314,7 +315,7 @@ class SparkClientClassBuilder(
                           .asType(classOf[AnyRef].asType))
                         .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
                       {
-                        getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                        pushObject(mb)(Option)
                           .invokeV("apply", classOf[Option[_]].asType, {
                             pushNew0(SortOrderingClassBuilder.getOrCompile(groupings, orderings))
                           }.asType(classOf[AnyRef].asType))

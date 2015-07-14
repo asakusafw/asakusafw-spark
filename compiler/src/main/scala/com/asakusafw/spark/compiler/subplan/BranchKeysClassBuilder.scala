@@ -40,7 +40,9 @@ trait BranchKeys {
 class BranchKeysClassBuilder(flowId: String)
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BranchKeys;"),
-    classOf[AnyRef].asType) with BranchKeys {
+    classOf[AnyRef].asType)
+  with BranchKeys
+  with ScalaIdioms {
 
   private[this] val branchKeys: mutable.Map[Long, Int] = mutable.Map.empty
 
@@ -61,7 +63,7 @@ class BranchKeysClassBuilder(flowId: String)
       import mb._ // scalastyle:ignore
       branchKeys.values.toSeq.sorted.foreach { id =>
         putStatic(thisType, field(id), classOf[BranchKey].asType,
-          getStatic(BranchKey.getClass.asType, "MODULE$", BranchKey.getClass.asType)
+          pushObject(mb)(BranchKey)
             .invokeV("apply", classOf[BranchKey].asType, ldc(id)))
       }
     }

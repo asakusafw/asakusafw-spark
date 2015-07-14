@@ -42,7 +42,8 @@ class FragmentGraphBuilder(
   mb: MethodBuilder,
   broadcastsVar: Var,
   nextLocal: AtomicInteger)(
-    implicit context: SparkClientCompiler.Context) {
+    implicit context: SparkClientCompiler.Context)
+  extends ScalaIdioms {
   import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty
@@ -78,7 +79,7 @@ class FragmentGraphBuilder(
     if (output.getOpposites.size == 0) {
       vars.getOrElseUpdate(-1L, {
         val fragment =
-          getStatic(StopFragment.getClass.asType, "MODULE$", StopFragment.getClass.asType)
+          pushObject(mb)(StopFragment)
         fragment.store(nextLocal.getAndAdd(fragment.size))
       })
     } else if (output.getOpposites.size > 1) {
@@ -106,15 +107,15 @@ class FragmentGraphBuilder(
   }
 
   def buildOutputsVar(outputs: Seq[SubPlan.Output]): Var = {
-    val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+    val builder = pushObject(mb)(Map)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     for {
       op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
     } {
       builder.invokeI(NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
-        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-          invokeV("apply", classOf[(_, _)].asType,
+        pushObject(mb)(Tuple2)
+          .invokeV("apply", classOf[(_, _)].asType,
             context.branchKeys.getField(mb, op).asType(classOf[AnyRef].asType),
             vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
           .asType(classOf[AnyRef].asType))

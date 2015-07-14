@@ -40,7 +40,9 @@ trait BroadcastIds {
 class BroadcastIdsClassBuilder(flowId: String)
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BroadcastIds;"),
-    classOf[AnyRef].asType) with BroadcastIds {
+    classOf[AnyRef].asType)
+  with BroadcastIds
+  with ScalaIdioms {
 
   private[this] val broadcastIds: mutable.Map[Long, Int] = mutable.Map.empty
 
@@ -61,7 +63,7 @@ class BroadcastIdsClassBuilder(flowId: String)
       import mb._ // scalastyle:ignore
       broadcastIds.values.toSeq.sorted.foreach { id =>
         putStatic(thisType, field(id), classOf[BroadcastId].asType,
-          getStatic(BroadcastId.getClass.asType, "MODULE$", BroadcastId.getClass.asType)
+          pushObject(mb)(BroadcastId)
             .invokeV("apply", classOf[BroadcastId].asType, ldc(id)))
       }
     }

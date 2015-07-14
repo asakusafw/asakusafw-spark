@@ -63,7 +63,9 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
 object OutputSubPlanCompiler {
 
-  object OutputDriverInstantiator extends Instantiator {
+  object OutputDriverInstantiator
+    extends Instantiator
+    with ScalaIdioms {
 
     override def newInstance(
       driverType: Type,
@@ -78,7 +80,7 @@ object OutputSubPlanCompiler {
       outputDriver.dup().invokeInit(
         vars.sc.push(),
         vars.hadoopConf.push(), {
-          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+          val builder = pushObject(mb)(Seq)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
           for {

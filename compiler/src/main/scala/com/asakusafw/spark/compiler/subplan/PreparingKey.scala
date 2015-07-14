@@ -35,7 +35,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait PreparingKey extends ClassBuilder {
+trait PreparingKey
+  extends ClassBuilder
+  with ScalaIdioms {
 
   def context: SparkClientCompiler.Context
 
@@ -94,7 +96,7 @@ trait PreparingKey extends ClassBuilder {
     val dataModelVar = `var`(dataModelRef.getDeclaration.asType, thisVar.nextLocal)
 
     def buildSeq(propertyNames: Seq[PropertyName]): Stack = {
-      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+      val builder = pushObject(mb)(Seq)
         .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
       propertyNames.foreach { propertyName =>
@@ -114,19 +116,19 @@ trait PreparingKey extends ClassBuilder {
     val shuffleKey = pushNew(classOf[ShuffleKey].asType)
     shuffleKey.dup().invokeInit(
       if (partitionInfo.getGrouping.isEmpty) {
-        getStatic(Array.getClass.asType, "MODULE$", Array.getClass.asType)
+        pushObject(mb)(Array)
           .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
       } else {
-        getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
+        pushObject(mb)(WritableSerDe)
           .invokeV("serialize", classOf[Array[Byte]].asType, {
             buildSeq(partitionInfo.getGrouping)
           })
       },
       if (partitionInfo.getOrdering.isEmpty) {
-        getStatic(Array.getClass.asType, "MODULE$", Array.getClass.asType)
+        pushObject(mb)(Array)
           .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
       } else {
-        getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
+        pushObject(mb)(WritableSerDe)
           .invokeV("serialize", classOf[Array[Byte]].asType, {
             buildSeq(partitionInfo.getOrdering.map(_.getPropertyName))
           })

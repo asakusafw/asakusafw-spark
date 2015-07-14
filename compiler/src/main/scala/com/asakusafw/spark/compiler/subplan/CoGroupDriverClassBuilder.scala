@@ -47,7 +47,9 @@ class CoGroupDriverClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/CoGroupDriver$$${nextId};"),
     classOf[CoGroupDriver].asType)
-  with Branching with DriverLabel {
+  with Branching
+  with DriverLabel
+  with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -214,8 +216,8 @@ class CoGroupDriverClassBuilder(
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
         `return`(
-          getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-            invokeV(
+          pushObject(mb)(Tuple2)
+            invokeV (
               "apply",
               classOf[(_, _)].asType,
               fragmentVar.push().asType(classOf[AnyRef].asType),

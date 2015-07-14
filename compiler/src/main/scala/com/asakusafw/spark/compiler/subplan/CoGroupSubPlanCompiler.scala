@@ -67,7 +67,10 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
 object CoGroupSubPlanCompiler {
 
-  object CoGroupDriverInstantiator extends Instantiator with NumPartitions {
+  object CoGroupDriverInstantiator
+    extends Instantiator
+    with NumPartitions
+    with ScalaIdioms {
 
     override def newInstance(
       driverType: Type,
@@ -109,17 +112,17 @@ object CoGroupSubPlanCompiler {
         vars.hadoopConf.push(),
         vars.broadcasts.push(), {
           // Seq[(Seq[RDD[(K, _)]], Option[Ordering[ShuffleKey]])]
-          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+          val builder = pushObject(mb)(Seq)
             .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
           for {
             input <- primaryOperator.getInputs
           } {
             builder.invokeI(NameTransformer.encode("+="),
               classOf[mutable.Builder[_, _]].asType, {
-                getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
+                pushObject(mb)(Tuple2)
                   .invokeV("apply", classOf[(_, _)].asType,
                     {
-                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
+                      val builder = pushObject(mb)(Seq)
                         .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
 
                       for {
@@ -147,7 +150,7 @@ object CoGroupSubPlanCompiler {
                         .cast(classOf[Seq[_]].asType)
                     }.asType(classOf[AnyRef].asType),
                     {
-                      getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                      pushObject(mb)(Option)
                         .invokeV("apply", classOf[Option[_]].asType, {
                           val dataModelRef =
                             context.jpContext.getDataModelLoader.load(input.getDataType)

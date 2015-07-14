@@ -30,7 +30,10 @@ import com.asakusafw.spark.runtime.rdd.{ BranchKey, IdentityPartitioner }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait PartitionersField extends ClassBuilder with NumPartitions {
+trait PartitionersField
+  extends ClassBuilder
+  with NumPartitions
+  with ScalaIdioms {
 
   def context: SparkClientCompiler.Context
 
@@ -86,7 +89,7 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
 
   private def initPartitioners(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
+    val builder = pushObject(mb)(Map)
       .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
     for {
       output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
@@ -99,15 +102,15 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
       builder.invokeI(
         NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
-        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-          invokeV("apply", classOf[(_, _)].asType,
+        pushObject(mb)(Tuple2)
+          .invokeV("apply", classOf[(_, _)].asType,
             context.branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
               outputInfo.getOutputType match {
                 case SubPlanOutputInfo.OutputType.DONT_CARE =>
-                  getStatic(None.getClass.asType, "MODULE$", None.getClass.asType)
+                  pushObject(mb)(None)
                 case SubPlanOutputInfo.OutputType.AGGREGATED |
                   SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
-                  getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                  pushObject(mb)(Option)
                     .invokeV("apply", classOf[Option[_]].asType, {
                       val partitioner = pushNew(classOf[HashPartitioner].asType)
                       partitioner.dup().invokeInit(
@@ -117,7 +120,7 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
                       partitioner
                     }.asType(classOf[AnyRef].asType))
                 case _ =>
-                  getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
+                  pushObject(mb)(Option)
                     .invokeV("apply", classOf[Option[_]].asType, {
                       val partitioner = pushNew(classOf[HashPartitioner].asType)
                       partitioner.dup().invokeInit(ldc(1))

@@ -29,7 +29,9 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
-trait MasterJoin extends JoinOperatorFragmentClassBuilder {
+trait MasterJoin
+  extends JoinOperatorFragmentClassBuilder
+  with ScalaIdioms {
 
   implicit def context: SparkClientCompiler.Context
 
@@ -87,7 +89,7 @@ trait MasterJoin extends JoinOperatorFragmentClassBuilder {
           "The source and destination types should be the same: "
             + s"(${srcProperty.getType}, ${destProperty.getType}")
 
-        getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+        pushObject(mb)(ValueOptionOps)
           .invokeV(
             "copy",
             srcVar.push()

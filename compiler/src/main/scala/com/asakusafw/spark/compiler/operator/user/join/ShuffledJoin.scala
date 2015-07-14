@@ -31,7 +31,9 @@ import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
+trait ShuffledJoin
+  extends JoinOperatorFragmentClassBuilder
+  with ScalaIdioms {
 
   implicit def context: SparkClientCompiler.Context
 
@@ -110,10 +112,7 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
                   case (s, t) => s().asType(t)
                 }: _*)
         case None =>
-          getStatic(
-            DefaultMasterSelection.getClass.asType,
-            "MODULE$",
-            DefaultMasterSelection.getClass.asType)
+          pushObject(mb)(DefaultMasterSelection)
             .invokeV(
               "select",
               classOf[AnyRef].asType,

@@ -64,7 +64,8 @@ private class ProjectionOperatorsFragmentClassBuilder(
     implicit context: SparkClientCompiler.Context)
   extends CoreOperatorFragmentClassBuilder(
     operator.inputs.head.dataModelType,
-    operator.outputs.head.dataModelType) {
+    operator.outputs.head.dataModelType)
+  with ScalaIdioms {
 
   val mappings =
     ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator)
@@ -84,7 +85,7 @@ private class ProjectionOperatorsFragmentClassBuilder(
         "The source and destination types should be the same: " +
           s"(${srcProperty.getType}, ${destProperty.getType}")
 
-      getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+      pushObject(mb)(ValueOptionOps)
         .invokeV(
           "copy",
           dataModelVar.push()
