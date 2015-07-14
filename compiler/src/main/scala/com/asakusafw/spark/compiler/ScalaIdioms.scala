@@ -26,18 +26,18 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 trait ScalaIdioms {
 
   def pushObject(mb: MethodBuilder)(obj: Any): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     getStatic(obj.getClass.asType, "MODULE$", obj.getClass.asType)
   }
 
   def option(mb: MethodBuilder)(value: => Stack): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     pushObject(mb)(Option)
       .invokeV("apply", classOf[Option[_]].asType, value.asType(classOf[AnyRef].asType))
   }
 
   def tuple2(mb: MethodBuilder)(_1: => Stack, _2: => Stack): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     pushObject(mb)(Tuple2)
       .invokeV(
         "apply",
@@ -47,7 +47,7 @@ trait ScalaIdioms {
   }
 
   def classTag(mb: MethodBuilder, t: Type): Stack = {
-    import mb._
+    import mb._ // scalastyle:ignore
     pushObject(mb)(ClassTag)
       .invokeV("apply", classOf[ClassTag[_]].asType, ldc(t).asType(classOf[Class[_]].asType))
   }
@@ -91,33 +91,14 @@ object ScalaIdioms {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
-    def +=(value: => Stack): Unit = {
+    def +=(value: => Stack): Unit = { // scalastyle:ignore
       values += { () => value }
     }
 
     private[ScalaIdioms] def result: Stack = {
-      import mb._
+      import mb._ // scalastyle:ignore
       if (values.isEmpty) {
-        t.getSort() match {
-          case Type.BOOLEAN =>
-            pushObject(mb)(Array).invokeV("emptyBooleanArray", classOf[Array[Boolean]].asType)
-          case Type.CHAR =>
-            pushObject(mb)(Array).invokeV("emptyCharArray", classOf[Array[Char]].asType)
-          case Type.BYTE =>
-            pushObject(mb)(Array).invokeV("emptyByteArray", classOf[Array[Byte]].asType)
-          case Type.SHORT =>
-            pushObject(mb)(Array).invokeV("emptyShortArray", classOf[Array[Short]].asType)
-          case Type.INT =>
-            pushObject(mb)(Array).invokeV("emptyIntArray", classOf[Array[Int]].asType)
-          case Type.LONG =>
-            pushObject(mb)(Array).invokeV("emptyLongArray", classOf[Array[Long]].asType)
-          case Type.FLOAT =>
-            pushObject(mb)(Array).invokeV("emptyFloatArray", classOf[Array[Float]].asType)
-          case Type.DOUBLE =>
-            pushObject(mb)(Array).invokeV("emptyDoubleArray", classOf[Array[Double]].asType)
-          case _ =>
-            pushNewArray(t, 0)
-        }
+        pushEmptyArray()
       } else {
         val arr = pushNewArray(t, values.size)
         for {
@@ -128,13 +109,37 @@ object ScalaIdioms {
         arr
       }
     }
+
+    private def pushEmptyArray(): Stack = {
+      import mb._ // scalastyle:ignore
+      t.getSort() match {
+        case Type.BOOLEAN =>
+          pushObject(mb)(Array).invokeV("emptyBooleanArray", classOf[Array[Boolean]].asType)
+        case Type.CHAR =>
+          pushObject(mb)(Array).invokeV("emptyCharArray", classOf[Array[Char]].asType)
+        case Type.BYTE =>
+          pushObject(mb)(Array).invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+        case Type.SHORT =>
+          pushObject(mb)(Array).invokeV("emptyShortArray", classOf[Array[Short]].asType)
+        case Type.INT =>
+          pushObject(mb)(Array).invokeV("emptyIntArray", classOf[Array[Int]].asType)
+        case Type.LONG =>
+          pushObject(mb)(Array).invokeV("emptyLongArray", classOf[Array[Long]].asType)
+        case Type.FLOAT =>
+          pushObject(mb)(Array).invokeV("emptyFloatArray", classOf[Array[Float]].asType)
+        case Type.DOUBLE =>
+          pushObject(mb)(Array).invokeV("emptyDoubleArray", classOf[Array[Double]].asType)
+        case _ =>
+          pushNewArray(t, 0)
+      }
+    }
   }
 
   class SeqBuilder private[ScalaIdioms] (mb: MethodBuilder) extends ScalaIdioms {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
-    def +=(value: => Stack): Unit = {
+    def +=(value: => Stack): Unit = { // scalastyle:ignore
       values += { () => value }
     }
 
@@ -161,7 +166,7 @@ object ScalaIdioms {
 
     private val values = mutable.Buffer.empty[(() => Stack, () => Stack)]
 
-    def +=(key: => Stack, value: => Stack): Unit = {
+    def +=(key: => Stack, value: => Stack): Unit = { // scalastyle:ignore
       values += { (() => key, () => value) }
     }
 
@@ -188,7 +193,7 @@ object ScalaIdioms {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
-    def +=(value: => Stack): Unit = {
+    def +=(value: => Stack): Unit = { // scalastyle:ignore
       values += { () => value }
     }
 
