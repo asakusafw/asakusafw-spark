@@ -215,13 +215,7 @@ class CoGroupDriverClassBuilder(
         }
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(
-          pushObject(mb)(Tuple2)
-            invokeV (
-              "apply",
-              classOf[(_, _)].asType,
-              fragmentVar.push().asType(classOf[AnyRef].asType),
-              outputsVar.push().asType(classOf[AnyRef].asType)))
+        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

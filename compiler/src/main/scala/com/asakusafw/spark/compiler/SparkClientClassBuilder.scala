@@ -238,23 +238,18 @@ class SparkClientClassBuilder(
               builder.invokeI(
                 NameTransformer.encode("+="),
                 classOf[mutable.Builder[_, _]].asType,
-                pushObject(mb)(Tuple2)
-                  .invokeV(
-                    "apply",
-                    classOf[(BroadcastId, Future[Broadcast[_]])].asType,
-                    context.broadcastIds.getField(mb, subPlanInput.getOperator)
-                      .asType(classOf[AnyRef].asType),
-                    thisVar.push().getField(
-                      "broadcasts",
-                      classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]] // scalastyle:ignore
-                        .asType)
-                      .invokeI(
-                        "apply",
-                        classOf[AnyRef].asType,
-                        context.broadcastIds.getField(mb, prevSubPlanOperator)
-                          .asType(classOf[AnyRef].asType))
-                      .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType)
-                      .asType(classOf[AnyRef].asType))
+                tuple2(mb)(
+                  context.broadcastIds.getField(mb, subPlanInput.getOperator),
+                  thisVar.push().getField(
+                    "broadcasts",
+                    classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
+                      .asType)
+                    .invokeI(
+                      "apply",
+                      classOf[AnyRef].asType,
+                      context.broadcastIds.getField(mb, prevSubPlanOperator)
+                        .asType(classOf[AnyRef].asType))
+                    .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
                   .asType(classOf[AnyRef].asType))
             }
 
@@ -299,35 +294,32 @@ class SparkClientClassBuilder(
               .invokeI(
                 NameTransformer.encode("+="),
                 classOf[Growable[_]].asType,
-                pushObject(mb)(Tuple2)
-                  .invokeV("apply", classOf[(_, _)].asType,
-                    context.broadcastIds.getField(mb, subPlanOutput.getOperator)
-                      .asType(classOf[AnyRef].asType),
-                    thisVar.push().invokeV(
-                      "broadcastAsHash",
-                      classOf[Future[Broadcast[_]]].asType,
-                      scVar.push(),
-                      ldc(broadcastInfo.getLabel),
-                      resultVar.push().invokeI(
-                        "apply",
-                        classOf[AnyRef].asType,
-                        context.branchKeys.getField(mb, subPlanOutput.getOperator)
-                          .asType(classOf[AnyRef].asType))
-                        .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
-                      {
-                        option(mb)(
-                          pushNew0(SortOrderingClassBuilder.getOrCompile(groupings, orderings)))
-                      },
-                      {
-                        pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupings))
-                          .asType(classOf[Ordering[ShuffleKey]].asType)
-                      },
-                      {
-                        val partitioner = pushNew(classOf[HashPartitioner].asType)
-                        partitioner.dup().invokeInit(ldc(1))
-                        partitioner.asType(classOf[Partitioner].asType)
-                      })
-                      .asType(classOf[AnyRef].asType))
+                tuple2(mb)(
+                  context.broadcastIds.getField(mb, subPlanOutput.getOperator),
+                  thisVar.push().invokeV(
+                    "broadcastAsHash",
+                    classOf[Future[Broadcast[_]]].asType,
+                    scVar.push(),
+                    ldc(broadcastInfo.getLabel),
+                    resultVar.push().invokeI(
+                      "apply",
+                      classOf[AnyRef].asType,
+                      context.branchKeys.getField(mb, subPlanOutput.getOperator)
+                        .asType(classOf[AnyRef].asType))
+                      .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
+                    {
+                      option(mb)(
+                        pushNew0(SortOrderingClassBuilder.getOrCompile(groupings, orderings)))
+                    },
+                    {
+                      pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupings))
+                        .asType(classOf[Ordering[ShuffleKey]].asType)
+                    },
+                    {
+                      val partitioner = pushNew(classOf[HashPartitioner].asType)
+                      partitioner.dup().invokeInit(ldc(1))
+                      partitioner.asType(classOf[Partitioner].asType)
+                    }))
                   .asType(classOf[AnyRef].asType))
               .pop()
           }

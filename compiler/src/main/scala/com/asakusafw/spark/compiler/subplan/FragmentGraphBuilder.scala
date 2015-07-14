@@ -114,10 +114,9 @@ class FragmentGraphBuilder(
     } {
       builder.invokeI(NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
-        pushObject(mb)(Tuple2)
-          .invokeV("apply", classOf[(_, _)].asType,
-            context.branchKeys.getField(mb, op).asType(classOf[AnyRef].asType),
-            vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
+        tuple2(mb)(
+          context.branchKeys.getField(mb, op),
+          vars(op.getOriginalSerialNumber).push())
           .asType(classOf[AnyRef].asType))
     }
     val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)

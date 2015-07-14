@@ -179,11 +179,7 @@ class InputDriverClassBuilder(
                 case (k, v) =>
                   builder.invokeI(NameTransformer.encode("+="),
                     classOf[mutable.Builder[_, _]].asType,
-                    pushObject(mb)(Tuple2)
-                      .invokeV("apply", classOf[(String, String)].asType,
-                        ldc(k).asType(classOf[AnyRef].asType),
-                        ldc(v).asType(classOf[AnyRef].asType))
-                      .asType(classOf[AnyRef].asType))
+                    tuple2(mb)(ldc(k), ldc(v)).asType(classOf[AnyRef].asType))
               }
 
               builder.invokeI("result", classOf[AnyRef].asType)
@@ -238,13 +234,7 @@ class InputDriverClassBuilder(
         val fragmentVar = fragmentBuilder.build(operator.getOperatorPort)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(
-          pushObject(mb)(Tuple2)
-            invokeV (
-              "apply",
-              classOf[(_, _)].asType,
-              fragmentVar.push().asType(classOf[AnyRef].asType),
-              outputsVar.push().asType(classOf[AnyRef].asType)))
+        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

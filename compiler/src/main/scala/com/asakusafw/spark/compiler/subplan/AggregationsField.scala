@@ -105,12 +105,9 @@ trait AggregationsField
     } {
       builder.invokeI(NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType, {
-          pushObject(mb)(Tuple2)
-            .invokeV("apply", classOf[(_, _)].asType,
-              context.branchKeys.getField(mb, output.getOperator)
-                .asType(classOf[AnyRef].asType),
-              pushNew0(AggregationClassBuilder.getOrCompile(operator))
-                .asType(classOf[AnyRef].asType))
+          tuple2(mb)(
+            context.branchKeys.getField(mb, output.getOperator),
+            pushNew0(AggregationClassBuilder.getOrCompile(operator)))
         }.asType(classOf[AnyRef].asType))
     }
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)

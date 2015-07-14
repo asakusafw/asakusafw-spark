@@ -30,4 +30,14 @@ trait ScalaIdioms {
     pushObject(mb)(Option)
       .invokeV("apply", classOf[Option[_]].asType, value.asType(classOf[AnyRef].asType))
   }
+
+  def tuple2(mb: MethodBuilder)(_1: => Stack, _2: => Stack): Stack = {
+    import mb._
+    pushObject(mb)(Tuple2)
+      .invokeV(
+        "apply",
+        classOf[(_, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType))
+  }
 }

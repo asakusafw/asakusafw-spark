@@ -102,30 +102,28 @@ trait PartitionersField
       builder.invokeI(
         NameTransformer.encode("+="),
         classOf[mutable.Builder[_, _]].asType,
-        pushObject(mb)(Tuple2)
-          .invokeV("apply", classOf[(_, _)].asType,
-            context.branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
-              outputInfo.getOutputType match {
-                case SubPlanOutputInfo.OutputType.DONT_CARE =>
-                  pushObject(mb)(None)
-                case SubPlanOutputInfo.OutputType.AGGREGATED |
-                  SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
-                  option(mb)({
-                    val partitioner = pushNew(classOf[HashPartitioner].asType)
-                    partitioner.dup().invokeInit(
-                      numPartitions(
-                        mb,
-                        thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
-                    partitioner
-                  })
-                case _ =>
-                  option(mb)({
-                    val partitioner = pushNew(classOf[HashPartitioner].asType)
-                    partitioner.dup().invokeInit(ldc(1))
-                    partitioner
-                  })
-              }
-            }.asType(classOf[AnyRef].asType))
+        tuple2(mb)(
+          context.branchKeys.getField(mb, output.getOperator),
+          outputInfo.getOutputType match {
+            case SubPlanOutputInfo.OutputType.DONT_CARE =>
+              pushObject(mb)(None)
+            case SubPlanOutputInfo.OutputType.AGGREGATED |
+              SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
+              option(mb)({
+                val partitioner = pushNew(classOf[HashPartitioner].asType)
+                partitioner.dup().invokeInit(
+                  numPartitions(
+                    mb,
+                    thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
+                partitioner
+              })
+            case _ =>
+              option(mb)({
+                val partitioner = pushNew(classOf[HashPartitioner].asType)
+                partitioner.dup().invokeInit(ldc(1))
+                partitioner
+              })
+          })
           .asType(classOf[AnyRef].asType))
     }
     builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
