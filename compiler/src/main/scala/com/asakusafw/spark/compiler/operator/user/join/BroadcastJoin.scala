@@ -20,10 +20,9 @@ package join
 
 import java.util.{ ArrayList, List => JList }
 
-import scala.collection.mutable
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
-import scala.reflect.{ ClassTag, NameTransformer }
+import scala.reflect.ClassTag
 
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
@@ -38,7 +37,9 @@ import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
+trait BroadcastJoin
+  extends JoinOperatorFragmentClassBuilder
+  with ScalaIdioms {
 
   implicit def context: SparkClientCompiler.Context
 
@@ -87,9 +88,8 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
     thisVar.push().putField(
       "masters",
       classOf[Map[_, _]].asType,
-      broadcastsVar.push()
-        .invokeI("apply", classOf[AnyRef].asType,
-          context.broadcastIds.getField(mb, marker).asType(classOf[AnyRef].asType))
+      applyMap(mb)(
+        broadcastsVar.push(), context.broadcastIds.getField(mb, marker))
         .cast(classOf[Broadcast[_]].asType)
         .invokeV("value", classOf[AnyRef].asType)
         .cast(classOf[Map[_, _]].asType))
@@ -104,37 +104,29 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
       val shuffleKey = pushNew(classOf[ShuffleKey].asType)
       shuffleKey.dup().invokeInit(
         if (group.getGrouping.isEmpty) {
-          getStatic(Array.getClass.asType, "MODULE$", Array.getClass.asType)
-            .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+          buildArray(mb, Type.BYTE_TYPE)(_ => ())
         } else {
-          getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
-            .invokeV("serialize", classOf[Array[Byte]].asType, {
-              val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-              group.getGrouping.foreach { propertyName =>
-                val property = dataModelRef.findProperty(propertyName)
-
-                builder.invokeI(
-                  NameTransformer.encode("+="),
-                  classOf[mutable.Builder[_, _]].asType,
-                  dataModelVar.push().invokeV(
-                    property.getDeclaration.getName, property.getType.asType)
-                    .asType(classOf[AnyRef].asType))
-              }
-
-              builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-            })
+          pushObject(mb)(WritableSerDe)
+            .invokeV("serialize", classOf[Array[Byte]].asType,
+              buildSeq(mb) { builder =>
+                for {
+                  propertyName <- group.getGrouping
+                  property = dataModelRef.findProperty(propertyName)
+                } {
+                  builder +=
+                    dataModelVar.push().invokeV(
+                      property.getDeclaration.getName, property.getType.asType)
+                }
+              })
         },
-        getStatic(Array.getClass.asType, "MODULE$", Array.getClass.asType)
-          .invokeV("emptyByteArray", classOf[Array[Byte]].asType))
+        buildArray(mb, Type.BYTE_TYPE)(_ => ()))
       shuffleKey.store(dataModelVar.nextLocal)
     }
 
     val mVar = thisVar.push().getField("masters", classOf[Map[_, _]].asType)
       .invokeI("get", classOf[Option[_]].asType, keyVar.push().asType(classOf[AnyRef].asType))
       .invokeV("orNull", classOf[AnyRef].asType,
-        getStatic(Predef.getClass.asType, "MODULE$", Predef.getClass.asType)
+        pushObject(mb)(Predef)
           .invokeV("conforms", classOf[Predef.<:<[_, _]].asType))
       .cast(classOf[Seq[_]].asType)
       .store(keyVar.nextLocal)
@@ -143,7 +135,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
       mVar.push().ifNull({
         pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
       }, {
-        getStatic(JavaConversions.getClass.asType, "MODULE$", JavaConversions.getClass.asType)
+        pushObject(mb)(JavaConversions)
           .invokeV("seqAsJavaList", classOf[JList[_]].asType, mVar.push())
       }).store(mVar.nextLocal)
 
@@ -161,10 +153,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
                 case (s, t) => s().asType(t)
               }: _*)
       case None =>
-        getStatic(
-          DefaultMasterSelection.getClass.asType,
-          "MODULE$",
-          DefaultMasterSelection.getClass.asType)
+        pushObject(mb)(DefaultMasterSelection)
           .invokeV(
             "select",
             classOf[AnyRef].asType,

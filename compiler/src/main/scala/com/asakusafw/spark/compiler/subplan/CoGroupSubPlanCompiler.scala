@@ -19,9 +19,7 @@ package subplan
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 import scala.concurrent.Future
-import scala.reflect.NameTransformer
 
 import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.rdd.RDD
@@ -67,7 +65,10 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
 
 object CoGroupSubPlanCompiler {
 
-  object CoGroupDriverInstantiator extends Instantiator with NumPartitions {
+  object CoGroupDriverInstantiator
+    extends Instantiator
+    with NumPartitions
+    with ScalaIdioms {
 
     override def newInstance(
       driverType: Type,
@@ -109,62 +110,43 @@ object CoGroupSubPlanCompiler {
         vars.hadoopConf.push(),
         vars.broadcasts.push(), {
           // Seq[(Seq[RDD[(K, _)]], Option[Ordering[ShuffleKey]])]
-          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-          for {
-            input <- primaryOperator.getInputs
-          } {
-            builder.invokeI(NameTransformer.encode("+="),
-              classOf[mutable.Builder[_, _]].asType, {
-                getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
-                  .invokeV("apply", classOf[(_, _)].asType,
-                    {
-                      val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-                        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-                      for {
-                        opposite <- input.getOpposites.toSet[OperatorOutput]
-                        subPlanInput <- Option(subplan.findInput(opposite.getOwner))
-                        inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
-                        if inputInfo.getInputType == SubPlanInputInfo.InputType.PARTITIONED
-                        prevSubPlanOutput <- subPlanInput.getOpposites.toSeq
-                        marker = prevSubPlanOutput.getOperator
-                      } {
-                        builder.invokeI(
-                          NameTransformer.encode("+="),
-                          classOf[mutable.Builder[_, _]].asType,
-                          vars.rdds.push().invokeI(
-                            "apply",
-                            classOf[AnyRef].asType,
-                            context.branchKeys.getField(mb, marker)
-                              .asType(classOf[AnyRef].asType))
-                            .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
-                            .asType(classOf[AnyRef].asType))
-                      }
-
-                      builder
-                        .invokeI("result", classOf[AnyRef].asType)
-                        .cast(classOf[Seq[_]].asType)
-                    }.asType(classOf[AnyRef].asType),
-                    {
-                      getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
-                        .invokeV("apply", classOf[Option[_]].asType, {
-                          val dataModelRef =
-                            context.jpContext.getDataModelLoader.load(input.getDataType)
-                          pushNew0(
-                            SortOrderingClassBuilder.getOrCompile(
-                              input.getGroup.getGrouping.map { grouping =>
-                                dataModelRef.findProperty(grouping).getType.asType
-                              },
-                              input.getGroup.getOrdering.map { ordering =>
-                                (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                                  ordering.getDirection == Group.Direction.ASCENDANT)
-                              }))
-                        }.asType(classOf[AnyRef].asType))
-                    }.asType(classOf[AnyRef].asType)).asType(classOf[AnyRef].asType)
-              })
+          buildSeq(mb) { builder =>
+            for {
+              input <- primaryOperator.getInputs
+            } {
+              builder +=
+                tuple2(mb)(
+                  buildSeq(mb) { builder =>
+                    for {
+                      opposite <- input.getOpposites.toSet[OperatorOutput]
+                      subPlanInput <- Option(subplan.findInput(opposite.getOwner))
+                      inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
+                      if inputInfo.getInputType == SubPlanInputInfo.InputType.PARTITIONED
+                      prevSubPlanOutput <- subPlanInput.getOpposites
+                      marker = prevSubPlanOutput.getOperator
+                    } {
+                      builder +=
+                        applyMap(mb)(
+                          vars.rdds.push(),
+                          context.branchKeys.getField(mb, marker))
+                        .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
+                    }
+                  },
+                  option(mb)({
+                    val dataModelRef =
+                      context.jpContext.getDataModelLoader.load(input.getDataType)
+                    pushNew0(
+                      SortOrderingClassBuilder.getOrCompile(
+                        input.getGroup.getGrouping.map { grouping =>
+                          dataModelRef.findProperty(grouping).getType.asType
+                        },
+                        input.getGroup.getOrdering.map { ordering =>
+                          (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                            ordering.getDirection == Group.Direction.ASCENDANT)
+                        }))
+                  }))
+            }
           }
-          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         }, {
           // ShuffleKey.GroupingOrdering
           pushNew0(

@@ -18,9 +18,7 @@ package subplan
 
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
 
-import scala.collection.mutable
 import scala.concurrent.Future
-import scala.reflect.{ NameTransformer, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
@@ -61,7 +59,9 @@ class InputDriverClassBuilder(
       }
       .build(),
     classOf[InputDriver[_, _, _]].asType)
-  with Branching with DriverLabel {
+  with Branching
+  with DriverLabel
+  with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -104,21 +104,9 @@ class InputDriverClassBuilder(
           scVar.push(),
           hadoopConfVar.push(),
           broadcastsVar.push(),
-          getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV(
-              "apply",
-              classOf[ClassTag[_]].asType,
-              ldc(keyType).asType(classOf[Class[_]].asType)),
-          getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV(
-              "apply",
-              classOf[ClassTag[_]].asType,
-              ldc(valueType).asType(classOf[Class[_]].asType)),
-          getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV(
-              "apply",
-              classOf[ClassTag[_]].asType,
-              ldc(inputFormatType).asType(classOf[Class[_]].asType)))
+          classTag(mb, keyType),
+          classTag(mb, valueType),
+          classTag(mb, inputFormatType))
       }
   }
 
@@ -141,20 +129,16 @@ class InputDriverClassBuilder(
         `return`(
           paths match {
             case Some(paths) =>
-              getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
-                .invokeV("apply", classOf[Option[_]].asType, {
-                  val builder = getStatic(Set.getClass.asType, "MODULE$", Set.getClass.asType)
-                    .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-                  paths.foreach { path =>
-                    builder.invokeI(
-                      NameTransformer.encode("+="),
-                      classOf[mutable.Builder[_, _]].asType,
-                      ldc(path).asType(classOf[AnyRef].asType))
+              option(mb)(
+                buildSet(mb) { builder =>
+                  for {
+                    path <- paths
+                  } {
+                    builder += ldc(path)
                   }
-                  builder.invokeI("result", classOf[AnyRef].asType)
                 })
             case None =>
-              getStatic(None.getClass.asType, "MODULE$", None.getClass.asType)
+              pushObject(mb)(None)
           })
       }
 
@@ -169,27 +153,14 @@ class InputDriverClassBuilder(
         .build()) { mb =>
         import mb._ // scalastyle:ignore
         `return`(
-          extraConfigurations match {
-            case Some(confs) =>
-              val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-                .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-              confs.foreach {
-                case (k, v) =>
-                  builder.invokeI(NameTransformer.encode("+="),
-                    classOf[mutable.Builder[_, _]].asType,
-                    getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType)
-                      .invokeV("apply", classOf[(String, String)].asType,
-                        ldc(k).asType(classOf[AnyRef].asType),
-                        ldc(v).asType(classOf[AnyRef].asType))
-                      .asType(classOf[AnyRef].asType))
+          buildMap(mb) { builder =>
+            extraConfigurations.foreach {
+              for {
+                (k, v) <- _
+              } {
+                builder += (ldc(k), ldc(v))
               }
-
-              builder.invokeI("result", classOf[AnyRef].asType)
-                .cast(classOf[Map[String, String]].asType)
-            case None =>
-              getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-                .invokeV("empty", classOf[Map[String, String]].asType)
+            }
           })
       }
 
@@ -237,13 +208,7 @@ class InputDriverClassBuilder(
         val fragmentVar = fragmentBuilder.build(operator.getOperatorPort)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(
-          getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-            invokeV(
-              "apply",
-              classOf[(_, _)].asType,
-              fragmentVar.push().asType(classOf[AnyRef].asType),
-              outputsVar.push().asType(classOf[AnyRef].asType)))
+        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

@@ -16,9 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
-import scala.reflect.NameTransformer
 
 import org.apache.spark.Partitioner
 import org.objectweb.asm.{ Opcodes, Type }
@@ -33,7 +31,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait OrderingsField extends ClassBuilder {
+trait OrderingsField
+  extends ClassBuilder
+  with ScalaIdioms {
 
   implicit def context: SparkClientCompiler.Context
 
@@ -89,40 +89,32 @@ trait OrderingsField extends ClassBuilder {
 
   private def initOrderings(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    for {
-      output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
-      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-      partitionInfo <- outputInfo.getOutputType match {
-        case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
-          Option(outputInfo.getPartitionInfo)
-        case SubPlanOutputInfo.OutputType.BROADCAST =>
-          Option(output.getAttribute(classOf[BroadcastInfo])).map(_.getFormatInfo)
-        case _ => None
+    buildMap(mb) { builder =>
+      for {
+        output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
+        outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+        partitionInfo <- outputInfo.getOutputType match {
+          case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
+            Option(outputInfo.getPartitionInfo)
+          case SubPlanOutputInfo.OutputType.BROADCAST =>
+            Option(output.getAttribute(classOf[BroadcastInfo])).map(_.getFormatInfo)
+          case _ => None
+        }
+      } {
+        val dataModelRef =
+          context.jpContext.getDataModelLoader.load(output.getOperator.getInput.getDataType)
+        builder += (
+          context.branchKeys.getField(mb, output.getOperator),
+          pushNew0(
+            SortOrderingClassBuilder.getOrCompile(
+              partitionInfo.getGrouping.map { grouping =>
+                dataModelRef.findProperty(grouping).getType.asType
+              },
+              partitionInfo.getOrdering.map { ordering =>
+                (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                  ordering.getDirection == Group.Direction.ASCENDANT)
+              })))
       }
-    } {
-      val dataModelRef =
-        context.jpContext.getDataModelLoader.load(output.getOperator.getInput.getDataType)
-      builder.invokeI(
-        NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType,
-        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-          invokeV("apply", classOf[(_, _)].asType,
-            context.branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
-              pushNew0(
-                SortOrderingClassBuilder.getOrCompile(
-                  partitionInfo.getGrouping.map { grouping =>
-                    dataModelRef.findProperty(grouping).getType.asType
-                  },
-                  partitionInfo.getOrdering.map { ordering =>
-                    (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                      ordering.getDirection == Group.Direction.ASCENDANT)
-                  }))
-                .asType(classOf[AnyRef].asType)
-            })
-          .asType(classOf[AnyRef].asType))
     }
-    builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
   }
 }

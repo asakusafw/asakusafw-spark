@@ -62,7 +62,8 @@ private class SplitOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Split.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
-    operator.outputs) {
+    operator.outputs)
+  with ScalaIdioms {
 
   val mappings =
     JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
@@ -117,7 +118,7 @@ private class SplitOperatorFragmentClassBuilder(
         "The source and destination types should be the same: "
           + s"(${srcProperty.getType}, ${destProperty.getType}")
 
-      getStatic(ValueOptionOps.getClass.asType, "MODULE$", ValueOptionOps.getClass.asType)
+      pushObject(mb)(ValueOptionOps)
         .invokeV(
           "copy",
           dataModelVar.push()

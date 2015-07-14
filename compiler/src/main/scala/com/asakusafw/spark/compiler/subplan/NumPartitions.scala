@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package subplan
 
 import org.apache.spark.SparkConf
 import org.objectweb.asm.Type
@@ -24,7 +25,8 @@ import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait NumPartitions {
+trait NumPartitions
+  extends ScalaIdioms {
 
   def numPartitions(mb: MethodBuilder, sc: => Stack)(port: SubPlan.Port): Stack = {
     import mb._ // scalastyle:ignore
@@ -68,12 +70,12 @@ trait NumPartitions {
     import mb._ // scalastyle:ignore
     sc.invokeV("getConf", classOf[SparkConf].asType)
       .invokeV("getInt", Type.INT_TYPE,
-        getStatic(Props.getClass.asType, "MODULE$", Props.getClass.asType)
+        pushObject(mb)(Props)
           .invokeV("Parallelism", classOf[String].asType),
         sc.invokeV("getConf", classOf[SparkConf].asType)
           .invokeV("getInt", Type.INT_TYPE,
             ldc("spark.default.parallelism"),
-            getStatic(Props.getClass.asType, "MODULE$", Props.getClass.asType)
+            pushObject(mb)(Props)
               .invokeV("ParallelismFallback", Type.INT_TYPE)))
   }
 
@@ -81,9 +83,9 @@ trait NumPartitions {
     import mb._ // scalastyle:ignore
     sc.invokeV("getConf", classOf[SparkConf].asType)
       .invokeV("getDouble", Type.DOUBLE_TYPE,
-        getStatic(Props.getClass.asType, "MODULE$", Props.getClass.asType)
+        pushObject(mb)(Props)
           .invokeV(s"ParallelismScale${suffix}", classOf[String].asType),
-        getStatic(Props.getClass.asType, "MODULE$", Props.getClass.asType)
+        pushObject(mb)(Props)
           .invokeV(s"DefaultParallelismScale${suffix}", Type.DOUBLE_TYPE))
   }
 }

@@ -26,7 +26,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.tools.asm._
 
-trait Serializing extends ClassBuilder {
+trait Serializing
+  extends ClassBuilder
+  with ScalaIdioms {
 
   def context: SparkClientCompiler.Context
 
@@ -68,7 +70,7 @@ trait Serializing extends ClassBuilder {
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[Writable].asType, branchVar.nextLocal)
         `return`(
-          getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
+          pushObject(mb)(WritableSerDe)
             .invokeV("serialize", classOf[Array[Byte]].asType, valueVar.push()))
       }
 
@@ -92,7 +94,7 @@ trait Serializing extends ClassBuilder {
         val valueVar =
           thisVar.push().invokeV("value", classOf[Writable].asType, branchVar.push())
             .store(sliceVar.nextLocal)
-        getStatic(WritableSerDe.getClass.asType, "MODULE$", WritableSerDe.getClass.asType)
+        pushObject(mb)(WritableSerDe)
           .invokeV(
             "deserialize",
             sliceVar.push(),

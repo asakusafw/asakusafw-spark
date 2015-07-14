@@ -53,7 +53,9 @@ class ExtractDriverClassBuilder(
       }
       .build(),
     classOf[ExtractDriver[_]].asType)
-  with Branching with DriverLabel {
+  with Branching
+  with DriverLabel
+  with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -172,13 +174,7 @@ class ExtractDriverClassBuilder(
         val fragmentVar = fragmentBuilder.build(marker.getOutput)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(
-          getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-            invokeV(
-              "apply",
-              classOf[(_, _)].asType,
-              fragmentVar.push().asType(classOf[AnyRef].asType),
-              outputsVar.push().asType(classOf[AnyRef].asType)))
+        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

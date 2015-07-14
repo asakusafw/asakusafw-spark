@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.reflect.NameTransformer
 
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
@@ -42,7 +41,8 @@ class FragmentGraphBuilder(
   mb: MethodBuilder,
   broadcastsVar: Var,
   nextLocal: AtomicInteger)(
-    implicit context: SparkClientCompiler.Context) {
+    implicit context: SparkClientCompiler.Context)
+  extends ScalaIdioms {
   import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty
@@ -78,7 +78,7 @@ class FragmentGraphBuilder(
     if (output.getOpposites.size == 0) {
       vars.getOrElseUpdate(-1L, {
         val fragment =
-          getStatic(StopFragment.getClass.asType, "MODULE$", StopFragment.getClass.asType)
+          pushObject(mb)(StopFragment)
         fragment.store(nextLocal.getAndAdd(fragment.size))
       })
     } else if (output.getOpposites.size > 1) {
@@ -90,14 +90,14 @@ class FragmentGraphBuilder(
           output.getDataType.asType, {
             EdgeFragmentClassBuilder.getOrCompile(output.getDataType.asType)
           }))
-      fragment.dup().invokeInit({
-        val arr = pushNewArray(classOf[Fragment[_]].asType, output.getOpposites.size)
-        opposites.zipWithIndex.foreach {
-          case (opposite, i) =>
-            arr.dup().astore(ldc(i), opposite.push())
-        }
-        arr
-      })
+      fragment.dup().invokeInit(
+        buildArray(mb, classOf[Fragment[_]].asType) { builder =>
+          for {
+            opposite <- opposites
+          } {
+            builder += opposite.push()
+          }
+        })
       fragment.store(nextLocal.getAndAdd(fragment.size))
     } else {
       val operator = output.getOpposites.head.getOwner
@@ -106,20 +106,15 @@ class FragmentGraphBuilder(
   }
 
   def buildOutputsVar(outputs: Seq[SubPlan.Output]): Var = {
-    val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    for {
-      op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
-    } {
-      builder.invokeI(NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType,
-        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-          invokeV("apply", classOf[(_, _)].asType,
-            context.branchKeys.getField(mb, op).asType(classOf[AnyRef].asType),
-            vars(op.getOriginalSerialNumber).push().asType(classOf[AnyRef].asType))
-          .asType(classOf[AnyRef].asType))
+    val map = buildMap(mb) { builder =>
+      for {
+        op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
+      } {
+        builder += (
+          context.branchKeys.getField(mb, op),
+          vars(op.getOriginalSerialNumber).push())
+      }
     }
-    val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
     map.store(nextLocal.getAndAdd(map.size))
   }
 }

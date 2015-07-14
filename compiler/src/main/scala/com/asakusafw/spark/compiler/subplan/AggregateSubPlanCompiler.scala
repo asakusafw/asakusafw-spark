@@ -19,9 +19,7 @@ package subplan
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 import scala.concurrent.Future
-import scala.reflect.NameTransformer
 
 import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.rdd.RDD
@@ -71,7 +69,10 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
 
 object AggregateSubPlanCompiler {
 
-  object AggregateDriverInstantiator extends Instantiator with NumPartitions {
+  object AggregateDriverInstantiator
+    extends Instantiator
+    with NumPartitions
+    with ScalaIdioms {
 
     override def newInstance(
       driverType: Type,
@@ -104,10 +105,8 @@ object AggregateSubPlanCompiler {
       aggregateDriver.dup().invokeInit(
         vars.sc.push(),
         vars.hadoopConf.push(),
-        vars.broadcasts.push(), {
-          val builder = getStatic(Seq.getClass.asType, "MODULE$", Seq.getClass.asType)
-            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
+        vars.broadcasts.push(),
+        buildSeq(mb) { builder =>
           for {
             subPlanInput <- subplan.getInputs
             inputInfo = subPlanInput.getAttribute(classOf[SubPlanInputInfo])
@@ -115,32 +114,25 @@ object AggregateSubPlanCompiler {
             prevSubPlanOutput <- subPlanInput.getOpposites
             marker = prevSubPlanOutput.getOperator
           } {
-            builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
-              vars.rdds.push().invokeI(
-                "apply",
-                classOf[AnyRef].asType,
-                context.branchKeys.getField(mb, marker)
-                  .asType(classOf[AnyRef].asType))
-                .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
-                .asType(classOf[AnyRef].asType))
+            builder +=
+              applyMap(mb)(
+                vars.rdds.push(),
+                context.branchKeys.getField(mb, marker))
+              .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
           }
-
-          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-        }, {
-          getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
-            .invokeV("apply", classOf[Option[_]].asType, {
-              val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
-              pushNew0(
-                SortOrderingClassBuilder.getOrCompile(
-                  input.getGroup.getGrouping.map { grouping =>
-                    dataModelRef.findProperty(grouping).getType.asType
-                  },
-                  input.getGroup.getOrdering.map { ordering =>
-                    (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                      ordering.getDirection == Group.Direction.ASCENDANT)
-                  }))
-            }.asType(classOf[AnyRef].asType))
         },
+        option(mb)({
+          val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
+          pushNew0(
+            SortOrderingClassBuilder.getOrCompile(
+              input.getGroup.getGrouping.map { grouping =>
+                dataModelRef.findProperty(grouping).getType.asType
+              },
+              input.getGroup.getOrdering.map { ordering =>
+                (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                  ordering.getDirection == Group.Direction.ASCENDANT)
+              }))
+        }),
         partitionerVar.push().asType(classOf[Partitioner].asType))
       aggregateDriver.store(nextLocal.getAndAdd(aggregateDriver.size))
     }

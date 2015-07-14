@@ -16,9 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
-import scala.reflect.NameTransformer
 
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.objectweb.asm.{ Opcodes, Type }
@@ -30,7 +28,10 @@ import com.asakusafw.spark.runtime.rdd.{ BranchKey, IdentityPartitioner }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait PartitionersField extends ClassBuilder with NumPartitions {
+trait PartitionersField
+  extends ClassBuilder
+  with NumPartitions
+  with ScalaIdioms {
 
   def context: SparkClientCompiler.Context
 
@@ -86,47 +87,38 @@ trait PartitionersField extends ClassBuilder with NumPartitions {
 
   private def initPartitioners(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = getStatic(Map.getClass.asType, "MODULE$", Map.getClass.asType)
-      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    for {
-      output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
-      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-      if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.DONT_CARE ||
-        outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED ||
-        outputInfo.getOutputType == SubPlanOutputInfo.OutputType.PARTITIONED ||
-        outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
-    } {
-      builder.invokeI(
-        NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType,
-        getStatic(Tuple2.getClass.asType, "MODULE$", Tuple2.getClass.asType).
-          invokeV("apply", classOf[(_, _)].asType,
-            context.branchKeys.getField(mb, output.getOperator).asType(classOf[AnyRef].asType), {
-              outputInfo.getOutputType match {
-                case SubPlanOutputInfo.OutputType.DONT_CARE =>
-                  getStatic(None.getClass.asType, "MODULE$", None.getClass.asType)
-                case SubPlanOutputInfo.OutputType.AGGREGATED |
-                  SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
-                  getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
-                    .invokeV("apply", classOf[Option[_]].asType, {
-                      val partitioner = pushNew(classOf[HashPartitioner].asType)
-                      partitioner.dup().invokeInit(
-                        numPartitions(
-                          mb,
-                          thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
-                      partitioner
-                    }.asType(classOf[AnyRef].asType))
-                case _ =>
-                  getStatic(Option.getClass.asType, "MODULE$", Option.getClass.asType)
-                    .invokeV("apply", classOf[Option[_]].asType, {
-                      val partitioner = pushNew(classOf[HashPartitioner].asType)
-                      partitioner.dup().invokeInit(ldc(1))
-                      partitioner
-                    }.asType(classOf[AnyRef].asType))
-              }
-            }.asType(classOf[AnyRef].asType))
-          .asType(classOf[AnyRef].asType))
+    buildMap(mb) { builder =>
+      for {
+        output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
+        outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+        if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.DONT_CARE ||
+          outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED ||
+          outputInfo.getOutputType == SubPlanOutputInfo.OutputType.PARTITIONED ||
+          outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
+      } {
+        builder += (
+          context.branchKeys.getField(mb, output.getOperator),
+          outputInfo.getOutputType match {
+            case SubPlanOutputInfo.OutputType.DONT_CARE =>
+              pushObject(mb)(None)
+            case SubPlanOutputInfo.OutputType.AGGREGATED |
+              SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
+              option(mb)({
+                val partitioner = pushNew(classOf[HashPartitioner].asType)
+                partitioner.dup().invokeInit(
+                  numPartitions(
+                    mb,
+                    thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
+                partitioner
+              })
+            case _ =>
+              option(mb)({
+                val partitioner = pushNew(classOf[HashPartitioner].asType)
+                partitioner.dup().invokeInit(ldc(1))
+                partitioner
+              })
+          })
+      }
     }
-    builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
   }
 }

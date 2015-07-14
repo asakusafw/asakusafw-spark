@@ -19,7 +19,6 @@ package operator
 import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
-import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
@@ -43,15 +42,13 @@ class OutputFragmentClassBuilder(
         }
       }
       .build(),
-    classOf[OutputFragment[_]].asType) {
+    classOf[OutputFragment[_]].asType)
+  with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { mb =>
       import mb._ // scalastyle:ignore
-      thisVar.push().invokeInit(superType,
-        getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-          .invokeV("apply", classOf[ClassTag[_]].asType,
-            ldc(dataModelType).asType(classOf[Class[_]].asType)))
+      thisVar.push().invokeInit(superType, classTag(mb, dataModelType))
     }
   }
 

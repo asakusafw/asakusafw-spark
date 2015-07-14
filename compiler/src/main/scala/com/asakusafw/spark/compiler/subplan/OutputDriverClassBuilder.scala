@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
@@ -49,7 +48,9 @@ class OutputDriverClassBuilder(
         }
       }
       .build(),
-    classOf[OutputDriver[_]].asType) with DriverLabel {
+    classOf[OutputDriver[_]].asType)
+  with DriverLabel
+  with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -111,11 +112,7 @@ class OutputDriverClassBuilder(
           hadoopConfVar.push(),
           prevsVar.push(),
           terminatorsVar.push(),
-          getStatic(ClassTag.getClass.asType, "MODULE$", ClassTag.getClass.asType)
-            .invokeV(
-              "apply",
-              classOf[ClassTag[_]].asType,
-              ldc(operator.getDataType.asType).asType(classOf[Class[_]].asType)))
+          classTag(mb, operator.getDataType.asType))
       }
   }
 

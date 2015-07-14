@@ -31,7 +31,9 @@ import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
+trait ShuffledJoin
+  extends JoinOperatorFragmentClassBuilder
+  with ScalaIdioms {
 
   implicit def context: SparkClientCompiler.Context
 
@@ -65,9 +67,9 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     val mastersVar = {
-      val iter = dataModelVar.push().invokeI(
-        "apply", classOf[AnyRef].asType, ldc(0).box().asType(classOf[AnyRef].asType))
-        .cast(classOf[Iterator[_]].asType)
+      val iter =
+        applySeq(mb)(dataModelVar.push(), ldc(0))
+          .cast(classOf[Iterator[_]].asType)
       val iterVar = iter.store(dataModelVar.nextLocal)
       val masters = thisVar.push().getField("masters", classOf[ListBuffer[_]].asType)
       val mastersVar = masters.store(iterVar.nextLocal)
@@ -89,10 +91,10 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
       mastersVar
     }
 
-    val txIterVar = dataModelVar.push().invokeI(
-      "apply", classOf[AnyRef].asType, ldc(1).box().asType(classOf[AnyRef].asType))
-      .cast(classOf[Iterator[_]].asType)
-      .store(mastersVar.nextLocal)
+    val txIterVar =
+      applySeq(mb)(dataModelVar.push(), ldc(1))
+        .cast(classOf[Iterator[_]].asType)
+        .store(mastersVar.nextLocal)
     whileLoop(txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
       val txVar = txIterVar.push().invokeI("next", classOf[AnyRef].asType)
         .cast(txType).store(txIterVar.nextLocal)
@@ -110,10 +112,7 @@ trait ShuffledJoin extends JoinOperatorFragmentClassBuilder {
                   case (s, t) => s().asType(t)
                 }: _*)
         case None =>
-          getStatic(
-            DefaultMasterSelection.getClass.asType,
-            "MODULE$",
-            DefaultMasterSelection.getClass.asType)
+          pushObject(mb)(DefaultMasterSelection)
             .invokeV(
               "select",
               classOf[AnyRef].asType,
