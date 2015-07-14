@@ -16,7 +16,7 @@
 package com.asakusafw.spark.compiler
 
 import scala.collection.mutable
-import scala.reflect.NameTransformer
+import scala.reflect.{ ClassTag, NameTransformer }
 
 import org.objectweb.asm.Type
 
@@ -44,6 +44,12 @@ trait ScalaIdioms {
         classOf[(_, _)].asType,
         _1.asType(classOf[AnyRef].asType),
         _2.asType(classOf[AnyRef].asType))
+  }
+
+  def classTag(mb: MethodBuilder, t: Type): Stack = {
+    import mb._
+    pushObject(mb)(ClassTag)
+      .invokeV("apply", classOf[ClassTag[_]].asType, ldc(t).asType(classOf[Class[_]].asType))
   }
 
   def buildArray(mb: MethodBuilder, t: Type)(block: ScalaIdioms.ArrayBuilder => Unit): Stack = {

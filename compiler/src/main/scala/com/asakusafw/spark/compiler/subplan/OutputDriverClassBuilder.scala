@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
@@ -113,11 +112,7 @@ class OutputDriverClassBuilder(
           hadoopConfVar.push(),
           prevsVar.push(),
           terminatorsVar.push(),
-          pushObject(mb)(ClassTag)
-            .invokeV(
-              "apply",
-              classOf[ClassTag[_]].asType,
-              ldc(operator.getDataType.asType).asType(classOf[Class[_]].asType)))
+          classTag(mb, operator.getDataType.asType))
       }
   }
 

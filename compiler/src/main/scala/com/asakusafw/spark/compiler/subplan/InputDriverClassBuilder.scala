@@ -19,7 +19,6 @@ package subplan
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
 
 import scala.concurrent.Future
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
@@ -105,21 +104,9 @@ class InputDriverClassBuilder(
           scVar.push(),
           hadoopConfVar.push(),
           broadcastsVar.push(),
-          pushObject(mb)(ClassTag)
-            .invokeV(
-              "apply",
-              classOf[ClassTag[_]].asType,
-              ldc(keyType).asType(classOf[Class[_]].asType)),
-          pushObject(mb)(ClassTag)
-            .invokeV(
-              "apply",
-              classOf[ClassTag[_]].asType,
-              ldc(valueType).asType(classOf[Class[_]].asType)),
-          pushObject(mb)(ClassTag)
-            .invokeV(
-              "apply",
-              classOf[ClassTag[_]].asType,
-              ldc(inputFormatType).asType(classOf[Class[_]].asType)))
+          classTag(mb, keyType),
+          classTag(mb, valueType),
+          classTag(mb, inputFormatType))
       }
   }
 
