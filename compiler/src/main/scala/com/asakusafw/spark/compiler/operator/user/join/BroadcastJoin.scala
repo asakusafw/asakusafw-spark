@@ -29,7 +29,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput }
+import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput, UserOperator }
 import com.asakusafw.lang.compiler.planning.PlanMarker
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.Fragment
@@ -40,13 +40,12 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
 
-  def context: SparkClientCompiler.Context
+  implicit def context: SparkClientCompiler.Context
 
   def masterInput: OperatorInput
   def txInput: OperatorInput
 
-  val operatorInfo: OperatorInfo
-  import operatorInfo._ // scalastyle:ignore
+  def operator: UserOperator
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
@@ -156,7 +155,7 @@ trait BroadcastJoin extends JoinOperatorFragmentClassBuilder {
             t.getReturnType(),
             ({ () => mastersVar.push() } +:
               { () => dataModelVar.push() } +:
-              arguments.map { argument =>
+              operator.arguments.map { argument =>
                 () => ldc(argument.value)(ClassTag(argument.resolveClass))
               }).zip(t.getArgumentTypes()).map {
                 case (s, t) => s().asType(t)

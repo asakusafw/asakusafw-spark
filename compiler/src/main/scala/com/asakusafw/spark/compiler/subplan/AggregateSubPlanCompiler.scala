@@ -30,7 +30,6 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.{ Group, UserOperator }
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.operator.OperatorInfo
 import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
@@ -53,18 +52,15 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
       s"The primary operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-
-    assert(inputs.size == 1,
-      s"The size of inputs should be 1: ${inputs.size}")
-    assert(outputs.size == 1,
-      s"The size of outputs should be 1: ${outputs.size}")
+    assert(operator.inputs.size == 1,
+      s"The size of inputs should be 1: ${operator.inputs.size}")
+    assert(operator.outputs.size == 1,
+      s"The size of outputs should be 1: ${operator.outputs.size}")
 
     val builder =
       new AggregateDriverClassBuilder(
-        inputs.head.dataModelType,
-        outputs.head.dataModelType,
+        operator.inputs.head.dataModelType,
+        operator.outputs.head.dataModelType,
         operator)(
         subPlanInfo.getLabel,
         subplan.getOutputs.toSeq)
@@ -89,12 +85,9 @@ object AggregateSubPlanCompiler {
       val primaryOperator =
         subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
 
-      val operatorInfo = new OperatorInfo(primaryOperator)(context.jpContext)
-      import operatorInfo._ // scalastyle:ignore
-
-      assert(inputs.size == 1,
-        s"The size of inputs should be 1: ${inputs.size}")
-      val input = inputs.head
+      assert(primaryOperator.inputs.size == 1,
+        s"The size of inputs should be 1: ${primaryOperator.inputs.size}")
+      val input = primaryOperator.inputs.head
 
       val partitioner = pushNew(classOf[HashPartitioner].asType)
       partitioner.dup().invokeInit(

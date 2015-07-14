@@ -22,21 +22,21 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 
 trait MasterCheck extends JoinOperatorFragmentClassBuilder {
 
-  val operatorInfo: OperatorInfo
-  import operatorInfo._ // scalastyle:ignore
+  def operator: UserOperator
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     masterVar.push().ifNull({
-      getOutputField(mb, outputs(MasterCheckOp.ID_OUTPUT_MISSED))
+      getOutputField(mb, operator.outputs(MasterCheckOp.ID_OUTPUT_MISSED))
     }, {
-      getOutputField(mb, outputs(MasterCheckOp.ID_OUTPUT_FOUND))
+      getOutputField(mb, operator.outputs(MasterCheckOp.ID_OUTPUT_FOUND))
     }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
   }
 }

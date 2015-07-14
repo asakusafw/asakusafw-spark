@@ -22,36 +22,40 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp }
 
 trait MasterBranch extends JoinOperatorFragmentClassBuilder {
 
-  val operatorInfo: OperatorInfo
-  import operatorInfo._ // scalastyle:ignore
+  implicit def context: SparkClientCompiler.Context
+
+  def operator: UserOperator
 
   override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     block { ctrl =>
       val branch = getOperatorField(mb)
         .invokeV(
-          methodDesc.name,
-          methodDesc.asType.getReturnType,
-          masterVar.push().asType(methodDesc.asType.getArgumentTypes()(0))
-            +: txVar.push().asType(methodDesc.asType.getArgumentTypes()(1))
-            +: arguments.map { argument =>
+          operator.methodDesc.name,
+          operator.methodDesc.asType.getReturnType,
+          masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+            +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
+            +: operator.arguments.map { argument =>
               ldc(argument.value)(ClassTag(argument.resolveClass))
             }: _*)
       branch.dup().unlessNotNull {
         branch.pop()
         `throw`(pushNew0(classOf[NullPointerException].asType))
       }
-      branchOutputMap.foreach {
+      operator.branchOutputMap.foreach {
         case (output, enum) =>
           branch.dup().unlessNe(
             getStatic(
-              methodDesc.asType.getReturnType, enum.name, methodDesc.asType.getReturnType)) {
+              operator.methodDesc.asType.getReturnType,
+              enum.name,
+              operator.methodDesc.asType.getReturnType)) {
               getOutputField(mb, output)
                 .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
               branch.pop()

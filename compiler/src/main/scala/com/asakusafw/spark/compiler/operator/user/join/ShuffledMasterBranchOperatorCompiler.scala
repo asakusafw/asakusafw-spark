@@ -30,9 +30,7 @@ class ShuffledMasterBranchOperatorCompiler extends UserOperatorCompiler {
   override def support(
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Boolean = {
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-    annotationDesc.resolveClass == classOf[MasterBranchOp]
+    operator.annotationDesc.resolveClass == classOf[MasterBranchOp]
   }
 
   override def operatorType: OperatorType = OperatorType.CoGroupType
@@ -41,47 +39,39 @@ class ShuffledMasterBranchOperatorCompiler extends UserOperatorCompiler {
     operator: UserOperator)(
       implicit context: SparkClientCompiler.Context): Type = {
 
-    val operatorInfo = new OperatorInfo(operator)(context.jpContext)
-    import operatorInfo._ // scalastyle:ignore
-
     assert(support(operator),
-      s"The operator type is not supported: ${annotationDesc.resolveClass.getSimpleName}")
-    assert(inputs.size == 2, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 2: ${inputs.size}")
-    assert(outputs.size > 0,
-      s"The size of outputs should be greater than 0: ${outputs.size}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+    assert(operator.inputs.size == 2, // FIXME to take multiple inputs for side data?
+      s"The size of inputs should be 2: ${operator.inputs.size}")
+    assert(operator.outputs.size > 0,
+      s"The size of outputs should be greater than 0: ${operator.outputs.size}")
 
     assert(
-      outputs.forall { output =>
-        output.dataModelType == inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType
-      },
+      operator.outputs.forall(output =>
+        output.dataModelType == operator.inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType),
       s"All of output types should be the same as the transaction type: ${
-        outputs.map(_.dataModelType).mkString("(", ",", ")")
+        operator.outputs.map(_.dataModelType).mkString("(", ",", ")")
       }")
 
     assert(
-      methodDesc.parameterClasses
-        .zip(inputs.map(_.dataModelClass)
-          ++: arguments.map(_.resolveClass))
+      operator.methodDesc.parameterClasses
+        .zip(operator.inputs.map(_.dataModelClass)
+          ++: operator.arguments.map(_.resolveClass))
         .forall {
           case (method, model) => method.isAssignableFrom(model)
         },
       s"The operator method parameter types are not compatible: (${
-        methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
+        operator.methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
       }, ${
-        (inputs.map(_.dataModelClass)
-          ++: arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
+        (operator.inputs.map(_.dataModelClass)
+          ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       })")
 
     val builder =
       new ShuffledJoinOperatorFragmentClassBuilder(
-        classOf[Seq[Iterable[_]]].asType,
-        implementationClassType,
-        outputs)(
-        inputs(MasterBranchOp.ID_INPUT_MASTER).dataModelType,
-        inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType,
-        selectionMethod)(
-        operatorInfo) with MasterBranch
+        operator,
+        operator.inputs(MasterBranchOp.ID_INPUT_MASTER),
+        operator.inputs(MasterBranchOp.ID_INPUT_TRANSACTION)) with MasterBranch
 
     context.jpContext.addClass(builder)
   }

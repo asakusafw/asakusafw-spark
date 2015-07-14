@@ -20,19 +20,20 @@ package join
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, OperatorOutput }
+import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, OperatorOutput, UserOperator }
 
 abstract class BroadcastJoinOperatorFragmentClassBuilder(
-  dataModelType: Type,
-  operatorType: Type,
-  operatorOutputs: Seq[OperatorOutput])(
-    val masterType: Type,
-    val txType: Type,
-    val masterSelection: Option[(String, Type)])(
-      val masterInput: OperatorInput,
-      val txInput: OperatorInput)(
-        val operatorInfo: OperatorInfo)(
-          implicit val context: SparkClientCompiler.Context)
+  val operator: UserOperator,
+  val masterInput: OperatorInput,
+  val txInput: OperatorInput)(
+    implicit val context: SparkClientCompiler.Context)
   extends JoinOperatorFragmentClassBuilder(
-    dataModelType, operatorType, operatorOutputs)
-  with BroadcastJoin
+    txInput.dataModelType,
+    operator.implementationClass.asType,
+    operator.outputs)
+  with BroadcastJoin {
+
+  val masterType: Type = masterInput.dataModelType
+  val txType: Type = txInput.dataModelType
+  val masterSelection: Option[(String, Type)] = operator.selectionMethod
+}
