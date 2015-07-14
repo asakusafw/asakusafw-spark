@@ -16,9 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import scala.collection.mutable
-import scala.reflect.NameTransformer
-
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -75,16 +72,10 @@ trait BranchKeysField
 
   private def initBranchKeys(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = pushObject(mb)(Set)
-      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-    subplanOutputs.map(_.getOperator).sortBy(_.getSerialNumber).foreach { marker =>
-      builder.invokeI(
-        NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType,
-        context.branchKeys.getField(mb, marker).asType(classOf[AnyRef].asType))
+    buildSet(mb) { builder =>
+      subplanOutputs.map(_.getOperator).sortBy(_.getSerialNumber).foreach { marker =>
+        builder += context.branchKeys.getField(mb, marker)
+      }
     }
-
-    builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType)
   }
 }

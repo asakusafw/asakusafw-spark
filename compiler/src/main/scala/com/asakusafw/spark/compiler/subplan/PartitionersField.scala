@@ -16,9 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
-import scala.reflect.NameTransformer
 
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.objectweb.asm.{ Opcodes, Type }
@@ -89,20 +87,16 @@ trait PartitionersField
 
   private def initPartitioners(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = pushObject(mb)(Map)
-      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    for {
-      output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
-      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-      if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.DONT_CARE ||
-        outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED ||
-        outputInfo.getOutputType == SubPlanOutputInfo.OutputType.PARTITIONED ||
-        outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
-    } {
-      builder.invokeI(
-        NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType,
-        tuple2(mb)(
+    buildMap(mb) { builder =>
+      for {
+        output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
+        outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+        if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.DONT_CARE ||
+          outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED ||
+          outputInfo.getOutputType == SubPlanOutputInfo.OutputType.PARTITIONED ||
+          outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
+      } {
+        builder += (
           context.branchKeys.getField(mb, output.getOperator),
           outputInfo.getOutputType match {
             case SubPlanOutputInfo.OutputType.DONT_CARE =>
@@ -124,8 +118,7 @@ trait PartitionersField
                 partitioner
               })
           })
-          .asType(classOf[AnyRef].asType))
+      }
     }
-    builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
   }
 }

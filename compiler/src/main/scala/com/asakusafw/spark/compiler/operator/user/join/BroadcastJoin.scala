@@ -20,10 +20,9 @@ package join
 
 import java.util.{ ArrayList, List => JList }
 
-import scala.collection.mutable
 import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
-import scala.reflect.{ ClassTag, NameTransformer }
+import scala.reflect.ClassTag
 
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
@@ -110,23 +109,17 @@ trait BroadcastJoin
             .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
         } else {
           pushObject(mb)(WritableSerDe)
-            .invokeV("serialize", classOf[Array[Byte]].asType, {
-              val builder = pushObject(mb)(Seq)
-                .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-              group.getGrouping.foreach { propertyName =>
-                val property = dataModelRef.findProperty(propertyName)
-
-                builder.invokeI(
-                  NameTransformer.encode("+="),
-                  classOf[mutable.Builder[_, _]].asType,
-                  dataModelVar.push().invokeV(
-                    property.getDeclaration.getName, property.getType.asType)
-                    .asType(classOf[AnyRef].asType))
-              }
-
-              builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-            })
+            .invokeV("serialize", classOf[Array[Byte]].asType,
+              buildSeq(mb) { builder =>
+                for {
+                  propertyName <- group.getGrouping
+                  property = dataModelRef.findProperty(propertyName)
+                } {
+                  builder +=
+                    dataModelVar.push().invokeV(
+                      property.getDeclaration.getName, property.getType.asType)
+                }
+              })
         },
         pushObject(mb)(Array)
           .invokeV("emptyByteArray", classOf[Array[Byte]].asType))

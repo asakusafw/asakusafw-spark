@@ -15,6 +15,9 @@
  */
 package com.asakusafw.spark.compiler
 
+import scala.collection.mutable
+import scala.reflect.NameTransformer
+
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -39,5 +42,107 @@ trait ScalaIdioms {
         classOf[(_, _)].asType,
         _1.asType(classOf[AnyRef].asType),
         _2.asType(classOf[AnyRef].asType))
+  }
+
+  def buildSeq(mb: MethodBuilder)(block: ScalaIdioms.SeqBuilder => Unit): Stack = {
+    val builder = new ScalaIdioms.SeqBuilder(mb)
+    block(builder)
+    builder.result
+  }
+
+  def buildMap(mb: MethodBuilder)(block: ScalaIdioms.MapBuilder => Unit): Stack = {
+    val builder = new ScalaIdioms.MapBuilder(mb)
+    block(builder)
+    builder.result
+  }
+
+  def buildSet(mb: MethodBuilder)(block: ScalaIdioms.SetBuilder => Unit): Stack = {
+    val builder = new ScalaIdioms.SetBuilder(mb)
+    block(builder)
+    builder.result
+  }
+}
+
+object ScalaIdioms {
+
+  class SeqBuilder private[ScalaIdioms] (mb: MethodBuilder) extends ScalaIdioms {
+
+    private val values = mutable.Buffer.empty[() => Stack]
+
+    def +=(value: => Stack): Unit = {
+      values += { () => value }
+    }
+
+    private[ScalaIdioms] def result: Stack = {
+      if (values.isEmpty) {
+        pushObject(mb)(Seq).invokeV("empty", classOf[Seq[_]].asType)
+      } else {
+        val builder = pushObject(mb)(Seq)
+          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+        for {
+          value <- values
+        } {
+          builder.invokeI(
+            NameTransformer.encode("+="),
+            classOf[mutable.Builder[_, _]].asType,
+            value().asType(classOf[AnyRef].asType))
+        }
+        builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+      }
+    }
+  }
+
+  class MapBuilder private[ScalaIdioms] (mb: MethodBuilder) extends ScalaIdioms {
+
+    private val values = mutable.Buffer.empty[(() => Stack, () => Stack)]
+
+    def +=(key: => Stack, value: => Stack): Unit = {
+      values += { (() => key, () => value) }
+    }
+
+    private[ScalaIdioms] def result: Stack = {
+      if (values.isEmpty) {
+        pushObject(mb)(Map).invokeV("empty", classOf[Map[_, _]].asType)
+      } else {
+        val builder = pushObject(mb)(Map)
+          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+        for {
+          (key, value) <- values
+        } {
+          builder.invokeI(
+            NameTransformer.encode("+="),
+            classOf[mutable.Builder[_, _]].asType,
+            tuple2(mb)(key(), value()).asType(classOf[AnyRef].asType))
+        }
+        builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
+      }
+    }
+  }
+
+  class SetBuilder private[ScalaIdioms] (mb: MethodBuilder) extends ScalaIdioms {
+
+    private val values = mutable.Buffer.empty[() => Stack]
+
+    def +=(value: => Stack): Unit = {
+      values += { () => value }
+    }
+
+    private[ScalaIdioms] def result: Stack = {
+      if (values.isEmpty) {
+        pushObject(mb)(Set).invokeV("empty", classOf[Set[_]].asType)
+      } else {
+        val builder = pushObject(mb)(Set)
+          .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+        for {
+          value <- values
+        } {
+          builder.invokeI(
+            NameTransformer.encode("+="),
+            classOf[mutable.Builder[_, _]].asType,
+            value().asType(classOf[AnyRef].asType))
+        }
+        builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Set[_]].asType)
+      }
+    }
   }
 }

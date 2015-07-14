@@ -18,9 +18,8 @@ package subplan
 
 import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
 
-import scala.collection.mutable
 import scala.concurrent.Future
-import scala.reflect.{ NameTransformer, ClassTag }
+import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
@@ -143,17 +142,14 @@ class InputDriverClassBuilder(
         `return`(
           paths match {
             case Some(paths) =>
-              option(mb)({
-                val builder = pushObject(mb)(Set)
-                  .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-                paths.foreach { path =>
-                  builder.invokeI(
-                    NameTransformer.encode("+="),
-                    classOf[mutable.Builder[_, _]].asType,
-                    ldc(path).asType(classOf[AnyRef].asType))
-                }
-                builder.invokeI("result", classOf[AnyRef].asType)
-              })
+              option(mb)(
+                buildSet(mb) { builder =>
+                  for {
+                    path <- paths
+                  } {
+                    builder += ldc(path)
+                  }
+                })
             case None =>
               pushObject(mb)(None)
           })
@@ -170,23 +166,14 @@ class InputDriverClassBuilder(
         .build()) { mb =>
         import mb._ // scalastyle:ignore
         `return`(
-          extraConfigurations match {
-            case Some(confs) =>
-              val builder = pushObject(mb)(Map)
-                .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-              confs.foreach {
-                case (k, v) =>
-                  builder.invokeI(NameTransformer.encode("+="),
-                    classOf[mutable.Builder[_, _]].asType,
-                    tuple2(mb)(ldc(k), ldc(v)).asType(classOf[AnyRef].asType))
+          buildMap(mb) { builder =>
+            extraConfigurations.foreach {
+              for {
+                (k, v) <- _
+              } {
+                builder += (ldc(k), ldc(v))
               }
-
-              builder.invokeI("result", classOf[AnyRef].asType)
-                .cast(classOf[Map[String, String]].asType)
-            case None =>
-              pushObject(mb)(Map)
-                .invokeV("empty", classOf[Map[String, String]].asType)
+            }
           })
       }
 

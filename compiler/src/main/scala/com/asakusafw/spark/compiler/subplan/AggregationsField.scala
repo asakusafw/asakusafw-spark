@@ -16,9 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import scala.collection.mutable
-import scala.reflect.NameTransformer
-
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -94,22 +91,18 @@ trait AggregationsField
 
   private def initAggregations(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = pushObject(mb)(Map)
-      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    for {
-      output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
-      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-      if outputInfo.getAggregationInfo.isInstanceOf[UserOperator]
-      operator = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
-      if (AggregationCompiler.support(operator))
-    } {
-      builder.invokeI(NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType, {
-          tuple2(mb)(
-            context.branchKeys.getField(mb, output.getOperator),
-            pushNew0(AggregationClassBuilder.getOrCompile(operator)))
-        }.asType(classOf[AnyRef].asType))
+    buildMap(mb) { builder =>
+      for {
+        output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
+        outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+        if outputInfo.getAggregationInfo.isInstanceOf[UserOperator]
+        operator = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
+        if (AggregationCompiler.support(operator))
+      } {
+        builder += (
+          context.branchKeys.getField(mb, output.getOperator),
+          pushNew0(AggregationClassBuilder.getOrCompile(operator)))
+      }
     }
-    builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
   }
 }

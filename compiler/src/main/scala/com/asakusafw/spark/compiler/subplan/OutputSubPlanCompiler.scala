@@ -19,9 +19,7 @@ package subplan
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 import scala.concurrent.Future
-import scala.reflect.NameTransformer
 
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
@@ -79,10 +77,8 @@ object OutputSubPlanCompiler {
       val outputDriver = pushNew(driverType)
       outputDriver.dup().invokeInit(
         vars.sc.push(),
-        vars.hadoopConf.push(), {
-          val builder = pushObject(mb)(Seq)
-            .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
+        vars.hadoopConf.push(),
+        buildSeq(mb) { builder =>
           for {
             subPlanInput <- subplan.getInputs
             inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
@@ -90,17 +86,14 @@ object OutputSubPlanCompiler {
             prevSubPlanOutput <- subPlanInput.getOpposites
             marker = prevSubPlanOutput.getOperator
           } {
-            builder.invokeI(NameTransformer.encode("+="), classOf[mutable.Builder[_, _]].asType,
+            builder +=
               vars.rdds.push().invokeI(
                 "apply",
                 classOf[AnyRef].asType,
                 context.branchKeys.getField(mb, marker)
                   .asType(classOf[AnyRef].asType))
-                .cast(classOf[Future[RDD[(_, _)]]].asType)
-                .asType(classOf[AnyRef].asType))
+              .cast(classOf[Future[RDD[(_, _)]]].asType)
           }
-
-          builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
         },
         vars.terminators.push())
       outputDriver.store(nextLocal.getAndAdd(outputDriver.size))

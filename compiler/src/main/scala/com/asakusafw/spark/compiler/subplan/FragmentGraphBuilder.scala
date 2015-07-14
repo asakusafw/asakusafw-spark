@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.reflect.NameTransformer
 
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
@@ -107,19 +106,15 @@ class FragmentGraphBuilder(
   }
 
   def buildOutputsVar(outputs: Seq[SubPlan.Output]): Var = {
-    val builder = pushObject(mb)(Map)
-      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    for {
-      op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
-    } {
-      builder.invokeI(NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType,
-        tuple2(mb)(
+    val map = buildMap(mb) { builder =>
+      for {
+        op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
+      } {
+        builder += (
           context.branchKeys.getField(mb, op),
           vars(op.getOriginalSerialNumber).push())
-          .asType(classOf[AnyRef].asType))
+      }
     }
-    val map = builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
     map.store(nextLocal.getAndAdd(map.size))
   }
 }

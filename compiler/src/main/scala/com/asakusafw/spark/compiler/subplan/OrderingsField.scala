@@ -16,9 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
-import scala.reflect.NameTransformer
 
 import org.apache.spark.Partitioner
 import org.objectweb.asm.{ Opcodes, Type }
@@ -91,25 +89,21 @@ trait OrderingsField
 
   private def initOrderings(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    val builder = pushObject(mb)(Map)
-      .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-    for {
-      output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
-      outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-      partitionInfo <- outputInfo.getOutputType match {
-        case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
-          Option(outputInfo.getPartitionInfo)
-        case SubPlanOutputInfo.OutputType.BROADCAST =>
-          Option(output.getAttribute(classOf[BroadcastInfo])).map(_.getFormatInfo)
-        case _ => None
-      }
-    } {
-      val dataModelRef =
-        context.jpContext.getDataModelLoader.load(output.getOperator.getInput.getDataType)
-      builder.invokeI(
-        NameTransformer.encode("+="),
-        classOf[mutable.Builder[_, _]].asType,
-        tuple2(mb)(
+    buildMap(mb) { builder =>
+      for {
+        output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
+        outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+        partitionInfo <- outputInfo.getOutputType match {
+          case SubPlanOutputInfo.OutputType.AGGREGATED | SubPlanOutputInfo.OutputType.PARTITIONED =>
+            Option(outputInfo.getPartitionInfo)
+          case SubPlanOutputInfo.OutputType.BROADCAST =>
+            Option(output.getAttribute(classOf[BroadcastInfo])).map(_.getFormatInfo)
+          case _ => None
+        }
+      } {
+        val dataModelRef =
+          context.jpContext.getDataModelLoader.load(output.getOperator.getInput.getDataType)
+        builder += (
           context.branchKeys.getField(mb, output.getOperator),
           pushNew0(
             SortOrderingClassBuilder.getOrCompile(
@@ -120,8 +114,7 @@ trait OrderingsField
                 (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
                   ordering.getDirection == Group.Direction.ASCENDANT)
               })))
-          .asType(classOf[AnyRef].asType))
+      }
     }
-    builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
   }
 }

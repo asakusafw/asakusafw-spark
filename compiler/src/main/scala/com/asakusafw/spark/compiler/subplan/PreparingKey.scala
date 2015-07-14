@@ -16,9 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
-import scala.reflect.NameTransformer
 
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
@@ -95,24 +93,6 @@ trait PreparingKey
     import mb._ // scalastyle:ignore
     val dataModelVar = `var`(dataModelRef.getDeclaration.asType, thisVar.nextLocal)
 
-    def buildSeq(propertyNames: Seq[PropertyName]): Stack = {
-      val builder = pushObject(mb)(Seq)
-        .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-
-      propertyNames.foreach { propertyName =>
-        val property = dataModelRef.findProperty(propertyName)
-
-        builder.invokeI(
-          NameTransformer.encode("+="),
-          classOf[mutable.Builder[_, _]].asType,
-          dataModelVar.push().invokeV(
-            property.getDeclaration.getName, property.getType.asType)
-            .asType(classOf[AnyRef].asType))
-      }
-
-      builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
-    }
-
     val shuffleKey = pushNew(classOf[ShuffleKey].asType)
     shuffleKey.dup().invokeInit(
       if (partitionInfo.getGrouping.isEmpty) {
@@ -120,18 +100,38 @@ trait PreparingKey
           .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
       } else {
         pushObject(mb)(WritableSerDe)
-          .invokeV("serialize", classOf[Array[Byte]].asType, {
-            buildSeq(partitionInfo.getGrouping)
-          })
+          .invokeV(
+            "serialize",
+            classOf[Array[Byte]].asType,
+            buildSeq(mb) { builder =>
+              for {
+                propertyName <- partitionInfo.getGrouping
+                property = dataModelRef.findProperty(propertyName)
+              } {
+                builder +=
+                  dataModelVar.push().invokeV(
+                    property.getDeclaration.getName, property.getType.asType)
+              }
+            })
       },
       if (partitionInfo.getOrdering.isEmpty) {
         pushObject(mb)(Array)
           .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
       } else {
         pushObject(mb)(WritableSerDe)
-          .invokeV("serialize", classOf[Array[Byte]].asType, {
-            buildSeq(partitionInfo.getOrdering.map(_.getPropertyName))
-          })
+          .invokeV(
+            "serialize",
+            classOf[Array[Byte]].asType,
+            buildSeq(mb) { builder =>
+              for {
+                propertyName <- partitionInfo.getOrdering.map(_.getPropertyName)
+                property = dataModelRef.findProperty(propertyName)
+              } {
+                builder +=
+                  dataModelVar.push().invokeV(
+                    property.getDeclaration.getName, property.getType.asType)
+              }
+            })
       })
     `return`(shuffleKey)
   }

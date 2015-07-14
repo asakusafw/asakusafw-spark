@@ -223,39 +223,30 @@ class SparkClientClassBuilder(
           val nextLocal = new AtomicInteger(terminatorsVar.nextLocal)
 
           val broadcastsVar = {
-            val builder = pushObject(mb)(Map)
-              .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+            val broadcasts = buildMap(mb) { builder =>
+              for {
+                subPlanInput <- subplan.getInputs
+                inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
+                if inputInfo.getInputType == SubPlanInputInfo.InputType.BROADCAST
+              } {
+                val prevSubPlanOutputs = subPlanInput.getOpposites
+                assert(prevSubPlanOutputs.size == 1)
+                val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
 
-            for {
-              subPlanInput <- subplan.getInputs
-              inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
-              if inputInfo.getInputType == SubPlanInputInfo.InputType.BROADCAST
-            } {
-              val prevSubPlanOutputs = subPlanInput.getOpposites
-              assert(prevSubPlanOutputs.size == 1)
-              val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
-
-              builder.invokeI(
-                NameTransformer.encode("+="),
-                classOf[mutable.Builder[_, _]].asType,
-                tuple2(mb)(
+                builder += (
                   context.broadcastIds.getField(mb, subPlanInput.getOperator),
                   thisVar.push().getField(
                     "broadcasts",
                     classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
                       .asType)
-                    .invokeI(
-                      "apply",
-                      classOf[AnyRef].asType,
-                      context.broadcastIds.getField(mb, prevSubPlanOperator)
-                        .asType(classOf[AnyRef].asType))
-                    .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
-                  .asType(classOf[AnyRef].asType))
+                  .invokeI(
+                    "apply",
+                    classOf[AnyRef].asType,
+                    context.broadcastIds.getField(mb, prevSubPlanOperator)
+                      .asType(classOf[AnyRef].asType))
+                  .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
+              }
             }
-
-            val broadcasts = builder
-              .invokeI("result", classOf[AnyRef].asType)
-              .cast(classOf[Map[_, _]].asType)
             broadcasts.store(nextLocal.getAndAdd(broadcasts.size))
           }
 
