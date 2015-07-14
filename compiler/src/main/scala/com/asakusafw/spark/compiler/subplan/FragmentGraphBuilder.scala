@@ -90,14 +90,14 @@ class FragmentGraphBuilder(
           output.getDataType.asType, {
             EdgeFragmentClassBuilder.getOrCompile(output.getDataType.asType)
           }))
-      fragment.dup().invokeInit({
-        val arr = pushNewArray(classOf[Fragment[_]].asType, output.getOpposites.size)
-        opposites.zipWithIndex.foreach {
-          case (opposite, i) =>
-            arr.dup().astore(ldc(i), opposite.push())
-        }
-        arr
-      })
+      fragment.dup().invokeInit(
+        buildArray(mb, classOf[Fragment[_]].asType) { builder =>
+          for {
+            opposite <- opposites
+          } {
+            builder += opposite.push()
+          }
+        })
       fragment.store(nextLocal.getAndAdd(fragment.size))
     } else {
       val operator = output.getOpposites.head.getOwner

@@ -105,8 +105,7 @@ trait BroadcastJoin
       val shuffleKey = pushNew(classOf[ShuffleKey].asType)
       shuffleKey.dup().invokeInit(
         if (group.getGrouping.isEmpty) {
-          pushObject(mb)(Array)
-            .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+          buildArray(mb, Type.BYTE_TYPE)(_ => ())
         } else {
           pushObject(mb)(WritableSerDe)
             .invokeV("serialize", classOf[Array[Byte]].asType,
@@ -121,8 +120,7 @@ trait BroadcastJoin
                 }
               })
         },
-        pushObject(mb)(Array)
-          .invokeV("emptyByteArray", classOf[Array[Byte]].asType))
+        buildArray(mb, Type.BYTE_TYPE)(_ => ()))
       shuffleKey.store(dataModelVar.nextLocal)
     }
 

@@ -82,7 +82,8 @@ private class CoGroupOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     classOf[Seq[Iterator[_]]].asType,
     operator.implementationClass.asType,
-    operator.outputs) {
+    operator.outputs)
+  with ScalaIdioms {
 
   val inputBuffer =
     operator.annotationDesc.getElements()("inputBuffer").resolve(context.jpContext.getClassLoader)
@@ -108,18 +109,18 @@ private class CoGroupOperatorFragmentClassBuilder(
     super.initFields(mb)
 
     import mb._ // scalastyle:ignore
-    thisVar.push().putField("buffers", classOf[Array[ListBuffer[_]]].asType, {
-      val arr = pushNewArray(classOf[ListBuffer[_]].asType, operator.inputs.size)
-      operator.inputs.zipWithIndex.foreach {
-        case (input, i) =>
-          arr.dup().astore(ldc(i), pushNew0(
+    thisVar.push().putField("buffers", classOf[Array[ListBuffer[_]]].asType,
+      buildArray(mb, classOf[ListBuffer[_]].asType) { builder =>
+        for {
+          input <- operator.inputs
+        } {
+          builder += pushNew0(
             inputBuffer match {
               case InputBuffer.EXPAND => classOf[ArrayListBuffer[_]].asType
               case InputBuffer.ESCAPE => classOf[FileMapListBuffer[_]].asType
-            }))
-      }
-      arr
-    })
+            })
+        }
+      })
   }
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
