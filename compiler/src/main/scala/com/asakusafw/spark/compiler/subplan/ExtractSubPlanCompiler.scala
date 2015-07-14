@@ -16,26 +16,19 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
-import scala.concurrent.Future
 
-import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
-import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class ExtractSubPlanCompiler extends SubPlanCompiler {
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.EXTRACT
 
-  override def instantiator: Instantiator = ExtractSubPlanCompiler.ExtractDriverInstantiator
+  override def instantiator: Instantiator = ExtractDriverInstantiator
 
   override def compile(
     subplan: SubPlan)(
@@ -54,45 +47,5 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
         subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
-  }
-}
-
-object ExtractSubPlanCompiler {
-
-  object ExtractDriverInstantiator
-    extends Instantiator
-    with ScalaIdioms {
-
-    override def newInstance(
-      driverType: Type,
-      subplan: SubPlan)(
-        mb: MethodBuilder,
-        vars: Instantiator.Vars,
-        nextLocal: AtomicInteger)(
-          implicit context: SparkClientCompiler.Context): Var = {
-      import mb._ // scalastyle:ignore
-
-      val extractDriver = pushNew(driverType)
-      extractDriver.dup().invokeInit(
-        vars.sc.push(),
-        vars.hadoopConf.push(),
-        vars.broadcasts.push(),
-        buildSeq(mb) { builder =>
-          for {
-            subPlanInput <- subplan.getInputs.toSet[SubPlan.Input]
-            inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
-            if inputInfo.getInputType == SubPlanInputInfo.InputType.DONT_CARE
-            prevSubPlanOutput <- subPlanInput.getOpposites.toSeq
-            marker = prevSubPlanOutput.getOperator
-          } {
-            builder +=
-              applyMap(mb)(
-                vars.rdds.push(),
-                context.branchKeys.getField(mb, marker))
-              .cast(classOf[Future[RDD[(_, _)]]].asType)
-          }
-        })
-      extractDriver.store(nextLocal.getAndAdd(extractDriver.size))
-    }
   }
 }
