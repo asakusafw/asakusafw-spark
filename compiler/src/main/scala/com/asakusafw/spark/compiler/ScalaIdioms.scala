@@ -77,7 +77,7 @@ trait ScalaIdioms {
   }
 
   def applySeq(mb: MethodBuilder)(seq: => Stack, i: => Stack): Stack = {
-    seq.invokeI("apply", classOf[AnyRef].asType, i.box().asType(classOf[AnyRef].asType))
+    seq.invokeI("apply", classOf[AnyRef].asType, i)
   }
 
   def applyMap(mb: MethodBuilder)(map: => Stack, key: => Stack): Stack = {
