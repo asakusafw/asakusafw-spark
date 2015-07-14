@@ -110,22 +110,20 @@ trait PartitionersField
                   pushObject(mb)(None)
                 case SubPlanOutputInfo.OutputType.AGGREGATED |
                   SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
-                  pushObject(mb)(Option)
-                    .invokeV("apply", classOf[Option[_]].asType, {
-                      val partitioner = pushNew(classOf[HashPartitioner].asType)
-                      partitioner.dup().invokeInit(
-                        numPartitions(
-                          mb,
-                          thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
-                      partitioner
-                    }.asType(classOf[AnyRef].asType))
+                  option(mb)({
+                    val partitioner = pushNew(classOf[HashPartitioner].asType)
+                    partitioner.dup().invokeInit(
+                      numPartitions(
+                        mb,
+                        thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
+                    partitioner
+                  })
                 case _ =>
-                  pushObject(mb)(Option)
-                    .invokeV("apply", classOf[Option[_]].asType, {
-                      val partitioner = pushNew(classOf[HashPartitioner].asType)
-                      partitioner.dup().invokeInit(ldc(1))
-                      partitioner
-                    }.asType(classOf[AnyRef].asType))
+                  option(mb)({
+                    val partitioner = pushNew(classOf[HashPartitioner].asType)
+                    partitioner.dup().invokeInit(ldc(1))
+                    partitioner
+                  })
               }
             }.asType(classOf[AnyRef].asType))
           .asType(classOf[AnyRef].asType))

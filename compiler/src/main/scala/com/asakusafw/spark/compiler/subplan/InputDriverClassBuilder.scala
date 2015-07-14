@@ -143,18 +143,17 @@ class InputDriverClassBuilder(
         `return`(
           paths match {
             case Some(paths) =>
-              pushObject(mb)(Option)
-                .invokeV("apply", classOf[Option[_]].asType, {
-                  val builder = pushObject(mb)(Set)
-                    .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
-                  paths.foreach { path =>
-                    builder.invokeI(
-                      NameTransformer.encode("+="),
-                      classOf[mutable.Builder[_, _]].asType,
-                      ldc(path).asType(classOf[AnyRef].asType))
-                  }
-                  builder.invokeI("result", classOf[AnyRef].asType)
-                })
+              option(mb)({
+                val builder = pushObject(mb)(Set)
+                  .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
+                paths.foreach { path =>
+                  builder.invokeI(
+                    NameTransformer.encode("+="),
+                    classOf[mutable.Builder[_, _]].asType,
+                    ldc(path).asType(classOf[AnyRef].asType))
+                }
+                builder.invokeI("result", classOf[AnyRef].asType)
+              })
             case None =>
               pushObject(mb)(None)
           })

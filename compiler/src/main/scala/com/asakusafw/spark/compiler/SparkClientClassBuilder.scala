@@ -315,10 +315,8 @@ class SparkClientClassBuilder(
                           .asType(classOf[AnyRef].asType))
                         .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
                       {
-                        pushObject(mb)(Option)
-                          .invokeV("apply", classOf[Option[_]].asType, {
-                            pushNew0(SortOrderingClassBuilder.getOrCompile(groupings, orderings))
-                          }.asType(classOf[AnyRef].asType))
+                        option(mb)(
+                          pushNew0(SortOrderingClassBuilder.getOrCompile(groupings, orderings)))
                       },
                       {
                         pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupings))

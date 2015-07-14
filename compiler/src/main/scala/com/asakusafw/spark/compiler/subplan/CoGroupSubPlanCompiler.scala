@@ -150,20 +150,19 @@ object CoGroupSubPlanCompiler {
                         .cast(classOf[Seq[_]].asType)
                     }.asType(classOf[AnyRef].asType),
                     {
-                      pushObject(mb)(Option)
-                        .invokeV("apply", classOf[Option[_]].asType, {
-                          val dataModelRef =
-                            context.jpContext.getDataModelLoader.load(input.getDataType)
-                          pushNew0(
-                            SortOrderingClassBuilder.getOrCompile(
-                              input.getGroup.getGrouping.map { grouping =>
-                                dataModelRef.findProperty(grouping).getType.asType
-                              },
-                              input.getGroup.getOrdering.map { ordering =>
-                                (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                                  ordering.getDirection == Group.Direction.ASCENDANT)
-                              }))
-                        }.asType(classOf[AnyRef].asType))
+                      option(mb)({
+                        val dataModelRef =
+                          context.jpContext.getDataModelLoader.load(input.getDataType)
+                        pushNew0(
+                          SortOrderingClassBuilder.getOrCompile(
+                            input.getGroup.getGrouping.map { grouping =>
+                              dataModelRef.findProperty(grouping).getType.asType
+                            },
+                            input.getGroup.getOrdering.map { ordering =>
+                              (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+                                ordering.getDirection == Group.Direction.ASCENDANT)
+                            }))
+                      })
                     }.asType(classOf[AnyRef].asType)).asType(classOf[AnyRef].asType)
               })
           }

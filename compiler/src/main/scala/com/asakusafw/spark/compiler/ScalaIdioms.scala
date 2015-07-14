@@ -24,4 +24,10 @@ trait ScalaIdioms {
     import mb._
     getStatic(obj.getClass.asType, "MODULE$", obj.getClass.asType)
   }
+
+  def option(mb: MethodBuilder)(value: => Stack): Stack = {
+    import mb._
+    pushObject(mb)(Option)
+      .invokeV("apply", classOf[Option[_]].asType, value.asType(classOf[AnyRef].asType))
+  }
 }
