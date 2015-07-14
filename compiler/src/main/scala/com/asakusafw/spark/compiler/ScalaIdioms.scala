@@ -69,6 +69,14 @@ trait ScalaIdioms {
     block(builder)
     builder.result
   }
+
+  def applySeq(mb: MethodBuilder)(seq: => Stack, i: => Stack): Stack = {
+    seq.invokeI("apply", classOf[AnyRef].asType, i.box().asType(classOf[AnyRef].asType))
+  }
+
+  def applyMap(mb: MethodBuilder)(map: => Stack, key: => Stack): Stack = {
+    map.invokeI("apply", classOf[AnyRef].asType, key.asType(classOf[AnyRef].asType))
+  }
 }
 
 object ScalaIdioms {

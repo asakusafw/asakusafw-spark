@@ -88,9 +88,8 @@ trait BroadcastJoin
     thisVar.push().putField(
       "masters",
       classOf[Map[_, _]].asType,
-      broadcastsVar.push()
-        .invokeI("apply", classOf[AnyRef].asType,
-          context.broadcastIds.getField(mb, marker).asType(classOf[AnyRef].asType))
+      applyMap(mb)(
+        broadcastsVar.push(), context.broadcastIds.getField(mb, marker))
         .cast(classOf[Broadcast[_]].asType)
         .invokeV("value", classOf[AnyRef].asType)
         .cast(classOf[Map[_, _]].asType))

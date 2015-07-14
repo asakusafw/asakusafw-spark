@@ -67,9 +67,9 @@ trait ShuffledJoin
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     val mastersVar = {
-      val iter = dataModelVar.push().invokeI(
-        "apply", classOf[AnyRef].asType, ldc(0).box().asType(classOf[AnyRef].asType))
-        .cast(classOf[Iterator[_]].asType)
+      val iter =
+        applySeq(mb)(dataModelVar.push(), ldc(0))
+          .cast(classOf[Iterator[_]].asType)
       val iterVar = iter.store(dataModelVar.nextLocal)
       val masters = thisVar.push().getField("masters", classOf[ListBuffer[_]].asType)
       val mastersVar = masters.store(iterVar.nextLocal)
@@ -91,10 +91,10 @@ trait ShuffledJoin
       mastersVar
     }
 
-    val txIterVar = dataModelVar.push().invokeI(
-      "apply", classOf[AnyRef].asType, ldc(1).box().asType(classOf[AnyRef].asType))
-      .cast(classOf[Iterator[_]].asType)
-      .store(mastersVar.nextLocal)
+    val txIterVar =
+      applySeq(mb)(dataModelVar.push(), ldc(1))
+        .cast(classOf[Iterator[_]].asType)
+        .store(mastersVar.nextLocal)
     whileLoop(txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
       val txVar = txIterVar.push().invokeI("next", classOf[AnyRef].asType)
         .cast(txType).store(txIterVar.nextLocal)

@@ -115,11 +115,9 @@ object AggregateSubPlanCompiler {
             marker = prevSubPlanOutput.getOperator
           } {
             builder +=
-              vars.rdds.push().invokeI(
-                "apply",
-                classOf[AnyRef].asType,
-                context.branchKeys.getField(mb, marker)
-                  .asType(classOf[AnyRef].asType))
+              applyMap(mb)(
+                vars.rdds.push(),
+                context.branchKeys.getField(mb, marker))
               .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
           }
         },

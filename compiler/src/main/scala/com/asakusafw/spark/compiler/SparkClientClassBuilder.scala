@@ -235,15 +235,12 @@ class SparkClientClassBuilder(
 
                 builder += (
                   context.broadcastIds.getField(mb, subPlanInput.getOperator),
-                  thisVar.push().getField(
-                    "broadcasts",
-                    classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
-                      .asType)
-                  .invokeI(
-                    "apply",
-                    classOf[AnyRef].asType,
-                    context.broadcastIds.getField(mb, prevSubPlanOperator)
-                      .asType(classOf[AnyRef].asType))
+                  applyMap(mb)(
+                    thisVar.push().getField(
+                      "broadcasts",
+                      classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
+                        .asType),
+                    context.broadcastIds.getField(mb, prevSubPlanOperator))
                   .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
               }
             }
@@ -292,11 +289,9 @@ class SparkClientClassBuilder(
                     classOf[Future[Broadcast[_]]].asType,
                     scVar.push(),
                     ldc(broadcastInfo.getLabel),
-                    resultVar.push().invokeI(
-                      "apply",
-                      classOf[AnyRef].asType,
-                      context.branchKeys.getField(mb, subPlanOutput.getOperator)
-                        .asType(classOf[AnyRef].asType))
+                    applyMap(mb)(
+                      resultVar.push(),
+                      context.branchKeys.getField(mb, subPlanOutput.getOperator))
                       .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
                     {
                       option(mb)(

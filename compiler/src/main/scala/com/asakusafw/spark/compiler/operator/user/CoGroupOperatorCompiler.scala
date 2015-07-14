@@ -129,10 +129,9 @@ private class CoGroupOperatorFragmentClassBuilder(
 
     val bufferVars = operator.inputs.zipWithIndex.map {
       case (input, i) =>
-        val iter = dataModelVar.push()
-          .invokeI(
-            "apply", classOf[AnyRef].asType, ldc(i).box().asType(classOf[AnyRef].asType))
-          .cast(classOf[Iterator[_]].asType)
+        val iter =
+          applySeq(mb)(dataModelVar.push(), ldc(i))
+            .cast(classOf[Iterator[_]].asType)
         val iterVar = iter.store(nextLocal.getAndAdd(iter.size))
         val buffer = thisVar.push()
           .getField("buffers", classOf[Array[ListBuffer[_]]].asType)
