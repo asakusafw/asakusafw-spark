@@ -16,30 +16,20 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
-import scala.concurrent.Future
 
-import org.apache.spark.{ HashPartitioner, Partitioner }
-import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
-import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.{ Group, UserOperator }
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
-import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.runtime.driver.ShuffleKey
-import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class AggregateSubPlanCompiler extends SubPlanCompiler {
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.AGGREGATE
 
-  override def instantiator: Instantiator = AggregateSubPlanCompiler.AggregateDriverInstantiator
+  override def instantiator: Instantiator = AggregateDriverInstantiator
 
   override def compile(
     subplan: SubPlan)(
@@ -64,77 +54,5 @@ class AggregateSubPlanCompiler extends SubPlanCompiler {
         subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
-  }
-}
-
-object AggregateSubPlanCompiler {
-
-  object AggregateDriverInstantiator
-    extends Instantiator
-    with NumPartitions
-    with ScalaIdioms {
-
-    override def newInstance(
-      driverType: Type,
-      subplan: SubPlan)(
-        mb: MethodBuilder,
-        vars: Instantiator.Vars,
-        nextLocal: AtomicInteger)(
-          implicit context: SparkClientCompiler.Context): Var = {
-      import mb._ // scalastyle:ignore
-
-      val primaryOperator =
-        subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
-
-      assert(primaryOperator.inputs.size == 1,
-        s"The size of inputs should be 1: ${primaryOperator.inputs.size}")
-      val input = primaryOperator.inputs.head
-
-      val partitioner = pushNew(classOf[HashPartitioner].asType)
-      partitioner.dup().invokeInit(
-        if (input.getGroup.getGrouping.isEmpty) {
-          ldc(1)
-        } else {
-          numPartitions(
-            mb,
-            vars.sc.push())(subplan.findInput(input.getOpposites.head.getOwner))
-        })
-      val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
-
-      val aggregateDriver = pushNew(driverType)
-      aggregateDriver.dup().invokeInit(
-        vars.sc.push(),
-        vars.hadoopConf.push(),
-        vars.broadcasts.push(),
-        buildSeq(mb) { builder =>
-          for {
-            subPlanInput <- subplan.getInputs
-            inputInfo = subPlanInput.getAttribute(classOf[SubPlanInputInfo])
-            if inputInfo.getInputType == SubPlanInputInfo.InputType.PARTITIONED
-            prevSubPlanOutput <- subPlanInput.getOpposites
-            marker = prevSubPlanOutput.getOperator
-          } {
-            builder +=
-              applyMap(mb)(
-                vars.rdds.push(),
-                context.branchKeys.getField(mb, marker))
-              .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
-          }
-        },
-        option(mb)({
-          val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
-          pushNew0(
-            SortOrderingClassBuilder.getOrCompile(
-              input.getGroup.getGrouping.map { grouping =>
-                dataModelRef.findProperty(grouping).getType.asType
-              },
-              input.getGroup.getOrdering.map { ordering =>
-                (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                  ordering.getDirection == Group.Direction.ASCENDANT)
-              }))
-        }),
-        partitionerVar.push().asType(classOf[Partitioner].asType))
-      aggregateDriver.store(nextLocal.getAndAdd(aggregateDriver.size))
-    }
   }
 }

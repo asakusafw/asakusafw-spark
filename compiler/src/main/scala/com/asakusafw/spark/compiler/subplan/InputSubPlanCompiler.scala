@@ -16,15 +16,10 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
-import java.lang.{ Boolean => JBoolean }
-
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.io.NullWritable
 import org.objectweb.asm.Type
-import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.hadoop.InputFormatInfoExtension
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
@@ -33,13 +28,12 @@ import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class InputSubPlanCompiler extends SubPlanCompiler {
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.INPUT
 
-  override def instantiator: Instantiator = InputSubPlanCompiler.InputDriverInstantiator
+  override def instantiator: Instantiator = InputDriverInstantiator
 
   override def compile(
     subplan: SubPlan)(
@@ -84,28 +78,5 @@ class InputSubPlanCompiler extends SubPlanCompiler {
         subplan.getOutputs.toSeq)
 
     context.jpContext.addClass(builder)
-  }
-}
-
-object InputSubPlanCompiler {
-
-  object InputDriverInstantiator extends Instantiator {
-
-    override def newInstance(
-      driverType: Type,
-      subplan: SubPlan)(
-        mb: MethodBuilder,
-        vars: Instantiator.Vars,
-        nextLocal: AtomicInteger)(
-          implicit context: SparkClientCompiler.Context): Var = {
-      import mb._ // scalastyle:ignore
-
-      val inputDriver = pushNew(driverType)
-      inputDriver.dup().invokeInit(
-        vars.sc.push(),
-        vars.hadoopConf.push(),
-        vars.broadcasts.push())
-      inputDriver.store(nextLocal.getAndAdd(inputDriver.size))
-    }
   }
 }

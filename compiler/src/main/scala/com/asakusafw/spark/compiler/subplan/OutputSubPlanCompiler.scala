@@ -16,26 +16,20 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
-import scala.concurrent.Future
 
-import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
+import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class OutputSubPlanCompiler extends SubPlanCompiler {
 
   def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.OUTPUT
 
-  override def instantiator: Instantiator = OutputSubPlanCompiler.OutputDriverInstantiator
+  override def instantiator: Instantiator = OutputDriverInstantiator
 
   override def compile(
     subplan: SubPlan)(
@@ -56,45 +50,5 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
         subPlanInfo.getLabel)
 
     context.jpContext.addClass(builder)
-  }
-}
-
-object OutputSubPlanCompiler {
-
-  object OutputDriverInstantiator
-    extends Instantiator
-    with ScalaIdioms {
-
-    override def newInstance(
-      driverType: Type,
-      subplan: SubPlan)(
-        mb: MethodBuilder,
-        vars: Instantiator.Vars,
-        nextLocal: AtomicInteger)(
-          implicit context: SparkClientCompiler.Context): Var = {
-      import mb._ // scalastyle:ignore
-
-      val outputDriver = pushNew(driverType)
-      outputDriver.dup().invokeInit(
-        vars.sc.push(),
-        vars.hadoopConf.push(),
-        buildSeq(mb) { builder =>
-          for {
-            subPlanInput <- subplan.getInputs
-            inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
-            if inputInfo.getInputType == SubPlanInputInfo.InputType.PREPARE_EXTERNAL_OUTPUT
-            prevSubPlanOutput <- subPlanInput.getOpposites
-            marker = prevSubPlanOutput.getOperator
-          } {
-            builder +=
-              applyMap(mb)(
-                vars.rdds.push(),
-                context.branchKeys.getField(mb, marker))
-              .cast(classOf[Future[RDD[(_, _)]]].asType)
-          }
-        },
-        vars.terminators.push())
-      outputDriver.store(nextLocal.getAndAdd(outputDriver.size))
-    }
   }
 }
