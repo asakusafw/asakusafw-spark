@@ -32,7 +32,10 @@ class ZippedPartitionsRDDSpec extends FlatSpec with SparkSugar {
     val rdd2 = sc.parallelize(100 until 200, 4)
     val rdd3 = sc.parallelize(200 until 300, 4)
     val zipped = zipPartitions(Seq(rdd1, rdd2, rdd3)) {
-      case Seq(iter1: Iterator[Int], iter2: Iterator[Int], iter3: Iterator[Int]) =>
+      case Seq(
+        iter1: Iterator[Int] @unchecked,
+        iter2: Iterator[Int] @unchecked,
+        iter3: Iterator[Int] @unchecked) =>
         iter1 ++ iter2 ++ iter3
     }
     assert(zipped.collect ===
