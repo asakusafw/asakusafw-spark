@@ -41,7 +41,7 @@
 
     <scala.binary.version>2.10</scala.binary.version>
     <scala.version>${scala.binary.version}.4</scala.version>
-    <spark.version>1.4.0</spark.version>
+    <spark.version>1.4.1</spark.version>
     <jetty.version>8.1.14.v20131031</jetty.version>
     <hadoop.version>2.6.0</hadoop.version>
     <asm.version>5.0.3</asm.version>
@@ -591,6 +591,10 @@ encoding/<project>=UTF-8
           <exclusion>
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.mortbay.jetty</groupId>
+            <artifactId>jetty-util</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
