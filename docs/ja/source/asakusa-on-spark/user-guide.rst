@@ -89,13 +89,13 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
 Spark
 -----
 
-Asakusa on Sparkは、Spark 1.4.0 で動作を検証しています。
+Asakusa on Sparkは、Spark 1.4.1 で動作を検証しています。
 
 また、Sparkの動作モードとして、YARN cluster mode、および YARN client modeで動作を確認しています。
 
 ..  attention::
     Spark 1.3.1 ではいくつかのアプリケーションでのみ動作を確認しています。
-    Spark 1.3.1 を利用して問題が発生した場合は、Spark 1.4.0 を利用してください。
+    Spark 1.3.1 を利用して問題が発生した場合は、Spark 1.4.1 を利用してください。
 
 ..  seealso::
     SparkのYARN上での動作モードについては、Sparkのドキュメント `Running Spark on YARN`_ を参照してください。
