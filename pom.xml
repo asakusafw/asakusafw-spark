@@ -39,8 +39,8 @@
     <asakusafw.version>0.7.3-hadoop2</asakusafw.version>
     <asakusafw-lang.version>0.1.0</asakusafw-lang.version>
 
-    <scala.binary.version>2.10</scala.binary.version>
-    <scala.version>${scala.binary.version}.4</scala.version>
+    <scala.compat.version>2.10</scala.compat.version>
+    <scala.version>${scala.compat.version}.4</scala.version>
     <spark.version>1.4.0</spark.version>
     <jetty.version>8.1.14.v20131031</jetty.version>
     <hadoop.version>2.6.0</hadoop.version>
@@ -503,7 +503,7 @@ encoding/<project>=UTF-8
 
       <dependency>
         <groupId>org.apache.spark</groupId>
-        <artifactId>spark-core_${scala.binary.version}</artifactId>
+        <artifactId>spark-core_${scala.compat.version}</artifactId>
         <version>${spark.version}</version>
         <exclusions>
           <exclusion>
@@ -613,7 +613,7 @@ encoding/<project>=UTF-8
       </dependency>
       <dependency>
         <groupId>com.jsuereth</groupId>
-        <artifactId>scala-arm_${scala.binary.version}</artifactId>
+        <artifactId>scala-arm_${scala.compat.version}</artifactId>
         <version>${scala-arm.version}</version>
       </dependency>
       <dependency>
@@ -660,7 +660,7 @@ encoding/<project>=UTF-8
       </dependency>
       <dependency>
         <groupId>org.scalatest</groupId>
-        <artifactId>scalatest_${scala.binary.version}</artifactId>
+        <artifactId>scalatest_${scala.compat.version}</artifactId>
         <version>${scalatest.version}</version>
         <scope>test</scope>
       </dependency>
@@ -678,21 +678,21 @@ encoding/<project>=UTF-8
       </dependency>
       <dependency>
         <groupId>org.apache.spark</groupId>
-        <artifactId>spark-repl_${scala.binary.version}</artifactId>
+        <artifactId>spark-repl_${scala.compat.version}</artifactId>
         <version>${spark.version}</version>
         <scope>test</scope>
         <exclusions>
           <exclusion>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-bagel_${scala.binary.version}</artifactId>
+            <artifactId>spark-bagel_${scala.compat.version}</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-mllib_${scala.binary.version}</artifactId>
+            <artifactId>spark-mllib_${scala.compat.version}</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_${scala.binary.version}</artifactId>
+            <artifactId>spark-sql_${scala.compat.version}</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.scala-lang</groupId>
