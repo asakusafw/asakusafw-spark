@@ -217,7 +217,7 @@ package object compiler {
     }
   }
 
-  implicit class AugmentedDataModelRef(val dataModelRef: DataModelReference) extends AnyVal {
+  implicit class AugmentedDataModelReference(val dataModelRef: DataModelReference) extends AnyVal {
 
     def groupingTypes(propertyNames: Seq[PropertyName]): Seq[Type] = {
       propertyNames.map { propertyName =>
