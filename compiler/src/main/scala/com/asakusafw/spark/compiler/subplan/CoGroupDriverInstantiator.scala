@@ -94,10 +94,8 @@ object CoGroupDriverInstantiator
         partitioner(mb)(ldc(1))
       } else {
         partitioner(mb)(
-          numPartitions(
-            mb,
-            vars.sc.push())(
-              subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner)))
+          numPartitions(mb)(vars.sc.push())(
+            subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner)))
       })
     cogroupDriver.store(nextLocal.getAndAdd(cogroupDriver.size))
   }

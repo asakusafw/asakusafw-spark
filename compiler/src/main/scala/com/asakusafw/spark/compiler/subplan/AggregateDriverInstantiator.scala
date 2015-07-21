@@ -81,10 +81,8 @@ object AggregateDriverInstantiator
         partitioner(mb)(ldc(1))
       } else {
         partitioner(mb)(
-          numPartitions(
-            mb,
-            vars.sc.push())(
-              subplan.findInput(input.getOpposites.head.getOwner)))
+          numPartitions(mb)(vars.sc.push())(
+            subplan.findInput(input.getOpposites.head.getOwner)))
       }))
     aggregateDriver.store(nextLocal.getAndAdd(aggregateDriver.size))
   }

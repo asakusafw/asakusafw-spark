@@ -89,6 +89,7 @@ trait PartitionersField
   private def initPartitioners(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     buildMap(mb) { builder =>
+      val np = numPartitions(mb)(thisVar.push().invokeV("sc", classOf[SparkContext].asType)) _
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
@@ -104,11 +105,7 @@ trait PartitionersField
               pushObject(mb)(None)
             case SubPlanOutputInfo.OutputType.AGGREGATED |
               SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
-              option(mb)(
-                partitioner(mb)(
-                  numPartitions(
-                    mb, thisVar.push().invokeV("sc", classOf[SparkContext].asType))(
-                      output)))
+              option(mb)(partitioner(mb)(np(output)))
             case _ =>
               option(mb)(partitioner(mb)(ldc(1)))
           })
