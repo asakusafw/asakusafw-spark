@@ -37,7 +37,7 @@ trait PreparingKey
   extends ClassBuilder
   with ScalaIdioms {
 
-  def context: SparkClientCompiler.Context
+  implicit def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -63,7 +63,7 @@ trait PreparingKey
           }
         } {
           val op = output.getOperator
-          val dataModelRef = context.jpContext.getDataModelLoader.load(op.getInput.getDataType)
+          val dataModelRef = op.getInput.dataModelRef
           val dataModelType = dataModelRef.getDeclaration.asType
 
           val methodName = s"shuffleKey${i}"

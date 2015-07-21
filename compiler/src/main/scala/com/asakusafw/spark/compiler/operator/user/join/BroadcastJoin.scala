@@ -98,7 +98,7 @@ trait BroadcastJoin
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
     import mb._ // scalastyle:ignore
     val keyVar = {
-      val dataModelRef = context.jpContext.getDataModelLoader.load(txInput.getDataType)
+      val dataModelRef = txInput.dataModelRef
       val group = txInput.getGroup
 
       val shuffleKey = pushNew(classOf[ShuffleKey].asType)
