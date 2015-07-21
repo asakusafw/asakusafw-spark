@@ -17,12 +17,10 @@ package com.asakusafw.spark.compiler
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import scala.collection.generic.Growable
 import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, Awaitable, Future }
 import scala.concurrent.duration.Duration
-import scala.reflect.NameTransformer
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
@@ -261,39 +259,30 @@ class SparkClientClassBuilder(
             val dataModelRef = subPlanOutput.getOperator.getInput.dataModelRef
             val group = broadcastInfo.getFormatInfo
 
-            thisVar.push().getField(
-              "broadcasts",
-              classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
-                .asType)
-              .invokeI(
-                NameTransformer.encode("+="),
-                classOf[Growable[_]].asType,
-                tuple2(mb)(
-                  context.broadcastIds.getField(mb, subPlanOutput.getOperator),
-                  thisVar.push().invokeV(
-                    "broadcastAsHash",
-                    classOf[Future[Broadcast[_]]].asType,
-                    scVar.push(),
-                    ldc(broadcastInfo.getLabel),
-                    applyMap(mb)(
-                      resultVar.push(),
-                      context.branchKeys.getField(mb, subPlanOutput.getOperator))
-                      .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
-                    option(mb)(
-                      sortOrdering(mb)(
-                        dataModelRef.groupingTypes(group.getGrouping),
-                        dataModelRef.orderingTypes(group.getOrdering))),
-                    groupingOrdering(mb)(dataModelRef.groupingTypes(group.getGrouping)),
-                    partitioner(mb)(ldc(1))))
-                  .asType(classOf[AnyRef].asType))
-              .pop()
+            addToMap(mb)(
+              thisVar.push().getField(
+                "broadcasts",
+                classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
+                  .asType),
+              context.broadcastIds.getField(mb, subPlanOutput.getOperator),
+              thisVar.push().invokeV(
+                "broadcastAsHash",
+                classOf[Future[Broadcast[_]]].asType,
+                scVar.push(),
+                ldc(broadcastInfo.getLabel),
+                applyMap(mb)(
+                  resultVar.push(),
+                  context.branchKeys.getField(mb, subPlanOutput.getOperator))
+                  .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
+                option(mb)(
+                  sortOrdering(mb)(
+                    dataModelRef.groupingTypes(group.getGrouping),
+                    dataModelRef.orderingTypes(group.getOrdering))),
+                groupingOrdering(mb)(dataModelRef.groupingTypes(group.getGrouping)),
+                partitioner(mb)(ldc(1))))
           }
 
-          rddsVar.push().invokeI(
-            NameTransformer.encode("++="),
-            classOf[Growable[_]].asType,
-            resultVar.push().asType(classOf[TraversableOnce[_]].asType))
-            .pop()
+          addTraversableToMap(mb)(rddsVar.push(), resultVar.push())
 
           `return`()
         }
