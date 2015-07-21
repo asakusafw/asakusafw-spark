@@ -96,8 +96,7 @@ trait PreparingKey
     val shuffleKey = pushNew(classOf[ShuffleKey].asType)
     shuffleKey.dup().invokeInit(
       if (partitionInfo.getGrouping.isEmpty) {
-        pushObject(mb)(Array)
-          .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+        buildArray(mb, Type.BYTE_TYPE)(_ => ())
       } else {
         pushObject(mb)(WritableSerDe)
           .invokeV(
@@ -115,8 +114,7 @@ trait PreparingKey
             })
       },
       if (partitionInfo.getOrdering.isEmpty) {
-        pushObject(mb)(Array)
-          .invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+        buildArray(mb, Type.BYTE_TYPE)(_ => ())
       } else {
         pushObject(mb)(WritableSerDe)
           .invokeV(
