@@ -34,7 +34,7 @@ trait PartitionersField
   with ScalaIdioms
   with SparkIdioms {
 
-  def context: SparkClientCompiler.Context
+  implicit def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
