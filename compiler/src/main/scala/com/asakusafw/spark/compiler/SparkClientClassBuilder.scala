@@ -216,10 +216,9 @@ class SparkClientClassBuilder(
           val terminatorsVar = thisVar.push()
             .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
             .store(rddsVar.nextLocal)
-          val nextLocal = new AtomicInteger(terminatorsVar.nextLocal)
 
-          val broadcastsVar = {
-            val broadcasts = buildMap(mb) { builder =>
+          val broadcastsVar =
+            buildMap(mb) { builder =>
               for {
                 subPlanInput <- subplan.getInputs
                 inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
@@ -239,15 +238,15 @@ class SparkClientClassBuilder(
                     context.broadcastIds.getField(mb, prevSubPlanOperator))
                   .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
               }
-            }
-            broadcasts.store(nextLocal.getAndAdd(broadcasts.size))
-          }
+            }.store(terminatorsVar.nextLocal)
+
+          val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
 
           val instantiator = compiler.instantiator
           val driverVar = instantiator.newInstance(
             driverType, subplan)(
               mb,
-              Instantiator.Vars(scVar, hadoopConfVar, broadcastsVar, rddsVar, terminatorsVar),
+              Instantiator.Vars(scVar, hadoopConfVar, rddsVar, terminatorsVar, broadcastsVar),
               nextLocal)
           val rdds = driverVar.push()
             .invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
