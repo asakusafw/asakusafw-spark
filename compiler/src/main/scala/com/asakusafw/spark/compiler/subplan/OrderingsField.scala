@@ -22,9 +22,7 @@ import org.apache.spark.Partitioner
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.Group
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -33,7 +31,8 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait OrderingsField
   extends ClassBuilder
-  with ScalaIdioms {
+  with ScalaIdioms
+  with SparkIdioms {
 
   implicit def context: SparkClientCompiler.Context
 
@@ -101,19 +100,12 @@ trait OrderingsField
           case _ => None
         }
       } {
-        val dataModelRef =
-          context.jpContext.getDataModelLoader.load(output.getOperator.getInput.getDataType)
+        val dataModelRef = output.getOperator.getInput.dataModelRef
         builder += (
           context.branchKeys.getField(mb, output.getOperator),
-          pushNew0(
-            SortOrderingClassBuilder.getOrCompile(
-              partitionInfo.getGrouping.map { grouping =>
-                dataModelRef.findProperty(grouping).getType.asType
-              },
-              partitionInfo.getOrdering.map { ordering =>
-                (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                  ordering.getDirection == Group.Direction.ASCENDANT)
-              })))
+          sortOrdering(mb)(
+            dataModelRef.groupingTypes(partitionInfo.getGrouping),
+            dataModelRef.orderingTypes(partitionInfo.getOrdering)))
       }
     }
   }

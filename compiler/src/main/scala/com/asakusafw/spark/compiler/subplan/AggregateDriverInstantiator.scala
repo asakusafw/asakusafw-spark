@@ -21,13 +21,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
-import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph.{ Group, UserOperator }
+import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.tools.asm._
@@ -36,7 +34,8 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 object AggregateDriverInstantiator
   extends Instantiator
   with NumPartitions
-  with ScalaIdioms {
+  with ScalaIdioms
+  with SparkIdioms {
 
   override def newInstance(
     driverType: Type,
@@ -53,17 +52,6 @@ object AggregateDriverInstantiator
     assert(primaryOperator.inputs.size == 1,
       s"The size of inputs should be 1: ${primaryOperator.inputs.size}")
     val input = primaryOperator.inputs.head
-
-    val partitioner = pushNew(classOf[HashPartitioner].asType)
-    partitioner.dup().invokeInit(
-      if (input.getGroup.getGrouping.isEmpty) {
-        ldc(1)
-      } else {
-        numPartitions(
-          mb,
-          vars.sc.push())(subplan.findInput(input.getOpposites.head.getOwner))
-      })
-    val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
 
     val aggregateDriver = pushNew(driverType)
     aggregateDriver.dup().invokeInit(
@@ -85,19 +73,19 @@ object AggregateDriverInstantiator
             .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
         }
       },
-      option(mb)({
-        val dataModelRef = context.jpContext.getDataModelLoader.load(input.getDataType)
-        pushNew0(
-          SortOrderingClassBuilder.getOrCompile(
-            input.getGroup.getGrouping.map { grouping =>
-              dataModelRef.findProperty(grouping).getType.asType
-            },
-            input.getGroup.getOrdering.map { ordering =>
-              (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                ordering.getDirection == Group.Direction.ASCENDANT)
-            }))
-      }),
-      partitionerVar.push().asType(classOf[Partitioner].asType))
+      option(mb)(
+        sortOrdering(mb)(
+          input.dataModelRef.groupingTypes(input.getGroup.getGrouping),
+          input.dataModelRef.orderingTypes(input.getGroup.getOrdering))),
+      (if (input.getGroup.getGrouping.isEmpty) {
+        partitioner(mb)(ldc(1))
+      } else {
+        partitioner(mb)(
+          numPartitions(
+            mb,
+            vars.sc.push())(
+              subplan.findInput(input.getOpposites.head.getOwner)))
+      }))
     aggregateDriver.store(nextLocal.getAndAdd(aggregateDriver.size))
   }
 }

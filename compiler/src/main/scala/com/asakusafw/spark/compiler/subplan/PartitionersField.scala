@@ -18,7 +18,7 @@ package subplan
 
 import scala.collection.JavaConversions._
 
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ Partitioner, SparkConf, SparkContext }
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -31,7 +31,8 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 trait PartitionersField
   extends ClassBuilder
   with NumPartitions
-  with ScalaIdioms {
+  with ScalaIdioms
+  with SparkIdioms {
 
   def context: SparkClientCompiler.Context
 
@@ -103,20 +104,13 @@ trait PartitionersField
               pushObject(mb)(None)
             case SubPlanOutputInfo.OutputType.AGGREGATED |
               SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
-              option(mb)({
-                val partitioner = pushNew(classOf[HashPartitioner].asType)
-                partitioner.dup().invokeInit(
+              option(mb)(
+                partitioner(mb)(
                   numPartitions(
-                    mb,
-                    thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
-                partitioner
-              })
+                    mb, thisVar.push().invokeV("sc", classOf[SparkContext].asType))(
+                      output)))
             case _ =>
-              option(mb)({
-                val partitioner = pushNew(classOf[HashPartitioner].asType)
-                partitioner.dup().invokeInit(ldc(1))
-                partitioner
-              })
+              option(mb)(partitioner(mb)(ldc(1)))
           })
       }
     }

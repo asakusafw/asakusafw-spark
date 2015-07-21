@@ -25,21 +25,16 @@ import scala.concurrent.duration.Duration
 import scala.reflect.NameTransformer
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
+import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
 import com.asakusafw.lang.compiler.model.description.TypeDescription
-import com.asakusafw.lang.compiler.model.graph.{ Group, Operator }
+import com.asakusafw.lang.compiler.model.graph.Operator
 import com.asakusafw.lang.compiler.planning.{ Plan, Planning, SubPlan }
-import com.asakusafw.spark.compiler.ordering.{
-  GroupingOrderingClassBuilder,
-  SortOrderingClassBuilder
-}
 import com.asakusafw.spark.compiler.planning.{
   BroadcastInfo,
   SubPlanInfo,
@@ -66,7 +61,8 @@ class SparkClientClassBuilder(
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/SparkClient;"),
     classOf[SparkClient].asType)
-  with ScalaIdioms {
+  with ScalaIdioms
+  with SparkIdioms {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     fieldDef.newField("sc", classOf[SparkContext].asType)
@@ -263,17 +259,8 @@ class SparkClientClassBuilder(
             if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
             broadcastInfo <- Option(subPlanOutput.getAttribute(classOf[BroadcastInfo]))
           } {
-            val dataModelRef = context.jpContext
-              .getDataModelLoader
-              .load(subPlanOutput.getOperator.getInput.getDataType)
-            val key = broadcastInfo.getFormatInfo
-            val groupings = key.getGrouping.toSeq.map { grouping =>
-              dataModelRef.findProperty(grouping).getType.asType
-            }
-            val orderings = key.getOrdering.toSeq.map { ordering =>
-              (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                ordering.getDirection == Group.Direction.ASCENDANT)
-            }
+            val dataModelRef = subPlanOutput.getOperator.getInput.dataModelRef
+            val group = broadcastInfo.getFormatInfo
 
             thisVar.push().getField(
               "broadcasts",
@@ -293,19 +280,12 @@ class SparkClientClassBuilder(
                       resultVar.push(),
                       context.branchKeys.getField(mb, subPlanOutput.getOperator))
                       .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
-                    {
-                      option(mb)(
-                        pushNew0(SortOrderingClassBuilder.getOrCompile(groupings, orderings)))
-                    },
-                    {
-                      pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupings))
-                        .asType(classOf[Ordering[ShuffleKey]].asType)
-                    },
-                    {
-                      val partitioner = pushNew(classOf[HashPartitioner].asType)
-                      partitioner.dup().invokeInit(ldc(1))
-                      partitioner.asType(classOf[Partitioner].asType)
-                    }))
+                    option(mb)(
+                      sortOrdering(mb)(
+                        dataModelRef.groupingTypes(group.getGrouping),
+                        dataModelRef.orderingTypes(group.getOrdering))),
+                    groupingOrdering(mb)(dataModelRef.groupingTypes(group.getGrouping)),
+                    partitioner(mb)(ldc(1))))
                   .asType(classOf[AnyRef].asType))
               .pop()
           }

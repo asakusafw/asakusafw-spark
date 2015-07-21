@@ -25,6 +25,7 @@ import com.asakusafw.lang.compiler.analyzer.util.{ BranchOperatorUtil, MasterJoi
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
+import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.runtime.value._
@@ -213,6 +214,22 @@ package object compiler {
     def value(
       implicit context: SparkClientCompiler.Context): Any = {
       vd.resolve(context.jpContext.getClassLoader)
+    }
+  }
+
+  implicit class AugmentedDataModelRef(val dataModelRef: DataModelReference) extends AnyVal {
+
+    def groupingTypes(propertyNames: Seq[PropertyName]): Seq[Type] = {
+      propertyNames.map { propertyName =>
+        dataModelRef.findProperty(propertyName).getType.asType
+      }
+    }
+
+    def orderingTypes(orderings: Seq[Group.Ordering]): Seq[(Type, Boolean)] = {
+      orderings.map { ordering =>
+        (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
+          ordering.getDirection == Group.Direction.ASCENDANT)
+      }
     }
   }
 }
