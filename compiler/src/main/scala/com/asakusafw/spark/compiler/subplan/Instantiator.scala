@@ -43,8 +43,8 @@ object Instantiator {
   case class Vars(
     sc: Var, // SparkContext
     hadoopConf: Var, // Broadcast[Configuration]
-    broadcasts: Var, // Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]
     rdds: Var, // mutable.Map[BranchKey, Future[RDD[_]]]
-    terminators: Var // mutable.Set[Future[Unit]]
+    terminators: Var, // mutable.Set[Future[Unit]]
+    broadcasts: Var // Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]
     )
 }

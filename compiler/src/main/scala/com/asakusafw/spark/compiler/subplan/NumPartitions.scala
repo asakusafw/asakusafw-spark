@@ -28,10 +28,11 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 trait NumPartitions
   extends ScalaIdioms {
 
-  def numPartitions(mb: MethodBuilder, sc: => Stack)(port: SubPlan.Port): Stack = {
+  def numPartitions(mb: MethodBuilder)(sc: => Stack)(port: SubPlan.Port): Stack = {
     import mb._ // scalastyle:ignore
     val dataSize = Option(port.getAttribute(classOf[PartitionGroupInfo]))
       .map(_.getDataSize).getOrElse(PartitionGroupInfo.DataSize.REGULAR)
+    val scale = getParallelismScale(mb, sc) _
     dataSize match {
       case PartitionGroupInfo.DataSize.TINY =>
         ldc(1)
@@ -40,7 +41,7 @@ trait NumPartitions
           classOf[Math].asType,
           "max",
           Type.INT_TYPE,
-          getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Small")).toInt,
+          getParallelism(mb, sc).toDouble.multiply(scale("Small")).toInt,
           ldc(1))
       case PartitionGroupInfo.DataSize.REGULAR =>
         invokeStatic(
@@ -54,14 +55,14 @@ trait NumPartitions
           classOf[Math].asType,
           "max",
           Type.INT_TYPE,
-          getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Large")).toInt,
+          getParallelism(mb, sc).toDouble.multiply(scale("Large")).toInt,
           ldc(1))
       case PartitionGroupInfo.DataSize.HUGE =>
         invokeStatic(
           classOf[Math].asType,
           "max",
           Type.INT_TYPE,
-          getParallelism(mb, sc).toDouble.multiply(getParallelismScale(mb, sc)("Huge")).toInt,
+          getParallelism(mb, sc).toDouble.multiply(scale("Huge")).toInt,
           ldc(1))
     }
   }

@@ -15,6 +15,7 @@
  */
 package com.asakusafw.spark.compiler
 
+import scala.collection.generic.Growable
 import scala.collection.mutable
 import scala.reflect.{ ClassTag, NameTransformer }
 
@@ -82,6 +83,22 @@ trait ScalaIdioms {
 
   def applyMap(mb: MethodBuilder)(map: => Stack, key: => Stack): Stack = {
     map.invokeI("apply", classOf[AnyRef].asType, key.asType(classOf[AnyRef].asType))
+  }
+
+  def addToMap(mb: MethodBuilder)(map: => Stack, key: => Stack, value: => Stack): Unit = {
+    map.invokeI(
+      NameTransformer.encode("+="),
+      classOf[Growable[_]].asType,
+      tuple2(mb)(key, value).asType(classOf[AnyRef].asType))
+      .pop()
+  }
+
+  def addTraversableToMap(mb: MethodBuilder)(map: => Stack, traversable: => Stack): Unit = {
+    map.invokeI(
+      NameTransformer.encode("++="),
+      classOf[Growable[_]].asType,
+      traversable.asType(classOf[TraversableOnce[_]].asType))
+      .pop()
   }
 }
 

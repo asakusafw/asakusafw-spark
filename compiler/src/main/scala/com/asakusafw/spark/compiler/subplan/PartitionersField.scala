@@ -18,7 +18,7 @@ package subplan
 
 import scala.collection.JavaConversions._
 
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ Partitioner, SparkConf, SparkContext }
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -31,9 +31,10 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 trait PartitionersField
   extends ClassBuilder
   with NumPartitions
-  with ScalaIdioms {
+  with ScalaIdioms
+  with SparkIdioms {
 
-  def context: SparkClientCompiler.Context
+  implicit def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -88,6 +89,7 @@ trait PartitionersField
   private def initPartitioners(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     buildMap(mb) { builder =>
+      val np = numPartitions(mb)(thisVar.push().invokeV("sc", classOf[SparkContext].asType)) _
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
@@ -103,20 +105,9 @@ trait PartitionersField
               pushObject(mb)(None)
             case SubPlanOutputInfo.OutputType.AGGREGATED |
               SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
-              option(mb)({
-                val partitioner = pushNew(classOf[HashPartitioner].asType)
-                partitioner.dup().invokeInit(
-                  numPartitions(
-                    mb,
-                    thisVar.push().invokeV("sc", classOf[SparkContext].asType))(output))
-                partitioner
-              })
+              option(mb)(partitioner(mb)(np(output)))
             case _ =>
-              option(mb)({
-                val partitioner = pushNew(classOf[HashPartitioner].asType)
-                partitioner.dup().invokeInit(ldc(1))
-                partitioner
-              })
+              option(mb)(partitioner(mb)(ldc(1)))
           })
       }
     }

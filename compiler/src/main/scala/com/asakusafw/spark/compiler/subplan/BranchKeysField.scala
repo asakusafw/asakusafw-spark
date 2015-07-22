@@ -28,7 +28,7 @@ trait BranchKeysField
   extends ClassBuilder
   with ScalaIdioms {
 
-  def context: SparkClientCompiler.Context
+  implicit def context: SparkClientCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 

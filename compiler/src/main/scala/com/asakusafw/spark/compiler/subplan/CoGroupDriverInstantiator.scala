@@ -21,16 +21,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
-import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph.{ Group, OperatorOutput }
+import com.asakusafw.lang.compiler.model.graph.OperatorOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.ordering.{
-  GroupingOrderingClassBuilder,
-  SortOrderingClassBuilder
-}
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.tools.asm._
@@ -39,7 +34,8 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 object CoGroupDriverInstantiator
   extends Instantiator
   with NumPartitions
-  with ScalaIdioms {
+  with ScalaIdioms
+  with SparkIdioms {
 
   override def newInstance(
     driverType: Type,
@@ -53,79 +49,53 @@ object CoGroupDriverInstantiator
     val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
     val properties = primaryOperator.inputs.map { input =>
-      val dataModelRef = input.dataModelRef
-      input.getGroup.getGrouping.map { grouping =>
-        dataModelRef.findProperty(grouping).getType.asType
-      }.toSeq
+      input.dataModelRef.groupingTypes(input.getGroup.getGrouping)
     }.toSet
     assert(properties.size == 1,
       s"The grouping of all inputs should be the same: ${
         properties.map(_.mkString("(", ",", ")")).mkString("(", ",", ")")
       }")
 
-    val partitioner = pushNew(classOf[HashPartitioner].asType)
-    partitioner.dup().invokeInit(
-      if (properties.head.isEmpty) {
-        ldc(1)
-      } else {
-        numPartitions(
-          mb,
-          vars.sc.push())(
-            subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner))
-      })
-    val partitionerVar = partitioner.store(nextLocal.getAndAdd(partitioner.size))
-
     val cogroupDriver = pushNew(driverType)
     cogroupDriver.dup().invokeInit(
       vars.sc.push(),
       vars.hadoopConf.push(),
-      vars.broadcasts.push(), {
-        // Seq[(Seq[RDD[(K, _)]], Option[Ordering[ShuffleKey]])]
-        buildSeq(mb) { builder =>
-          for {
-            input <- primaryOperator.getInputs
-          } {
-            builder +=
-              tuple2(mb)(
-                buildSeq(mb) { builder =>
-                  for {
-                    opposite <- input.getOpposites.toSet[OperatorOutput]
-                    subPlanInput <- Option(subplan.findInput(opposite.getOwner))
-                    inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
-                    if inputInfo.getInputType == SubPlanInputInfo.InputType.PARTITIONED
-                    prevSubPlanOutput <- subPlanInput.getOpposites
-                    marker = prevSubPlanOutput.getOperator
-                  } {
-                    builder +=
-                      applyMap(mb)(
-                        vars.rdds.push(),
-                        context.branchKeys.getField(mb, marker))
-                      .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
-                  }
-                },
-                option(mb)({
-                  val dataModelRef =
-                    context.jpContext.getDataModelLoader.load(input.getDataType)
-                  pushNew0(
-                    SortOrderingClassBuilder.getOrCompile(
-                      input.getGroup.getGrouping.map { grouping =>
-                        dataModelRef.findProperty(grouping).getType.asType
-                      },
-                      input.getGroup.getOrdering.map { ordering =>
-                        (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
-                          ordering.getDirection == Group.Direction.ASCENDANT)
-                      }))
-                }))
-          }
+      vars.broadcasts.push(),
+      buildSeq(mb) { builder =>
+        for {
+          input <- primaryOperator.getInputs
+        } {
+          builder +=
+            tuple2(mb)(
+              buildSeq(mb) { builder =>
+                for {
+                  opposite <- input.getOpposites.toSet[OperatorOutput]
+                  subPlanInput <- Option(subplan.findInput(opposite.getOwner))
+                  inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
+                  if inputInfo.getInputType == SubPlanInputInfo.InputType.PARTITIONED
+                  prevSubPlanOutput <- subPlanInput.getOpposites
+                  marker = prevSubPlanOutput.getOperator
+                } {
+                  builder +=
+                    applyMap(mb)(
+                      vars.rdds.push(),
+                      context.branchKeys.getField(mb, marker))
+                    .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
+                }
+              },
+              option(mb)(
+                sortOrdering(mb)(
+                  input.dataModelRef.groupingTypes(input.getGroup.getGrouping),
+                  input.dataModelRef.orderingTypes(input.getGroup.getOrdering))))
         }
-      }, {
-        // ShuffleKey.GroupingOrdering
-        pushNew0(
-          GroupingOrderingClassBuilder.getOrCompile(properties.head))
-          .asType(classOf[Ordering[ShuffleKey]].asType)
-      }, {
-        // Partitioner
-        partitionerVar.push().asType(classOf[Partitioner].asType)
+      },
+      groupingOrdering(mb)(properties.head),
+      if (properties.head.isEmpty) {
+        partitioner(mb)(ldc(1))
+      } else {
+        partitioner(mb)(
+          numPartitions(mb)(vars.sc.push())(
+            subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner)))
       })
     cogroupDriver.store(nextLocal.getAndAdd(cogroupDriver.size))
   }
