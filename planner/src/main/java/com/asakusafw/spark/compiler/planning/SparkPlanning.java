@@ -27,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -595,9 +596,9 @@ public final class SparkPlanning {
         public int hashCode() {
             final int prime = 31;
             int result = 1;
-            result = prime * result + type.hashCode();
-            result = prime * result + ((partition == null) ? 0 : partition.hashCode());
-            result = prime * result + ((aggregation == null) ? 0 : aggregation.hashCode());
+            result = prime * result + Objects.hashCode(type);
+            result = prime * result + Objects.hashCode(partition);
+            result = prime * result + Objects.hashCode(aggregation);
             return result;
         }
 
@@ -613,21 +614,13 @@ public final class SparkPlanning {
                 return false;
             }
             EdgeInfo other = (EdgeInfo) obj;
-            if (!type.equals(other.type)) {
+            if (!Objects.equals(type, other.type)) {
                 return false;
             }
-            if (partition == null) {
-                if (other.partition != null) {
-                    return false;
-                }
-            } else if (!partition.equals(other.partition)) {
+            if (!Objects.equals(partition, other.partition)) {
                 return false;
             }
-            if (aggregation == null) {
-                if (other.aggregation != null) {
-                    return false;
-                }
-            } else if (!aggregation.equals(other.aggregation)) {
+            if (!Objects.equals(aggregation, other.aggregation)) {
                 return false;
             }
             return true;
