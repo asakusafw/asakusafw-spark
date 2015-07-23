@@ -17,6 +17,7 @@ package com.asakusafw.spark.compiler.planning;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import com.asakusafw.lang.compiler.common.ComplexAttribute;
 import com.asakusafw.lang.compiler.model.graph.Group;
@@ -38,7 +39,7 @@ public class BroadcastInfo implements ComplexAttribute {
      * @param formatInfo information of the broadcast data-set format
      */
     public BroadcastInfo(String label, Group formatInfo) {
-        this.label = label == null ? UNKNOWN_LABEL : label;
+        this.label = Objects.toString(label, UNKNOWN_LABEL);
         this.formatInfo = formatInfo;
     }
 

@@ -18,6 +18,7 @@ package com.asakusafw.spark.compiler.planning;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import com.asakusafw.lang.compiler.model.graph.Operator;
@@ -83,7 +84,7 @@ final class Util {
     }
 
     static String toLabel(Object value) {
-        return value == null ? LABEL_NOT_AVAILABLE : String.valueOf(value);
+        return Objects.toString(value, LABEL_NOT_AVAILABLE);
     }
 
     static String toOperatorLabel(Operator operator) {
