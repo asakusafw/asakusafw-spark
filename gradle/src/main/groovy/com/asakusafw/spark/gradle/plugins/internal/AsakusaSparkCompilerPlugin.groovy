@@ -25,6 +25,7 @@ import org.gradle.api.artifacts.ResolutionStrategy
 import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
 import com.asakusafw.gradle.plugins.AsakusafwPlugin
 import com.asakusafw.gradle.plugins.AsakusafwPluginConvention
+import com.asakusafw.gradle.plugins.internal.PluginUtils
 import com.asakusafw.gradle.tasks.AsakusaCompileTask
 import com.asakusafw.gradle.tasks.internal.ResolutionUtils
 

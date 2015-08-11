@@ -18,9 +18,9 @@ package com.asakusafw.spark.gradle.plugins
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
+import com.asakusafw.gradle.plugins.internal.PluginUtils
 import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkCompilerPlugin
 import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkOrganizerPlugin
-import com.asakusafw.spark.gradle.plugins.internal.PluginUtils
 
 /**
  * A Gradle plug-in for Asakusa projects for Spark runtime.
