@@ -18,6 +18,8 @@ package com.asakusafw.spark.gradle.plugins.internal
 import org.gradle.api.Project
 
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
+import com.asakusafw.gradle.plugins.internal.AbstractOrganizer
+import com.asakusafw.gradle.plugins.internal.PluginUtils
 import com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension
 
 /**
