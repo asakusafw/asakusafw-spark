@@ -21,9 +21,12 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -78,18 +81,15 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out1.size === 5)
-    assert(out2.size === 5)
-    out1.zipWithIndex.foreach {
+    out1.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.zipWithIndex.foreach {
+    out2.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i + 5)
     }
     fragment.reset()
-    assert(out1.size === 0)
   }
 
   it should "compile Branch operator with projective model" in {
@@ -116,23 +116,22 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, out1, out2)
 
+    fragment.reset()
     val dm = new InputModel()
     for (i <- 0 until 10) {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out1.size === 5)
-    assert(out2.size === 5)
-    out1.zipWithIndex.foreach {
+    out1.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.zipWithIndex.foreach {
+    out2.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i + 5)
     }
+
     fragment.reset()
-    assert(out1.size === 0)
   }
 }
 
@@ -142,16 +141,21 @@ object BranchOperatorCompilerSpec {
     def getIOption: IntOption
   }
 
-  class InputModel extends DataModel[InputModel] with InputP {
+  class InputModel extends DataModel[InputModel] with InputP with Writable {
 
     val i: IntOption = new IntOption()
 
     override def reset: Unit = {
       i.setNull()
     }
-
     override def copyFrom(other: InputModel): Unit = {
       i.copyFrom(other.i)
+    }
+    override def readFields(in: DataInput): Unit = {
+      i.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      i.write(out)
     }
 
     def getIOption: IntOption = i

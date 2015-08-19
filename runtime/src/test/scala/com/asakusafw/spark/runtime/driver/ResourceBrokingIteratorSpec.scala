@@ -20,12 +20,14 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.Writable
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -76,7 +78,7 @@ object ResourceBrokingIteratorSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     @transient prev: Future[RDD[(_, Hoge)]])
-      extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+    extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
     override def label = "TestMap"
 
@@ -106,7 +108,7 @@ object ResourceBrokingIteratorSpec {
     }
   }
 
-  class Hoge extends DataModel[Hoge] {
+  class Hoge extends DataModel[Hoge] with Writable {
 
     val id = new IntOption()
     val str = new StringOption()
@@ -118,6 +120,14 @@ object ResourceBrokingIteratorSpec {
     override def copyFrom(other: Hoge): Unit = {
       id.copyFrom(other.id)
       str.copyFrom(other.str)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      str.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      str.write(out)
     }
   }
 

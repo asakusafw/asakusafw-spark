@@ -21,9 +21,12 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -70,6 +73,7 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, out1, out2)
+    fragment.reset()
 
     val dm = new InputModel()
     for (i <- 0 until 10) {
@@ -77,20 +81,16 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.size === 10)
-    assert(out2.size === 10)
-    out1.zipWithIndex.foreach {
+    out1.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.get === i)
     }
-    out2.zipWithIndex.foreach {
+    out2.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.l.get === 10 * i)
     }
     fragment.reset()
-    assert(out1.size === 0)
-    assert(out2.size === 0)
   }
 
   it should "compile Convert operator with projective model" in {
@@ -115,26 +115,24 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, out1, out2)
 
+    fragment.reset()
     val dm = new InputModel()
     for (i <- 0 until 10) {
       dm.i.modify(i)
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.size === 10)
-    assert(out2.size === 10)
-    out1.zipWithIndex.foreach {
+    out1.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.get === i)
     }
-    out2.zipWithIndex.foreach {
+    out2.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.l.get === 10 * i)
     }
+
     fragment.reset()
-    assert(out1.size === 0)
-    assert(out2.size === 0)
   }
 }
 
@@ -145,7 +143,7 @@ object ConvertOperatorCompilerSpec {
     def getLOption: LongOption
   }
 
-  class InputModel extends DataModel[InputModel] with InputP {
+  class InputModel extends DataModel[InputModel] with InputP with Writable {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
@@ -154,26 +152,38 @@ object ConvertOperatorCompilerSpec {
       i.setNull()
       l.setNull()
     }
-
     override def copyFrom(other: InputModel): Unit = {
       i.copyFrom(other.i)
       l.copyFrom(other.l)
+    }
+    override def readFields(in: DataInput): Unit = {
+      i.readFields(in)
+      l.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      i.write(out)
+      l.write(out)
     }
 
     def getIOption: IntOption = i
     def getLOption: LongOption = l
   }
 
-  class OutputModel extends DataModel[OutputModel] {
+  class OutputModel extends DataModel[OutputModel] with Writable {
 
     val l: LongOption = new LongOption()
 
     override def reset: Unit = {
       l.setNull()
     }
-
     override def copyFrom(other: OutputModel): Unit = {
       l.copyFrom(other.l)
+    }
+    override def readFields(in: DataInput): Unit = {
+      l.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      l.write(out)
     }
 
     def getLOption: LongOption = l

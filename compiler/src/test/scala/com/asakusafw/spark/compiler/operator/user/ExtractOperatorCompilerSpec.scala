@@ -21,9 +21,12 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -73,24 +76,23 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, out1, out2)
 
+    fragment.reset()
     val dm = new InputModel()
     for (i <- 0 until 10) {
       dm.i.modify(i)
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.size === 10)
-    assert(out2.size === 100)
-    out1.zipWithIndex.foreach {
+    out1.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.zipWithIndex.foreach {
+    out2.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.l.get === i / 10)
     }
+
     fragment.reset()
-    assert(out1.size === 0)
   }
 
   it should "compile Extract operator with projective model" in {
@@ -117,24 +119,23 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
         classOf[Fragment[_]], classOf[Fragment[_]])
       .newInstance(Map.empty, out1, out2)
 
+    fragment.reset()
     val dm = new InputModel()
     for (i <- 0 until 10) {
       dm.i.modify(i)
       dm.l.modify(i)
       fragment.add(dm)
     }
-    assert(out1.size === 10)
-    assert(out2.size === 100)
-    out1.zipWithIndex.foreach {
+    out1.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.zipWithIndex.foreach {
+    out2.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.l.get === i / 10)
     }
+
     fragment.reset()
-    assert(out1.size === 0)
   }
 }
 
@@ -145,7 +146,7 @@ object ExtractOperatorCompilerSpec {
     def getLOption: LongOption
   }
 
-  class InputModel extends DataModel[InputModel] with InputP {
+  class InputModel extends DataModel[InputModel] with InputP with Writable {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
@@ -154,10 +155,17 @@ object ExtractOperatorCompilerSpec {
       i.setNull()
       l.setNull()
     }
-
     override def copyFrom(other: InputModel): Unit = {
       i.copyFrom(other.i)
       l.copyFrom(other.l)
+    }
+    override def readFields(in: DataInput): Unit = {
+      i.readFields(in)
+      l.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      i.write(out)
+      l.write(out)
     }
 
     def getIOption: IntOption = i
@@ -168,16 +176,21 @@ object ExtractOperatorCompilerSpec {
     def getIOption: IntOption
   }
 
-  class IntOutputModel extends DataModel[IntOutputModel] with IntOutputP {
+  class IntOutputModel extends DataModel[IntOutputModel] with IntOutputP with Writable {
 
     val i: IntOption = new IntOption()
 
     override def reset: Unit = {
       i.setNull()
     }
-
     override def copyFrom(other: IntOutputModel): Unit = {
       i.copyFrom(other.i)
+    }
+    override def readFields(in: DataInput): Unit = {
+      i.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      i.write(out)
     }
 
     def getIOption: IntOption = i
@@ -187,16 +200,21 @@ object ExtractOperatorCompilerSpec {
     def getLOption: LongOption
   }
 
-  class LongOutputModel extends DataModel[LongOutputModel] with LongOutputP {
+  class LongOutputModel extends DataModel[LongOutputModel] with LongOutputP with Writable {
 
     val l: LongOption = new LongOption()
 
     override def reset: Unit = {
       l.setNull()
     }
-
     override def copyFrom(other: LongOutputModel): Unit = {
       l.copyFrom(other.l)
+    }
+    override def readFields(in: DataInput): Unit = {
+      l.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      l.write(out)
     }
 
     def getLOption: LongOption = l

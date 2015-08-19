@@ -22,11 +22,13 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -80,6 +82,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .newInstance(Map.empty, low, high)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(10)
       val hoges = Seq(hoge)
@@ -88,30 +91,35 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.hogeId.modify(10)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(low.size === 0)
-      assert(high.size === 1)
-      assert(high.head.id.get === 10)
+      val lows = low.iterator.toSeq
+      assert(lows.size === 0)
+      val highs = high.iterator.toSeq
+      assert(highs.size === 1)
+      assert(highs.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(low.size === 0)
-    assert(high.size === 0)
+    assert(low.iterator.size === 0)
+    assert(high.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(low.size === 1)
-      assert(low.head.id.get === 10)
-      assert(high.size === 0)
+      val lows = low.iterator.toSeq
+      assert(lows.size === 1)
+      assert(lows.head.id.get === 10)
+      val highs = high.iterator.toSeq
+      assert(highs.size === 0)
     }
 
     fragment.reset()
-    assert(low.size === 0)
-    assert(high.size === 0)
+    assert(low.iterator.size === 0)
+    assert(high.iterator.size === 0)
   }
 
   it should "compile MasterBranch operator with master selection" in {
@@ -140,6 +148,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .newInstance(Map.empty, low, high)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(10)
       val hoges = Seq(hoge)
@@ -150,31 +159,36 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         foo
       }
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(low.size === 5)
-      assert(low.map(_.id.get) === (1 until 10 by 2))
-      assert(high.size === 5)
-      assert(high.map(_.id.get) === (0 until 10 by 2))
+      val lows = low.iterator.toSeq
+      assert(lows.size === 5)
+      assert(lows.map(_.id.get) === (1 until 10 by 2))
+      val highs = high.iterator.toSeq
+      assert(highs.size === 5)
+      assert(highs.map(_.id.get) === (0 until 10 by 2))
     }
 
     fragment.reset()
-    assert(low.size === 0)
-    assert(high.size === 0)
+    assert(low.iterator.size === 0)
+    assert(high.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(low.size === 1)
-      assert(low.head.id.get === 10)
-      assert(high.size === 0)
+      val lows = low.iterator.toSeq
+      assert(lows.size === 1)
+      assert(lows.head.id.get === 10)
+      val highs = high.iterator.toSeq
+      assert(highs.size === 0)
     }
 
     fragment.reset()
-    assert(low.size === 0)
-    assert(high.size === 0)
+    assert(low.iterator.size === 0)
+    assert(high.iterator.size === 0)
   }
 
   it should "compile MasterBranch operator without master selection with projective model" in {
@@ -203,6 +217,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .newInstance(Map.empty, low, high)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(10)
       val hoges = Seq(hoge)
@@ -211,30 +226,35 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       foo.hogeId.modify(10)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(low.size === 0)
-      assert(high.size === 1)
-      assert(high.head.id.get === 10)
+      val lows = low.iterator.toSeq
+      assert(lows.size === 0)
+      val highs = high.iterator.toSeq
+      assert(highs.size === 1)
+      assert(highs.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(low.size === 0)
-    assert(high.size === 0)
+    assert(low.iterator.size === 0)
+    assert(high.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(low.size === 1)
-      assert(low.head.id.get === 10)
-      assert(high.size === 0)
+      val lows = low.iterator.toSeq
+      assert(lows.size === 1)
+      assert(lows.head.id.get === 10)
+      val highs = high.iterator.toSeq
+      assert(highs.size === 0)
     }
 
     fragment.reset()
-    assert(low.size === 0)
-    assert(high.size === 0)
+    assert(low.iterator.size === 0)
+    assert(high.iterator.size === 0)
   }
 
   it should "compile MasterBranch operator with master selection with projective model" in {
@@ -263,6 +283,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .newInstance(Map.empty, low, high)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(10)
       val hoges = Seq(hoge)
@@ -273,31 +294,36 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
         foo
       }
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(low.size === 5)
-      assert(low.map(_.id.get) === (1 until 10 by 2))
-      assert(high.size === 5)
-      assert(high.map(_.id.get) === (0 until 10 by 2))
+      val lows = low.iterator.toSeq
+      assert(lows.size === 5)
+      assert(lows.map(_.id.get) === (1 until 10 by 2))
+      val highs = high.iterator.toSeq
+      assert(highs.size === 5)
+      assert(highs.map(_.id.get) === (0 until 10 by 2))
     }
 
     fragment.reset()
-    assert(low.size === 0)
-    assert(high.size === 0)
+    assert(low.iterator.size === 0)
+    assert(high.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(low.size === 1)
-      assert(low.head.id.get === 10)
-      assert(high.size === 0)
+      val lows = low.iterator.toSeq
+      assert(lows.size === 1)
+      assert(lows.head.id.get === 10)
+      val highs = high.iterator.toSeq
+      assert(highs.size === 0)
     }
 
     fragment.reset()
-    assert(low.size === 0)
-    assert(high.size === 0)
+    assert(low.iterator.size === 0)
+    assert(high.iterator.size === 0)
   }
 }
 
@@ -307,7 +333,7 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     def getIdOption: IntOption
   }
 
-  class Hoge extends DataModel[Hoge] with HogeP {
+  class Hoge extends DataModel[Hoge] with HogeP with Writable {
 
     val id = new IntOption()
 
@@ -316,6 +342,12 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     }
     override def copyFrom(other: Hoge): Unit = {
       id.copyFrom(other.id)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
     }
 
     def getIdOption: IntOption = id
@@ -326,7 +358,7 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     def getHogeIdOption: IntOption
   }
 
-  class Foo extends DataModel[Foo] with FooP {
+  class Foo extends DataModel[Foo] with FooP with Writable {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -338,6 +370,14 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
       hogeId.copyFrom(other.hogeId)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      hogeId.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      hogeId.write(out)
     }
 
     def getIdOption: IntOption = id

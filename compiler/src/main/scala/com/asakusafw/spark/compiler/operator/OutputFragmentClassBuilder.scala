@@ -48,7 +48,7 @@ class OutputFragmentClassBuilder(
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { mb =>
       import mb._ // scalastyle:ignore
-      thisVar.push().invokeInit(superType, classTag(mb, dataModelType))
+      thisVar.push().invokeInit(superType)
     }
   }
 

@@ -15,31 +15,44 @@
  */
 package com.asakusafw.spark.runtime.fragment
 
-import scala.reflect.ClassTag
+import org.apache.hadoop.io.Writable
 
-import com.asakusafw.runtime.core.Result
+import com.asakusafw.runtime.flow.{ FileMapListBuffer, ListBuffer }
 import com.asakusafw.runtime.model.DataModel
 
-import org.apache.spark.util.collection.backdoor.CompactBuffer
-
-abstract class OutputFragment[T <: DataModel[T]: ClassTag] extends Fragment[T] with Iterable[T] {
+abstract class OutputFragment[T <: DataModel[T] with Writable]
+  extends Fragment[T] {
 
   def newDataModel(): T
 
-  private[this] val buf = new CompactBuffer[T]
-  private[this] var curSize = 0
-
-  override def iterator: Iterator[T] = buf.iterator.take(curSize)
-
-  override def add(result: T): Unit = {
-    if (buf.size <= curSize) {
-      buf += newDataModel()
-    }
-    buf(curSize).copyFrom(result)
-    curSize += 1
-  }
+  private[this] val buf: ListBuffer[T] = new FileMapListBuffer[T]
+  reset()
 
   override def reset(): Unit = {
-    curSize = 0
+    buf.shrink()
+    buf.begin()
+  }
+
+  override def add(result: T): Unit = {
+    if (buf.isExpandRequired()) {
+      buf.expand(newDataModel())
+    }
+    buf.advance().copyFrom(result)
+  }
+
+  def iterator: Iterator[T] = {
+    buf.end()
+    val iter = buf.iterator()
+    new Iterator[T] {
+      def hasNext: Boolean = {
+        if (iter.hasNext) {
+          true
+        } else {
+          reset()
+          false
+        }
+      }
+      def next(): T = iter.next()
+    }
   }
 }

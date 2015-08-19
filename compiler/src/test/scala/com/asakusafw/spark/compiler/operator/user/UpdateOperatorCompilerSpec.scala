@@ -21,9 +21,12 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -69,20 +72,20 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
+    fragment.reset()
     val dm = new TestModel()
     for (i <- 0 until 10) {
       dm.reset()
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out.size === 10)
-    out.zipWithIndex.foreach {
+    out.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.get === i * 100)
     }
+
     fragment.reset()
-    assert(out.size === 0)
   }
 
   it should "compile Update operator with projective model" in {
@@ -106,20 +109,20 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
+    fragment.reset()
     val dm = new TestModel()
     for (i <- 0 until 10) {
       dm.reset()
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out.size === 10)
-    out.zipWithIndex.foreach {
+    out.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
         assert(dm.l.get === i * 100)
     }
+
     fragment.reset()
-    assert(out.size === 0)
   }
 }
 
@@ -130,7 +133,7 @@ object UpdateOperatorCompilerSpec {
     def getLOption: LongOption
   }
 
-  class TestModel extends DataModel[TestModel] with TestP {
+  class TestModel extends DataModel[TestModel] with TestP with Writable {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
@@ -139,10 +142,17 @@ object UpdateOperatorCompilerSpec {
       i.setNull()
       l.setNull()
     }
-
     override def copyFrom(other: TestModel): Unit = {
       i.copyFrom(other.i)
       l.copyFrom(other.l)
+    }
+    override def readFields(in: DataInput): Unit = {
+      i.readFields(in)
+      l.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      i.write(out)
+      l.write(out)
     }
 
     def getIOption: IntOption = i

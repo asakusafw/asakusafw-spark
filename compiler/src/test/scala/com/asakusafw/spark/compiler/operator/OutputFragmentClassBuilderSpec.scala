@@ -20,7 +20,10 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
 import java.lang.{ Long => JLong }
+
+import org.apache.hadoop.io.Writable
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
@@ -46,35 +49,38 @@ class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with T
 
     val fragment = cls.newInstance()
 
-    assert(fragment.size === 0)
-
+    fragment.reset()
     val dm = new TestModel()
     for (i <- 0 until 10) {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(fragment.size === 10)
-    fragment.zipWithIndex.foreach {
+    fragment.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
+
     fragment.reset()
-    assert(fragment.size === 0)
   }
 }
 
 object OutputFragmentClassBuilderSpec {
 
-  class TestModel extends DataModel[TestModel] {
+  class TestModel extends DataModel[TestModel] with Writable {
 
     val i: IntOption = new IntOption()
 
     override def reset: Unit = {
       i.setNull()
     }
-
     override def copyFrom(other: TestModel): Unit = {
       i.copyFrom(other.i)
+    }
+    override def readFields(in: DataInput): Unit = {
+      i.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      i.write(out)
     }
   }
 }

@@ -21,11 +21,13 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -90,25 +92,28 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .newInstance(Map.empty, hogeResult, fooResult, hogeError, fooError, nResult)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foos = Seq.empty[Foo]
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(hogeResult.size === 0)
-      assert(fooResult.size === 0)
-      assert(hogeError.size === 0)
-      assert(fooError.size === 0)
-      assert(nResult.size === 1)
-      assert(nResult.head.n.get === 10)
+      assert(hogeResult.iterator.size === 0)
+      assert(fooResult.iterator.size === 0)
+      assert(hogeError.iterator.size === 0)
+      assert(fooError.iterator.size === 0)
+      val nResults = nResult.iterator.toSeq
+      assert(nResults.size === 1)
+      assert(nResults.head.n.get === 10)
     }
 
     fragment.reset()
-    assert(hogeResult.size === 0)
-    assert(fooResult.size === 0)
-    assert(hogeError.size === 0)
-    assert(fooError.size === 0)
-    assert(nResult.size === 0)
+    assert(hogeResult.iterator.size === 0)
+    assert(fooResult.iterator.size === 0)
+    assert(hogeError.iterator.size === 0)
+    assert(fooError.iterator.size === 0)
+    assert(nResult.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(1)
       val hoges = Seq(hoge)
@@ -117,25 +122,31 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(hogeResult.size === 1)
-      assert(hogeResult.head.id.get === hoge.id.get)
-      assert(fooResult.size === 1)
-      assert(fooResult.head.id.get === foo.id.get)
-      assert(fooResult.head.hogeId.get === foo.hogeId.get)
-      assert(hogeError.size === 0)
-      assert(fooError.size === 0)
-      assert(nResult.size === 1)
-      assert(nResult.head.n.get === 10)
+      val hogeResults = hogeResult.iterator.toSeq
+      assert(hogeResults.size === 1)
+      assert(hogeResults.head.id.get === hoge.id.get)
+      val fooResults = fooResult.iterator.toSeq
+      assert(fooResults.size === 1)
+      assert(fooResults.head.id.get === foo.id.get)
+      assert(fooResults.head.hogeId.get === foo.hogeId.get)
+      val hogeErrors = hogeError.iterator.toSeq
+      assert(hogeErrors.size === 0)
+      val fooErrors = fooError.iterator.toSeq
+      assert(fooErrors.size === 0)
+      val nResults = nResult.iterator.toSeq
+      assert(nResults.size === 1)
+      assert(nResults.head.n.get === 10)
     }
 
     fragment.reset()
-    assert(hogeResult.size === 0)
-    assert(fooResult.size === 0)
-    assert(hogeError.size === 0)
-    assert(fooError.size === 0)
-    assert(nResult.size === 0)
+    assert(hogeResult.iterator.size === 0)
+    assert(fooResult.iterator.size === 0)
+    assert(hogeError.iterator.size === 0)
+    assert(fooError.iterator.size === 0)
+    assert(nResult.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(1)
       val hoges = Seq(hoge)
@@ -146,26 +157,31 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
         foo
       }
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(hogeResult.size === 0)
-      assert(fooResult.size === 0)
-      assert(hogeError.size === 1)
-      assert(hogeError.head.id.get === hoge.id.get)
-      assert(fooError.size === 10)
-      fooError.zip(foos).foreach {
+      val hogeResults = hogeResult.iterator.toSeq
+      assert(hogeResults.size === 0)
+      val fooResults = fooResult.iterator.toSeq
+      assert(fooResults.size === 0)
+      val hogeErrors = hogeError.iterator.toSeq
+      assert(hogeErrors.size === 1)
+      assert(hogeErrors.head.id.get === hoge.id.get)
+      val fooErrors = fooError.iterator.toSeq
+      assert(fooErrors.size === 10)
+      fooErrors.zip(foos).foreach {
         case (actual, expected) =>
           assert(actual.id.get === expected.id.get)
           assert(actual.hogeId.get === expected.hogeId.get)
       }
-      assert(nResult.size === 1)
-      assert(nResult.head.n.get === 10)
+      val nResults = nResult.iterator.toSeq
+      assert(nResults.size === 1)
+      assert(nResults.head.n.get === 10)
     }
 
     fragment.reset()
-    assert(hogeResult.size === 0)
-    assert(fooResult.size === 0)
-    assert(hogeError.size === 0)
-    assert(fooError.size === 0)
-    assert(nResult.size === 0)
+    assert(hogeResult.iterator.size === 0)
+    assert(fooResult.iterator.size === 0)
+    assert(hogeError.iterator.size === 0)
+    assert(fooError.iterator.size === 0)
+    assert(nResult.iterator.size === 0)
   }
 }
 
@@ -175,7 +191,7 @@ object CoGroupOperatorCompilerSpec {
     def getIdOption: IntOption
   }
 
-  class Hoge extends DataModel[Hoge] with HogeP {
+  class Hoge extends DataModel[Hoge] with HogeP with Writable {
 
     val id = new IntOption()
 
@@ -184,6 +200,12 @@ object CoGroupOperatorCompilerSpec {
     }
     override def copyFrom(other: Hoge): Unit = {
       id.copyFrom(other.id)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
     }
 
     def getIdOption: IntOption = id
@@ -194,7 +216,7 @@ object CoGroupOperatorCompilerSpec {
     def getHogeIdOption: IntOption
   }
 
-  class Foo extends DataModel[Foo] with FooP {
+  class Foo extends DataModel[Foo] with FooP with Writable {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -207,12 +229,20 @@ object CoGroupOperatorCompilerSpec {
       id.copyFrom(other.id)
       hogeId.copyFrom(other.hogeId)
     }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      hogeId.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      hogeId.write(out)
+    }
 
     def getIdOption: IntOption = id
     def getHogeIdOption: IntOption = hogeId
   }
 
-  class N extends DataModel[N] {
+  class N extends DataModel[N] with Writable {
 
     val n = new IntOption()
 
@@ -221,6 +251,12 @@ object CoGroupOperatorCompilerSpec {
     }
     override def copyFrom(other: N): Unit = {
       n.copyFrom(other.n)
+    }
+    override def readFields(in: DataInput): Unit = {
+      n.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      n.write(out)
     }
 
     def getIOption: IntOption = n
