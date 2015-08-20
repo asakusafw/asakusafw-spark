@@ -62,7 +62,10 @@ class FragmentGraphBuilder(
       })
     val fragment = operator match {
       case marker: MarkerOperator =>
-        pushNew0(t)
+        val fragment = pushNew(t)
+        fragment.dup().invokeInit(
+          thisVar.push().invokeV("fragmentBufferSize", Type.INT_TYPE))
+        fragment
       case _ =>
         val outputs = operator.getOutputs.map(build)
         val fragment = pushNew(t)

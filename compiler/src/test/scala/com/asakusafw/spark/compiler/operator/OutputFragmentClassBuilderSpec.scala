@@ -47,7 +47,7 @@ class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with T
     val cls = loadClass(builder.thisType.getClassName, builder.build())
       .asSubclass(classOf[OutputFragment[TestModel]])
 
-    val fragment = cls.newInstance()
+    val fragment = cls.getConstructor(classOf[Int]).newInstance(Int.box(-1))
 
     fragment.reset()
     val dm = new TestModel()

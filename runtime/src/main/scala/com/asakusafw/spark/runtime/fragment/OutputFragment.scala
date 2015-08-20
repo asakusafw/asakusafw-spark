@@ -17,16 +17,26 @@ package com.asakusafw.spark.runtime.fragment
 
 import org.apache.hadoop.io.Writable
 
-import com.asakusafw.runtime.flow.{ FileMapListBuffer, ListBuffer }
+import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
 import com.asakusafw.runtime.model.DataModel
 
-abstract class OutputFragment[T <: DataModel[T] with Writable]
+abstract class OutputFragment[T <: DataModel[T] with Writable](bufferSize: Int)
   extends Fragment[T] {
+
+  def this() = this(-1)
 
   def newDataModel(): T
 
-  private[this] val buf: ListBuffer[T] = new FileMapListBuffer[T]
-  reset()
+  private[this] val buf: ListBuffer[T] = {
+    val buf =
+      if (bufferSize >= 0) {
+        new FileMapListBuffer[T](bufferSize)
+      } else {
+        new ArrayListBuffer[T]()
+      }
+    buf.begin()
+    buf
+  }
 
   override def reset(): Unit = {
     buf.shrink()

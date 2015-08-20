@@ -31,6 +31,10 @@ package object runtime {
     val DefaultParallelismScaleSmall = 0.5
     val DefaultParallelismScaleLarge = 2.0
     val DefaultParallelismScaleHuge = 4.0
+
+    val FragmentBufferSize = s"${AsakusafwConfPrefix}.fragment.bufferSize"
+
+    val DefaultFragmentBufferSize = -1
   }
 
   val HadoopConfPrefix = "spark.hadoop"

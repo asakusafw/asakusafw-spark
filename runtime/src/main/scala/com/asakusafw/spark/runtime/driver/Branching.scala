@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime.driver
+package com.asakusafw.spark.runtime
+package driver
 
 import scala.collection.mutable
 import scala.concurrent.{ Await, Future }
@@ -32,6 +33,9 @@ import com.asakusafw.spark.runtime.rdd._
 
 trait Branching[T] {
   this: SubPlanDriver =>
+
+  protected val fragmentBufferSize =
+    sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   def branchKeys: Set[BranchKey]
 
