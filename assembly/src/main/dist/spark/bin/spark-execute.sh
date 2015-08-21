@@ -85,17 +85,18 @@ import "$_SPARK_ROOT/libexec/configure-libjars.sh"
 import "$_SPARK_ROOT/libexec/configure-files.sh"
 
 echo "Starting Asakusa Spark:"
-echo "      Spark Command: $SPARK_CMD"
-echo "        App Library: $_SPARK_APP_LIB"
-echo "           Batch ID: $_OPT_BATCH_ID"
-echo "            Flow ID: $_OPT_FLOW_ID"
-echo "       Execution ID: $_OPT_EXECUTION_ID"
-echo "              Class: $_OPT_CLASS_NAME"
-echo " ASAKUSA_SPARK_OPTS: $ASAKUSA_SPARK_OPTS"
-echo "        SPARK_FILES: ${_SPARK_FILES[@]}"
-echo "    SPARK_APP_FILES: ${_SPARK_APP_FILES[@]}"
+echo "          Spark Command: $SPARK_CMD"
+echo "            App Library: $_SPARK_APP_LIB"
+echo "               Batch ID: $_OPT_BATCH_ID"
+echo "                Flow ID: $_OPT_FLOW_ID"
+echo "           Execution ID: $_OPT_EXECUTION_ID"
+echo "                  Class: $_OPT_CLASS_NAME"
+echo "     ASAKUSA_SPARK_OPTS: $ASAKUSA_SPARK_OPTS"
+echo " ASAKUSA_SPARK_APP_CONF: $ASAKUSA_SPARK_APP_CONF"
+echo "            SPARK_FILES: ${_SPARK_FILES[@]}"
+echo "        SPARK_APP_FILES: ${_SPARK_APP_FILES[@]}"
 
-export ASAKUSA_SPARK_OPTS
+export ASAKUSA_SPARK_APP_CONF
 
 _SPARK_EXEC=()
 
@@ -111,7 +112,7 @@ _SPARK_EXEC+=("$SPARK_CMD")
     --jars "$_SPARK_LIBJARS" \
     --name "$_OPT_BATCH_ID/$_OPT_FLOW_ID/$_OPT_EXECUTION_ID" \
     "${_SPARK_FILES[@]}" \
-    $YS_SPARK_PROPERTIES \
+    $ASAKUSA_SPARK_OPTS \
     "$_SPARK_APP_LIB" \
     --client "$_OPT_CLASS_NAME" \
     --batch-id "$_OPT_BATCH_ID" \
@@ -119,7 +120,7 @@ _SPARK_EXEC+=("$SPARK_CMD")
     --execution-id "$_OPT_EXECUTION_ID" \
     --batch-arguments "$_OPT_BATCH_ARGUMENTS," \
     "${_SPARK_APP_FILES[@]}" \
-    $ASAKUSA_SPARK_OPTS \
+    $ASAKUSA_SPARK_APP_CONF \
     "$@"
 
 _SPARK_RET=$?
@@ -134,7 +135,6 @@ then
     echo " Execution ID: $_OPT_EXECUTION_ID" 1>&2
     echo "   Batch Args: $_OPT_BATCH_ARGUMENTS" 1>&2
     echo "    Libraries: --jars $_SPARK_LIBJARS"  1>&2
-    echo "Defined Props: $YS_SPARK_PROPERTIES" 1>&2
     echo "  Extra Props: $@" 1>&2
     exit $_SPARK_RET
 fi
