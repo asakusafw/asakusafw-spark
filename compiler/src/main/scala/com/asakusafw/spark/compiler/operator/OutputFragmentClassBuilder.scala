@@ -46,9 +46,10 @@ class OutputFragmentClassBuilder(
   with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq.empty) { mb =>
+    ctorDef.newInit(Seq(Type.INT_TYPE)) { mb =>
       import mb._ // scalastyle:ignore
-      thisVar.push().invokeInit(superType, classTag(mb, dataModelType))
+      val bufferSizeVar = `var`(Type.INT_TYPE, thisVar.nextLocal)
+      thisVar.push().invokeInit(superType, bufferSizeVar.push())
     }
   }
 

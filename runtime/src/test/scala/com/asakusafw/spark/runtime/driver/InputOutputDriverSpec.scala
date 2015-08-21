@@ -28,7 +28,6 @@ import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
@@ -111,7 +110,7 @@ object InputOutputDriverSpec {
     @transient input: Future[RDD[(_, Hoge)]],
     @transient terminators: mutable.Set[Future[Unit]],
     val path: String)
-      extends OutputDriver[Hoge](sc, hadoopConf, Seq(input), terminators) {
+    extends OutputDriver[Hoge](sc, hadoopConf, Seq(input), terminators) {
 
     override def label = "TestOutput"
   }
@@ -120,7 +119,7 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     basePath: String)
-      extends InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]](sc, hadoopConf, Map.empty) {
+    extends InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]](sc, hadoopConf, Map.empty) {
 
     override def label = "TestInput"
 

@@ -21,11 +21,13 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -80,6 +82,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .newInstance(Map.empty, updated, missed)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(1)
       val hoges = Seq(hoge)
@@ -88,30 +91,35 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 1)
-      assert(updated.head.id.get === 10)
-      assert(missed.size === 0)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 1)
+      assert(updateds.head.id.get === 10)
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 0)
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Iterator.empty
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Iterator(foo)
       fragment.add(Seq(hoges, foos))
-      assert(updated.size === 0)
-      assert(missed.size === 1)
-      assert(missed.head.id.get === 10)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 0)
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 1)
+      assert(misseds.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
   }
 
   it should "compile MasterJoinUpdate operator with master selection" in {
@@ -141,6 +149,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .newInstance(Map.empty, updated, missed)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(0)
       val hoges = Seq(hoge)
@@ -151,31 +160,36 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         foo
       }
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 5)
-      assert(updated.map(_.id.get) === (0 until 10 by 2))
-      assert(missed.size === 5)
-      assert(missed.map(_.id.get) === (1 until 10 by 2))
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 5)
+      assert(updateds.map(_.id.get) === (0 until 10 by 2))
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 5)
+      assert(misseds.map(_.id.get) === (1 until 10 by 2))
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 0)
-      assert(missed.size === 1)
-      assert(missed.head.id.get === 10)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 0)
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 1)
+      assert(misseds.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
   }
 
   it should "compile MasterJoinUpdate operator with master selection with 1 arugment" in {
@@ -205,6 +219,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .newInstance(Map.empty, updated, missed)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(0)
       val hoges = Seq(hoge)
@@ -215,30 +230,35 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         foo
       }
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 10)
-      assert(updated.map(_.id.get) === (0 until 10))
-      assert(missed.size === 0)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 10)
+      assert(updateds.map(_.id.get) === (0 until 10))
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 0)
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 0)
-      assert(missed.size === 1)
-      assert(missed.head.id.get === 10)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 0)
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 1)
+      assert(misseds.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
   }
 
   it should "compile MasterJoinUpdate operator without master selection with projective model" in {
@@ -268,6 +288,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .newInstance(Map.empty, updated, missed)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(1)
       val hoges = Seq(hoge)
@@ -276,30 +297,35 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 1)
-      assert(updated.head.id.get === 10)
-      assert(missed.size === 0)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 1)
+      assert(updateds.head.id.get === 10)
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 0)
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 0)
-      assert(missed.size === 1)
-      assert(missed.head.id.get === 10)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 0)
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 1)
+      assert(misseds.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
   }
 
   it should "compile MasterJoinUpdate operator with master selection with projective model" in {
@@ -329,6 +355,7 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .newInstance(Map.empty, updated, missed)
 
     {
+      fragment.reset()
       val hoge = new Hoge()
       hoge.id.modify(0)
       val hoges = Seq(hoge)
@@ -339,31 +366,36 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
         foo
       }
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 5)
-      assert(updated.map(_.id.get) === (0 until 10 by 2))
-      assert(missed.size === 5)
-      assert(missed.map(_.id.get) === (1 until 10 by 2))
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 5)
+      assert(updateds.map(_.id.get) === (0 until 10 by 2))
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 5)
+      assert(misseds.map(_.id.get) === (1 until 10 by 2))
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
 
     {
+      fragment.reset()
       val hoges = Seq.empty[Hoge]
       val foo = new Foo()
       foo.id.modify(10)
       foo.hogeId.modify(1)
       val foos = Seq(foo)
       fragment.add(Seq(hoges.iterator, foos.iterator))
-      assert(updated.size === 0)
-      assert(missed.size === 1)
-      assert(missed.head.id.get === 10)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 0)
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 1)
+      assert(misseds.head.id.get === 10)
     }
 
     fragment.reset()
-    assert(updated.size === 0)
-    assert(missed.size === 0)
+    assert(updated.iterator.size === 0)
+    assert(missed.iterator.size === 0)
   }
 }
 
@@ -373,7 +405,7 @@ object ShuffledMasterJoinUpdateOperatorCompilerSpec {
     def getIdOption: IntOption
   }
 
-  class Hoge extends DataModel[Hoge] with HogeP {
+  class Hoge extends DataModel[Hoge] with HogeP with Writable {
 
     val id = new IntOption()
 
@@ -382,6 +414,12 @@ object ShuffledMasterJoinUpdateOperatorCompilerSpec {
     }
     override def copyFrom(other: Hoge): Unit = {
       id.copyFrom(other.id)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
     }
 
     def getIdOption: IntOption = id
@@ -392,7 +430,7 @@ object ShuffledMasterJoinUpdateOperatorCompilerSpec {
     def getHogeIdOption: IntOption
   }
 
-  class Foo extends DataModel[Foo] with FooP {
+  class Foo extends DataModel[Foo] with FooP with Writable {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -404,6 +442,14 @@ object ShuffledMasterJoinUpdateOperatorCompilerSpec {
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
       hogeId.copyFrom(other.hogeId)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      hogeId.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      hogeId.write(out)
     }
 
     def getIdOption: IntOption = id

@@ -25,7 +25,6 @@ import java.io.{ DataInput, DataOutput }
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
@@ -155,7 +154,7 @@ object CoGroupDriverSpec {
     @transient inputs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])],
     @transient grouping: Ordering[ShuffleKey],
     @transient part: Partitioner)
-      extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, grouping, part) {
+    extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, grouping, part) {
 
     override def label = "TestCoGroup"
 

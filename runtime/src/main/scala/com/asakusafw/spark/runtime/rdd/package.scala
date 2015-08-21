@@ -24,7 +24,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.ShuffledRDD
 
 import org.apache.spark.backdoor._
-import org.apache.spark.util.collection.backdoor.CompactBuffer
 
 package object rdd {
 

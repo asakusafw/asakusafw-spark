@@ -21,9 +21,12 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -71,6 +74,7 @@ class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDi
       classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, hoges, foos)
 
+    fragment.reset()
     val dm = new Baa()
     for (i <- 0 until 10) {
       dm.id.modify(i)
@@ -78,27 +82,24 @@ class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDi
       dm.foo.modify(s"foo ${i}")
       fragment.add(dm)
     }
-    assert(hoges.size === 10)
-    assert(foos.size === 10)
-    hoges.zipWithIndex.foreach {
+    hoges.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.id.get === i)
         assert(dm.hoge.getAsString === s"hoge ${i}")
     }
-    foos.zipWithIndex.foreach {
+    foos.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.hogeId.get === i)
         assert(dm.foo.getAsString === s"foo ${i}")
     }
+
     fragment.reset()
-    assert(hoges.size === 0)
-    assert(foos.size === 0)
   }
 }
 
 object SplitOperatorCompilerSpec {
 
-  class Hoge extends DataModel[Hoge] {
+  class Hoge extends DataModel[Hoge] with Writable {
 
     val id = new IntOption()
     val hoge = new StringOption()
@@ -111,12 +112,20 @@ object SplitOperatorCompilerSpec {
       id.copyFrom(other.id)
       hoge.copyFrom(other.hoge)
     }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      hoge.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      hoge.write(out)
+    }
 
     def getIdOption: IntOption = id
     def getHogeOption: StringOption = hoge
   }
 
-  class Foo extends DataModel[Foo] {
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
     val hogeId = new IntOption()
@@ -131,6 +140,16 @@ object SplitOperatorCompilerSpec {
       id.copyFrom(other.id)
       hogeId.copyFrom(other.hogeId)
       foo.copyFrom(other.foo)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      hogeId.readFields(in)
+      foo.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      hogeId.write(out)
+      foo.write(out)
     }
 
     def getIdOption: IntOption = id

@@ -20,6 +20,10 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.io.{ DataInput, DataOutput }
+
+import org.apache.hadoop.io.Writable
+
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime.fragment._
@@ -47,39 +51,42 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with Tem
 
     val fragment = cls.getConstructor(classOf[Array[Fragment[_]]]).newInstance(Array(out1, out2))
 
+    fragment.reset()
     val dm = new TestModel()
     for (i <- 0 until 10) {
       dm.i.modify(i)
       fragment.add(dm)
     }
-    assert(out1.size === 10)
-    assert(out2.size === 10)
-    out1.zipWithIndex.foreach {
+    out1.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
-    out2.zipWithIndex.foreach {
+    out2.iterator.zipWithIndex.foreach {
       case (dm, i) =>
         assert(dm.i.get === i)
     }
+
     fragment.reset()
-    assert(out1.size === 0)
-    assert(out2.size === 0)
   }
 }
 
 object EdgeFragmentClassBuilderSpec {
 
-  class TestModel extends DataModel[TestModel] {
+  class TestModel extends DataModel[TestModel] with Writable {
 
     val i: IntOption = new IntOption()
 
     override def reset: Unit = {
       i.setNull()
     }
-
     override def copyFrom(other: TestModel): Unit = {
       i.copyFrom(other.i)
+    }
+    override def readFields(in: DataInput): Unit = {
+      i.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      i.write(out)
     }
   }
 }

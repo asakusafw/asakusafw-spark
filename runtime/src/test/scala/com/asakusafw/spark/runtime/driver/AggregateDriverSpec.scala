@@ -26,7 +26,6 @@ import java.util.Arrays
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
@@ -212,7 +211,7 @@ object AggregateDriverSpec {
   }
 
   class TestAggregation(val mapSideCombine: Boolean)
-      extends Aggregation[ShuffleKey, Hoge, Hoge] {
+    extends Aggregation[ShuffleKey, Hoge, Hoge] {
 
     override def newCombiner(): Hoge = {
       new Hoge()
@@ -249,7 +248,7 @@ object AggregateDriverSpec {
       @transient sort: Option[Ordering[ShuffleKey]],
       @transient part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
-        extends AggregateDriver[Hoge, Hoge](sc, hadoopConf, Map.empty, Seq(prev), sort, part) {
+      extends AggregateDriver[Hoge, Hoge](sc, hadoopConf, Map.empty, Seq(prev), sort, part) {
 
       override def label = "TestAggregation"
 
@@ -305,7 +304,7 @@ object AggregateDriverSpec {
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Hoge)]])
-        extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+      extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
 
       override def label = "TestPartialAggregation"
 
