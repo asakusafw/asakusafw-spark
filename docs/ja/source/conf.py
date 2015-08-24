@@ -35,6 +35,8 @@ todo_include_todos = True
 extlinks = {
     'issue-compiler': ('https://github.com/asakusafw/asakusafw-compiler/issues/%s', '#'),
     'issue-spark': ('https://github.com/asakusafw/asakusafw-spark/issues/%s', '#'),
+    'pr-compiler': ('https://github.com/asakusafw/asakusafw-compiler/pull/%s', '#'),
+    'pr-spark': ('https://github.com/asakusafw/asakusafw-spark/pull/%s', '#'),
     'asakusafw': ('http://docs.asakusafw.com/latest/release/ja/html/%s', None),
     'jinrikisha': ('http://docs.asakusafw.com/jinrikisha/ja/html/%s', None),
 }
