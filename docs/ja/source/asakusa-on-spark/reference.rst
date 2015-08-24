@@ -83,7 +83,7 @@ Asakusa on Spark Gradle Pluginは Batch Application Plugin に対して Asakusa 
     
     asakusafw {
         spark {
-            include 'com.example.batch.*' 
+            include 'com.example.batch.*'
             compilerProperties += ['spark.input.direct':'false']
         }
 
@@ -409,13 +409,6 @@ Asakusa on Sparkは、Asakusa Frameworkが提供する以下の機能には対�
 * ThunderGate
 * レガシーモジュール
 * その他該当バージョンで非推奨となっている機能
-
-レポートAPIに関するプラグインの設定
------------------------------------
-
-Asakusa FrameworkではレポートAPIの実装を差し替えるプラグイン機構を提供していますが、Asakusa on Sparkではこの機能は利用できません。
-
-レポートAPIのプラグインについては、 :asakusafw:`実行時プラグインのデプロイ - レポートAPIに関するプラグイン <administration/deployment-runtime-plugins.html#api>` を参照してください。
 
 互換性について
 ==============
