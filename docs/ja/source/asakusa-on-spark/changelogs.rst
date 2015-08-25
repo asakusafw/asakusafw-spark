@@ -58,6 +58,7 @@ asakusafw-spark
 * [ :pr-spark:`34` ] - Remove duplicated classes.
 * [ :pr-spark:`35` ] - Use FileMapListBuffer to prevent OOM.
 * [ :pr-spark:`36` ] - Modify variable names in spark bootstrap script.
+* [ :pr-spark:`37` ] - 0.1.1 Documents
 
 Release 0.1.0
 =============
