@@ -1,0 +1,10 @@
+.DS_Store
+.project
+.classpath
+.settings
+target
+.cache
+.scala_dependencies
+.worksheet
+dependency-reduced-pom.xml
+*.crc
