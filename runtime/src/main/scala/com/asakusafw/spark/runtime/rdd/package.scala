@@ -27,11 +27,11 @@ import org.apache.spark.backdoor._
 
 package object rdd {
 
-  implicit def rddToBranchRDDFunctions[T: ClassTag](rdd: RDD[T]): BranchRDDFunctions[T] = {
+  implicit def rddToBranchRDDFunctions[T](rdd: RDD[T]): BranchRDDFunctions[T] = {
     new BranchRDDFunctions(rdd)
   }
 
-  implicit class AugmentedPairRDD[K, V](rdd: RDD[(K, V)]) {
+  implicit class AugmentedPairRDD[K, V](val rdd: RDD[(K, V)]) extends AnyVal {
 
     def shuffle(part: Partitioner, ordering: Option[Ordering[K]] = None): RDD[(K, V)] = {
       if (rdd.partitioner == Some(part)) {
