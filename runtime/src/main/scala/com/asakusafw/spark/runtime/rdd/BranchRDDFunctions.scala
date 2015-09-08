@@ -25,7 +25,7 @@ import com.asakusafw.spark.runtime.orderings.NoOrdering
 case class BranchKey(id: Int)
 case class Branch[K](branchKey: BranchKey, actualKey: K)
 
-class BranchRDDFunctions[T: ClassTag](self: RDD[T]) extends Serializable {
+class BranchRDDFunctions[T](val self: RDD[T]) extends AnyVal {
 
   def branch[K, U](
     branchKeys: Set[BranchKey],
