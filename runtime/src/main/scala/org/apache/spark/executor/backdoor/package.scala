@@ -20,5 +20,6 @@ package object backdoor {
   implicit class TaskMetricsBackdoor(val metrics: TaskMetrics) extends AnyVal {
 
     def incMemoryBytesSpilled(value: Long): Unit = metrics.incMemoryBytesSpilled(value)
+    def incDiskBytesSpilled(value: Long): Unit = metrics.incDiskBytesSpilled(value)
   }
 }
