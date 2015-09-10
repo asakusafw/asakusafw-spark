@@ -2,6 +2,13 @@
 Changelogs
 ==========
 
+Release 0.1.2
+=============
+
+Sep 10, 2015
+
+This version is only fixed release problem on version 0.1.1.
+
 Release 0.1.1
 =============
 
