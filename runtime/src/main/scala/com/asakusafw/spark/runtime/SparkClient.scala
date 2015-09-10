@@ -58,19 +58,15 @@ abstract class SparkClient {
       sc.clearCallSite()
       sc.setCallSite(label)
 
-      val rdd = smcogroup(
+      val results = smcogroup(
         Seq((p.asInstanceOf[RDD[(ShuffleKey, _)]], sort)),
         part,
         grouping)
         .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[V]]) }
+        .collect()
+        .toMap
 
-      val results =
-        sc.runJob(
-          rdd,
-          (iter: Iterator[(ShuffleKey, Seq[V])]) => iter.toVector,
-          0 until rdd.partitions.size,
-          allowLocal = true)
-      sc.broadcast(results.flatten.toMap)
+      sc.broadcast(results)
     }
   }
 }
