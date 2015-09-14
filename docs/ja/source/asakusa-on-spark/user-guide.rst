@@ -185,7 +185,7 @@ Asakusa on Spark Gradle Pluginを有効にするには、アプリケーショ�
 
 * ``buildscript/dependencis`` ブロックに指定しているAsakusa Gradle Pluginの指定をAsakusa on Spark Gradle Pluginの指定に置き換える。
 
-  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.1.2'``
+  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.2.0'``
 
 * Asakusa on Spark Gradle Pluginを適用する定義を追加する
   
