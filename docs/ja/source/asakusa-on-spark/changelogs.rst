@@ -2,6 +2,17 @@
 Changelogs
 ==========
 
+Release 0.2.0
+=============
+
+Sep 15, 2015
+
+* [ :pr-compiler:`13` ] - Fix typo in documentation comments.
+* [ :pr-spark:`39` ] - Use value-class for implicit conversion.
+* [ :pr-spark:`40` ] - Bump Spark version to 1.5.0.
+* [ :pr-spark:`41` ] - Avoid deprecated method.
+* [ :pr-spark:`44` ] - Fix typo in documentation comments.
+
 Release 0.1.2
 =============
 

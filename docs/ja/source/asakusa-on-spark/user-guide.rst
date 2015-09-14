@@ -74,28 +74,28 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
       - OS
       - JDK
     * - Hortonworks Data Platform
-      - 2.2 (Apache Hadoop 2.6.0)
-      - CentOS 6 (6.6)
-      - JDK 7 (1.7.0_75)
+      - 2.3 (Apache Hadoop 2.7.1)
+      - CentOS 7 (7.1)
+      - JDK 8 (1.8.0_51)
     * - MapR
       - 4.1.0 (MRv2)
       - CentOS 6 (6.6)
       - JDK 7 (1.7.0_75)
     * - Amazon EMR
-      - AMI 3.8.0
+      - AMI 4.0.0
       - Amazon Linux 2015.03
-      - JDK 7 (1.7.0_76)
+      - JDK 7 (1.7.0_85)
 
 Spark
 -----
 
-Asakusa on Sparkは、Spark 1.4.1 で動作を検証しています。
+Asakusa on Sparkは、Spark 1.5.0 で動作を検証しています。
 
 また、Sparkの動作モードとして、YARN cluster mode、および YARN client modeで動作を確認しています。
 
 ..  attention::
-    Spark 1.3.1 ではいくつかのアプリケーションでのみ動作を確認しています。
-    Spark 1.3.1 を利用して問題が発生した場合は、Spark 1.4.1 を利用してください。
+    Spark 1.4.1 ではいくつかのアプリケーションでのみ動作を確認しています。
+    Spark 1.4.1 を利用して問題が発生した場合は、Spark 1.5.0 を利用してください。
 
 ..  seealso::
     SparkのYARN上での動作モードについては、Sparkのドキュメント `Running Spark on YARN`_ を参照してください。
@@ -185,7 +185,7 @@ Asakusa on Spark Gradle Pluginを有効にするには、アプリケーショ�
 
 * ``buildscript/dependencis`` ブロックに指定しているAsakusa Gradle Pluginの指定をAsakusa on Spark Gradle Pluginの指定に置き換える。
 
-  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.1.2'``
+  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.2.0'``
 
 * Asakusa on Spark Gradle Pluginを適用する定義を追加する
   
