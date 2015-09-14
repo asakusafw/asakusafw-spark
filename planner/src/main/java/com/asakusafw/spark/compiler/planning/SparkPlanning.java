@@ -119,7 +119,7 @@ public final class SparkPlanning {
 
     /**
      * Creates a new planner context.
-     * @param parent the the current jobflow processing context
+     * @param parent the current jobflow processing context
      * @param jobflow the target jobflow information
      * @return the created context
      */
@@ -130,7 +130,7 @@ public final class SparkPlanning {
 
     /**
      * Creates a new planner context.
-     * @param parent the the current jobflow processing context
+     * @param parent the current jobflow processing context
      * @param jobflow the target jobflow information
      * @param options the planning options
      * @return the created context
