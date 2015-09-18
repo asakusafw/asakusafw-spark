@@ -29,19 +29,19 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class AggregateDriver[V, C](
   sc: SparkContext,
-  hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Future[Broadcast[_]]],
-  @transient prevs: Seq[Future[RDD[(ShuffleKey, V)]]],
-  @transient sort: Option[Ordering[ShuffleKey]],
-  @transient partitioner: Partitioner)
-  extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[C] {
+  hadoopConf: Broadcast[Configuration])(
+    @transient prevs: Seq[Future[RDD[(ShuffleKey, V)]]],
+    @transient sort: Option[Ordering[ShuffleKey]],
+    @transient partitioner: Partitioner)(
+      @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
+  extends SubPlanDriver(sc, hadoopConf) with UsingBroadcasts with Branching[C] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
 
-    val future = zipBroadcasts().zip(Future.sequence(prevs)).map {
-      case (broadcasts, prevs) =>
+    val future = Future.sequence(prevs).zip(zipBroadcasts()).map {
+      case (prevs, broadcasts) =>
 
         sc.clearCallSite()
         sc.setCallSite(label)

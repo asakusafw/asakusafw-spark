@@ -34,9 +34,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: ClassTag](
   sc: SparkContext,
-  hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
-  extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[V] {
+  hadoopConf: Broadcast[Configuration])(
+    @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
+  extends SubPlanDriver(sc, hadoopConf) with UsingBroadcasts with Branching[V] {
 
   def paths: Option[Set[String]]
 
@@ -56,19 +56,19 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
       case (k, v) => job.getConfiguration.set(k, v)
     }
 
-    val future = zipBroadcasts().map { broadcasts =>
+    val future = Future {
 
       sc.clearCallSite()
       sc.setCallSite(label)
 
-      val rdd =
-        sc.newAPIHadoopRDD(
-          job.getConfiguration,
-          classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
-          classTag[K].runtimeClass.asInstanceOf[Class[K]],
-          classTag[V].runtimeClass.asInstanceOf[Class[V]])
-
-      branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts)
+      sc.newAPIHadoopRDD(
+        job.getConfiguration,
+        classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
+        classTag[K].runtimeClass.asInstanceOf[Class[K]],
+        classTag[V].runtimeClass.asInstanceOf[Class[V]])
+    }.zip(zipBroadcasts()).map {
+      case (rdd, broadcasts) =>
+        branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts)
     }
     branchKeys.map(key => key -> future.map(_(key))).toMap
   }

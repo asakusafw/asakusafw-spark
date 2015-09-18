@@ -57,7 +57,6 @@ object AggregateDriverInstantiator
     aggregateDriver.dup().invokeInit(
       vars.sc.push(),
       vars.hadoopConf.push(),
-      vars.broadcasts.push(),
       buildSeq(mb) { builder =>
         for {
           subPlanInput <- subplan.getInputs
@@ -83,7 +82,8 @@ object AggregateDriverInstantiator
         partitioner(mb)(
           numPartitions(mb)(vars.sc.push())(
             subplan.findInput(input.getOpposites.head.getOwner)))
-      }))
+      }),
+      vars.broadcasts.push())
     aggregateDriver.store(nextLocal.getAndAdd(aggregateDriver.size))
   }
 }

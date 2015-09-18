@@ -218,7 +218,7 @@ object ExtractDriverSpec {
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Hoge)]])
-        extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+      extends ExtractDriver[Hoge](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
       override def label = "SimpleMap"
 
@@ -268,7 +268,7 @@ object ExtractDriverSpec {
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Hoge)]])
-        extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+      extends ExtractDriver[Hoge](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
       override def label = "BranchMap"
 
@@ -337,7 +337,7 @@ object ExtractDriverSpec {
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Foo)]])
-        extends ExtractDriver[Foo](sc, hadoopConf, Map.empty, Seq(prev)) {
+      extends ExtractDriver[Foo](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
       override def label = "BranchAndOrderingMap"
 

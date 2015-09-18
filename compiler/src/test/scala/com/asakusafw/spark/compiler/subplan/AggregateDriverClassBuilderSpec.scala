@@ -113,17 +113,17 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       val driver = cls.getConstructor(
         classOf[SparkContext],
         classOf[Broadcast[Configuration]],
-        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Seq[Future[RDD[(ShuffleKey, _)]]]],
         classOf[Option[Ordering[ShuffleKey]]],
-        classOf[Partitioner])
+        classOf[Partitioner],
+        classOf[Map[BroadcastId, Broadcast[_]]])
         .newInstance(
           sc,
           hadoopConf,
-          Map.empty,
           Seq(Future.successful(hoges)),
           Option(new SortOrdering()),
-          new HashPartitioner(2))
+          new HashPartitioner(2),
+          Map.empty)
 
       val results = driver.execute()
 
@@ -200,17 +200,17 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       val driver = cls.getConstructor(
         classOf[SparkContext],
         classOf[Broadcast[Configuration]],
-        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Seq[Future[RDD[(ShuffleKey, _)]]]],
         classOf[Option[Ordering[ShuffleKey]]],
-        classOf[Partitioner])
+        classOf[Partitioner],
+        classOf[Map[BroadcastId, Broadcast[_]]])
         .newInstance(
           sc,
           hadoopConf,
-          Map.empty,
           Seq(Future.successful(hoges)),
           Option(new SortOrdering()),
-          new HashPartitioner(2))
+          new HashPartitioner(2),
+          Map.empty)
 
       val results = driver.execute()
 

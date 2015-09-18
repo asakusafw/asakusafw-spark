@@ -36,10 +36,10 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class OutputDriver[T: ClassTag](
   sc: SparkContext,
-  hadoopConf: Broadcast[Configuration],
-  @transient prevs: Seq[Future[RDD[(_, T)]]],
-  @transient terminators: mutable.Set[Future[Unit]])
-  extends SubPlanDriver(sc, hadoopConf, Map.empty) {
+  hadoopConf: Broadcast[Configuration])(
+    @transient prevs: Seq[Future[RDD[(_, T)]]],
+    @transient terminators: mutable.Set[Future[Unit]])
+  extends SubPlanDriver(sc, hadoopConf) {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 

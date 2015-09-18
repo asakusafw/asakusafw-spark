@@ -188,17 +188,17 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       val driver = cls.getConstructor(
         classOf[SparkContext],
         classOf[Broadcast[Configuration]],
-        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]],
         classOf[Ordering[ShuffleKey]],
-        classOf[Partitioner])
+        classOf[Partitioner],
+        classOf[Map[BroadcastId, Broadcast[_]]])
         .newInstance(
           sc,
           hadoopConf,
-          Map.empty,
           Seq((Seq(Future.successful(hogeList)), Option(hogeOrd)), (Seq(Future.successful(fooList)), Option(fooOrd))),
           grouping,
-          part)
+          part,
+          Map.empty)
       val results = driver.execute()
 
       assert(driver.partitioners.size === partitioners)
