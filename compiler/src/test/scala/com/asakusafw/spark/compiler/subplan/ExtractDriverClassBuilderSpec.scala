@@ -123,13 +123,13 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       val driver = cls.getConstructor(
         classOf[SparkContext],
         classOf[Broadcast[Configuration]],
-        classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[Seq[Future[RDD[_]]]])
+        classOf[Seq[Future[RDD[_]]]],
+        classOf[Map[BroadcastId, Broadcast[_]]])
         .newInstance(
           sc,
           hadoopConf,
-          Map.empty,
-          Seq(Future.successful(hoges)))
+          Seq(Future.successful(hoges)),
+          Map.empty)
       val results = driver.execute()
 
       assert(driver.partitioners.size === partitioners)
@@ -227,13 +227,13 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       val driver = cls.getConstructor(
         classOf[SparkContext],
         classOf[Broadcast[Configuration]],
-        classOf[Map[Long, Broadcast[_]]],
-        classOf[Seq[RDD[_]]])
+        classOf[Seq[RDD[_]]],
+        classOf[Map[BroadcastId, Broadcast[_]]])
         .newInstance(
           sc,
           hadoopConf,
-          Map.empty,
-          Seq(Future.successful(hoges)))
+          Seq(Future.successful(hoges)),
+          Map.empty)
 
       assert(driver.partitioners.size === partitioners)
 

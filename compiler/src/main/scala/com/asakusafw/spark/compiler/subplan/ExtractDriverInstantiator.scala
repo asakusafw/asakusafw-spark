@@ -47,7 +47,6 @@ object ExtractDriverInstantiator
     extractDriver.dup().invokeInit(
       vars.sc.push(),
       vars.hadoopConf.push(),
-      vars.broadcasts.push(),
       buildSeq(mb) { builder =>
         for {
           subPlanInput <- subplan.getInputs.toSet[SubPlan.Input]
@@ -62,7 +61,8 @@ object ExtractDriverInstantiator
               context.branchKeys.getField(mb, marker))
             .cast(classOf[Future[RDD[(_, _)]]].asType)
         }
-      })
+      },
+      vars.broadcasts.push())
     extractDriver.store(nextLocal.getAndAdd(extractDriver.size))
   }
 }

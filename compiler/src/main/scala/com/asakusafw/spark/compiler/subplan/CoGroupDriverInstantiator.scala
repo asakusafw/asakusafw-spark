@@ -60,7 +60,6 @@ object CoGroupDriverInstantiator
     cogroupDriver.dup().invokeInit(
       vars.sc.push(),
       vars.hadoopConf.push(),
-      vars.broadcasts.push(),
       buildSeq(mb) { builder =>
         for {
           input <- primaryOperator.getInputs
@@ -96,7 +95,8 @@ object CoGroupDriverInstantiator
         partitioner(mb)(
           numPartitions(mb)(vars.sc.push())(
             subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner)))
-      })
+      },
+      vars.broadcasts.push())
     cogroupDriver.store(nextLocal.getAndAdd(cogroupDriver.size))
   }
 }

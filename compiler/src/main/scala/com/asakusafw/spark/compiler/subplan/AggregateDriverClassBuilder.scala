@@ -67,29 +67,15 @@ class AggregateDriverClassBuilder(
     ctorDef.newInit(Seq(
       classOf[SparkContext].asType,
       classOf[Broadcast[Configuration]].asType,
-      classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType,
       classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType,
       classOf[Option[Ordering[ShuffleKey]]].asType,
-      classOf[Partitioner].asType),
+      classOf[Partitioner].asType,
+      classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
         .newParameterType {
           _.newClassType(classOf[Broadcast[_]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
-          }
-        }
-        .newParameterType {
-          _.newClassType(classOf[Map[_, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                _.newClassType(classOf[Future[_]].asType) {
-                  _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                    _.newClassType(classOf[Broadcast[_]].asType) {
-                      _.newTypeArgument()
-                    }
-                  }
-                }
-              }
           }
         }
         .newParameterType {
@@ -120,6 +106,20 @@ class AggregateDriverClassBuilder(
           }
         }
         .newParameterType(classOf[Partitioner].asType)
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Future[_]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Broadcast[_]].asType) {
+                      _.newTypeArgument()
+                    }
+                  }
+                }
+              }
+          }
+        }
         .newVoidReturnType()
         .build()) { mb =>
         import mb._ // scalastyle:ignore
@@ -127,23 +127,23 @@ class AggregateDriverClassBuilder(
           `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar =
           `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
         val prevsVar =
-          `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, broadcastsVar.nextLocal)
+          `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, hadoopConfVar.nextLocal)
         val sortVar =
           `var`(classOf[Option[Ordering[ShuffleKey]]].asType, prevsVar.nextLocal)
         val partVar =
           `var`(classOf[Partitioner].asType, sortVar.nextLocal)
+        val broadcastsVar =
+          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, partVar.nextLocal)
 
         thisVar.push().invokeInit(
           superType,
           scVar.push(),
           hadoopConfVar.push(),
-          broadcastsVar.push(),
           prevsVar.push(),
           sortVar.push(),
-          partVar.push())
+          partVar.push(),
+          broadcastsVar.push())
       }
   }
 
