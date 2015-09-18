@@ -47,6 +47,10 @@
     <scalatest.version>2.2.3</scalatest.version>
   </properties>
 
+  <modules>
+    <module>core</module>
+  </modules>
+
   <build>
     <pluginManagement>
       <plugins>
