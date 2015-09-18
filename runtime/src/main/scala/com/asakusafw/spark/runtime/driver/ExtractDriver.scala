@@ -36,8 +36,8 @@ abstract class ExtractDriver[T](
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
 
-    val future = zipBroadcasts().zip {
-      if (prevs.size == 1) {
+    val future =
+      (if (prevs.size == 1) {
         prevs.head
       } else {
         Future.sequence(prevs).map { prevs =>
@@ -59,15 +59,14 @@ abstract class ExtractDriver[T](
             new UnionRDD(sc, coalesced +: unioning)
           }
         }
+      }).zip(zipBroadcasts()).map {
+        case (prev, broadcasts) =>
+
+          sc.clearCallSite()
+          sc.setCallSite(label)
+
+          branch(prev, broadcasts)
       }
-    }.map {
-      case (broadcasts, prev) =>
-
-        sc.clearCallSite()
-        sc.setCallSite(label)
-
-        branch(prev, broadcasts)
-    }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap
   }

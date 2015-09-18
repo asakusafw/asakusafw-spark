@@ -40,8 +40,8 @@ abstract class AggregateDriver[V, C](
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
 
-    val future = zipBroadcasts().zip(Future.sequence(prevs)).map {
-      case (broadcasts, prevs) =>
+    val future = Future.sequence(prevs).zip(zipBroadcasts()).map {
+      case (prevs, broadcasts) =>
 
         sc.clearCallSite()
         sc.setCallSite(label)
