@@ -154,7 +154,7 @@ object CoGroupDriverSpec {
     @transient inputs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])],
     @transient grouping: Ordering[ShuffleKey],
     @transient part: Partitioner)
-    extends CoGroupDriver(sc, hadoopConf, Map.empty, inputs, grouping, part) {
+    extends CoGroupDriver(sc, hadoopConf)(inputs, grouping, part)(Map.empty) {
 
     override def label = "TestCoGroup"
 

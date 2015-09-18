@@ -27,12 +27,12 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroupDriver(
   sc: SparkContext,
-  hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Future[Broadcast[_]]],
-  @transient prevs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])],
-  @transient grouping: Ordering[ShuffleKey],
-  @transient part: Partitioner)
-  extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[Seq[Iterator[_]]] {
+  hadoopConf: Broadcast[Configuration])(
+    @transient prevs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])],
+    @transient grouping: Ordering[ShuffleKey],
+    @transient part: Partitioner)(
+      @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
+  extends SubPlanDriver(sc, hadoopConf) with UsingBroadcasts with Branching[Seq[Iterator[_]]] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 

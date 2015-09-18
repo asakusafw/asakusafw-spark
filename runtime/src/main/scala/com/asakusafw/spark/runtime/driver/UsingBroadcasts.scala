@@ -17,21 +17,22 @@ package com.asakusafw.spark.runtime.driver
 
 import scala.concurrent.Future
 
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.Writable
-import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
 
-import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.SparkClient.executionContext
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd._
 
-abstract class SubPlanDriver(
-  @transient val sc: SparkContext,
-  val hadoopConf: Broadcast[Configuration]) extends Serializable {
+trait UsingBroadcasts {
 
-  def label: String
+  def broadcasts: Map[BroadcastId, Future[Broadcast[_]]]
 
-  def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]
+  def zipBroadcasts(): Future[Map[BroadcastId, Broadcast[_]]] = {
+    (Future.successful(Map.empty[BroadcastId, Broadcast[_]]) /: broadcasts) {
+      case (broadcasts, (broadcastId, broadcast)) =>
+        broadcasts.zip(broadcast).map {
+          case (broadcasts, broadcast) =>
+            broadcasts + (broadcastId -> broadcast)
+        }
+    }
+  }
 }

@@ -27,10 +27,10 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class ExtractDriver[T](
   sc: SparkContext,
-  hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Future[Broadcast[_]]],
-  @transient prevs: Seq[Future[RDD[(_, T)]]])
-  extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[T] {
+  hadoopConf: Broadcast[Configuration])(
+    @transient prevs: Seq[Future[RDD[(_, T)]]])(
+      @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
+  extends SubPlanDriver(sc, hadoopConf) with UsingBroadcasts with Branching[T] {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 

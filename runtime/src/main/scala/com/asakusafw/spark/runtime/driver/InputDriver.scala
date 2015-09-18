@@ -34,9 +34,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: ClassTag](
   sc: SparkContext,
-  hadoopConf: Broadcast[Configuration],
-  broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
-  extends SubPlanDriver(sc, hadoopConf, broadcasts) with Branching[V] {
+  hadoopConf: Broadcast[Configuration])(
+    @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
+  extends SubPlanDriver(sc, hadoopConf) with UsingBroadcasts with Branching[V] {
 
   def paths: Option[Set[String]]
 

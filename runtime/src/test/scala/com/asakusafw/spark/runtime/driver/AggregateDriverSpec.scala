@@ -248,7 +248,7 @@ object AggregateDriverSpec {
       @transient sort: Option[Ordering[ShuffleKey]],
       @transient part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
-      extends AggregateDriver[Hoge, Hoge](sc, hadoopConf, Map.empty, Seq(prev), sort, part) {
+      extends AggregateDriver[Hoge, Hoge](sc, hadoopConf)(Seq(prev), sort, part)(Map.empty) {
 
       override def label = "TestAggregation"
 
@@ -304,7 +304,7 @@ object AggregateDriverSpec {
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
       @transient prev: Future[RDD[(_, Hoge)]])
-      extends ExtractDriver[Hoge](sc, hadoopConf, Map.empty, Seq(prev)) {
+      extends ExtractDriver[Hoge](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
       override def label = "TestPartialAggregation"
 
