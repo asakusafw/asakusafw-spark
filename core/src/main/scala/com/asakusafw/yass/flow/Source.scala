@@ -32,6 +32,64 @@ trait Source extends Node {
   final def getOrCompute(rc: RoundContext): Map[BranchKey, Future[RDD[_]]] = {
     Source.getOrCompute(this)(rc)
   }
+
+  def map[T, U: ClassTag](branchKey: BranchKey)(f: T => U): Source = {
+    new MapPartitions(this, branchKey, {
+      RoundContext => (Int, iter: Iterator[T]) => iter.map(f)
+    }, preservesPartitioning = false)
+  }
+
+  def mapWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
+    f: RoundContext => T => U): Source = {
+    new MapPartitions(this, branchKey, {
+      rc: RoundContext => (Int, iter: Iterator[T]) => iter.map(f(rc))
+    }, preservesPartitioning = false)
+  }
+
+  def flatMap[T, U: ClassTag](branchKey: BranchKey)(f: T => TraversableOnce[U]): Source = {
+    new MapPartitions(this, branchKey, {
+      RoundContext => (Int, iter: Iterator[T]) => iter.flatMap(f)
+    }, preservesPartitioning = false)
+  }
+
+  def flatMapWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
+    f: RoundContext => T => TraversableOnce[U]): Source = {
+    new MapPartitions(this, branchKey, {
+      rc: RoundContext => (Int, iter: Iterator[T]) => iter.flatMap(f(rc))
+    }, preservesPartitioning = false)
+  }
+
+  def mapPartitions[T, U: ClassTag](branchKey: BranchKey)(
+    f: Iterator[T] => Iterator[U],
+    preservesPartitioning: Boolean = false): Source = {
+    new MapPartitions(this, branchKey, {
+      RoundContext => (index: Int, iter: Iterator[T]) => f(iter)
+    }, preservesPartitioning)
+  }
+
+  def mapPartitionsWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
+    f: RoundContext => Iterator[T] => Iterator[U],
+    preservesPartitioning: Boolean = false): Source = {
+    new MapPartitions(this, branchKey, {
+      rc: RoundContext => (Int, iter: Iterator[T]) => f(rc)(iter)
+    }, preservesPartitioning)
+  }
+
+  def mapPartitionsWithIndex[T, U: ClassTag](branchKey: BranchKey)(
+    f: (Int, Iterator[T]) => Iterator[U],
+    preservesPartitioning: Boolean = false): Source = {
+    new MapPartitions(this, branchKey, {
+      RoundContext => (index: Int, iter: Iterator[T]) => f(index, iter)
+    }, preservesPartitioning)
+  }
+
+  def mapPartitionsWithIndexAndRoundContext[T, U: ClassTag](branchKey: BranchKey)(
+    f: RoundContext => (Int, Iterator[T]) => Iterator[U],
+    preservesPartitioning: Boolean = false): Source = {
+    new MapPartitions(this, branchKey, {
+      rc: RoundContext => (index: Int, iter: Iterator[T]) => f(rc)(index, iter)
+    }, preservesPartitioning)
+  }
 }
 
 object Source {
