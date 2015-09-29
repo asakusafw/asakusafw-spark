@@ -35,7 +35,7 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
   def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: AggregationCompiler.Context): Type = {
 
     assert(operator.annotationDesc.resolveClass == of,
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
@@ -70,13 +70,13 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
     val builder = new FoldAggregationClassBuilder(operator)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }
 
 private class FoldAggregationClassBuilder(
   operator: UserOperator)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: AggregationCompiler.Context)
   extends AggregationClassBuilder(
     operator.inputs(Fold.ID_INPUT).dataModelType,
     operator.outputs(Fold.ID_OUTPUT).dataModelType)

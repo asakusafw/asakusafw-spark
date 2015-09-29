@@ -30,7 +30,7 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.Jobflow
 import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.spark.compiler.planning.SparkPlanning
-import com.asakusafw.spark.compiler.spi.OperatorCompiler
+import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler }
 import com.asakusafw.spark.compiler.subplan.{
   BranchKeysClassBuilder,
   BroadcastIdsClassBuilder
@@ -105,7 +105,8 @@ object SparkClientCompiler {
     externalInputs: mutable.Map[String, ExternalInputReference],
     branchKeys: BranchKeysClassBuilder,
     broadcastIds: BroadcastIdsClassBuilder)
-    extends OperatorCompiler.Context {
+    extends OperatorCompiler.Context
+    with AggregationCompiler.Context {
 
     override def classLoader: ClassLoader = jpContext.getClassLoader
 
