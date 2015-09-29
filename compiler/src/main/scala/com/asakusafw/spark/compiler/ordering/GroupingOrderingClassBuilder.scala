@@ -23,7 +23,6 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.spark.compiler.ordering.GroupingOrderingClassBuilder._
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.orderings.AbstractOrdering
@@ -32,7 +31,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class GroupingOrderingClassBuilder(
   groupingTypes: Seq[Type])(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: CompilerContext)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/ordering/GroupingOrdering$$${nextId};"), // scalastyle:ignore
@@ -128,15 +127,15 @@ object GroupingOrderingClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Seq[Type]), Type]] =
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Seq[Type]), Type]] =
     mutable.WeakHashMap.empty
 
   def getOrCompile(
     groupingTypes: Seq[Type])(
-      implicit context: SparkClientCompiler.Context): Type = {
-    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+      implicit context: CompilerContext): Type = {
+    cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
       (context.flowId, groupingTypes), {
-        context.jpContext.addClass(new GroupingOrderingClassBuilder(groupingTypes))
+        context.addClass(new GroupingOrderingClassBuilder(groupingTypes))
       })
   }
 }
