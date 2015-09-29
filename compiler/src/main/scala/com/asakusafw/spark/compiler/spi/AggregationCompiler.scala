@@ -36,12 +36,10 @@ trait AggregationCompiler {
 
 object AggregationCompiler {
 
-  trait Context extends ClassLoaderProvider with DataModelLoaderProvider {
-
-    def flowId: String
-
-    def addClass(builder: ClassBuilder): Type
-  }
+  trait Context
+    extends CompilerContext
+    with ClassLoaderProvider
+    with DataModelLoaderProvider
 
   private def getCompiler(
     operator: Operator)(

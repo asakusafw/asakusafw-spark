@@ -51,11 +51,10 @@ trait OperatorCompiler {
 
 object OperatorCompiler {
 
-  trait Context extends ClassLoaderProvider with DataModelLoaderProvider {
-
-    def flowId: String
-
-    def addClass(builder: ClassBuilder): Type
+  trait Context
+    extends CompilerContext
+    with ClassLoaderProvider
+    with DataModelLoaderProvider {
 
     def broadcastIds: BroadcastIds
   }
