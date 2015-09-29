@@ -49,7 +49,7 @@ import com.asakusafw.vocabulary.operator.Extract
 @RunWith(classOf[JUnitRunner])
 class ExtractDriverClassBuilderSpecTest extends ExtractDriverClassBuilderSpec
 
-class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with CompilerContext {
+class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with UsingCompilerContext {
 
   import ExtractDriverClassBuilderSpec._
 

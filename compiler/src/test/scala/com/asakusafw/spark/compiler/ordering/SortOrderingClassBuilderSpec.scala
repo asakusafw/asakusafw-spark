@@ -28,7 +28,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class SortOrderingClassBuilderSpecTest extends SortOrderingClassBuilderSpec
 
-class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class SortOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   behavior of classOf[SortOrderingClassBuilder].getSimpleName
 

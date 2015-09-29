@@ -32,7 +32,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class EdgeFragmentClassBuilderSpecTest extends EdgeFragmentClassBuilderSpec
 
-class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import EdgeFragmentClassBuilderSpec._
 

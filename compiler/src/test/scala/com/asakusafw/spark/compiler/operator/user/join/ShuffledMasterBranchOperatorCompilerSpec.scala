@@ -50,7 +50,7 @@ import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp, Maste
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterBranchOperatorCompilerSpecTest extends ShuffledMasterBranchOperatorCompilerSpec
 
-class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import ShuffledMasterBranchOperatorCompilerSpec._
 

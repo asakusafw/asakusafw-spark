@@ -49,7 +49,7 @@ import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp, MasterS
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterCheckOperatorCompilerSpecTest extends ShuffledMasterCheckOperatorCompilerSpec
 
-class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import ShuffledMasterCheckOperatorCompilerSpec._
 

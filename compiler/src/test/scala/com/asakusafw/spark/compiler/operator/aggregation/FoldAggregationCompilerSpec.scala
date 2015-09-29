@@ -37,7 +37,7 @@ import com.asakusafw.vocabulary.operator.Fold
 @RunWith(classOf[JUnitRunner])
 class FoldAggregationCompilerSpecTest extends FoldAggregationCompilerSpec
 
-class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import FoldAggregationCompilerSpec._
 

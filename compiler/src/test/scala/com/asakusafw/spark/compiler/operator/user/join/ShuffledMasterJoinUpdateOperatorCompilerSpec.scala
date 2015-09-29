@@ -49,7 +49,7 @@ import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateO
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterJoinUpdateOperatorCompilerSpecTest extends ShuffledMasterJoinUpdateOperatorCompilerSpec
 
-class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import ShuffledMasterJoinUpdateOperatorCompilerSpec._
 

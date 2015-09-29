@@ -47,7 +47,7 @@ import com.asakusafw.vocabulary.operator.Split
 @RunWith(classOf[JUnitRunner])
 class SplitOperatorCompilerSpecTest extends SplitOperatorCompilerSpec
 
-class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import SplitOperatorCompilerSpec._
 

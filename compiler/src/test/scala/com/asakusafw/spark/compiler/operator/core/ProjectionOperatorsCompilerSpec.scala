@@ -46,7 +46,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class ProjectionOperatorsCompilerSpecTest extends ProjectionOperatorsCompilerSpec
 
-class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import ProjectionOperatorsCompilerSpec._
 

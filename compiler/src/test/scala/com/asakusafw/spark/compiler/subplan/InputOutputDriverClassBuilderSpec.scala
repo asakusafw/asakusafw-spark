@@ -53,7 +53,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverClassBuilderSpecTest extends InputOutputDriverClassBuilderSpec
 
-class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with TempDir with CompilerContext {
+class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with TempDir with UsingCompilerContext {
 
   import InputOutputDriverClassBuilderSpec._
 

@@ -46,7 +46,7 @@ import com.asakusafw.vocabulary.operator.Convert
 @RunWith(classOf[JUnitRunner])
 class ConvertOperatorCompilerSpecTest extends ConvertOperatorCompilerSpec
 
-class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import ConvertOperatorCompilerSpec._
 

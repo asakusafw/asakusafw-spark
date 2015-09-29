@@ -28,7 +28,7 @@ import com.asakusafw.spark.compiler.subplan.{
   BroadcastIdsClassBuilder
 }
 
-trait CompilerContext {
+trait UsingCompilerContext {
 
   def newContext(
     flowId: String,

@@ -50,7 +50,7 @@ import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp, MasterSel
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterJoinOperatorCompilerSpecTest extends ShuffledMasterJoinOperatorCompilerSpec
 
-class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import ShuffledMasterJoinOperatorCompilerSpec._
 

@@ -45,7 +45,7 @@ import com.asakusafw.vocabulary.operator.Update
 @RunWith(classOf[JUnitRunner])
 class UpdateOperatorCompilerSpecTest extends UpdateOperatorCompilerSpec
 
-class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import UpdateOperatorCompilerSpec._
 

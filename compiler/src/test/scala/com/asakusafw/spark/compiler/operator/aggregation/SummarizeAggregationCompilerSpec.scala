@@ -38,7 +38,7 @@ import com.asakusafw.vocabulary.operator.Summarize
 @RunWith(classOf[JUnitRunner])
 class SummarizeAggregationCompilerSpecTest extends SummarizeAggregationCompilerSpec
 
-class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import SummarizeAggregationCompilerSpec._
 

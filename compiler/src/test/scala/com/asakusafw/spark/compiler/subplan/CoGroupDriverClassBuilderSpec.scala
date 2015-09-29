@@ -56,7 +56,7 @@ import com.asakusafw.vocabulary.operator.CoGroup
 @RunWith(classOf[JUnitRunner])
 class CoGroupDriverClassBuilderSpecTest extends CoGroupDriverClassBuilderSpec
 
-class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with CompilerContext {
+class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with UsingCompilerContext {
 
   import CoGroupDriverClassBuilderSpec._
 

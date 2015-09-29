@@ -46,7 +46,7 @@ import com.asakusafw.vocabulary.operator.Branch
 @RunWith(classOf[JUnitRunner])
 class BranchOperatorCompilerSpecTest extends BranchOperatorCompilerSpec
 
-class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import BranchOperatorCompilerSpec._
 

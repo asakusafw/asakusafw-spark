@@ -49,7 +49,7 @@ import com.asakusafw.vocabulary.operator.CoGroup
 @RunWith(classOf[JUnitRunner])
 class CoGroupOperatorCompilerSpecTest extends CoGroupOperatorCompilerSpec
 
-class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import CoGroupOperatorCompilerSpec._
 

@@ -53,7 +53,7 @@ import com.asakusafw.vocabulary.operator.Fold
 @RunWith(classOf[JUnitRunner])
 class AggregateDriverClassBuilderSpecTest extends AggregateDriverClassBuilderSpec
 
-class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with CompilerContext {
+class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with UsingCompilerContext {
 
   import AggregateDriverClassBuilderSpec._
 

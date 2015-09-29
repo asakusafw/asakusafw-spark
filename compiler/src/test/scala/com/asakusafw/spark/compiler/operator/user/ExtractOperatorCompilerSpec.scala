@@ -46,7 +46,7 @@ import com.asakusafw.vocabulary.operator.Extract
 @RunWith(classOf[JUnitRunner])
 class ExtractOperatorCompilerSpecTest extends ExtractOperatorCompilerSpec
 
-class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import ExtractOperatorCompilerSpec._
 

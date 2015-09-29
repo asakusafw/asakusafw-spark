@@ -33,7 +33,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class OutputFragmentClassBuilderSpecTest extends OutputFragmentClassBuilderSpec
 
-class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
 
   import OutputFragmentClassBuilderSpec._
 
