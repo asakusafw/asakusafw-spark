@@ -23,7 +23,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
-import com.asakusafw.spark.compiler.spi.OperatorType
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.Extract
@@ -32,7 +32,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
   override def support(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     operator.annotationDesc.resolveClass == classOf[Extract]
   }
 
@@ -40,7 +40,7 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
   override def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
@@ -67,13 +67,13 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
 
     val builder = new ExtractOperatorFragmentClassBuilder(operator)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }
 
 private class ExtractOperatorFragmentClassBuilder(
   operator: UserOperator)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Extract.ID_INPUT).dataModelType,
     operator.implementationClass.asType,

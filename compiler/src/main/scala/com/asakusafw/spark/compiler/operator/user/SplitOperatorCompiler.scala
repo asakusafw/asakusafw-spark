@@ -23,7 +23,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
 import com.asakusafw.lang.compiler.model.graph.UserOperator
-import com.asakusafw.spark.compiler.spi.OperatorType
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -33,7 +33,7 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
 
   override def support(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     operator.annotationDesc.resolveClass == classOf[Split]
   }
 
@@ -41,7 +41,7 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
 
   override def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
@@ -52,13 +52,13 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
 
     val builder = new SplitOperatorFragmentClassBuilder(operator)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }
 
 private class SplitOperatorFragmentClassBuilder(
   operator: UserOperator)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Split.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
@@ -66,7 +66,7 @@ private class SplitOperatorFragmentClassBuilder(
   with ScalaIdioms {
 
   val mappings =
-    JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
+    JoinedModelUtil.getPropertyMappings(context.classLoader, operator).toSeq
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)

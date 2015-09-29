@@ -24,6 +24,8 @@ import scala.collection.JavaConversions._
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.Operator
+import com.asakusafw.spark.compiler.subplan.BroadcastIds
+import com.asakusafw.spark.tools.asm.ClassBuilder
 
 sealed trait OperatorType
 
@@ -38,34 +40,43 @@ trait OperatorCompiler {
 
   def support(
     operator: Operator)(
-      implicit context: SparkClientCompiler.Context): Boolean
+      implicit context: OperatorCompiler.Context): Boolean
 
   def operatorType: OperatorType
 
   def compile(
     operator: Operator)(
-      implicit context: SparkClientCompiler.Context): Type
+      implicit context: OperatorCompiler.Context): Type
 }
 
 object OperatorCompiler {
 
+  trait Context extends ClassLoaderProvider with DataModelLoaderProvider {
+
+    def flowId: String
+
+    def addClass(builder: ClassBuilder): Type
+
+    def broadcastIds: BroadcastIds
+  }
+
   private def getCompiler(
     operator: Operator)(
-      implicit context: SparkClientCompiler.Context): Seq[OperatorCompiler] = {
-    apply(context.jpContext.getClassLoader).filter(_.support(operator))
+      implicit context: OperatorCompiler.Context): Seq[OperatorCompiler] = {
+    apply(context.classLoader).filter(_.support(operator))
   }
 
   def support(
     operator: Operator,
     operatorType: OperatorType)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     getCompiler(operator).exists(_.operatorType == operatorType)
   }
 
   def compile(
     operator: Operator,
     operatorType: OperatorType)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
     val compilers = getCompiler(operator).filter(_.operatorType == operatorType)
     assert(compilers.size != 0,
       s"The compiler supporting operator (${operator}, ${operatorType}) is not found.")

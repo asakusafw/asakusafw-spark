@@ -25,7 +25,7 @@ trait UserOperatorCompiler extends OperatorCompiler {
 
   override def support(
     operator: Operator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     operator match {
       case op: UserOperator => support(op)
       case _ => false
@@ -34,11 +34,11 @@ trait UserOperatorCompiler extends OperatorCompiler {
 
   def support(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Boolean
+      implicit context: OperatorCompiler.Context): Boolean
 
   override def compile(
     operator: Operator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
     operator match {
       case op: UserOperator => compile(op)
     }
@@ -46,5 +46,5 @@ trait UserOperatorCompiler extends OperatorCompiler {
 
   def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type
+      implicit context: OperatorCompiler.Context): Type
 }

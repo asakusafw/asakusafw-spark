@@ -21,14 +21,14 @@ package join
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
-import com.asakusafw.spark.compiler.spi.OperatorType
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 
 class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
   override def support(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     operator.annotationDesc.resolveClass == classOf[MasterCheckOp]
   }
 
@@ -36,7 +36,7 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
   override def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
@@ -56,6 +56,6 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
         operator.inputs(MasterCheckOp.ID_INPUT_MASTER),
         operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION)) with MasterCheck
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }

@@ -51,8 +51,8 @@ package object compiler {
     val desc: ReifiableTypeDescription) extends AnyVal {
 
     def resolveClass(
-      implicit context: SparkClientCompiler.Context): Class[_] = {
-      desc.resolve(context.jpContext.getClassLoader)
+      implicit provider: ClassLoaderProvider): Class[_] = {
+      desc.resolve(provider.classLoader)
     }
   }
 
@@ -140,13 +140,13 @@ package object compiler {
     }
 
     def branchOutputMap(
-      implicit context: SparkClientCompiler.Context): Map[OperatorOutput, Enum[_]] = {
-      BranchOperatorUtil.getOutputMap(context.jpContext.getClassLoader, operator).toMap
+      implicit provider: ClassLoaderProvider): Map[OperatorOutput, Enum[_]] = {
+      BranchOperatorUtil.getOutputMap(provider.classLoader, operator).toMap
     }
 
     def selectionMethod(
-      implicit context: SparkClientCompiler.Context): Option[(String, Type)] = {
-      Option(MasterJoinOperatorUtil.getSelection(context.jpContext.getClassLoader, operator))
+      implicit provider: ClassLoaderProvider): Option[(String, Type)] = {
+      Option(MasterJoinOperatorUtil.getSelection(provider.classLoader, operator))
         .map(method => (method.getName, Type.getType(method)))
     }
   }
@@ -156,7 +156,7 @@ package object compiler {
     def elements: Map[String, ValueDescription] = ad.getElements.toMap
 
     def resolveClass(
-      implicit context: SparkClientCompiler.Context): Class[_] = {
+      implicit provider: ClassLoaderProvider): Class[_] = {
       ad.getDeclaringClass.resolveClass
     }
   }
@@ -164,33 +164,34 @@ package object compiler {
   implicit class AugmentedMethodDescirption(val md: MethodDescription) extends AnyVal {
 
     def asType(
-      implicit context: SparkClientCompiler.Context): Type = {
-      Type.getType(md.resolve(context.jpContext.getClassLoader))
+      implicit provider: ClassLoaderProvider): Type = {
+      Type.getType(md.resolve(provider.classLoader))
     }
 
     def name: String = md.getName
 
     def parameterClasses(
-      implicit context: SparkClientCompiler.Context): Seq[Class[_]] = {
-      md.getParameterTypes.map(_.resolve(context.jpContext.getClassLoader))
+      implicit provider: ClassLoaderProvider): Seq[Class[_]] = {
+      md.getParameterTypes.map(_.resolve(provider.classLoader))
     }
   }
 
   implicit class AugmentedOperatorInput(val op: OperatorPort) extends AnyVal {
 
     def dataModelRef(
-      implicit context: SparkClientCompiler.Context): DataModelReference = {
-      context.jpContext.getDataModelLoader.load(op.getDataType)
+      implicit provider: DataModelLoaderProvider): DataModelReference = {
+      provider.dataModelLoader.load(op.getDataType)
     }
 
     def dataModelType(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit provider: DataModelLoaderProvider): Type = {
       dataModelRef.getDeclaration.asType
     }
 
     def dataModelClass(
-      implicit context: SparkClientCompiler.Context): Class[_] = {
-      dataModelRef.getDeclaration.resolve(context.jpContext.getClassLoader)
+      implicit dataModelProvider: DataModelLoaderProvider,
+      classLoaderProvider: ClassLoaderProvider): Class[_] = {
+      dataModelRef.getDeclaration.resolve(classLoaderProvider.classLoader)
     }
   }
 
@@ -199,12 +200,12 @@ package object compiler {
     def asType: Type = oa.getValue.getValueType.asType
 
     def resolveClass(
-      implicit context: SparkClientCompiler.Context): Class[_] = {
-      oa.getValue.getValueType.getErasure.resolve(context.jpContext.getClassLoader)
+      implicit provider: ClassLoaderProvider): Class[_] = {
+      oa.getValue.getValueType.getErasure.resolve(provider.classLoader)
     }
 
     def value(
-      implicit context: SparkClientCompiler.Context): Any = {
+      implicit provider: ClassLoaderProvider): Any = {
       oa.getValue.value
     }
   }
@@ -212,8 +213,8 @@ package object compiler {
   implicit class AugmentedValueDescription(val vd: ValueDescription) extends AnyVal {
 
     def value(
-      implicit context: SparkClientCompiler.Context): Any = {
-      vd.resolve(context.jpContext.getClassLoader)
+      implicit provider: ClassLoaderProvider): Any = {
+      vd.resolve(provider.classLoader)
     }
   }
 

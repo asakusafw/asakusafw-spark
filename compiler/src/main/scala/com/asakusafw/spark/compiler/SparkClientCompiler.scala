@@ -18,20 +18,26 @@ package com.asakusafw.spark.compiler
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.objectweb.asm.Type
 import org.slf4j.LoggerFactory
 
-import com.asakusafw.lang.compiler.api.{ Exclusive, JobflowProcessor }
+import com.asakusafw.lang.compiler.api.{ DataModelLoader, Exclusive, JobflowProcessor }
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.{ CommandToken, ExternalInputReference }
 import com.asakusafw.lang.compiler.common.Location
 import com.asakusafw.lang.compiler.inspection.InspectionExtension
+import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.Jobflow
 import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.spark.compiler.planning.SparkPlanning
+import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.compiler.subplan.{
   BranchKeysClassBuilder,
   BroadcastIdsClassBuilder
 }
+import com.asakusafw.spark.tools.asm.ClassBuilder
+
+import resource._
 
 @Exclusive
 class SparkClientCompiler extends JobflowProcessor {
@@ -99,4 +105,19 @@ object SparkClientCompiler {
     externalInputs: mutable.Map[String, ExternalInputReference],
     branchKeys: BranchKeysClassBuilder,
     broadcastIds: BroadcastIdsClassBuilder)
+    extends OperatorCompiler.Context {
+
+    override def classLoader: ClassLoader = jpContext.getClassLoader
+
+    override def dataModelLoader: DataModelLoader = jpContext.getDataModelLoader
+
+    override def addClass(builder: ClassBuilder): Type = {
+      for {
+        os <- managed(jpContext.addClassFile(new ClassDescription(builder.thisType.getClassName)))
+      } {
+        os.write(builder.build())
+      }
+      builder.thisType
+    }
+  }
 }
