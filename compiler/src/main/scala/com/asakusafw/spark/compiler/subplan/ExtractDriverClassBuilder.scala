@@ -29,7 +29,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.spi.OperatorCompiler
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, SubPlanCompiler }
 import com.asakusafw.spark.compiler.subplan.ExtractDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ExtractDriver, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
@@ -41,7 +41,7 @@ class ExtractDriverClassBuilder(
   val marker: MarkerOperator)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
-      implicit val context: SparkClientCompiler.Context)
+      implicit val context: SubPlanCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/ExtractDriver$$${nextId};"),

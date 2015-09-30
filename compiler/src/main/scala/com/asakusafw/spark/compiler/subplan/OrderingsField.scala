@@ -24,6 +24,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
+import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -34,7 +35,7 @@ trait OrderingsField
   with ScalaIdioms
   with SparkIdioms {
 
-  implicit def context: SparkClientCompiler.Context
+  implicit def context: SubPlanCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 

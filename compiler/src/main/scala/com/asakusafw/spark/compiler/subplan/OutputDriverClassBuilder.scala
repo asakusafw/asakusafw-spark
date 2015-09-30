@@ -29,6 +29,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
+import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.OutputDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.OutputDriver
 import com.asakusafw.spark.tools.asm._
@@ -37,7 +38,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 class OutputDriverClassBuilder(
   val operator: ExternalOutput)(
     val label: String)(
-      implicit context: SparkClientCompiler.Context)
+      implicit context: SubPlanCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/OutputDriver$$${nextId};"),
@@ -121,7 +122,7 @@ class OutputDriverClassBuilder(
 
     methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
       import mb._ // scalastyle:ignore
-      `return`(ldc(context.jpContext.getOptions.getRuntimeWorkingPath(operator.getName)))
+      `return`(ldc(context.options.getRuntimeWorkingPath(operator.getName)))
     }
   }
 }

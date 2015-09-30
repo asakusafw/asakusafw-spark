@@ -47,7 +47,6 @@ trait UsingCompilerContext {
     SparkClientCompiler.Context(
       flowId = flowId,
       jpContext = jpContext,
-      externalInputs = mutable.Map.empty,
       branchKeys = new BranchKeysClassBuilder(flowId),
       broadcastIds = new BroadcastIdsClassBuilder(flowId))
   }

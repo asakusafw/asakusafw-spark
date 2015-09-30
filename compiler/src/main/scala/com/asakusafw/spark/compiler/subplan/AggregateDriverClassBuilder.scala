@@ -31,6 +31,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
+import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.AggregateDriverClassBuilder._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ AggregateDriver, BroadcastId, ShuffleKey }
@@ -45,7 +46,7 @@ class AggregateDriverClassBuilder(
   val operator: UserOperator)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
-      implicit val context: SparkClientCompiler.Context)
+      implicit val context: SubPlanCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/AggregateDriver$$${nextId};"), // scalastyle:ignore
@@ -209,7 +210,7 @@ class AggregateDriverClassBuilder(
         .build()) { mb =>
         import mb._ // scalastyle:ignore
         val aggregationType =
-          AggregationClassBuilder.getOrCompile(operator)
+          AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)
         `return`(pushNew0(aggregationType))
       }
   }

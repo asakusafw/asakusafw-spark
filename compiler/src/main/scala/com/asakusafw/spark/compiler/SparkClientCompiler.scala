@@ -21,16 +21,23 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 import org.slf4j.LoggerFactory
 
-import com.asakusafw.lang.compiler.api.{ DataModelLoader, Exclusive, JobflowProcessor }
+import com.asakusafw.lang.compiler.api.{
+  CompilerOptions,
+  DataModelLoader,
+  Exclusive,
+  JobflowProcessor
+}
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.{ CommandToken, ExternalInputReference }
 import com.asakusafw.lang.compiler.common.Location
 import com.asakusafw.lang.compiler.inspection.InspectionExtension
+import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.Jobflow
+import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.spark.compiler.planning.SparkPlanning
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler }
+import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, SubPlanCompiler }
 import com.asakusafw.spark.compiler.subplan.{
   BranchKeysClassBuilder,
   BroadcastIdsClassBuilder
@@ -62,7 +69,6 @@ class SparkClientCompiler extends JobflowProcessor {
         SparkClientCompiler.Context(
           flowId = flowId,
           jpContext = jpContext,
-          externalInputs = mutable.Map.empty,
           branchKeys = new BranchKeysClassBuilder(flowId),
           broadcastIds = new BroadcastIdsClassBuilder(flowId)))
 
@@ -102,15 +108,41 @@ object SparkClientCompiler {
   case class Context(
     flowId: String,
     jpContext: JPContext,
-    externalInputs: mutable.Map[String, ExternalInputReference],
     branchKeys: BranchKeysClassBuilder,
     broadcastIds: BroadcastIdsClassBuilder)
-    extends OperatorCompiler.Context
+    extends SubPlanCompiler.Context
+    with OperatorCompiler.Context
     with AggregationCompiler.Context {
 
-    override def classLoader: ClassLoader = jpContext.getClassLoader
+    override def operatorCompilerContext: OperatorCompiler.Context = this
+    override def aggregationCompilerContext: AggregationCompiler.Context = this
 
+    override def classLoader: ClassLoader = jpContext.getClassLoader
     override def dataModelLoader: DataModelLoader = jpContext.getDataModelLoader
+    override def options: CompilerOptions = jpContext.getOptions
+
+    override def getInputFormatInfo(
+      name: String, info: ExternalInputInfo): Option[InputFormatInfo] = {
+      Option(InputFormatInfoExtension.resolve(jpContext, name, info))
+    }
+
+    private val externalInputs: mutable.Map[String, ExternalInputReference] = mutable.Map.empty
+
+    override def addExternalInput(
+      name: String, info: ExternalInputInfo): ExternalInputReference = {
+      externalInputs.getOrElseUpdate(
+        name,
+        jpContext.addExternalInput(name, info))
+    }
+
+    private val externalOutputs: mutable.Map[String, Unit] = mutable.Map.empty
+
+    override def addExternalOutput(
+      name: String, info: ExternalOutputInfo, paths: Seq[String]): Unit = {
+      externalOutputs.getOrElseUpdate(
+        name,
+        jpContext.addExternalOutput(name, info, paths))
+    }
 
     override def addClass(builder: ClassBuilder): Type = {
       for {

@@ -16,8 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import scala.collection.JavaConversions._
-
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
@@ -33,22 +31,22 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
 
   override def compile(
     subplan: SubPlan)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: SubPlanCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalOutput],
       s"The dominant operator should be external output: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[ExternalOutput]
 
-    context.jpContext.addExternalOutput(
+    context.addExternalOutput(
       operator.getName, operator.getInfo,
-      Seq(context.jpContext.getOptions.getRuntimeWorkingPath(s"${operator.getName}/part-*")))
+      Seq(context.options.getRuntimeWorkingPath(s"${operator.getName}/part-*")))
 
     val builder =
       new OutputDriverClassBuilder(
         operator)(
         subPlanInfo.getLabel)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }

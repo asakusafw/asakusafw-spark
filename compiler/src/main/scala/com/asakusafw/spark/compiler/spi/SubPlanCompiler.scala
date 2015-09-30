@@ -23,11 +23,14 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.reference.ExternalInputReference
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.hadoop.InputFormatInfo
+import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.subplan._
+import com.asakusafw.spark.tools.asm.ClassBuilder
 
 trait SubPlanCompiler {
 
@@ -35,28 +38,45 @@ trait SubPlanCompiler {
 
   def compile(
     subplan: SubPlan)(
-      implicit context: SparkClientCompiler.Context): Type
+      implicit context: SubPlanCompiler.Context): Type
 
   def instantiator: Instantiator
 }
 
 object SubPlanCompiler {
 
+  trait Context
+    extends CompilerContext
+    with ClassLoaderProvider
+    with DataModelLoaderProvider {
+
+    def options: CompilerOptions
+
+    def getInputFormatInfo(name: String, info: ExternalInputInfo): Option[InputFormatInfo]
+    def addExternalInput(name: String, info: ExternalInputInfo): ExternalInputReference
+    def addExternalOutput(name: String, info: ExternalOutputInfo, paths: Seq[String]): Unit
+
+    def branchKeys: BranchKeys
+
+    def operatorCompilerContext: OperatorCompiler.Context
+    def aggregationCompilerContext: AggregationCompiler.Context
+  }
+
   def apply(
     driverType: SubPlanInfo.DriverType)(
-      implicit context: SparkClientCompiler.Context): SubPlanCompiler = {
-    apply(context.jpContext.getClassLoader)(driverType)
+      implicit context: SubPlanCompiler.Context): SubPlanCompiler = {
+    apply(context.classLoader)(driverType)
   }
 
   def get(
     driverType: SubPlanInfo.DriverType)(
-      implicit context: SparkClientCompiler.Context): Option[SubPlanCompiler] = {
-    apply(context.jpContext.getClassLoader).get(driverType)
+      implicit context: SubPlanCompiler.Context): Option[SubPlanCompiler] = {
+    apply(context.classLoader).get(driverType)
   }
 
   def support(
     driverType: SubPlanInfo.DriverType)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: SubPlanCompiler.Context): Boolean = {
     get(driverType).isDefined
   }
 
