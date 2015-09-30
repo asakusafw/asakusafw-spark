@@ -91,10 +91,11 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
 
     val outputCompilerContext = newContext("outtputFlowId", jpContext)
 
-    val outputCompiler = SubPlanCompiler(outputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(outputCompilerContext)
-    val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
-    outputCompilerContext.jpContext.addClass(outputCompilerContext.branchKeys)
-    outputCompilerContext.jpContext.addClass(outputCompilerContext.broadcastIds)
+    val outputCompiler = SubPlanCompiler(outputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+      outputCompilerContext.subplanCompilerContext)
+    val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext.subplanCompilerContext)
+    outputCompilerContext.addClass(outputCompilerContext.branchKeys)
+    outputCompilerContext.addClass(outputCompilerContext.broadcastIds)
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -154,10 +155,11 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
 
     val inputCompilerContext = newContext("inputFlowId", jpContext = jpContext)
 
-    val inputCompiler = SubPlanCompiler(inputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(inputCompilerContext)
-    val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
-    inputCompilerContext.jpContext.addClass(inputCompilerContext.branchKeys)
-    inputCompilerContext.jpContext.addClass(inputCompilerContext.broadcastIds)
+    val inputCompiler = SubPlanCompiler(inputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+      inputCompilerContext.subplanCompilerContext)
+    val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext.subplanCompilerContext)
+    inputCompilerContext.addClass(inputCompilerContext.branchKeys)
+    inputCompilerContext.addClass(inputCompilerContext.broadcastIds)
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]]])
     val inputDriver = inputDriverCls.getConstructor(
       classOf[SparkContext],

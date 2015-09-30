@@ -43,7 +43,8 @@ class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with T
     val classpath = createTempDirectory("OutputFragmentClassBuilderSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val builder = new OutputFragmentClassBuilder(classOf[TestModel].asType)
+    val builder = new OutputFragmentClassBuilder(classOf[TestModel].asType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(builder.thisType.getClassName, builder.build())
       .asSubclass(classOf[OutputFragment[TestModel]])
 

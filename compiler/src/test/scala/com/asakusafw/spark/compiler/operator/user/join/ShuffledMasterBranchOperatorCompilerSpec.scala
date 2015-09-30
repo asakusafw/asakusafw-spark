@@ -70,7 +70,8 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
     val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val low = new GenericOutputFragment[Foo]
@@ -136,7 +137,8 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
     val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val low = new GenericOutputFragment[Foo]
@@ -205,7 +207,8 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
     val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val low = new GenericOutputFragment[Foo]
@@ -271,7 +274,8 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
     val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val low = new GenericOutputFragment[Foo]

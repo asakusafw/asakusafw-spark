@@ -64,7 +64,8 @@ class SplitOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDi
     val classpath = createTempDirectory("SplitOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Baa]])
 
     val hoges = new GenericOutputFragment[Hoge]

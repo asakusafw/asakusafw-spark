@@ -69,7 +69,8 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
     val classpath = createTempDirectory("MasterCheckOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val found = new GenericOutputFragment[Foo]
@@ -135,7 +136,8 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with LoadClassSug
     val classpath = createTempDirectory("MasterCheckOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val found = new GenericOutputFragment[Foo]

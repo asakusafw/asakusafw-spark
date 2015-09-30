@@ -64,7 +64,8 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
     val classpath = createTempDirectory("ConvertOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = new GenericOutputFragment[InputModel]
@@ -105,7 +106,8 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
     val classpath = createTempDirectory("ConvertOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
 
     val out1 = new GenericOutputFragment[InputModel]

@@ -54,7 +54,8 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with Temp
     val classpath = createTempDirectory("FoldAggregationCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = AggregationCompiler.compile(operator)
+    val thisType = AggregationCompiler.compile(operator)(
+      context.subplanCompilerContext.aggregationCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Hoge, Hoge]])
 
     val aggregation = cls.newInstance()
@@ -90,7 +91,8 @@ class FoldAggregationCompilerSpec extends FlatSpec with LoadClassSugar with Temp
     val classpath = createTempDirectory("FoldAggregationCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = AggregationCompiler.compile(operator)
+    val thisType = AggregationCompiler.compile(operator)(
+      context.subplanCompilerContext.aggregationCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Hoge, Hoge]])
 
     val aggregation = cls.newInstance()

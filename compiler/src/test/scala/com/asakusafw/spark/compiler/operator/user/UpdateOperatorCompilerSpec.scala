@@ -62,7 +62,8 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
     val classpath = createTempDirectory("UpdateOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath)
       .asSubclass(classOf[Fragment[TestModel]])
 
@@ -99,7 +100,8 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
     val classpath = createTempDirectory("UpdateOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath)
       .asSubclass(classOf[Fragment[TestModel]])
 

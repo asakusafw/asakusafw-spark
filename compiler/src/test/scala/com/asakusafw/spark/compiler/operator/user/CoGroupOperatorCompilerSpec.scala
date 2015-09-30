@@ -73,7 +73,8 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
     val classpath = createTempDirectory("CoGroupOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val hogeResult = new GenericOutputFragment[Hoge]

@@ -45,7 +45,8 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with Tem
     val classpath = createTempDirectory("EdgeFragmentClassBuilderSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val builder = new EdgeFragmentClassBuilder(classOf[TestModel].asType)
+    val builder = new EdgeFragmentClassBuilder(classOf[TestModel].asType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(builder.thisType.getClassName, builder.build())
       .asSubclass(classOf[EdgeFragment[TestModel]])
 

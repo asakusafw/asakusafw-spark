@@ -97,10 +97,11 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
       implicit val context = newContext("flowId", classServer.root.toFile)
 
-      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
-      val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(context.branchKeys)
-      context.jpContext.addClass(context.broadcastIds)
+      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+        context.subplanCompilerContext)
+      val thisType = compiler.compile(subplan)(context.subplanCompilerContext)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
 
       val hoges = sc.parallelize(0 until 10).map { i =>
@@ -184,10 +185,11 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
       implicit val context = newContext("flowId", classServer.root.toFile)
 
-      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
-      val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(context.branchKeys)
-      context.jpContext.addClass(context.broadcastIds)
+      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+        context.subplanCompilerContext)
+      val thisType = compiler.compile(subplan)(context.subplanCompilerContext)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
 
       val hoges = sc.parallelize(0 until 10).map { i =>

@@ -70,7 +70,8 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
     val classpath = createTempDirectory("MasterJoinOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val joined = new GenericOutputFragment[Baa]
@@ -142,7 +143,8 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
     val classpath = createTempDirectory("MasterJoinOperatorCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
+      context.subplanCompilerContext.operatorCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
 
     val joined = new GenericOutputFragment[Baa]

@@ -54,7 +54,8 @@ class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar with
     val classpath = createTempDirectory("SummarizeAggregationCompilerSpec").toFile
     implicit val context = newContext("flowId", classpath)
 
-    val thisType = AggregationCompiler.compile(operator)
+    val thisType = AggregationCompiler.compile(operator)(
+      context.subplanCompilerContext.aggregationCompilerContext)
     val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Value, SummarizedValue]])
 
     val aggregation = cls.newInstance()

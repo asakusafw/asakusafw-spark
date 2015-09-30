@@ -44,10 +44,6 @@ trait UsingCompilerContext {
   def newContext(
     flowId: String,
     jpContext: JPContext): SparkClientCompiler.Context = {
-    SparkClientCompiler.Context(
-      flowId = flowId,
-      jpContext = jpContext,
-      branchKeys = new BranchKeysClassBuilder(flowId),
-      broadcastIds = new BroadcastIdsClassBuilder(flowId))
+    new SparkClientCompiler.DefaultContext(flowId)(jpContext)
   }
 }
