@@ -89,11 +89,13 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     outputSubPlan.putAttribute(classOf[SubPlanInfo],
       new SubPlanInfo(outputSubPlan, SubPlanInfo.DriverType.OUTPUT, Seq.empty[SubPlanInfo.DriverOption], outputOperator))
 
-    val outputCompilerContext = newContext("outtputFlowId", jpContext)
+    val outputCompilerContext = newSubPlanCompilerContext("outtputFlowId", jpContext)
 
-    val outputCompiler = SubPlanCompiler(outputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
-      outputCompilerContext.subplanCompilerContext)
-    val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext.subplanCompilerContext)
+    val outputCompiler =
+      SubPlanCompiler(
+        outputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+          outputCompilerContext)
+    val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
     outputCompilerContext.addClass(outputCompilerContext.branchKeys)
     outputCompilerContext.addClass(outputCompilerContext.broadcastIds)
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
@@ -153,11 +155,13 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     inputSubplanOutput.putAttribute(classOf[SubPlanOutputInfo],
       new SubPlanOutputInfo(inputSubplanOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-    val inputCompilerContext = newContext("inputFlowId", jpContext = jpContext)
+    val inputCompilerContext = newSubPlanCompilerContext("inputFlowId", jpContext)
 
-    val inputCompiler = SubPlanCompiler(inputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
-      inputCompilerContext.subplanCompilerContext)
-    val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext.subplanCompilerContext)
+    val inputCompiler =
+      SubPlanCompiler(
+        inputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+          inputCompilerContext)
+    val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
     inputCompilerContext.addClass(inputCompilerContext.branchKeys)
     inputCompilerContext.addClass(inputCompilerContext.broadcastIds)
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]]])

@@ -49,7 +49,7 @@ import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateO
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterJoinUpdateOperatorCompilerSpecTest extends ShuffledMasterJoinUpdateOperatorCompilerSpec
 
-class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
+class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import ShuffledMasterJoinUpdateOperatorCompilerSpec._
 
@@ -66,12 +66,10 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -134,12 +132,10 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -205,12 +201,10 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -275,12 +269,10 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]
@@ -343,12 +335,10 @@ class ShuffledMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with LoadCla
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterJoinUpdateOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val updated = new GenericOutputFragment[Foo]
     val missed = new GenericOutputFragment[Foo]

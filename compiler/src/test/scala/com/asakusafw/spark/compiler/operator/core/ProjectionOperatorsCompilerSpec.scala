@@ -46,7 +46,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class ProjectionOperatorsCompilerSpecTest extends ProjectionOperatorsCompilerSpec
 
-class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
+class ProjectionOperatorsCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import ProjectionOperatorsCompilerSpec._
 
@@ -58,12 +58,10 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       .output("output", ClassDescription.of(classOf[ProjectOutputModel]))
       .build()
 
-    val classpath = createTempDirectory("ProjectionOperatorsCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ProjectInputModel]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val cls = context.loadClass[Fragment[ProjectInputModel]](thisType.getClassName)
 
     val out = new GenericOutputFragment[ProjectOutputModel]
 
@@ -90,12 +88,10 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       .output("output", ClassDescription.of(classOf[ExtendOutputModel]))
       .build()
 
-    val classpath = createTempDirectory("ExtendOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[ExtendInputModel]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val cls = context.loadClass[Fragment[ExtendInputModel]](thisType.getClassName)
 
     val out = new GenericOutputFragment[ExtendOutputModel]
 
@@ -122,12 +118,10 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with LoadClassSugar with 
       .output("output", ClassDescription.of(classOf[RestructureOutputModel]))
       .build()
 
-    val classpath = createTempDirectory("RestructureOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[RestructureInputModel]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val cls = context.loadClass[Fragment[RestructureInputModel]](thisType.getClassName)
 
     val out = new GenericOutputFragment[RestructureOutputModel]
 

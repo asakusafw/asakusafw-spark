@@ -50,7 +50,7 @@ import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp, MasterSel
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterJoinOperatorCompilerSpecTest extends ShuffledMasterJoinOperatorCompilerSpec
 
-class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
+class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import ShuffledMasterJoinOperatorCompilerSpec._
 
@@ -67,12 +67,10 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterJoinOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val joined = new GenericOutputFragment[Baa]
     val missed = new GenericOutputFragment[Foo]
@@ -140,12 +138,10 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with LoadClassSuga
       .output("missed", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterJoinOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val joined = new GenericOutputFragment[Baa]
     val missed = new GenericOutputFragment[Foo]

@@ -33,20 +33,17 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class OutputFragmentClassBuilderSpecTest extends OutputFragmentClassBuilderSpec
 
-class OutputFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
+class OutputFragmentClassBuilderSpec extends FlatSpec with UsingCompilerContext {
 
   import OutputFragmentClassBuilderSpec._
 
   behavior of classOf[OutputFragmentClassBuilder].getSimpleName
 
   it should "compile OutputFragment" in {
-    val classpath = createTempDirectory("OutputFragmentClassBuilderSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val builder = new OutputFragmentClassBuilder(classOf[TestModel].asType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(builder.thisType.getClassName, builder.build())
-      .asSubclass(classOf[OutputFragment[TestModel]])
+    val thisType = OutputFragmentClassBuilder.getOrCompile(classOf[TestModel].asType)
+    val cls = context.loadClass[OutputFragment[TestModel]](thisType.getClassName)
 
     val fragment = cls.getConstructor(classOf[Int]).newInstance(Int.box(-1))
 

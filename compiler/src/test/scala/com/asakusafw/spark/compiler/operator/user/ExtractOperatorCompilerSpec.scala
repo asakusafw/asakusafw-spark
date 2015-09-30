@@ -46,7 +46,7 @@ import com.asakusafw.vocabulary.operator.Extract
 @RunWith(classOf[JUnitRunner])
 class ExtractOperatorCompilerSpecTest extends ExtractOperatorCompilerSpec
 
-class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with UsingCompilerContext {
+class ExtractOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import ExtractOperatorCompilerSpec._
 
@@ -61,12 +61,10 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = createTempDirectory("ExtractOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val cls = context.loadClass[Fragment[InputModel]](thisType.getClassName)
 
     val out1 = new GenericOutputFragment[IntOutputModel]
     val out2 = new GenericOutputFragment[LongOutputModel]
@@ -105,12 +103,10 @@ class ExtractOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = createTempDirectory("ExtractOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)(
-      context.subplanCompilerContext.operatorCompilerContext)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val cls = context.loadClass[Fragment[InputModel]](thisType.getClassName)
 
     val out1 = new GenericOutputFragment[IntOutputModel]
     val out2 = new GenericOutputFragment[LongOutputModel]

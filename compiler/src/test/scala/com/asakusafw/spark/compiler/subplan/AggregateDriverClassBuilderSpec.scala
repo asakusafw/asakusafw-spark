@@ -95,11 +95,10 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("i")), operator))
       subplanOutput.putAttribute(classOf[PartitionGroupInfo], new PartitionGroupInfo(dataSize))
 
-      implicit val context = newContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
 
-      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
-        context.subplanCompilerContext)
-      val thisType = compiler.compile(subplan)(context.subplanCompilerContext)
+      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
+      val thisType = compiler.compile(subplan)
       context.addClass(context.branchKeys)
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
@@ -183,11 +182,10 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq.empty[String]), operator))
       subplanOutput.putAttribute(classOf[PartitionGroupInfo], new PartitionGroupInfo(dataSize))
 
-      implicit val context = newContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
 
-      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
-        context.subplanCompilerContext)
-      val thisType = compiler.compile(subplan)(context.subplanCompilerContext)
+      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
+      val thisType = compiler.compile(subplan)
       context.addClass(context.branchKeys)
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
