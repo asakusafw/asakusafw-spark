@@ -40,7 +40,8 @@ import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, SubPlanCompiler }
 import com.asakusafw.spark.compiler.subplan.{
   BranchKeysClassBuilder,
-  BroadcastIdsClassBuilder
+  BroadcastIdsClassBuilder,
+  Instantiator
 }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
@@ -111,6 +112,7 @@ object SparkClientCompiler {
     branchKeys: BranchKeysClassBuilder,
     broadcastIds: BroadcastIdsClassBuilder)
     extends SubPlanCompiler.Context
+    with Instantiator.Context
     with OperatorCompiler.Context
     with AggregationCompiler.Context {
 
