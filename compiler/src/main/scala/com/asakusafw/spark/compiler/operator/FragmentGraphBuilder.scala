@@ -14,34 +14,28 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package operator
 
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph._
+import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, Operator, OperatorOutput }
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.operator.{
-  EdgeFragmentClassBuilder,
-  OutputFragmentClassBuilder
-}
-import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
-import com.asakusafw.spark.runtime.driver.BroadcastId
-import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.{ Fragment, StopFragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class FragmentGraphBuilder(
   mb: MethodBuilder,
   broadcastsVar: Var,
+  fragmentBufferSizeVar: Var,
   nextLocal: AtomicInteger)(
-    implicit context: SubPlanCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends ScalaIdioms {
   import mb._ // scalastyle:ignore
 
@@ -55,20 +49,15 @@ class FragmentGraphBuilder(
       operator.getOriginalSerialNumber, {
         operator match {
           case marker: MarkerOperator =>
-            OutputFragmentClassBuilder.getOrCompile(
-              marker.getInput.getDataType.asType)(
-                context.operatorCompilerContext)
+            OutputFragmentClassBuilder.getOrCompile(marker.getInput.getDataType.asType)
           case operator: Operator =>
-            OperatorCompiler.compile(
-              operator, OperatorType.ExtractType)(
-                context.operatorCompilerContext)
+            OperatorCompiler.compile(operator, OperatorType.ExtractType)
         }
       })
     val fragment = operator match {
       case marker: MarkerOperator =>
         val fragment = pushNew(t)
-        fragment.dup().invokeInit(
-          thisVar.push().invokeV("fragmentBufferSize", Type.INT_TYPE))
+        fragment.dup().invokeInit(fragmentBufferSizeVar.push())
         fragment
       case _ =>
         val outputs = operator.getOutputs.map(build)
@@ -84,8 +73,7 @@ class FragmentGraphBuilder(
   def build(output: OperatorOutput): Var = {
     if (output.getOpposites.size == 0) {
       vars.getOrElseUpdate(-1L, {
-        val fragment =
-          pushObject(mb)(StopFragment)
+        val fragment = pushObject(mb)(StopFragment)
         fragment.store(nextLocal.getAndAdd(fragment.size))
       })
     } else if (output.getOpposites.size > 1) {
@@ -94,11 +82,8 @@ class FragmentGraphBuilder(
       }
       val fragment = pushNew(
         edgeFragmentTypes.getOrElseUpdate(
-          output.getDataType.asType, {
-            EdgeFragmentClassBuilder.getOrCompile(
-              output.getDataType.asType)(
-                context.operatorCompilerContext)
-          }))
+          output.getDataType.asType,
+          EdgeFragmentClassBuilder.getOrCompile(output.getDataType.asType)))
       fragment.dup().invokeInit(
         buildArray(mb, classOf[Fragment[_]].asType) { builder =>
           for {

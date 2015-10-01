@@ -30,6 +30,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.AggregateDriverClassBuilder._
@@ -189,9 +190,15 @@ class AggregateDriverClassBuilder(
         import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
+        val fragmentBufferSizeVar =
+          thisVar.push().invokeV("fragmentBufferSize", Type.INT_TYPE)
+            .store(broadcastsVar.nextLocal)
+        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
 
-        val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)
+        val fragmentBuilder =
+          new FragmentGraphBuilder(
+            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 

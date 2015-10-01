@@ -29,6 +29,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, SubPlanCompiler }
 import com.asakusafw.spark.compiler.subplan.ExtractDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ExtractDriver, ShuffleKey }
@@ -168,9 +169,15 @@ class ExtractDriverClassBuilder(
         import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
+        val fragmentBufferSizeVar =
+          thisVar.push().invokeV("fragmentBufferSize", Type.INT_TYPE)
+            .store(broadcastsVar.nextLocal)
+        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
 
-        val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)
+        val fragmentBuilder =
+          new FragmentGraphBuilder(
+            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(marker.getOutput)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 

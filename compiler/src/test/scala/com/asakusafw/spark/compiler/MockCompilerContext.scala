@@ -28,7 +28,12 @@ import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExte
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, SubPlanCompiler }
-import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
+import com.asakusafw.spark.compiler.subplan.{
+  BranchKeys,
+  BranchKeysClassBuilder,
+  BroadcastIds,
+  BroadcastIdsClassBuilder
+}
 import com.asakusafw.spark.tools.asm.{ ClassBuilder, SimpleClassLoader }
 
 import resource._
@@ -103,7 +108,8 @@ object MockCompilerContext {
     override val classLoader: ClassLoader = cl
     override val dataModelLoader: DataModelLoader = new MockDataModelLoader(cl)
 
-    override val broadcastIds = new BroadcastIdsClassBuilder(flowId)
+    override val branchKeys: BranchKeys = new BranchKeysClassBuilder(flowId)
+    override val broadcastIds: BroadcastIds = new BroadcastIdsClassBuilder(flowId)
   }
 
   class AggregationCompiler(flowId: String)

@@ -24,7 +24,7 @@ import scala.collection.JavaConversions._
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.Operator
-import com.asakusafw.spark.compiler.subplan.BroadcastIds
+import com.asakusafw.spark.compiler.subplan.{ BranchKeys, BroadcastIds }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 sealed trait OperatorType
@@ -56,6 +56,7 @@ object OperatorCompiler {
     with ClassLoaderProvider
     with DataModelLoaderProvider {
 
+    def branchKeys: BranchKeys
     def broadcastIds: BroadcastIds
   }
 
