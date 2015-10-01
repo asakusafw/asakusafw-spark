@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package operator
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -25,10 +25,6 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, Operator, OperatorOutput }
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.operator.{
-  EdgeFragmentClassBuilder,
-  OutputFragmentClassBuilder
-}
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
