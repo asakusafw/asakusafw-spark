@@ -26,9 +26,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, Operator, OperatorOutput }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.runtime.driver.BroadcastId
-import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.fragment.{ Fragment, StopFragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
