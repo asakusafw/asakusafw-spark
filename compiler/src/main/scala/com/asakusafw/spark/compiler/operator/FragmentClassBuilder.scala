@@ -22,13 +22,14 @@ import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.compiler.operator.FragmentClassBuilder._
+import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class FragmentClassBuilder(
   val dataModelType: Type)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/Fragment$$${nextId};"),

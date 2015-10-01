@@ -23,15 +23,15 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator.EdgeFragmentClassBuilder._
+import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 
 class EdgeFragmentClassBuilder(
   dataModelType: Type)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/EdgeFragment$$${nextId};"),
@@ -75,15 +75,15 @@ object EdgeFragmentClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Type), Type]] =
+  private[this] val cache: mutable.Map[OperatorCompiler.Context, mutable.Map[(String, Type), Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   def getOrCompile(
     dataModelType: Type)(
-      implicit context: SparkClientCompiler.Context): Type = {
-    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+      implicit context: OperatorCompiler.Context): Type = {
+    cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
       (context.flowId, dataModelType), {
-        context.jpContext.addClass(new EdgeFragmentClassBuilder(dataModelType))
+        context.addClass(new EdgeFragmentClassBuilder(dataModelType))
       })
   }
 }

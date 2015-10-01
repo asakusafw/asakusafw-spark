@@ -21,6 +21,7 @@ package join
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.OperatorOutput
+import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -28,7 +29,7 @@ abstract class JoinOperatorFragmentClassBuilder(
   dataModelType: Type,
   operatorType: Type,
   operatorOutputs: Seq[OperatorOutput])(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
     dataModelType, operatorType, operatorOutputs) {
 

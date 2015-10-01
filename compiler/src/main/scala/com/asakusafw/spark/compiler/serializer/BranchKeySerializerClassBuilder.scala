@@ -26,14 +26,13 @@ import com.esotericsoftware.kryo.io._
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 
 class BranchKeySerializerClassBuilder(
   branchKeysType: Type)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: CompilerContext)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/BranchKeySerializer;"),

@@ -22,7 +22,6 @@ import scala.collection.mutable
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._

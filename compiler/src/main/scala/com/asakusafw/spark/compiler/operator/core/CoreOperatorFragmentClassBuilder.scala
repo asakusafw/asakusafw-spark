@@ -21,6 +21,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
@@ -29,7 +30,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class CoreOperatorFragmentClassBuilder(
   dataModelType: Type,
   val childDataModelType: Type)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends FragmentClassBuilder(dataModelType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {

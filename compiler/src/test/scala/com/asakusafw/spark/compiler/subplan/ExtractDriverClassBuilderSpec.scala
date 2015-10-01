@@ -49,7 +49,7 @@ import com.asakusafw.vocabulary.operator.Extract
 @RunWith(classOf[JUnitRunner])
 class ExtractDriverClassBuilderSpecTest extends ExtractDriverClassBuilderSpec
 
-class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with CompilerContext {
+class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with UsingCompilerContext {
 
   import ExtractDriverClassBuilderSpec._
 
@@ -107,12 +107,12 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      implicit val context = newContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
 
       val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(context.branchKeys)
-      context.jpContext.addClass(context.broadcastIds)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[ExtractDriver[_]])
 
       val hoges = sc.parallelize(0 until 10).map { i =>
@@ -211,12 +211,12 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       hogeResultOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      implicit val context = newContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
 
       val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(context.branchKeys)
-      context.jpContext.addClass(context.broadcastIds)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[ExtractDriver[_]])
 
       val hoges = sc.parallelize(0 until 10).map { i =>

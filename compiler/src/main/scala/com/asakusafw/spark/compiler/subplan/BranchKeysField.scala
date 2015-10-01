@@ -20,6 +20,7 @@ import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -28,7 +29,7 @@ trait BranchKeysField
   extends ClassBuilder
   with ScalaIdioms {
 
-  implicit def context: SparkClientCompiler.Context
+  implicit def context: SubPlanCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 

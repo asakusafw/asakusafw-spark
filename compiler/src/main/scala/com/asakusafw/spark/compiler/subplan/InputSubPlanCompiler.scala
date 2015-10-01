@@ -21,7 +21,6 @@ import scala.collection.JavaConversions._
 import org.apache.hadoop.io.NullWritable
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.hadoop.InputFormatInfoExtension
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
@@ -37,7 +36,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
 
   override def compile(
     subplan: SubPlan)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: SubPlanCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalInput],
@@ -45,10 +44,8 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
     val (keyType, valueType, inputFormatType, paths, extraConfigurations) =
-      (if (context.jpContext.getOptions.useInputDirect) {
-        Option(
-          InputFormatInfoExtension
-            .resolve(context.jpContext, operator.getName(), operator.getInfo()))
+      (if (context.options.useInputDirect) {
+        context.getInputFormatInfo(operator.getName, operator.getInfo)
       } else {
         None
       }) match {
@@ -56,9 +53,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
           (info.getKeyClass.asType, info.getValueClass.asType, info.getFormatClass.asType,
             None, Some(info.getExtraConfiguration.toMap))
         case None =>
-          val inputRef = context.externalInputs.getOrElseUpdate(
-            operator.getName,
-            context.jpContext.addExternalInput(operator.getName, operator.getInfo))
+          val inputRef = context.addExternalInput(operator.getName, operator.getInfo)
           (classOf[NullWritable].asType,
             operator.getDataType.asType,
             classOf[TemporaryInputFormat[_]].asType,
@@ -77,6 +72,6 @@ class InputSubPlanCompiler extends SubPlanCompiler {
         subPlanInfo.getLabel,
         subplan.getOutputs.toSeq)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }

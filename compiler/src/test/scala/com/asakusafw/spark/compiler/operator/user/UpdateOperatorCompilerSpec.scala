@@ -45,7 +45,7 @@ import com.asakusafw.vocabulary.operator.Update
 @RunWith(classOf[JUnitRunner])
 class UpdateOperatorCompilerSpecTest extends UpdateOperatorCompilerSpec
 
-class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class UpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import UpdateOperatorCompilerSpec._
 
@@ -59,12 +59,10 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       .argument("rate", ImmediateDescription.of(100))
       .build();
 
-    val classpath = createTempDirectory("UpdateOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = loadClass(thisType.getClassName, classpath)
-      .asSubclass(classOf[Fragment[TestModel]])
+    val cls = context.loadClass[Fragment[TestModel]](thisType.getClassName)
 
     val out = new GenericOutputFragment[TestModel]
 
@@ -96,12 +94,10 @@ class UpdateOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       .argument("rate", ImmediateDescription.of(100))
       .build();
 
-    val classpath = createTempDirectory("UpdateOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = loadClass(thisType.getClassName, classpath)
-      .asSubclass(classOf[Fragment[TestModel]])
+    val cls = context.loadClass[Fragment[TestModel]](thisType.getClassName)
 
     val out = new GenericOutputFragment[TestModel]
 

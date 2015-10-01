@@ -24,6 +24,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
+import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, IdentityPartitioner }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -34,7 +35,7 @@ trait PartitionersField
   with ScalaIdioms
   with SparkIdioms {
 
-  implicit def context: SparkClientCompiler.Context
+  implicit def context: SubPlanCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 

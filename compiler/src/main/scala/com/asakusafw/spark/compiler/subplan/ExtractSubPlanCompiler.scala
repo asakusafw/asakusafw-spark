@@ -32,7 +32,7 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
 
   override def compile(
     subplan: SubPlan)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: SubPlanCompiler.Context): Type = {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
 
     val inputs = subplan.getInputs.toSet[SubPlan.Input]
@@ -46,6 +46,6 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
         subPlanInfo.getLabel,
         subplan.getOutputs.toSeq)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }

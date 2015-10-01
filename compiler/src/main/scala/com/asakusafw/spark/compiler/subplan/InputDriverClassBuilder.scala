@@ -29,7 +29,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.subplan.InputDriverClassBuilder._
-import com.asakusafw.spark.compiler.spi.OperatorCompiler
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, SubPlanCompiler }
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, InputDriver }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -45,7 +45,7 @@ class InputDriverClassBuilder(
   val extraConfigurations: Option[Map[String, String]])(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
-      implicit val context: SparkClientCompiler.Context)
+      implicit val context: SubPlanCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/InputDriver$$${nextId};"),

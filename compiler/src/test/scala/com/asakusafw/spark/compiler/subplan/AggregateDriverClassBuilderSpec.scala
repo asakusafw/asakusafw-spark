@@ -53,7 +53,7 @@ import com.asakusafw.vocabulary.operator.Fold
 @RunWith(classOf[JUnitRunner])
 class AggregateDriverClassBuilderSpecTest extends AggregateDriverClassBuilderSpec
 
-class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with CompilerContext {
+class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with UsingCompilerContext {
 
   import AggregateDriverClassBuilderSpec._
 
@@ -95,12 +95,12 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("i")), operator))
       subplanOutput.putAttribute(classOf[PartitionGroupInfo], new PartitionGroupInfo(dataSize))
 
-      implicit val context = newContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
 
       val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(context.branchKeys)
-      context.jpContext.addClass(context.broadcastIds)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
 
       val hoges = sc.parallelize(0 until 10).map { i =>
@@ -182,12 +182,12 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq.empty[String]), operator))
       subplanOutput.putAttribute(classOf[PartitionGroupInfo], new PartitionGroupInfo(dataSize))
 
-      implicit val context = newContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
 
       val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(context.branchKeys)
-      context.jpContext.addClass(context.broadcastIds)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
 
       val hoges = sc.parallelize(0 until 10).map { i =>

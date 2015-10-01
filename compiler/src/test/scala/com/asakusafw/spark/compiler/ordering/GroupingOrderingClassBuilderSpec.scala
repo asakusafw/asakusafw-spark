@@ -28,17 +28,16 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class GroupingOrderingClassBuilderSpecTest extends GroupingOrderingClassBuilderSpec
 
-class GroupingOrderingClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class GroupingOrderingClassBuilderSpec extends FlatSpec with UsingCompilerContext {
 
   behavior of classOf[GroupingOrderingClassBuilder].getSimpleName
 
   it should "compile grouping ordering" in {
-    val classpath = createTempDirectory("SortOrderingClassBuilderSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newCompilerContext("flowId")
 
-    val builder = new GroupingOrderingClassBuilder(
+    val thisType = GroupingOrderingClassBuilder.getOrCompile(
       Seq(classOf[IntOption].asType, classOf[LongOption].asType))
-    val cls = loadClass(builder.thisType.getClassName, builder.build()).asSubclass(classOf[Ordering[ShuffleKey]])
+    val cls = context.loadClass[Ordering[ShuffleKey]](thisType.getClassName)
     val ordering = cls.newInstance()
 
     {

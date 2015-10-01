@@ -24,6 +24,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.OperatorOutput
+import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
@@ -32,7 +33,7 @@ abstract class UserOperatorFragmentClassBuilder(
   dataModelType: Type,
   val operatorType: Type,
   val operatorOutputs: Seq[OperatorOutput])(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends FragmentClassBuilder(dataModelType)
   with OperatorField
   with OutputFragments {

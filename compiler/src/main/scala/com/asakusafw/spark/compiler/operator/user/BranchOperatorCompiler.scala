@@ -22,7 +22,7 @@ import scala.reflect.ClassTag
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
-import com.asakusafw.spark.compiler.spi.OperatorType
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.Branch
@@ -31,7 +31,7 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
 
   override def support(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     operator.annotationDesc.resolveClass == classOf[Branch]
   }
 
@@ -39,7 +39,7 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
 
   override def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
@@ -71,13 +71,13 @@ class BranchOperatorCompiler extends UserOperatorCompiler {
 
     val builder = new BranchOperatorFragmentClassBuilder(operator)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }
 
 private class BranchOperatorFragmentClassBuilder(
   operator: UserOperator)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Branch.ID_INPUT).dataModelType,
     operator.implementationClass.asType,

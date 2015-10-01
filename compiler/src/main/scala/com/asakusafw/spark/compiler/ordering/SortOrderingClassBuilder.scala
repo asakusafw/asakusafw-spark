@@ -23,7 +23,6 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder._
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.tools.asm._
@@ -32,7 +31,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 class SortOrderingClassBuilder(
   groupingOrderingType: Type,
   orderingTypes: Seq[(Type, Boolean)])(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: CompilerContext)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/ordering/SortOrdering$$${nextId};"),
@@ -120,13 +119,13 @@ object SortOrderingClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Type, Seq[(Type, Boolean)]), Type]] = // scalastyle:ignore
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Type, Seq[(Type, Boolean)]), Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   def getOrCompile(
     groupingTypes: Seq[Type],
     orderingTypes: Seq[(Type, Boolean)])(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: CompilerContext): Type = {
     getOrCompile(
       GroupingOrderingClassBuilder.getOrCompile(groupingTypes),
       orderingTypes)
@@ -135,13 +134,13 @@ object SortOrderingClassBuilder {
   def getOrCompile(
     groupingOrderingType: Type,
     orderingTypes: Seq[(Type, Boolean)])(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: CompilerContext): Type = {
     if (orderingTypes.isEmpty) {
       groupingOrderingType
     } else {
-      cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+      cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
         (context.flowId, groupingOrderingType, orderingTypes), {
-          context.jpContext.addClass(
+          context.addClass(
             new SortOrderingClassBuilder(groupingOrderingType, orderingTypes))
         })
     }

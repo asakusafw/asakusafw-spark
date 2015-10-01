@@ -40,7 +40,7 @@ object ExtractDriverInstantiator
       mb: MethodBuilder,
       vars: Instantiator.Vars,
       nextLocal: AtomicInteger)(
-        implicit context: SparkClientCompiler.Context): Var = {
+        implicit context: Instantiator.Context): Var = {
     import mb._ // scalastyle:ignore
 
     val extractDriver = pushNew(driverType)

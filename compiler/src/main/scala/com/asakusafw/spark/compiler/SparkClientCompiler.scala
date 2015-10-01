@@ -18,20 +18,38 @@ package com.asakusafw.spark.compiler
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
+import org.objectweb.asm.Type
 import org.slf4j.LoggerFactory
 
-import com.asakusafw.lang.compiler.api.{ Exclusive, JobflowProcessor }
+import com.asakusafw.lang.compiler.api.{
+  CompilerOptions,
+  DataModelLoader,
+  Exclusive,
+  JobflowProcessor
+}
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
-import com.asakusafw.lang.compiler.api.reference.{ CommandToken, ExternalInputReference }
+import com.asakusafw.lang.compiler.api.reference.{
+  CommandToken,
+  ExternalInputReference,
+  TaskReference
+}
 import com.asakusafw.lang.compiler.common.Location
 import com.asakusafw.lang.compiler.inspection.InspectionExtension
+import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
+import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.Jobflow
+import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.spark.compiler.planning.SparkPlanning
+import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, SubPlanCompiler }
 import com.asakusafw.spark.compiler.subplan.{
   BranchKeysClassBuilder,
-  BroadcastIdsClassBuilder
+  BroadcastIdsClassBuilder,
+  Instantiator
 }
+import com.asakusafw.spark.tools.asm.ClassBuilder
+
+import resource._
 
 @Exclusive
 class SparkClientCompiler extends JobflowProcessor {
@@ -52,17 +70,14 @@ class SparkClientCompiler extends JobflowProcessor {
     if (!jpContext.getOptions.verifyPlan) {
 
       val flowId = source.getFlowId
-      val builder = new SparkClientClassBuilder(plan)(
-        SparkClientCompiler.Context(
-          flowId = flowId,
-          jpContext = jpContext,
-          externalInputs = mutable.Map.empty,
-          branchKeys = new BranchKeysClassBuilder(flowId),
-          broadcastIds = new BroadcastIdsClassBuilder(flowId)))
 
-      val client = jpContext.addClass(builder)
+      implicit val context: SparkClientCompiler.Context =
+        new SparkClientCompiler.DefaultContext(flowId)(jpContext)
 
-      jpContext.addTask(
+      val builder = new SparkClientClassBuilder(plan)
+      val client = context.addClass(builder)
+
+      context.addTask(
         SparkClientCompiler.ModuleName,
         SparkClientCompiler.ProfileName,
         SparkClientCompiler.Command,
@@ -93,10 +108,83 @@ object SparkClientCompiler {
     val SparkInputDirect = "spark.input.direct"
   }
 
-  case class Context(
-    flowId: String,
-    jpContext: JPContext,
-    externalInputs: mutable.Map[String, ExternalInputReference],
-    branchKeys: BranchKeysClassBuilder,
-    broadcastIds: BroadcastIdsClassBuilder)
+  trait Context
+    extends CompilerContext
+    with ClassLoaderProvider
+    with DataModelLoaderProvider {
+
+    def addTask(
+      moduleName: String,
+      profileName: String,
+      command: Location,
+      arguments: Seq[CommandToken],
+      blockers: TaskReference*): TaskReference
+
+    def branchKeys: BranchKeysClassBuilder
+    def broadcastIds: BroadcastIdsClassBuilder
+
+    def subplanCompilerContext: SubPlanCompiler.Context
+    def instantiatorCompilerContext: Instantiator.Context
+  }
+
+  class DefaultContext(val flowId: String)(jpContext: JPContext)
+    extends Context
+    with SubPlanCompiler.Context
+    with Instantiator.Context
+    with OperatorCompiler.Context
+    with AggregationCompiler.Context {
+
+    override def subplanCompilerContext: SubPlanCompiler.Context = this
+    override def instantiatorCompilerContext: Instantiator.Context = this
+    override def operatorCompilerContext: OperatorCompiler.Context = this
+    override def aggregationCompilerContext: AggregationCompiler.Context = this
+
+    override def classLoader: ClassLoader = jpContext.getClassLoader
+    override def dataModelLoader: DataModelLoader = jpContext.getDataModelLoader
+    override def options: CompilerOptions = jpContext.getOptions
+
+    override val branchKeys: BranchKeysClassBuilder = new BranchKeysClassBuilder(flowId)
+    override val broadcastIds: BroadcastIdsClassBuilder = new BroadcastIdsClassBuilder(flowId)
+
+    override def getInputFormatInfo(
+      name: String, info: ExternalInputInfo): Option[InputFormatInfo] = {
+      Option(InputFormatInfoExtension.resolve(jpContext, name, info))
+    }
+
+    private val externalInputs: mutable.Map[String, ExternalInputReference] = mutable.Map.empty
+
+    override def addExternalInput(
+      name: String, info: ExternalInputInfo): ExternalInputReference = {
+      externalInputs.getOrElseUpdate(
+        name,
+        jpContext.addExternalInput(name, info))
+    }
+
+    private val externalOutputs: mutable.Map[String, Unit] = mutable.Map.empty
+
+    override def addExternalOutput(
+      name: String, info: ExternalOutputInfo, paths: Seq[String]): Unit = {
+      externalOutputs.getOrElseUpdate(
+        name,
+        jpContext.addExternalOutput(name, info, paths))
+    }
+
+    override def addClass(builder: ClassBuilder): Type = {
+      for {
+        os <- managed(jpContext.addClassFile(new ClassDescription(builder.thisType.getClassName)))
+      } {
+        os.write(builder.build())
+      }
+      builder.thisType
+    }
+
+    override def addTask(
+      moduleName: String,
+      profileName: String,
+      command: Location,
+      arguments: Seq[CommandToken],
+      blockers: TaskReference*): TaskReference = {
+      jpContext.addTask(moduleName, profileName, command, arguments, blockers: _*)
+    }
+  }
 }

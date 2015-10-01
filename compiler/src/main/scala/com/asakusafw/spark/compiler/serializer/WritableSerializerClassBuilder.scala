@@ -24,7 +24,6 @@ import org.apache.hadoop.io.Writable
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.spark.compiler.serializer.WritableSerializerClassBuilder._
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.serializer.WritableSerializer
@@ -32,7 +31,7 @@ import com.asakusafw.spark.tools.asm._
 
 class WritableSerializerClassBuilder(
   writableType: Type)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: CompilerContext)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/WritableSerializer$$${nextId};"), // scalastyle:ignore
@@ -66,15 +65,15 @@ object WritableSerializerClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Type), Type]] =
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Type), Type]] =
     mutable.WeakHashMap.empty
 
   def getOrCompile(
     writableType: Type)(
-      implicit context: SparkClientCompiler.Context): Type = {
-    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty).getOrElseUpdate(
+      implicit context: CompilerContext): Type = {
+    cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
       (context.flowId, writableType), {
-        context.jpContext.addClass(new WritableSerializerClassBuilder(writableType))
+        context.addClass(new WritableSerializerClassBuilder(writableType))
       })
   }
 }

@@ -20,7 +20,6 @@ import com.esotericsoftware.kryo.{ Kryo, Registration, Serializer }
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.serializer.KryoRegistrator
@@ -32,7 +31,7 @@ object KryoRegistratorCompiler {
     writables: Set[Type],
     branchKeySerializer: Type,
     broadcastIdSerializer: Type)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: CompilerContext): Type = {
     val serializers = writables.map { writable =>
       writable -> WritableSerializerClassBuilder.getOrCompile(writable)
     }
@@ -43,7 +42,7 @@ object KryoRegistratorCompiler {
         branchKeySerializer,
         broadcastIdSerializer)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }
 
@@ -51,7 +50,7 @@ private class KryoRegistratorClassBuilder(
   serializers: Set[(Type, Type)],
   branchKeySerializer: Type,
   broadcastIdSerializer: Type)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: CompilerContext)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/serializer/KryoRegistrator;"),

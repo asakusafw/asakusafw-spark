@@ -23,7 +23,6 @@ import scala.collection.mutable
 import org.objectweb.asm._
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder._
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
@@ -35,7 +34,7 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class AggregationClassBuilder(
   val valueType: Type,
   val combinerType: Type)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: AggregationCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/Aggregation$$${nextId};"),
@@ -165,16 +164,15 @@ object AggregationClassBuilder {
 
   def nextId: Long = curId.getAndIncrement
 
-  private[this] val cache: mutable.Map[JPContext, mutable.Map[(String, Long), Type]] =
+  private[this] val cache: mutable.Map[AggregationCompiler.Context, mutable.Map[(String, Long), Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   def getOrCompile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
-    cache.getOrElseUpdate(context.jpContext, mutable.Map.empty)
+      implicit context: AggregationCompiler.Context): Type = {
+    cache.getOrElseUpdate(context, mutable.Map.empty)
       .getOrElseUpdate(
-        (context.flowId, operator.getOriginalSerialNumber), {
-          AggregationCompiler.compile(operator)
-        })
+        (context.flowId, operator.getOriginalSerialNumber),
+        AggregationCompiler.compile(operator))
   }
 }

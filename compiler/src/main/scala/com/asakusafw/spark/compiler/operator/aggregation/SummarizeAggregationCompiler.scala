@@ -36,7 +36,7 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
 
   def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: AggregationCompiler.Context): Type = {
 
     assert(operator.annotationDesc.resolveClass == of,
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
@@ -47,20 +47,20 @@ class SummarizeAggregationCompiler extends AggregationCompiler {
 
     val builder = new SummarizeAggregationClassBuilder(operator)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }
 
 private class SummarizeAggregationClassBuilder(
   operator: UserOperator)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: AggregationCompiler.Context)
   extends AggregationClassBuilder(
     operator.inputs(Summarize.ID_INPUT).dataModelType,
     operator.outputs(Summarize.ID_OUTPUT).dataModelType)
   with ScalaIdioms {
 
   val propertyFoldings =
-    SummarizedModelUtil.getPropertyFoldings(context.jpContext.getClassLoader, operator).toSeq
+    SummarizedModelUtil.getPropertyFoldings(context.classLoader, operator).toSeq
 
   override def defMapSideCombine(mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore

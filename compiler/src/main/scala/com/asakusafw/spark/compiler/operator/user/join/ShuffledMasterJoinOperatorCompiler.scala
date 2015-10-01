@@ -24,7 +24,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
 import com.asakusafw.lang.compiler.model.graph.UserOperator
-import com.asakusafw.spark.compiler.spi.OperatorType
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
@@ -32,7 +32,7 @@ class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
   override def support(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     operator.annotationDesc.resolveClass == classOf[MasterJoinOp]
   }
 
@@ -40,7 +40,7 @@ class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
   override def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
@@ -62,9 +62,9 @@ class ShuffledMasterJoinOperatorCompiler extends UserOperatorCompiler {
         operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION)) with MasterJoin {
 
         val mappings =
-          JoinedModelUtil.getPropertyMappings(context.jpContext.getClassLoader, operator).toSeq
+          JoinedModelUtil.getPropertyMappings(context.classLoader, operator).toSeq
       }
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }

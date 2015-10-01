@@ -30,7 +30,7 @@ import com.asakusafw.spark.compiler.operator.{
   EdgeFragmentClassBuilder,
   OutputFragmentClassBuilder
 }
-import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -41,7 +41,7 @@ class FragmentGraphBuilder(
   mb: MethodBuilder,
   broadcastsVar: Var,
   nextLocal: AtomicInteger)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: SubPlanCompiler.Context)
   extends ScalaIdioms {
   import mb._ // scalastyle:ignore
 
@@ -55,9 +55,13 @@ class FragmentGraphBuilder(
       operator.getOriginalSerialNumber, {
         operator match {
           case marker: MarkerOperator =>
-            OutputFragmentClassBuilder.getOrCompile(marker.getInput.getDataType.asType)
+            OutputFragmentClassBuilder.getOrCompile(
+              marker.getInput.getDataType.asType)(
+                context.operatorCompilerContext)
           case operator: Operator =>
-            OperatorCompiler.compile(operator, OperatorType.ExtractType)
+            OperatorCompiler.compile(
+              operator, OperatorType.ExtractType)(
+                context.operatorCompilerContext)
         }
       })
     val fragment = operator match {
@@ -91,7 +95,9 @@ class FragmentGraphBuilder(
       val fragment = pushNew(
         edgeFragmentTypes.getOrElseUpdate(
           output.getDataType.asType, {
-            EdgeFragmentClassBuilder.getOrCompile(output.getDataType.asType)
+            EdgeFragmentClassBuilder.getOrCompile(
+              output.getDataType.asType)(
+                context.operatorCompilerContext)
           }))
       fragment.dup().invokeInit(
         buildArray(mb, classOf[Fragment[_]].asType) { builder =>

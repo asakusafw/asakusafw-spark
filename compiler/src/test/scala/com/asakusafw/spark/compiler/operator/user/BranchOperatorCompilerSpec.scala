@@ -46,7 +46,7 @@ import com.asakusafw.vocabulary.operator.Branch
 @RunWith(classOf[JUnitRunner])
 class BranchOperatorCompilerSpecTest extends BranchOperatorCompilerSpec
 
-class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class BranchOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import BranchOperatorCompilerSpec._
 
@@ -61,11 +61,10 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = createTempDirectory("BranchOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+    val cls = context.loadClass[Fragment[InputModel]](thisType.getClassName)
 
     val out1 = new GenericOutputFragment[InputModel]
     val out2 = new GenericOutputFragment[InputModel]
@@ -101,11 +100,10 @@ class BranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempD
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = createTempDirectory("BranchOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+    val cls = context.loadClass[Fragment[InputModel]](thisType.getClassName)
 
     val out1 = new GenericOutputFragment[InputModel]
     val out2 = new GenericOutputFragment[InputModel]

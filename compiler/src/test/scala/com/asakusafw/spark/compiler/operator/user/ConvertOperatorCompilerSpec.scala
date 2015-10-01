@@ -46,7 +46,7 @@ import com.asakusafw.vocabulary.operator.Convert
 @RunWith(classOf[JUnitRunner])
 class ConvertOperatorCompilerSpecTest extends ConvertOperatorCompilerSpec
 
-class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ConvertOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import ConvertOperatorCompilerSpec._
 
@@ -61,11 +61,10 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = createTempDirectory("ConvertOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+    val cls = context.loadClass[Fragment[InputModel]](thisType.getClassName)
 
     val out1 = new GenericOutputFragment[InputModel]
     val out2 = new GenericOutputFragment[OutputModel]
@@ -102,11 +101,10 @@ class ConvertOperatorCompilerSpec extends FlatSpec with LoadClassSugar with Temp
       .argument("n", ImmediateDescription.of(10))
       .build()
 
-    val classpath = createTempDirectory("ConvertOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[InputModel]])
+    val cls = context.loadClass[Fragment[InputModel]](thisType.getClassName)
 
     val out1 = new GenericOutputFragment[InputModel]
     val out2 = new GenericOutputFragment[OutputModel]

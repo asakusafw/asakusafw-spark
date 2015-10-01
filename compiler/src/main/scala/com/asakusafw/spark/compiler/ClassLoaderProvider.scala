@@ -13,16 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.tools.asm
+package com.asakusafw.spark.compiler
 
-import java.io._
-import java.net.URLClassLoader
+trait ClassLoaderProvider {
 
-trait LoadClassSugar {
-
-  def loadClass(classname: String, bytes: Array[Byte]): Class[_] = {
-    val classLoader = new SimpleClassLoader(Thread.currentThread.getContextClassLoader)
-    classLoader.put(classname, bytes)
-    classLoader.loadClass(classname)
-  }
+  def classLoader: ClassLoader
 }

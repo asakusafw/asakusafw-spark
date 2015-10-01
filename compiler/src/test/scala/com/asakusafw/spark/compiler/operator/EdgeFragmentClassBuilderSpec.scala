@@ -32,7 +32,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class EdgeFragmentClassBuilderSpecTest extends EdgeFragmentClassBuilderSpec
 
-class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class EdgeFragmentClassBuilderSpec extends FlatSpec with UsingCompilerContext {
 
   import EdgeFragmentClassBuilderSpec._
 
@@ -42,12 +42,10 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with LoadClassSugar with Tem
     val out1 = new GenericOutputFragment[TestModel]
     val out2 = new GenericOutputFragment[TestModel]
 
-    val classpath = createTempDirectory("EdgeFragmentClassBuilderSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
-    val builder = new EdgeFragmentClassBuilder(classOf[TestModel].asType)
-    val cls = loadClass(builder.thisType.getClassName, builder.build())
-      .asSubclass(classOf[EdgeFragment[TestModel]])
+    val thisType = EdgeFragmentClassBuilder.getOrCompile(classOf[TestModel].asType)
+    val cls = context.loadClass[EdgeFragment[TestModel]](thisType.getClassName)
 
     val fragment = cls.getConstructor(classOf[Array[Fragment[_]]]).newInstance(Array(out1, out2))
 

@@ -28,7 +28,7 @@ import org.objectweb.asm.{ Opcodes, Type }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
-import com.asakusafw.spark.compiler.spi.OperatorType
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.flow.processor.InputBuffer
@@ -38,7 +38,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
   override def support(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     (operator.annotationDesc.resolveClass == classOf[CoGroup]
       || operator.annotationDesc.resolveClass == classOf[GroupSort])
   }
@@ -47,7 +47,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
   override def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
@@ -72,13 +72,13 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
     val builder = new CoGroupOperatorFragmentClassBuilder(operator)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }
 
 private class CoGroupOperatorFragmentClassBuilder(
   operator: UserOperator)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
     classOf[Seq[Iterator[_]]].asType,
     operator.implementationClass.asType,
@@ -86,7 +86,7 @@ private class CoGroupOperatorFragmentClassBuilder(
   with ScalaIdioms {
 
   val inputBuffer =
-    operator.annotationDesc.getElements()("inputBuffer").resolve(context.jpContext.getClassLoader)
+    operator.annotationDesc.getElements()("inputBuffer").resolve(context.classLoader)
       .asInstanceOf[InputBuffer]
 
   override def defFields(fieldDef: FieldDef): Unit = {

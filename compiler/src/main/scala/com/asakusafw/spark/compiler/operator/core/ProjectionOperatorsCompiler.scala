@@ -24,7 +24,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.analyzer.util.ProjectionOperatorUtil
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
-import com.asakusafw.spark.compiler.spi.OperatorType
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
@@ -34,7 +34,7 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
 
   override def support(
     operator: CoreOperator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: OperatorCompiler.Context): Boolean = {
     operator.getCoreOperatorKind == CoreOperatorKind.PROJECT ||
       operator.getCoreOperatorKind == CoreOperatorKind.EXTEND ||
       operator.getCoreOperatorKind == CoreOperatorKind.RESTRUCTURE
@@ -44,7 +44,7 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
 
   override def compile(
     operator: CoreOperator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
       s"The operator type is not supported: ${operator.getCoreOperatorKind}")
@@ -55,20 +55,20 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
 
     val builder = new ProjectionOperatorsFragmentClassBuilder(operator)
 
-    context.jpContext.addClass(builder)
+    context.addClass(builder)
   }
 }
 
 private class ProjectionOperatorsFragmentClassBuilder(
   operator: CoreOperator)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends CoreOperatorFragmentClassBuilder(
     operator.inputs.head.dataModelType,
     operator.outputs.head.dataModelType)
   with ScalaIdioms {
 
   val mappings =
-    ProjectionOperatorUtil.getPropertyMappings(context.jpContext.getDataModelLoader, operator)
+    ProjectionOperatorUtil.getPropertyMappings(context.dataModelLoader, operator)
       .toSeq
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {

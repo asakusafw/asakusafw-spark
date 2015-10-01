@@ -37,7 +37,7 @@ trait SparkIdioms extends ScalaIdioms {
 
   def groupingOrdering(mb: MethodBuilder)(
     groupingTypes: Seq[Type])(
-      implicit context: SparkClientCompiler.Context): Stack = {
+      implicit context: CompilerContext): Stack = {
     import mb._ // scalastyle:ignore
     pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupingTypes))
       .asType(classOf[Ordering[ShuffleKey]].asType)
@@ -46,7 +46,7 @@ trait SparkIdioms extends ScalaIdioms {
   def sortOrdering(mb: MethodBuilder)(
     groupingTypes: Seq[Type],
     orderingTypes: Seq[(Type, Boolean)])(
-      implicit context: SparkClientCompiler.Context): Stack = {
+      implicit context: CompilerContext): Stack = {
     import mb._ // scalastyle:ignore
     pushNew0(SortOrderingClassBuilder.getOrCompile(groupingTypes, orderingTypes))
       .asType(classOf[Ordering[ShuffleKey]].asType)

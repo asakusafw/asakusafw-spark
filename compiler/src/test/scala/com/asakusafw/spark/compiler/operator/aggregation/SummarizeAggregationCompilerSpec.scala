@@ -38,7 +38,7 @@ import com.asakusafw.vocabulary.operator.Summarize
 @RunWith(classOf[JUnitRunner])
 class SummarizeAggregationCompilerSpecTest extends SummarizeAggregationCompilerSpec
 
-class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class SummarizeAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import SummarizeAggregationCompilerSpec._
 
@@ -51,11 +51,10 @@ class SummarizeAggregationCompilerSpec extends FlatSpec with LoadClassSugar with
       .output("output", ClassDescription.of(classOf[SummarizedValue]))
       .build()
 
-    val classpath = createTempDirectory("SummarizeAggregationCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newAggregationCompilerContext("flowId")
 
     val thisType = AggregationCompiler.compile(operator)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Aggregation[Seq[_], Value, SummarizedValue]])
+    val cls = context.loadClass[Aggregation[Seq[_], Value, SummarizedValue]](thisType.getClassName)
 
     val aggregation = cls.newInstance()
     assert(aggregation.mapSideCombine === true)

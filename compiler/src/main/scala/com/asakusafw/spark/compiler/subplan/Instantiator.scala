@@ -22,7 +22,6 @@ import scala.collection.mutable
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -35,10 +34,18 @@ trait Instantiator {
       mb: MethodBuilder,
       vars: Instantiator.Vars,
       nextLocal: AtomicInteger)(
-        implicit context: SparkClientCompiler.Context): Var
+        implicit context: Instantiator.Context): Var
 }
 
 object Instantiator {
+
+  trait Context
+    extends CompilerContext
+    with ClassLoaderProvider
+    with DataModelLoaderProvider {
+
+    def branchKeys: BranchKeys
+  }
 
   case class Vars(
     sc: Var, // SparkContext

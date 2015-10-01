@@ -50,7 +50,7 @@ import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp, Maste
 @RunWith(classOf[JUnitRunner])
 class ShuffledMasterBranchOperatorCompilerSpecTest extends ShuffledMasterBranchOperatorCompilerSpec
 
-class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSugar with TempDir with CompilerContext {
+class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   import ShuffledMasterBranchOperatorCompilerSpec._
 
@@ -67,11 +67,10 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val low = new GenericOutputFragment[Foo]
     val high = new GenericOutputFragment[Foo]
@@ -133,11 +132,10 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val low = new GenericOutputFragment[Foo]
     val high = new GenericOutputFragment[Foo]
@@ -202,11 +200,10 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val low = new GenericOutputFragment[Foo]
     val high = new GenericOutputFragment[Foo]
@@ -268,11 +265,10 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with LoadClassSu
       .output("high", ClassDescription.of(classOf[Foo]))
       .build()
 
-    val classpath = createTempDirectory("MasterBranchOperatorCompilerSpec").toFile
-    implicit val context = newContext("flowId", classpath)
+    implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = loadClass(thisType.getClassName, classpath).asSubclass(classOf[Fragment[Seq[Iterator[_]]]])
+    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
     val low = new GenericOutputFragment[Foo]
     val high = new GenericOutputFragment[Foo]

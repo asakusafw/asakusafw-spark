@@ -53,7 +53,7 @@ import com.asakusafw.spark.tools.asm._
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverClassBuilderSpecTest extends InputOutputDriverClassBuilderSpec
 
-class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with TempDir with CompilerContext {
+class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with TempDir with UsingCompilerContext {
 
   import InputOutputDriverClassBuilderSpec._
 
@@ -89,12 +89,15 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     outputSubPlan.putAttribute(classOf[SubPlanInfo],
       new SubPlanInfo(outputSubPlan, SubPlanInfo.DriverType.OUTPUT, Seq.empty[SubPlanInfo.DriverOption], outputOperator))
 
-    val outputCompilerContext = newContext("outtputFlowId", jpContext)
+    val outputCompilerContext = newSubPlanCompilerContext("outtputFlowId", jpContext)
 
-    val outputCompiler = SubPlanCompiler(outputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(outputCompilerContext)
+    val outputCompiler =
+      SubPlanCompiler(
+        outputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+          outputCompilerContext)
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
-    outputCompilerContext.jpContext.addClass(outputCompilerContext.branchKeys)
-    outputCompilerContext.jpContext.addClass(outputCompilerContext.broadcastIds)
+    outputCompilerContext.addClass(outputCompilerContext.branchKeys)
+    outputCompilerContext.addClass(outputCompilerContext.broadcastIds)
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
 
     val hoges = sc.parallelize(0 until 10).map { i =>
@@ -152,12 +155,15 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     inputSubplanOutput.putAttribute(classOf[SubPlanOutputInfo],
       new SubPlanOutputInfo(inputSubplanOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-    val inputCompilerContext = newContext("inputFlowId", jpContext = jpContext)
+    val inputCompilerContext = newSubPlanCompilerContext("inputFlowId", jpContext)
 
-    val inputCompiler = SubPlanCompiler(inputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(inputCompilerContext)
+    val inputCompiler =
+      SubPlanCompiler(
+        inputSubPlan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+          inputCompilerContext)
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
-    inputCompilerContext.jpContext.addClass(inputCompilerContext.branchKeys)
-    inputCompilerContext.jpContext.addClass(inputCompilerContext.broadcastIds)
+    inputCompilerContext.addClass(inputCompilerContext.branchKeys)
+    inputCompilerContext.addClass(inputCompilerContext.broadcastIds)
     val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]]])
     val inputDriver = inputDriverCls.getConstructor(
       classOf[SparkContext],

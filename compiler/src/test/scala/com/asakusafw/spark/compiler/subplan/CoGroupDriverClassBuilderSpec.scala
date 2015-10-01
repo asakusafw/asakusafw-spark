@@ -56,7 +56,7 @@ import com.asakusafw.vocabulary.operator.CoGroup
 @RunWith(classOf[JUnitRunner])
 class CoGroupDriverClassBuilderSpecTest extends CoGroupDriverClassBuilderSpec
 
-class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with CompilerContext {
+class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with UsingCompilerContext {
 
   import CoGroupDriverClassBuilderSpec._
 
@@ -160,12 +160,14 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(nResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      implicit val context = newContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
 
-      val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
+      val compiler =
+        SubPlanCompiler(
+          subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
-      context.jpContext.addClass(context.branchKeys)
-      context.jpContext.addClass(context.broadcastIds)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
       val hogeOrd = new HogeSortOrdering()

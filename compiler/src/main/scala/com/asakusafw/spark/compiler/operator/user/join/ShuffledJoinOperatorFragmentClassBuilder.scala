@@ -21,13 +21,14 @@ package join
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, OperatorOutput, UserOperator }
+import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.tools.asm._
 
 abstract class ShuffledJoinOperatorFragmentClassBuilder(
   val operator: UserOperator,
   val masterInput: OperatorInput,
   val txInput: OperatorInput)(
-    implicit val context: SparkClientCompiler.Context)
+    implicit val context: OperatorCompiler.Context)
   extends JoinOperatorFragmentClassBuilder(
     classOf[Seq[Iterable[_]]].asType,
     operator.implementationClass.asType,

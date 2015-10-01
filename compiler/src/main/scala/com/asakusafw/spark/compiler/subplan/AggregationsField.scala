@@ -23,7 +23,7 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
-import com.asakusafw.spark.compiler.spi.AggregationCompiler
+import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, SubPlanCompiler }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -34,7 +34,7 @@ trait AggregationsField
   extends ClassBuilder
   with ScalaIdioms {
 
-  implicit def context: SparkClientCompiler.Context
+  implicit def context: SubPlanCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -97,11 +97,12 @@ trait AggregationsField
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
         if outputInfo.getAggregationInfo.isInstanceOf[UserOperator]
         operator = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
-        if (AggregationCompiler.support(operator))
+        if (AggregationCompiler.support(operator)(context.aggregationCompilerContext))
       } {
         builder += (
           context.branchKeys.getField(mb, output.getOperator),
-          pushNew0(AggregationClassBuilder.getOrCompile(operator)))
+          pushNew0(
+            AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)))
       }
     }
   }

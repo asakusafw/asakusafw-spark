@@ -199,8 +199,9 @@ class SparkClientClassBuilder(
         methodDef.newMethod(s"execute${i}", Seq.empty) { mb =>
           import mb._ // scalastyle:ignore
           val compiler =
-            SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
-          val driverType = compiler.compile(subplan)
+            SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
+              context.subplanCompilerContext)
+          val driverType = compiler.compile(subplan)(context.subplanCompilerContext)
 
           val scVar = thisVar.push()
             .getField("sc", classOf[SparkContext].asType)
@@ -242,10 +243,12 @@ class SparkClientClassBuilder(
 
           val instantiator = compiler.instantiator
           val driverVar = instantiator.newInstance(
-            driverType, subplan)(
+            driverType,
+            subplan)(
               mb,
               Instantiator.Vars(scVar, hadoopConfVar, rddsVar, terminatorsVar, broadcastsVar),
-              nextLocal)
+              nextLocal)(
+                context.instantiatorCompilerContext)
           val rdds = driverVar.push()
             .invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
           val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
@@ -288,16 +291,16 @@ class SparkClientClassBuilder(
         }
     }
 
-    val branchKeysType = context.jpContext.addClass(context.branchKeys)
-    val broadcastIdsType = context.jpContext.addClass(context.broadcastIds)
+    val branchKeysType = context.addClass(context.branchKeys)
+    val broadcastIdsType = context.addClass(context.broadcastIds)
 
     val registrator = KryoRegistratorCompiler.compile(
       OperatorUtil.collectDataTypes(
         plan.getElements.toSet[SubPlan].flatMap(_.getOperators.toSet[Operator]))
         .toSet[TypeDescription]
         .map(_.asType),
-      context.jpContext.addClass(new BranchKeySerializerClassBuilder(branchKeysType)),
-      context.jpContext.addClass(new BroadcastIdSerializerClassBuilder(broadcastIdsType)))
+      context.addClass(new BranchKeySerializerClassBuilder(branchKeysType)),
+      context.addClass(new BroadcastIdSerializerClassBuilder(broadcastIdsType)))
 
     methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
       import mb._ // scalastyle:ignore

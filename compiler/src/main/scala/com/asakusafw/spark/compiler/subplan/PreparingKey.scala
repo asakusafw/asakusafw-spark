@@ -27,6 +27,7 @@ import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
+import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -37,7 +38,7 @@ trait PreparingKey
   extends ClassBuilder
   with ScalaIdioms {
 
-  implicit def context: SparkClientCompiler.Context
+  implicit def context: SubPlanCompiler.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 

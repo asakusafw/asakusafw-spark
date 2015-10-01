@@ -24,37 +24,43 @@ import scala.collection.JavaConversions._
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.{ Operator, UserOperator }
+import com.asakusafw.spark.tools.asm.ClassBuilder
 
 trait AggregationCompiler {
 
   def of: Class[_]
   def compile(
     operator: UserOperator)(
-      implicit context: SparkClientCompiler.Context): Type
+      implicit context: AggregationCompiler.Context): Type
 }
 
 object AggregationCompiler {
 
+  trait Context
+    extends CompilerContext
+    with ClassLoaderProvider
+    with DataModelLoaderProvider
+
   private def getCompiler(
     operator: Operator)(
-      implicit context: SparkClientCompiler.Context): Option[AggregationCompiler] = {
+      implicit context: AggregationCompiler.Context): Option[AggregationCompiler] = {
     operator match {
       case op: UserOperator =>
-        apply(context.jpContext.getClassLoader)
-          .get(op.getAnnotation.resolve(context.jpContext.getClassLoader).annotationType)
+        apply(context.classLoader)
+          .get(op.getAnnotation.resolve(context.classLoader).annotationType)
       case _ => None
     }
   }
 
   def support(
     operator: Operator)(
-      implicit context: SparkClientCompiler.Context): Boolean = {
+      implicit context: AggregationCompiler.Context): Boolean = {
     getCompiler(operator).isDefined
   }
 
   def compile(
     operator: Operator)(
-      implicit context: SparkClientCompiler.Context): Type = {
+      implicit context: AggregationCompiler.Context): Type = {
     getCompiler(operator) match {
       case Some(compiler) => compiler.compile(operator.asInstanceOf[UserOperator])
       case _ => throw new AssertionError()

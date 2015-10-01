@@ -30,7 +30,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType, SubPlanCompiler }
 import com.asakusafw.spark.compiler.subplan.CoGroupDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, CoGroupDriver, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
@@ -42,7 +42,7 @@ class CoGroupDriverClassBuilder(
   val operator: UserOperator)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
-      implicit val context: SparkClientCompiler.Context)
+      implicit val context: SubPlanCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/CoGroupDriver$$${nextId};"),
@@ -205,7 +205,10 @@ class CoGroupDriverClassBuilder(
 
         val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)
         val fragmentVar = {
-          val t = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+          val t =
+            OperatorCompiler.compile(
+              operator, OperatorType.CoGroupType)(
+                context.operatorCompilerContext)
           val outputs = operator.getOutputs.map(fragmentBuilder.build)
           val fragment = pushNew(t)
           fragment.dup().invokeInit(
