@@ -201,9 +201,15 @@ class CoGroupDriverClassBuilder(
         import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
+        val fragmentBufferSizeVar =
+          thisVar.push().invokeV("fragmentBufferSize", Type.INT_TYPE)
+            .store(broadcastsVar.nextLocal)
+        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
 
-        val fragmentBuilder = new FragmentGraphBuilder(mb, broadcastsVar, nextLocal)
+        val fragmentBuilder =
+          new FragmentGraphBuilder(
+            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            context.operatorCompilerContext)
         val fragmentVar = {
           val t =
             OperatorCompiler.compile(
