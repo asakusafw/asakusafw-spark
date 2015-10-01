@@ -15,8 +15,10 @@
  */
 package com.asakusafw.spark.compiler
 
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach }
 import org.scalatest.Suite
+
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 
@@ -29,18 +31,20 @@ import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.stage.StageConstants
 import com.asakusafw.spark.runtime._
 
-trait SparkWithClassServerSugar extends BeforeAndAfterEach { self: Suite =>
+trait SparkWithClassServerSugar extends BeforeAndAfterAll with BeforeAndAfterEach { self: Suite =>
 
+  // for all
   var cl: ClassLoader = _
-
   var classServer: ClassServer = _
-
   var sc: SparkContext = _
+
+  // for each
+  var flowId: String = _
   var hadoopConf: Broadcast[Configuration] = _
 
-  override def beforeEach() {
+  override def beforeAll(): Unit = {
     try {
-      super.beforeEach()
+      super.beforeAll()
     } finally {
       cl = Thread.currentThread().getContextClassLoader()
 
@@ -50,10 +54,6 @@ trait SparkWithClassServerSugar extends BeforeAndAfterEach { self: Suite =>
       conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       conf.set("spark.kryo.registrator", kryoRegistrator)
 
-      val stageInfo = new StageInfo(
-        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
-      conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
-
       conf.set(Props.Parallelism, 8.toString)
 
       classServer = new ClassServer(cl, conf)
@@ -62,22 +62,48 @@ trait SparkWithClassServerSugar extends BeforeAndAfterEach { self: Suite =>
 
       conf.set("spark.repl.class.uri", uri)
       sc = new SparkContext(conf)
-      hadoopConf = sc.broadcast(sc.hadoopConfiguration)
+    }
+  }
+
+  private[this] val nextId = new AtomicInteger(0)
+
+  override def beforeEach(): Unit = {
+    try {
+      super.beforeEach()
+    } finally {
+      flowId = s"flowId${nextId.getAndIncrement()}"
+
+      val conf = new Configuration(sc.hadoopConfiguration)
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", flowId, null, "executionId", Map.empty[String, String])
+      conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
+      hadoopConf = sc.broadcast(conf)
+    }
+  }
+
+  override def afterEach(): Unit = {
+    try {
+      hadoopConf = null
+      flowId = null
+    } finally {
+      super.afterEach()
+    }
+  }
+
+  override def afterAll(): Unit = {
+    try {
+      try {
+        sc.stop()
+        sc = null
+        classServer.stop()
+        classServer = null
+      } finally {
+        Thread.currentThread().setContextClassLoader(cl)
+      }
+    } finally {
+      super.afterAll()
     }
   }
 
   def kryoRegistrator: String = "com.asakusafw.spark.runtime.serializer.KryoRegistrator"
-
-  override def afterEach() {
-    try {
-      Thread.currentThread().setContextClassLoader(cl)
-      hadoopConf = null
-      sc.stop
-      sc = null
-      classServer.stop
-      classServer = null
-    } finally {
-      super.afterEach
-    }
-  }
 }

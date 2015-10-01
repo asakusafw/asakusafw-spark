@@ -43,7 +43,7 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
   def extraConfigurations: Map[String, String]
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
-    val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+    val job = JobCompatibility.newJob(hadoopConf.value)
 
     paths.foreach { ps =>
       val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))

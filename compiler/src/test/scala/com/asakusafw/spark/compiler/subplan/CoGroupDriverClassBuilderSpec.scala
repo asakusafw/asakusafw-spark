@@ -160,7 +160,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(nResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
       val compiler =
         SubPlanCompiler(

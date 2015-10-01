@@ -89,6 +89,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     outputSubPlan.putAttribute(classOf[SubPlanInfo],
       new SubPlanInfo(outputSubPlan, SubPlanInfo.DriverType.OUTPUT, Seq.empty[SubPlanInfo.DriverOption], outputOperator))
 
+    // FIXME: should use the same flowId as StageInfo's.
     val outputCompilerContext = newSubPlanCompilerContext("outtputFlowId", jpContext)
 
     val outputCompiler =
@@ -155,6 +156,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     inputSubplanOutput.putAttribute(classOf[SubPlanOutputInfo],
       new SubPlanOutputInfo(inputSubplanOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
+    // FIXME: should use the same flowId as StageInfo's.
     val inputCompilerContext = newSubPlanCompilerContext("inputFlowId", jpContext)
 
     val inputCompiler =
