@@ -46,7 +46,7 @@ abstract class OutputDriver[T: ClassTag](
   val Logger = LoggerFactory.getLogger(getClass())
 
   override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
-    val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+    val job = JobCompatibility.newJob(hadoopConf.value)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])

@@ -107,7 +107,7 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
       val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
@@ -211,7 +211,7 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       hogeResultOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      implicit val context = newSubPlanCompilerContext("flowId", classServer.root.toFile)
+      implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
       val compiler = SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
       val thisType = compiler.compile(subplan)
