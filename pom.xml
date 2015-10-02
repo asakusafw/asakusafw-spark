@@ -48,7 +48,7 @@
   </properties>
 
   <modules>
-    <module>core</module>
+    <module>runtime</module>
   </modules>
 
   <build>
