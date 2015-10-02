@@ -46,6 +46,7 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.runtime.TempDir
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._

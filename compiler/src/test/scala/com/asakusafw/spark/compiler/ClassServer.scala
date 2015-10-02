@@ -32,6 +32,8 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.util.TraceClassVisitor
 import org.slf4j.LoggerFactory
 
+import com.asakusafw.spark.runtime.TempDir
+
 import resource._
 
 class ClassServer(val root: Path, val parent: ClassLoader, conf: SparkConf, securityManager: SecurityManager) {

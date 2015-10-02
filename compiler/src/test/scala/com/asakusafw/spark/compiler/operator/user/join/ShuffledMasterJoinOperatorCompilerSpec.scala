@@ -43,6 +43,7 @@ import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.model.{ Joined, Key }
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp, MasterSelection }

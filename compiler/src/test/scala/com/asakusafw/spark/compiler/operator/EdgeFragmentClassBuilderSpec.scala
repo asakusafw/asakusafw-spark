@@ -27,6 +27,7 @@ import org.apache.hadoop.io.Writable
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])

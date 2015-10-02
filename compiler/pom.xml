@@ -182,6 +182,13 @@
     </dependency>
     <dependency>
       <groupId>com.asakusafw.spark</groupId>
+      <artifactId>asakusa-spark-runtime</artifactId>
+      <version>${project.version}</version>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.asakusafw.spark</groupId>
       <artifactId>asakusa-spark-tools-asm</artifactId>
       <version>${project.version}</version>
       <classifier>tests</classifier>
