@@ -41,7 +41,7 @@
 
     <scala.compat.version>2.10</scala.compat.version>
     <scala.version>${scala.compat.version}.4</scala.version>
-    <spark.version>1.5.0</spark.version>
+    <spark.version>1.5.1</spark.version>
     <jetty.version>8.1.14.v20131031</jetty.version>
     <hadoop.version>2.6.0</hadoop.version>
     <asm.version>5.0.3</asm.version>
