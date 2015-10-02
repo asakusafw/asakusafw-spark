@@ -37,6 +37,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -49,21 +50,22 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkSugar {
   behavior of classOf[ResourceBrokingIterator[_]].getSimpleName
 
   it should "broke resources" in {
-    val hoges = sc.parallelize(0 until 10).map { i =>
-      val hoge = new Hoge()
-      hoge.id.modify(i)
-      ((), hoge)
-    }.asInstanceOf[RDD[(_, Hoge)]]
+    val foos = sc.parallelize(0 until 10).map { i =>
+      val foo = new Foo()
+      foo.id.modify(i)
+      ((), foo)
+    }.asInstanceOf[RDD[(_, Foo)]]
 
-    val driver = new TestDriver(sc, hadoopConf, Future.successful(hoges))
+    val driver = new TestDriver(sc, hadoopConf, Future.successful(foos))
 
     val outputs = driver.execute()
 
     val result = Await.result(
       outputs(Result).map {
-        _.map(_._2.asInstanceOf[Hoge])
-          .map(hoge => (hoge.id.get, hoge.str.getAsString))
-      }, Duration.Inf).collect.toSeq
+        _.map {
+          case (_, foo: Foo) => (foo.id.get, foo.str.getAsString)
+        }.collect.toSeq
+      }, Duration.Inf)
     assert(result.size === 10)
     assert(result.map(_._1) === (0 until 10))
     assert(result.map(_._2) === (0 until 10).map(i => s"test_${i}"))
@@ -72,13 +74,36 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkSugar {
 
 object ResourceBrokingIteratorSpec {
 
+  class Foo extends DataModel[Foo] with Writable {
+
+    val id = new IntOption()
+    val str = new StringOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+      str.setNull()
+    }
+    override def copyFrom(other: Foo): Unit = {
+      id.copyFrom(other.id)
+      str.copyFrom(other.str)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      str.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      str.write(out)
+    }
+  }
+
   val Result = BranchKey(0)
 
   class TestDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient prev: Future[RDD[(_, Hoge)]])
-    extends ExtractDriver[Hoge](sc, hadoopConf)(Seq(prev))(Map.empty) {
+    @transient prev: Future[RDD[(_, Foo)]])
+    extends ExtractDriver[Foo](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
     override def label = "TestMap"
 
@@ -100,46 +125,19 @@ object ResourceBrokingIteratorSpec {
       ???
     }
 
-    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
-        Result -> new HogeOutputFragment)
+        Result -> new GenericOutputFragment[Foo]())
       val fragment = new TestFragment(outputs(Result))
       (fragment, outputs)
     }
   }
 
-  class Hoge extends DataModel[Hoge] with Writable {
+  class TestFragment(output: Fragment[Foo]) extends Fragment[Foo] {
 
-    val id = new IntOption()
-    val str = new StringOption()
-
-    override def reset(): Unit = {
-      id.setNull()
-      str.setNull()
-    }
-    override def copyFrom(other: Hoge): Unit = {
-      id.copyFrom(other.id)
-      str.copyFrom(other.str)
-    }
-    override def readFields(in: DataInput): Unit = {
-      id.readFields(in)
-      str.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      id.write(out)
-      str.write(out)
-    }
-  }
-
-  class HogeOutputFragment extends OutputFragment[Hoge] {
-    override def newDataModel: Hoge = new Hoge()
-  }
-
-  class TestFragment(output: Fragment[Hoge]) extends Fragment[Hoge] {
-
-    override def add(hoge: Hoge): Unit = {
-      hoge.str.modify(s"${BatchContext.get("batcharg")}_${hoge.id.get}")
-      output.add(hoge)
+    override def add(foo: Foo): Unit = {
+      foo.str.modify(s"${BatchContext.get("batcharg")}_${foo.id.get}")
+      output.add(foo)
     }
 
     override def reset(): Unit = {

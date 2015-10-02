@@ -41,76 +41,87 @@ import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverSpecTest extends InputOutputDriverSpec
 
-class InputOutputDriverSpec extends FlatSpec with SparkSugar {
+class InputOutputDriverSpec extends FlatSpec with SparkSugar with TempDir {
 
   import InputOutputDriverSpec._
 
   behavior of "Input/OutputDriver"
 
   it should "output and input" in {
-    val tmpDir = createTempDirectory().toFile
+    val tmpDir = createTempDirectory("test-").toFile
     val path = new File(tmpDir, s"output-${EXPR_EXECUTION_ID}").getAbsolutePath
 
-    val f = new Function1[Int, (_, Hoge)] with Serializable {
-      @transient var h: Hoge = _
-      def hoge: Hoge = {
-        if (h == null) {
-          h = new Hoge()
-        }
-        h
-      }
-      override def apply(i: Int): (_, Hoge) = {
-        hoge.id.modify(i)
-        (null, hoge)
-      }
-    }
-
-    val hoges = sc.parallelize(0 until 10).map(f).asInstanceOf[RDD[(_, Hoge)]]
+    val foos = sc.parallelize(0 until 10).map(Foo.intToFoo).asInstanceOf[RDD[(_, Foo)]]
 
     val terminators = mutable.Set.empty[Future[Unit]]
-    new TestOutputDriver(sc, hadoopConf, Future.successful(hoges), terminators, path).execute()
-    terminators.foreach {
-      Await.ready(_, Duration.Inf)
-    }
+    new TestOutputDriver(sc, hadoopConf, Future.successful(foos), terminators, path).execute()
+    Await.result(Future.sequence(terminators), Duration.Inf)
 
     val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
-    assert(Await.result(
-      inputs(HogeResult).map {
-        _.map(_._2.asInstanceOf[Hoge].id.get)
-      }, Duration.Inf).collect.toSeq.sorted === (0 until 10))
-  }
+    val result = Await.result(
+      inputs(Result).map {
+        _.map {
+          case (_, foo: Foo) => foo.id.get
+        }.collect.toSeq.sorted
+      }, Duration.Inf)
 
-  private def createTempDirectory(): Path = {
-    val tmpDir = Files.createTempDirectory(s"test-")
-    sys.addShutdownHook {
-      def deleteRecursively(path: Path): Unit = {
-        if (Files.isDirectory(path)) {
-          Files.newDirectoryStream(path).foreach(deleteRecursively)
-        }
-        Files.delete(path)
-      }
-      deleteRecursively(tmpDir)
-    }
-    tmpDir
+    assert(result === (0 until 10))
   }
 }
 
 object InputOutputDriverSpec {
 
-  val HogeResult = BranchKey(0)
+  class Foo extends DataModel[Foo] with Writable {
+
+    val id = new IntOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+    }
+    override def copyFrom(other: Foo): Unit = {
+      id.copyFrom(other.id)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+    }
+  }
+
+  object Foo {
+
+    def intToFoo = new Function1[Int, (_, Foo)] with Serializable {
+
+      @transient var f: Foo = _
+      def foo: Foo = {
+        if (f == null) {
+          f = new Foo()
+        }
+        f
+      }
+      override def apply(i: Int): (_, Foo) = {
+        foo.id.modify(i)
+        (null, foo)
+      }
+    }
+  }
+
+  val Result = BranchKey(0)
 
   class TestOutputDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient input: Future[RDD[(_, Hoge)]],
+    @transient input: Future[RDD[(_, Foo)]],
     @transient terminators: mutable.Set[Future[Unit]],
     val path: String)
-    extends OutputDriver[Hoge](sc, hadoopConf)(Seq(input), terminators) {
+    extends OutputDriver[Foo](sc, hadoopConf)(Seq(input), terminators) {
 
     override def label = "TestOutput"
   }
@@ -119,7 +130,7 @@ object InputOutputDriverSpec {
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
     basePath: String)
-    extends InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]](sc, hadoopConf)(Map.empty) {
+    extends InputDriver[NullWritable, Foo, TemporaryInputFormat[Foo]](sc, hadoopConf)(Map.empty) {
 
     override def label = "TestInput"
 
@@ -127,7 +138,7 @@ object InputOutputDriverSpec {
 
     override def extraConfigurations: Map[String, String] = Map.empty
 
-    override def branchKeys: Set[BranchKey] = Set(HogeResult)
+    override def branchKeys: Set[BranchKey] = Set(Result)
 
     override def partitioners: Map[BranchKey, Option[Partitioner]] = Map.empty
 
@@ -145,32 +156,11 @@ object InputOutputDriverSpec {
       ???
     }
 
-    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
-      val fragment = new HogeOutputFragment
-      val outputs = Map(HogeResult -> fragment)
+    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+      val fragment = new GenericOutputFragment[Foo]()
+      val outputs = Map(Result -> fragment)
       (fragment, outputs)
     }
   }
 
-  class Hoge extends DataModel[Hoge] with Writable {
-
-    val id = new IntOption()
-
-    override def reset(): Unit = {
-      id.setNull()
-    }
-    override def copyFrom(other: Hoge): Unit = {
-      id.copyFrom(other.id)
-    }
-    override def readFields(in: DataInput): Unit = {
-      id.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      id.write(out)
-    }
-  }
-
-  class HogeOutputFragment extends OutputFragment[Hoge] {
-    override def newDataModel: Hoge = new Hoge()
-  }
 }
