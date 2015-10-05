@@ -17,6 +17,7 @@ package com.asakusafw.yass.runtime
 
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.Suite
+
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 

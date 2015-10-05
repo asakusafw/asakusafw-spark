@@ -22,7 +22,6 @@ import scala.reflect.ClassTag
 
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 trait Source extends Node {

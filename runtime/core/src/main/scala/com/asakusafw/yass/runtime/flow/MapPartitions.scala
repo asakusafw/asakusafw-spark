@@ -19,7 +19,6 @@ package flow
 import scala.concurrent.Future
 import scala.reflect.ClassTag
 
-import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.SparkClient.executionContext

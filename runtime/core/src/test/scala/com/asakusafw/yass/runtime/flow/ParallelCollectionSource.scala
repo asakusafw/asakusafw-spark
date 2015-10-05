@@ -17,12 +17,10 @@ package com.asakusafw.yass.runtime
 package flow
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.ClassTag
 
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 class ParallelCollectionSource[T: ClassTag](

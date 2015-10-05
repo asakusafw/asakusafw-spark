@@ -16,23 +16,20 @@
 package com.asakusafw.yass.runtime
 package flow
 
-import scala.collection.mutable
 import scala.concurrent.Future
 
-import org.apache.spark.Partitioner
-import org.apache.spark.broadcast.{ Broadcast => SparkBroadcast }
-import org.apache.spark.rdd.RDD
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.spark.runtime.SparkClient.executionContext
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.rdd._
 
 trait UsingBroadcasts {
 
   def broadcasts: Map[BroadcastId, Broadcast]
 
-  final def zipBroadcasts(rc: RoundContext): Future[Map[BroadcastId, SparkBroadcast[_]]] = {
-    broadcasts.foldLeft(Future.successful(Map.empty[BroadcastId, SparkBroadcast[_]])) {
+  final def zipBroadcasts(rc: RoundContext): Future[Map[BroadcastId, Broadcasted[_]]] = {
+    broadcasts.foldLeft(Future.successful(Map.empty[BroadcastId, Broadcasted[_]])) {
       case (broadcasts, (broadcastId, broadcast)) =>
         broadcasts.zip(broadcast.getOrBroadcast(rc)).map {
           case (broadcasts, broadcast) =>

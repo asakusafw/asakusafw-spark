@@ -23,7 +23,7 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.SparkClient.executionContext
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd._
 
 class MapBroadcast(

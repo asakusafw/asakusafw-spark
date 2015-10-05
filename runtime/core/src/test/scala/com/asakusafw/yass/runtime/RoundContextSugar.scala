@@ -15,8 +15,6 @@
  */
 package com.asakusafw.yass.runtime
 
-import org.scalatest.Suite
-
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.conf.Configuration

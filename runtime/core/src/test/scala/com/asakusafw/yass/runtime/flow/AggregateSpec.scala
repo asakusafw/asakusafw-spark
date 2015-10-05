@@ -30,15 +30,14 @@ import scala.concurrent.duration.Duration
 import org.apache.hadoop.io.Writable
 import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
-import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.operator.{ GenericEdgeFragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.rdd._
 
