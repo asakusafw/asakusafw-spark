@@ -27,6 +27,7 @@ import org.apache.hadoop.io.Writable
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])
@@ -39,29 +40,29 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with UsingCompilerContext {
   behavior of classOf[EdgeFragmentClassBuilder].getSimpleName
 
   it should "compile EdgeFragment" in {
-    val out1 = new GenericOutputFragment[TestModel]
-    val out2 = new GenericOutputFragment[TestModel]
+    val out1 = new GenericOutputFragment[Foo]()
+    val out2 = new GenericOutputFragment[Foo]()
 
     implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = EdgeFragmentClassBuilder.getOrCompile(classOf[TestModel].asType)
-    val cls = context.loadClass[EdgeFragment[TestModel]](thisType.getClassName)
+    val thisType = EdgeFragmentClassBuilder.getOrCompile(classOf[Foo].asType)
+    val cls = context.loadClass[EdgeFragment[Foo]](thisType.getClassName)
 
     val fragment = cls.getConstructor(classOf[Array[Fragment[_]]]).newInstance(Array(out1, out2))
 
     fragment.reset()
-    val dm = new TestModel()
+    val foo = new Foo()
     for (i <- 0 until 10) {
-      dm.i.modify(i)
-      fragment.add(dm)
+      foo.i.modify(i)
+      fragment.add(foo)
     }
     out1.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
+      case (foo, i) =>
+        assert(foo.i.get === i)
     }
     out2.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
+      case (foo, i) =>
+        assert(foo.i.get === i)
     }
 
     fragment.reset()
@@ -70,14 +71,14 @@ class EdgeFragmentClassBuilderSpec extends FlatSpec with UsingCompilerContext {
 
 object EdgeFragmentClassBuilderSpec {
 
-  class TestModel extends DataModel[TestModel] with Writable {
+  class Foo extends DataModel[Foo] with Writable {
 
     val i: IntOption = new IntOption()
 
     override def reset: Unit = {
       i.setNull()
     }
-    override def copyFrom(other: TestModel): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       i.copyFrom(other.i)
     }
     override def readFields(in: DataInput): Unit = {

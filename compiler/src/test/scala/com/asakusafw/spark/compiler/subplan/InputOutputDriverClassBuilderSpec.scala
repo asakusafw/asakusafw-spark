@@ -46,6 +46,7 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.runtime.TempDir
 import com.asakusafw.spark.runtime.driver._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -69,14 +70,14 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       classServer.root.toFile)
 
     // output
-    val outputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+    val outputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
-    val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+    val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
 
-    val outputOperator = ExternalOutput.builder("hoge")
-      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Hoge]), outputMarker.getOutput)
-      .output("end", ClassDescription.of(classOf[Hoge]))
+    val outputOperator = ExternalOutput.builder("foo")
+      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), outputMarker.getOutput)
+      .output("end", ClassDescription.of(classOf[Foo]))
       .build()
     outputOperator.findOutput("end").connect(endMarker.getInput)
 
@@ -99,12 +100,12 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val outputDriverType = outputCompiler.compile(outputSubPlan)(outputCompilerContext)
     outputCompilerContext.addClass(outputCompilerContext.branchKeys)
     outputCompilerContext.addClass(outputCompilerContext.broadcastIds)
-    val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Hoge]])
+    val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Foo]])
 
-    val hoges = sc.parallelize(0 until 10).map { i =>
-      val hoge = new Hoge()
-      hoge.id.modify(i)
-      (hoge, hoge)
+    val foos = sc.parallelize(0 until 10).map { i =>
+      val foo = new Foo()
+      foo.id.modify(i)
+      (foo, foo)
     }
     val terminators = mutable.Set.empty[Future[Unit]]
     val outputDriver = outputDriverCls.getConstructor(
@@ -115,12 +116,10 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       .newInstance(
         sc,
         hadoopConf,
-        Seq(Future.successful(hoges)),
+        Seq(Future.successful(foos)),
         terminators)
     outputDriver.execute()
-    terminators.foreach {
-      Await.result(_, Duration.Inf)
-    }
+    Await.result(Future.sequence(terminators), Duration.Inf)
 
     // prepare for input
     val srcDir = new File(tmpDir, s"${outputOperator.getName}")
@@ -129,19 +128,19 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     Files.move(srcDir.toPath, dstDir.toPath)
 
     // input
-    val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+    val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
-    val inputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+    val inputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
-    val inputOperator = ExternalInput.builder("hoge/part-*",
+    val inputOperator = ExternalInput.builder("foo/part-*",
       new ExternalInputInfo.Basic(
-        ClassDescription.of(classOf[Hoge]),
+        ClassDescription.of(classOf[Foo]),
         "test",
-        ClassDescription.of(classOf[Hoge]),
+        ClassDescription.of(classOf[Foo]),
         ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin", ClassDescription.of(classOf[Hoge]), beginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Hoge])).build()
+      .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
+      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo])).build()
     inputOperator.findOutput(ExternalInput.PORT_NAME).connect(inputMarker.getInput)
 
     val inputPlan = PlanBuilder.from(Seq(inputOperator))
@@ -166,7 +165,7 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
     val inputDriverType = inputCompiler.compile(inputSubPlan)(inputCompilerContext)
     inputCompilerContext.addClass(inputCompilerContext.branchKeys)
     inputCompilerContext.addClass(inputCompilerContext.broadcastIds)
-    val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[NullWritable, Hoge, TemporaryInputFormat[Hoge]]])
+    val inputDriverCls = classServer.loadClass(inputDriverType).asSubclass(classOf[InputDriver[NullWritable, Foo, TemporaryInputFormat[Foo]]])
     val inputDriver = inputDriverCls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],
@@ -187,21 +186,27 @@ class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServ
       Set(inputMarker)
       .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-    assert(Await.result(inputs(getBranchKey(inputMarker.getOriginalSerialNumber))
-      .map(_.map(_._2.asInstanceOf[Hoge].id.get)), Duration.Inf).collect.toSeq.sorted === (0 until 10))
+    val result = Await.result(
+      inputs(getBranchKey(inputMarker.getOriginalSerialNumber)).map {
+        _.map {
+          case (_, foo: Foo) => foo.id.get
+        }.collect.toSeq.sorted
+      }, Duration.Inf)
+
+    assert(result === (0 until 10))
   }
 }
 
 object InputOutputDriverClassBuilderSpec {
 
-  class Hoge extends DataModel[Hoge] with Writable {
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
     }
-    override def copyFrom(other: Hoge): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
     }
     override def readFields(in: DataInput): Unit = {

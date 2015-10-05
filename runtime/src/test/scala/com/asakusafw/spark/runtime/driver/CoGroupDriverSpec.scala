@@ -37,6 +37,7 @@ import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.io.WritableSerDe
+import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -49,30 +50,107 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
   behavior of "CoGroupDriver"
 
   it should "cogroup" in {
-    val hogeOrd = new HogeSortOrdering()
-    val fHoge = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
+    val foos = sc.parallelize(0 until 100)
+      .map(Foo.intToFoo).asInstanceOf[RDD[(ShuffleKey, _)]]
+    val fooOrd = new Foo.SortOrdering()
 
-      @transient var h: Hoge = _
+    val bars = sc.parallelize(0 until 100)
+      .flatMap(i => (0 until i).iterator.map(Bar.intToBar(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
+    val barOrd = new Bar.SortOrdering()
 
-      def hoge: Hoge = {
-        if (h == null) {
-          h = new Hoge()
-        }
-        h
-      }
+    val grouping = new GroupingOrdering()
+    val partitioner = new HashPartitioner(2)
+    val driver = new TestCoGroupDriver(
+      sc, hadoopConf,
+      Seq(
+        (Seq(Future.successful(foos)), Option(fooOrd)),
+        (Seq(Future.successful(bars)), Option(barOrd))),
+      grouping, partitioner)
 
-      override def apply(i: Int): (ShuffleKey, Hoge) = {
-        hoge.id.modify(i)
-        val shuffleKey = new ShuffleKey(
-          WritableSerDe.serialize(hoge.id),
-          WritableSerDe.serialize(new BooleanOption().modify(hoge.id.get % 3 == 0)))
-        (shuffleKey, hoge)
-      }
+    val outputs = driver.execute()
+
+    val ((fooResult, barResult), (fooError, barError)) =
+      Await.result(
+        outputs(FooResult).map {
+          _.map {
+            case (_, foo: Foo) => foo.id.get
+          }.collect.toSeq
+        }.zip {
+          outputs(BarResult).map {
+            _.map {
+              case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+            }.collect.toSeq
+          }
+        }.zip {
+          outputs(FooError).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq.sorted
+          }.zip {
+            outputs(BarError).map {
+              _.map {
+                case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+              }.collect.toSeq.sortBy(_._2)
+            }
+          }
+        }, Duration.Inf)
+
+    assert(fooResult.size === 1)
+    assert(fooResult.head === 1)
+
+    assert(barResult.size === 1)
+    assert(barResult.head._1 === 100)
+    assert(barResult.head._2 === 1)
+
+    assert(fooError.size === 99)
+    assert(fooError.head === 0)
+    for (i <- 2 until 10) {
+      assert(fooError(i - 1) === i)
     }
-    val hoges = sc.parallelize(0 until 100).map(fHoge).asInstanceOf[RDD[(ShuffleKey, _)]]
 
-    val fooOrd = new FooSortOrdering()
-    val fFoo = new Function2[Int, Int, (ShuffleKey, Foo)] with Serializable {
+    assert(barError.size === 4949)
+    for {
+      i <- 2 until 100
+      j <- 0 until i
+    } {
+      assert(barError((i * (i - 1)) / 2 + j - 1)._1 === 100 + j)
+      assert(barError((i * (i - 1)) / 2 + j - 1)._2 === i)
+    }
+  }
+}
+
+object CoGroupDriverSpec {
+
+  class GroupingOrdering extends Ordering[ShuffleKey] {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      val xGrouping = x.grouping
+      val yGrouping = y.grouping
+      IntOption.compareBytes(xGrouping, 0, xGrouping.length, yGrouping, 0, yGrouping.length)
+    }
+  }
+
+  class Foo extends DataModel[Foo] with Writable {
+
+    val id = new IntOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+    }
+    override def copyFrom(other: Foo): Unit = {
+      id.copyFrom(other.id)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+    }
+  }
+
+  object Foo {
+
+    def intToFoo = new Function1[Int, (ShuffleKey, Foo)] with Serializable {
 
       @transient var f: Foo = _
 
@@ -83,70 +161,95 @@ class CoGroupDriverSpec extends FlatSpec with SparkSugar {
         f
       }
 
-      override def apply(i: Int, j: Int): (ShuffleKey, Foo) = {
-        foo.id.modify(100 + j)
-        foo.hogeId.modify(i)
+      override def apply(i: Int): (ShuffleKey, Foo) = {
+        foo.id.modify(i)
         val shuffleKey = new ShuffleKey(
-          WritableSerDe.serialize(foo.hogeId),
-          WritableSerDe.serialize(new IntOption().modify(foo.id.toString.hashCode)))
+          WritableSerDe.serialize(foo.id),
+          WritableSerDe.serialize(new BooleanOption().modify(foo.id.get % 3 == 0)))
         (shuffleKey, foo)
       }
     }
-    val foos = sc.parallelize(0 until 100).flatMap(i => (0 until i).iterator.map(fFoo(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
 
-    val grouping = new GroupingOrdering()
-    val part = new HashPartitioner(2)
-    val driver = new TestCoGroupDriver(
-      sc, hadoopConf, Seq((Seq(Future.successful(hoges)), Option(hogeOrd)), (Seq(Future.successful(foos)), Option(fooOrd))), grouping, part)
+    class SortOrdering extends GroupingOrdering {
 
-    val outputs = driver.execute()
-
-    val hogeResult = Await.result(
-      outputs(HogeResult).map {
-        _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
-      }, Duration.Inf).collect.toSeq
-    assert(hogeResult.size === 1)
-    assert(hogeResult.head === 1)
-
-    val fooResult = Await.result(
-      outputs(FooResult).map {
-        _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
-      }, Duration.Inf).collect.toSeq
-    assert(fooResult.size === 1)
-    assert(fooResult.head._1 === 100)
-    assert(fooResult.head._2 === 1)
-
-    val hogeError = Await.result(
-      outputs(HogeError).map {
-        _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
-      }, Duration.Inf).collect.toSeq.sorted
-    assert(hogeError.size === 99)
-    assert(hogeError.head === 0)
-    for (i <- 2 until 10) {
-      assert(hogeError(i - 1) === i)
-    }
-
-    val fooError = Await.result(
-      outputs(FooError).map {
-        _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
-      }, Duration.Inf).collect.toSeq.sortBy(_._2)
-    assert(fooError.size === 4949)
-    for {
-      i <- 2 until 100
-      j <- 0 until i
-    } {
-      assert(fooError((i * (i - 1)) / 2 + j - 1)._1 === 100 + j)
-      assert(fooError((i * (i - 1)) / 2 + j - 1)._2 === i)
+      override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+        val cmp = super.compare(x, y)
+        if (cmp == 0) {
+          val xOrdering = x.ordering
+          val yOrdering = y.ordering
+          BooleanOption.compareBytes(xOrdering, 0, xOrdering.length, yOrdering, 0, yOrdering.length)
+        } else {
+          cmp
+        }
+      }
     }
   }
-}
 
-object CoGroupDriverSpec {
+  class Bar extends DataModel[Bar] with Writable {
 
-  val HogeResult = BranchKey(0)
-  val FooResult = BranchKey(1)
-  val HogeError = BranchKey(2)
-  val FooError = BranchKey(3)
+    val id = new IntOption()
+    val fooId = new IntOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+      fooId.setNull()
+    }
+    override def copyFrom(other: Bar): Unit = {
+      id.copyFrom(other.id)
+      fooId.copyFrom(other.fooId)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      fooId.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      fooId.write(out)
+    }
+  }
+
+  object Bar {
+
+    def intToBar = new Function2[Int, Int, (ShuffleKey, Bar)] with Serializable {
+
+      @transient var b: Bar = _
+
+      def bar: Bar = {
+        if (b == null) {
+          b = new Bar()
+        }
+        b
+      }
+
+      override def apply(i: Int, j: Int): (ShuffleKey, Bar) = {
+        bar.id.modify(100 + j)
+        bar.fooId.modify(i)
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(bar.fooId),
+          WritableSerDe.serialize(new IntOption().modify(bar.id.toString.hashCode)))
+        (shuffleKey, bar)
+      }
+    }
+
+    class SortOrdering extends GroupingOrdering {
+
+      override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+        val cmp = super.compare(x, y)
+        if (cmp == 0) {
+          val xOrdering = x.ordering
+          val yOrdering = y.ordering
+          IntOption.compareBytes(xOrdering, 0, xOrdering.length, yOrdering, 0, yOrdering.length)
+        } else {
+          cmp
+        }
+      }
+    }
+  }
+
+  val FooResult = BranchKey(0)
+  val BarResult = BranchKey(1)
+  val FooError = BranchKey(2)
+  val BarError = BranchKey(3)
 
   class TestCoGroupDriver(
     @transient sc: SparkContext,
@@ -159,7 +262,7 @@ object CoGroupDriverSpec {
     override def label = "TestCoGroup"
 
     override def branchKeys: Set[BranchKey] = {
-      Set(HogeResult, FooResult, HogeError, FooError)
+      Set(FooResult, BarResult, FooError, BarError)
     }
 
     override def partitioners: Map[BranchKey, Option[Partitioner]] = Map.empty
@@ -174,15 +277,6 @@ object CoGroupDriverSpec {
       WritableSerDe.serialize(value.asInstanceOf[Writable])
     }
 
-    @transient var h: Hoge = _
-
-    def hoge = {
-      if (h == null) {
-        h = new Hoge()
-      }
-      h
-    }
-
     @transient var f: Foo = _
 
     def foo = {
@@ -192,126 +286,49 @@ object CoGroupDriverSpec {
       f
     }
 
+    @transient var b: Bar = _
+
+    def bar = {
+      if (b == null) {
+        b = new Bar()
+      }
+      b
+    }
+
     override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
       branch match {
-        case HogeResult | HogeError =>
-          WritableSerDe.deserialize(value, hoge)
-          hoge
         case FooResult | FooError =>
           WritableSerDe.deserialize(value, foo)
           foo
+        case BarResult | BarError =>
+          WritableSerDe.deserialize(value, bar)
+          bar
       }
     }
 
     override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Seq[Iterator[_]]], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
-        HogeResult -> new HogeOutputFragment,
-        FooResult -> new FooOutputFragment,
-        HogeError -> new HogeOutputFragment,
-        FooError -> new FooOutputFragment)
+        FooResult -> new GenericOutputFragment[Foo](),
+        BarResult -> new GenericOutputFragment[Bar](),
+        FooError -> new GenericOutputFragment[Foo](),
+        BarError -> new GenericOutputFragment[Bar]())
       val fragment = new TestCoGroupFragment(outputs)
       (fragment, outputs)
     }
-  }
-
-  class Hoge extends DataModel[Hoge] with Writable {
-
-    val id = new IntOption()
-
-    override def reset(): Unit = {
-      id.setNull()
-    }
-    override def copyFrom(other: Hoge): Unit = {
-      id.copyFrom(other.id)
-    }
-    override def readFields(in: DataInput): Unit = {
-      id.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      id.write(out)
-    }
-  }
-
-  class Foo extends DataModel[Foo] with Writable {
-
-    val id = new IntOption()
-    val hogeId = new IntOption()
-
-    override def reset(): Unit = {
-      id.setNull()
-      hogeId.setNull()
-    }
-    override def copyFrom(other: Foo): Unit = {
-      id.copyFrom(other.id)
-      hogeId.copyFrom(other.hogeId)
-    }
-    override def readFields(in: DataInput): Unit = {
-      id.readFields(in)
-      hogeId.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      id.write(out)
-      hogeId.write(out)
-    }
-  }
-
-  class GroupingOrdering extends Ordering[ShuffleKey] {
-
-    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      val xGrouping = x.grouping
-      val yGrouping = y.grouping
-      IntOption.compareBytes(xGrouping, 0, xGrouping.length, yGrouping, 0, yGrouping.length)
-    }
-  }
-
-  class HogeSortOrdering extends GroupingOrdering {
-
-    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      val cmp = super.compare(x, y)
-      if (cmp == 0) {
-        val xOrdering = x.ordering
-        val yOrdering = y.ordering
-        BooleanOption.compareBytes(xOrdering, 0, xOrdering.length, yOrdering, 0, yOrdering.length)
-      } else {
-        cmp
-      }
-    }
-  }
-
-  class FooSortOrdering extends GroupingOrdering {
-
-    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      val cmp = super.compare(x, y)
-      if (cmp == 0) {
-        val xOrdering = x.ordering
-        val yOrdering = y.ordering
-        IntOption.compareBytes(xOrdering, 0, xOrdering.length, yOrdering, 0, yOrdering.length)
-      } else {
-        cmp
-      }
-    }
-  }
-
-  class HogeOutputFragment extends OutputFragment[Hoge] {
-    override def newDataModel: Hoge = new Hoge()
-  }
-
-  class FooOutputFragment extends OutputFragment[Foo] {
-    override def newDataModel: Foo = new Foo()
   }
 
   class TestCoGroupFragment(outputs: Map[BranchKey, Fragment[_]]) extends Fragment[Seq[Iterator[_]]] {
 
     override def add(groups: Seq[Iterator[_]]): Unit = {
       assert(groups.size == 2)
-      val hogeList = groups(0).asInstanceOf[Iterator[Hoge]].toSeq
-      val fooList = groups(1).asInstanceOf[Iterator[Foo]].toSeq
-      if (hogeList.size == 1 && fooList.size == 1) {
-        outputs(HogeResult).asInstanceOf[HogeOutputFragment].add(hogeList.head)
-        outputs(FooResult).asInstanceOf[FooOutputFragment].add(fooList.head)
+      val fooList = groups(0).asInstanceOf[Iterator[Foo]].toSeq
+      val barList = groups(1).asInstanceOf[Iterator[Bar]].toSeq
+      if (fooList.size == 1 && barList.size == 1) {
+        outputs(FooResult).asInstanceOf[OutputFragment[Foo]].add(fooList.head)
+        outputs(BarResult).asInstanceOf[OutputFragment[Bar]].add(barList.head)
       } else {
-        hogeList.foreach(outputs(HogeError).asInstanceOf[HogeOutputFragment].add)
-        fooList.foreach(outputs(FooError).asInstanceOf[FooOutputFragment].add)
+        fooList.foreach(outputs(FooError).asInstanceOf[OutputFragment[Foo]].add)
+        barList.foreach(outputs(BarError).asInstanceOf[OutputFragment[Bar]].add)
       }
     }
 

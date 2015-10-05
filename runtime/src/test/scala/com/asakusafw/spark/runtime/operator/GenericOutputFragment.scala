@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.operator
+package com.asakusafw.spark.runtime.operator
 
 import scala.reflect.{ classTag, ClassTag }
 

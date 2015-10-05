@@ -43,6 +43,7 @@ import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.model.{ Joined, Key }
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp, MasterSelection }
@@ -59,12 +60,12 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
   it should "compile MasterJoin operator without master selection" in {
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinOp], classOf[MasterJoinOperator], "join")
-      .input("hoges", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")))
-      .output("joined", ClassDescription.of(classOf[Baa]))
-      .output("missed", ClassDescription.of(classOf[Foo]))
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("joined", ClassDescription.of(classOf[FooBar]))
+      .output("missed", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
@@ -72,8 +73,8 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val joined = new GenericOutputFragment[Baa]
-    val missed = new GenericOutputFragment[Foo]
+    val joined = new GenericOutputFragment[FooBar]()
+    val missed = new GenericOutputFragment[Bar]()
 
     val fragment = cls
       .getConstructor(
@@ -83,21 +84,21 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
 
     {
       fragment.reset()
-      val hoge = new Hoge()
-      hoge.id.modify(1)
-      hoge.hoge.modify("hoge")
-      val hoges = Seq(hoge)
       val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
+      foo.id.modify(1)
       foo.foo.modify("foo")
       val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      bar.bar.modify("bar")
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val joineds = joined.iterator.toSeq
       assert(joineds.size === 1)
       assert(joineds.head.id.get === 1)
-      assert(joineds.head.hoge.getAsString === "hoge")
       assert(joineds.head.foo.getAsString === "foo")
+      assert(joineds.head.bar.getAsString === "bar")
       val misseds = missed.iterator.toSeq
       assert(misseds.size === 0)
     }
@@ -108,13 +109,13 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
 
     {
       fragment.reset()
-      val hoges = Seq.empty[Hoge]
-      val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
-      foo.foo.modify("foo")
-      val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val foos = Seq.empty[Foo]
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      bar.bar.modify("bar")
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val joineds = joined.iterator.toSeq
       assert(joineds.size === 0)
       val misseds = missed.iterator.toSeq
@@ -130,12 +131,12 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
   it should "compile MasterJoin operator with master selection" in {
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinOp], classOf[MasterJoinOperator], "joinWithSelection")
-      .input("hoges", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")))
-      .output("joined", ClassDescription.of(classOf[Baa]))
-      .output("missed", ClassDescription.of(classOf[Foo]))
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("joined", ClassDescription.of(classOf[FooBar]))
+      .output("missed", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
@@ -143,8 +144,8 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val joined = new GenericOutputFragment[Baa]
-    val missed = new GenericOutputFragment[Foo]
+    val joined = new GenericOutputFragment[FooBar]()
+    val missed = new GenericOutputFragment[Bar]()
 
     val fragment = cls
       .getConstructor(
@@ -154,27 +155,27 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
 
     {
       fragment.reset()
-      val hoge = new Hoge()
-      hoge.id.modify(0)
-      hoge.hoge.modify("hoge")
-      val hoges = Seq(hoge)
-      val foos = (0 until 10).map { i =>
-        val foo = new Foo()
-        foo.id.modify(i)
-        foo.hogeId.modify(0)
-        foo.foo.modify(s"foo ${i}")
-        foo
+      val foo = new Foo()
+      foo.id.modify(0)
+      foo.foo.modify("foo")
+      val foos = Seq(foo)
+      val bars = (0 until 10).map { i =>
+        val bar = new Bar()
+        bar.id.modify(i)
+        bar.fooId.modify(0)
+        bar.bar.modify(s"bar ${i}")
+        bar
       }
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val joineds = joined.iterator.toSeq
       assert(joineds.size === 5)
       assert(joineds.map(_.id.get) === (0 until 10 by 2).map(_ => 0))
-      assert(joineds.map(_.hoge.getAsString) === (0 until 10 by 2).map(_ => "hoge"))
-      assert(joineds.map(_.foo.getAsString) === (0 until 10 by 2).map(i => s"foo ${i}"))
+      assert(joineds.map(_.foo.getAsString) === (0 until 10 by 2).map(_ => "foo"))
+      assert(joineds.map(_.bar.getAsString) === (0 until 10 by 2).map(i => s"bar ${i}"))
       val misseds = missed.iterator.toSeq
       assert(misseds.size === 5)
       assert(misseds.map(_.id.get) === (1 until 10 by 2))
-      assert(misseds.map(_.foo.getAsString) === (1 until 10 by 2).map(i => s"foo ${i}"))
+      assert(misseds.map(_.bar.getAsString) === (1 until 10 by 2).map(i => s"bar ${i}"))
     }
 
     fragment.reset()
@@ -183,13 +184,13 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
 
     {
       fragment.reset()
-      val hoges = Seq.empty[Hoge]
-      val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
-      foo.foo.modify("foo")
-      val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val foos = Seq.empty[Foo]
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      bar.bar.modify("bar")
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val joineds = joined.iterator.toSeq
       assert(joineds.size === 0)
       val misseds = missed.iterator.toSeq
@@ -205,115 +206,115 @@ class ShuffledMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompiler
 
 object ShuffledMasterJoinOperatorCompilerSpec {
 
-  class Hoge extends DataModel[Hoge] with Writable {
-
-    val id = new IntOption()
-    val hoge = new StringOption()
-
-    override def reset(): Unit = {
-      id.setNull()
-      hoge.setNull()
-    }
-    override def copyFrom(other: Hoge): Unit = {
-      id.copyFrom(other.id)
-      hoge.copyFrom(other.hoge)
-    }
-    override def readFields(in: DataInput): Unit = {
-      id.readFields(in)
-      hoge.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      id.write(out)
-      hoge.write(out)
-    }
-
-    def getIdOption: IntOption = id
-    def getHogeOption: StringOption = hoge
-  }
-
   class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
-    val hogeId = new IntOption()
     val foo = new StringOption()
 
     override def reset(): Unit = {
       id.setNull()
-      hogeId.setNull()
       foo.setNull()
     }
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
-      hogeId.copyFrom(other.hogeId)
       foo.copyFrom(other.foo)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      hogeId.readFields(in)
       foo.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      hogeId.write(out)
       foo.write(out)
     }
 
     def getIdOption: IntOption = id
-    def getHogeIdOption: IntOption = hogeId
     def getFooOption: StringOption = foo
   }
 
-  @Joined(terms = Array(
-    new Joined.Term(source = classOf[Hoge], shuffle = new Key(group = Array("id")), mappings = Array(
-      new Joined.Mapping(source = "id", destination = "id"),
-      new Joined.Mapping(source = "hoge", destination = "hoge"))),
-    new Joined.Term(source = classOf[Foo], shuffle = new Key(group = Array("hogeId")), mappings = Array(
-      new Joined.Mapping(source = "hogeId", destination = "id"),
-      new Joined.Mapping(source = "foo", destination = "foo")))))
-  class Baa extends DataModel[Baa] with Writable {
+  class Bar extends DataModel[Bar] with Writable {
 
     val id = new IntOption()
-    val hoge = new StringOption()
-    val foo = new StringOption()
+    val fooId = new IntOption()
+    val bar = new StringOption()
 
     override def reset(): Unit = {
       id.setNull()
-      hoge.setNull()
-      foo.setNull()
+      fooId.setNull()
+      bar.setNull()
     }
-    override def copyFrom(other: Baa): Unit = {
+    override def copyFrom(other: Bar): Unit = {
       id.copyFrom(other.id)
-      hoge.copyFrom(other.hoge)
-      foo.copyFrom(other.foo)
+      fooId.copyFrom(other.fooId)
+      bar.copyFrom(other.bar)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      hoge.readFields(in)
-      foo.readFields(in)
+      fooId.readFields(in)
+      bar.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      hoge.write(out)
-      foo.write(out)
+      fooId.write(out)
+      bar.write(out)
     }
 
     def getIdOption: IntOption = id
-    def getHogeOption: StringOption = hoge
+    def getFooIdOption: IntOption = fooId
+    def getBarOption: StringOption = bar
+  }
+
+  @Joined(terms = Array(
+    new Joined.Term(source = classOf[Foo], shuffle = new Key(group = Array("id")), mappings = Array(
+      new Joined.Mapping(source = "id", destination = "id"),
+      new Joined.Mapping(source = "foo", destination = "foo"))),
+    new Joined.Term(source = classOf[Bar], shuffle = new Key(group = Array("fooId")), mappings = Array(
+      new Joined.Mapping(source = "fooId", destination = "id"),
+      new Joined.Mapping(source = "bar", destination = "bar")))))
+  class FooBar extends DataModel[FooBar] with Writable {
+
+    val id = new IntOption()
+    val foo = new StringOption()
+    val bar = new StringOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+      foo.setNull()
+      bar.setNull()
+    }
+    override def copyFrom(other: FooBar): Unit = {
+      id.copyFrom(other.id)
+      foo.copyFrom(other.foo)
+      bar.copyFrom(other.bar)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      foo.readFields(in)
+      bar.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      foo.write(out)
+      bar.write(out)
+    }
+
+    def getIdOption: IntOption = id
     def getFooOption: StringOption = foo
+    def getBarOption: StringOption = bar
   }
 
   class MasterJoinOperator {
 
     @MasterJoinOp
-    def join(hoge: Hoge, foo: Foo): Baa = ???
+    def join(foo: Foo, bar: Bar): FooBar = ???
 
     @MasterJoinOp(selection = "select")
-    def joinWithSelection(hoge: Hoge, foo: Foo): Baa = ???
+    def joinWithSelection(foo: Foo, bar: Bar): FooBar = ???
 
     @MasterSelection
-    def select(hoges: JList[Hoge], foo: Foo): Hoge = {
-      if (foo.id.get % 2 == 0) {
-        hoges.headOption.orNull
+    def select(foos: JList[Foo], bar: Bar): Foo = {
+      if (bar.id.get % 2 == 0) {
+        foos.headOption.orNull
       } else {
         null
       }

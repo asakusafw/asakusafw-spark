@@ -38,6 +38,7 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment._
 import com.asakusafw.spark.runtime.io.WritableSerDe
+import com.asakusafw.spark.runtime.operator.{ GenericEdgeFragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
@@ -49,206 +50,155 @@ class AggregateDriverSpec extends FlatSpec with SparkSugar {
 
   behavior of classOf[AggregateDriver[_, _]].getSimpleName
 
-  it should "aggregate with map-side combine" in {
-    import TotalAggregate._
-    val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
+  for {
+    mapSideCombine <- Seq(true, false)
+  } {
+    it should s"aggregate with map-side combine = ${mapSideCombine}" in {
+      import TotalAggregate._
 
-      @transient var h: Hoge = _
+      val foos = sc.parallelize(0 until 10).map(Foo.intToFoo)
 
-      def hoge: Hoge = {
-        if (h == null) {
-          h = new Hoge()
-        }
-        h
-      }
+      val partitioner = new HashPartitioner(2)
+      val aggregation = new TestAggregation(mapSideCombine)
 
-      override def apply(i: Int): (ShuffleKey, Hoge) = {
-        hoge.id.modify(i % 2)
-        hoge.price.modify(i * 100)
-        val shuffleKey = new ShuffleKey(
-          WritableSerDe.serialize(hoge.id), WritableSerDe.serialize(hoge.price))
-        (shuffleKey, hoge)
-      }
+      val driver = new TestAggregateDriver(
+        sc, hadoopConf, Future.successful(foos),
+        Option(new SortOrdering()),
+        partitioner,
+        aggregation)
+
+      val outputs = driver.execute()
+      val result = Await.result(
+        outputs(Result).map {
+          _.map {
+            case (_, foo: Foo) => (foo.id.get, foo.sum.get)
+          }.collect.toSeq.sortBy(_._1)
+        }, Duration.Inf)
+
+      assert(result ===
+        Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
     }
-    val hoges = sc.parallelize(0 until 10).map(f)
-
-    val part = new HashPartitioner(2)
-    val aggregation = new TestAggregation(true)
-
-    val driver = new TestAggregateDriver(
-      sc, hadoopConf, Future.successful(hoges),
-      Option(new SortOrdering()),
-      part,
-      aggregation)
-
-    val outputs = driver.execute()
-    assert(Await.result(
-      outputs(Result).map {
-        _.map {
-          case (_, hoge: Hoge) => (hoge.id.get, hoge.price.get)
-        }
-      }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
-      Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
-  }
-
-  it should "aggregate without map-side combine" in {
-    import TotalAggregate._
-    val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
-
-      @transient var h: Hoge = _
-
-      def hoge: Hoge = {
-        if (h == null) {
-          h = new Hoge()
-        }
-        h
-      }
-
-      override def apply(i: Int): (ShuffleKey, Hoge) = {
-        hoge.id.modify(i % 2)
-        hoge.price.modify(i * 100)
-        val shuffleKey = new ShuffleKey(
-          WritableSerDe.serialize(hoge.id),
-          WritableSerDe.serialize(hoge.price))
-        (shuffleKey, hoge)
-      }
-    }
-    val hoges = sc.parallelize(0 until 10).map(f)
-
-    val part = new HashPartitioner(2)
-    val aggregation = new TestAggregation(false)
-
-    val driver = new TestAggregateDriver(
-      sc, hadoopConf, Future.successful(hoges),
-      Option(new SortOrdering()),
-      part,
-      aggregation)
-
-    val outputs = driver.execute()
-    assert(Await.result(
-      outputs(Result).map {
-        _.map {
-          case (_, hoge: Hoge) => (hoge.id.get, hoge.price.get)
-        }
-      }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
-      Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
   }
 
   it should "aggregate partially" in {
     import PartialAggregate._
-    val f = new Function1[Int, (ShuffleKey, Hoge)] with Serializable {
 
-      @transient var h: Hoge = _
+    val foos = sc.parallelize(0 until 10, 2).map(Foo.intToFoo).asInstanceOf[RDD[(_, Foo)]]
 
-      def hoge: Hoge = {
-        if (h == null) {
-          h = new Hoge()
-        }
-        h
-      }
-
-      override def apply(i: Int): (ShuffleKey, Hoge) = {
-        hoge.id.modify(i % 2)
-        hoge.price.modify(i * 100)
-        val shuffleKey = new ShuffleKey(
-          WritableSerDe.serialize(hoge.id),
-          WritableSerDe.serialize(hoge.price))
-        (shuffleKey, hoge)
-      }
-    }
-    val hoges = sc.parallelize(0 until 10, 2).map(f).asInstanceOf[RDD[(_, Hoge)]]
-
-    val driver = new TestPartialAggregationExtractDriver(sc, hadoopConf, Future.successful(hoges))
+    val driver = new TestPartialAggregationExtractDriver(sc, hadoopConf, Future.successful(foos))
 
     val outputs = driver.execute()
-    assert(Await.result(
+    val (result1, result2) = Await.result(
       outputs(Result1).map {
         _.map {
-          case (_, hoge: Hoge) => (hoge.id.get, hoge.price.get)
+          case (_, foo: Foo) => (foo.id.get, foo.sum.get)
+        }.collect.toSeq.sortBy(_._1)
+      }.zip {
+        outputs(Result2).map {
+          _.map {
+            case (key, foo: Foo) => foo.sum.get
+          }.collect.toSeq
         }
-      }, Duration.Inf).collect.toSeq.sortBy(_._1) ===
+      }, Duration.Inf)
+
+    assert(result1 ===
       Seq(
         (0, (0 until 10).filter(_ % 2 == 0).filter(_ < 5).map(_ * 100).sum),
         (0, (0 until 10).filter(_ % 2 == 0).filterNot(_ < 5).map(_ * 100).sum),
         (1, (0 until 10).filter(_ % 2 == 1).filter(_ < 5).map(_ * 100).sum),
         (1, (0 until 10).filter(_ % 2 == 1).filterNot(_ < 5).map(_ * 100).sum)))
-    assert(Await.result(
-      outputs(Result2).map {
-        _.map {
-          case (key, hoge: Hoge) => hoge.price.get
-        }
-      }, Duration.Inf).collect.toSeq === (0 until 10).map(100 * _))
+    assert(result2 === (0 until 10).map(100 * _))
   }
 }
 
 object AggregateDriverSpec {
 
-  class Hoge extends DataModel[Hoge] with Writable {
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
-    val price = new IntOption()
+    val sum = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
-      price.setNull()
+      sum.setNull()
     }
-    override def copyFrom(other: Hoge): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
-      price.copyFrom(other.price)
+      sum.copyFrom(other.sum)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      price.readFields(in)
+      sum.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      price.write(out)
+      sum.write(out)
     }
   }
 
-  class HogeOutputFragment extends OutputFragment[Hoge] {
-    override def newDataModel: Hoge = new Hoge()
+  object Foo {
+
+    def intToFoo = new Function1[Int, (ShuffleKey, Foo)] with Serializable {
+
+      @transient var f: Foo = _
+
+      def foo: Foo = {
+        if (f == null) {
+          f = new Foo()
+        }
+        f
+      }
+
+      override def apply(i: Int): (ShuffleKey, Foo) = {
+        foo.id.modify(i % 2)
+        foo.sum.modify(i * 100)
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(foo.id), WritableSerDe.serialize(foo.sum))
+        (shuffleKey, foo)
+      }
+    }
   }
 
   class TestAggregation(val mapSideCombine: Boolean)
-    extends Aggregation[ShuffleKey, Hoge, Hoge] {
+    extends Aggregation[ShuffleKey, Foo, Foo] {
 
-    override def newCombiner(): Hoge = {
-      new Hoge()
+    override def newCombiner(): Foo = {
+      new Foo()
     }
 
-    override def initCombinerByValue(combiner: Hoge, value: Hoge): Hoge = {
+    override def initCombinerByValue(combiner: Foo, value: Foo): Foo = {
       combiner.copyFrom(value)
       combiner
     }
 
-    override def mergeValue(combiner: Hoge, value: Hoge): Hoge = {
-      combiner.price.add(value.price)
+    override def mergeValue(combiner: Foo, value: Foo): Foo = {
+      combiner.sum.add(value.sum)
       combiner
     }
 
-    override def initCombinerByCombiner(comb1: Hoge, comb2: Hoge): Hoge = {
+    override def initCombinerByCombiner(comb1: Foo, comb2: Foo): Foo = {
       comb1.copyFrom(comb2)
       comb1
     }
 
-    override def mergeCombiners(comb1: Hoge, comb2: Hoge): Hoge = {
-      comb1.price.add(comb2.price)
+    override def mergeCombiners(comb1: Foo, comb2: Foo): Foo = {
+      comb1.sum.add(comb2.sum)
       comb1
     }
   }
 
   object TotalAggregate {
+
     val Result = BranchKey(0)
 
     class TestAggregateDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: Future[RDD[(ShuffleKey, Hoge)]],
+      @transient prev: Future[RDD[(ShuffleKey, Foo)]],
       @transient sort: Option[Ordering[ShuffleKey]],
       @transient part: Partitioner,
-      val aggregation: Aggregation[ShuffleKey, Hoge, Hoge])
-      extends AggregateDriver[Hoge, Hoge](sc, hadoopConf)(Seq(prev), sort, part)(Map.empty) {
+      val aggregation: Aggregation[ShuffleKey, Foo, Foo])
+      extends AggregateDriver[Foo, Foo](sc, hadoopConf)(Seq(prev), sort, part)(Map.empty) {
 
       override def label = "TestAggregation"
 
@@ -261,7 +211,7 @@ object AggregateDriverSpec {
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
-        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Hoge].id), Array.empty)
+        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.empty)
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
@@ -272,8 +222,8 @@ object AggregateDriverSpec {
         ???
       }
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment = new HogeOutputFragment
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment = new GenericOutputFragment[Foo]()
         val outputs = Map(Result -> fragment)
         (fragment, outputs)
       }
@@ -297,14 +247,15 @@ object AggregateDriverSpec {
   }
 
   object PartialAggregate {
+
     val Result1 = BranchKey(0)
     val Result2 = BranchKey(1)
 
     class TestPartialAggregationExtractDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: Future[RDD[(_, Hoge)]])
-      extends ExtractDriver[Hoge](sc, hadoopConf)(Seq(prev))(Map.empty) {
+      @transient prev: Future[RDD[(_, Foo)]])
+      extends ExtractDriver[Foo](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
       override def label = "TestPartialAggregation"
 
@@ -321,35 +272,34 @@ object AggregateDriverSpec {
       }
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
-        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Hoge].id), Array.empty)
+        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.empty)
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
         WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
-      @transient var h: Hoge = _
+      @transient var f: Foo = _
 
-      def hoge = {
-        if (h == null) {
-          h = new Hoge()
+      def foo = {
+        if (f == null) {
+          f = new Foo()
         }
-        h
+        f
       }
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
-        WritableSerDe.deserialize(value, hoge)
-        hoge
+        WritableSerDe.deserialize(value, foo)
+        foo
       }
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Hoge], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment1 = new HogeOutputFragment
-        val fragment2 = new HogeOutputFragment
-        (new EdgeFragment[Hoge](Array(fragment1, fragment2)) {
-          override def newDataModel(): Hoge = new Hoge()
-        }, Map(
-          Result1 -> fragment1,
-          Result2 -> fragment2))
+      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment1 = new GenericOutputFragment[Foo]()
+        val fragment2 = new GenericOutputFragment[Foo]()
+        (new GenericEdgeFragment[Foo](Array(fragment1, fragment2)),
+          Map(
+            Result1 -> fragment1,
+            Result2 -> fragment2))
       }
     }
   }

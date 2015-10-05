@@ -40,6 +40,7 @@ import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.model.{ Joined, Key }
 import com.asakusafw.vocabulary.operator.Split
@@ -56,40 +57,40 @@ class SplitOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
   it should "compile Split operator" in {
     val operator = OperatorExtractor
       .extract(classOf[Split], classOf[SplitOperator], "split")
-      .input("input", ClassDescription.of(classOf[Baa]))
-      .output("left", ClassDescription.of(classOf[Hoge]))
-      .output("right", ClassDescription.of(classOf[Foo]))
+      .input("input", ClassDescription.of(classOf[FooBar]))
+      .output("left", ClassDescription.of(classOf[Foo]))
+      .output("right", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[Baa]](thisType.getClassName)
+    val cls = context.loadClass[Fragment[FooBar]](thisType.getClassName)
 
-    val hoges = new GenericOutputFragment[Hoge]
-    val foos = new GenericOutputFragment[Foo]
+    val foos = new GenericOutputFragment[Foo]()
+    val bars = new GenericOutputFragment[Bar]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, hoges, foos)
+      classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, foos, bars)
 
     fragment.reset()
-    val dm = new Baa()
+    val foobar = new FooBar()
     for (i <- 0 until 10) {
-      dm.id.modify(i)
-      dm.hoge.modify(s"hoge ${i}")
-      dm.foo.modify(s"foo ${i}")
-      fragment.add(dm)
-    }
-    hoges.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.id.get === i)
-        assert(dm.hoge.getAsString === s"hoge ${i}")
+      foobar.id.modify(i)
+      foobar.foo.modify(s"foo ${i}")
+      foobar.bar.modify(s"bar ${i}")
+      fragment.add(foobar)
     }
     foos.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.hogeId.get === i)
-        assert(dm.foo.getAsString === s"foo ${i}")
+      case (foo, i) =>
+        assert(foo.id.get === i)
+        assert(foo.foo.getAsString === s"foo ${i}")
+    }
+    bars.iterator.zipWithIndex.foreach {
+      case (bar, i) =>
+        assert(bar.fooId.get === i)
+        assert(bar.bar.getAsString === s"bar ${i}")
     }
 
     fragment.reset()
@@ -98,96 +99,96 @@ class SplitOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
 object SplitOperatorCompilerSpec {
 
-  class Hoge extends DataModel[Hoge] with Writable {
-
-    val id = new IntOption()
-    val hoge = new StringOption()
-
-    override def reset(): Unit = {
-      id.setNull()
-      hoge.setNull()
-    }
-    override def copyFrom(other: Hoge): Unit = {
-      id.copyFrom(other.id)
-      hoge.copyFrom(other.hoge)
-    }
-    override def readFields(in: DataInput): Unit = {
-      id.readFields(in)
-      hoge.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      id.write(out)
-      hoge.write(out)
-    }
-
-    def getIdOption: IntOption = id
-    def getHogeOption: StringOption = hoge
-  }
-
   class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
-    val hogeId = new IntOption()
     val foo = new StringOption()
 
     override def reset(): Unit = {
       id.setNull()
-      hogeId.setNull()
       foo.setNull()
     }
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
-      hogeId.copyFrom(other.hogeId)
       foo.copyFrom(other.foo)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      hogeId.readFields(in)
       foo.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      hogeId.write(out)
       foo.write(out)
     }
 
     def getIdOption: IntOption = id
-    def getHogeIdOption: IntOption = hogeId
     def getFooOption: StringOption = foo
   }
 
-  @Joined(terms = Array(
-    new Joined.Term(source = classOf[Hoge], shuffle = new Key(group = Array("id")), mappings = Array(
-      new Joined.Mapping(source = "id", destination = "id"),
-      new Joined.Mapping(source = "hoge", destination = "hoge"))),
-    new Joined.Term(source = classOf[Foo], shuffle = new Key(group = Array("hogeId")), mappings = Array(
-      new Joined.Mapping(source = "hogeId", destination = "id"),
-      new Joined.Mapping(source = "foo", destination = "foo")))))
-  class Baa extends DataModel[Baa] {
+  class Bar extends DataModel[Bar] with Writable {
 
     val id = new IntOption()
-    val hoge = new StringOption()
-    val foo = new StringOption()
+    val fooId = new IntOption()
+    val bar = new StringOption()
 
     override def reset(): Unit = {
       id.setNull()
-      hoge.setNull()
-      foo.setNull()
+      fooId.setNull()
+      bar.setNull()
     }
-    override def copyFrom(other: Baa): Unit = {
+    override def copyFrom(other: Bar): Unit = {
       id.copyFrom(other.id)
-      hoge.copyFrom(other.hoge)
-      foo.copyFrom(other.foo)
+      fooId.copyFrom(other.fooId)
+      bar.copyFrom(other.bar)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      fooId.readFields(in)
+      bar.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      fooId.write(out)
+      bar.write(out)
     }
 
     def getIdOption: IntOption = id
-    def getHogeOption: StringOption = hoge
+    def getFooIdOption: IntOption = fooId
+    def getBarOption: StringOption = bar
+  }
+
+  @Joined(terms = Array(
+    new Joined.Term(source = classOf[Foo], shuffle = new Key(group = Array("id")), mappings = Array(
+      new Joined.Mapping(source = "id", destination = "id"),
+      new Joined.Mapping(source = "foo", destination = "foo"))),
+    new Joined.Term(source = classOf[Bar], shuffle = new Key(group = Array("fooId")), mappings = Array(
+      new Joined.Mapping(source = "fooId", destination = "id"),
+      new Joined.Mapping(source = "bar", destination = "bar")))))
+  class FooBar extends DataModel[FooBar] {
+
+    val id = new IntOption()
+    val foo = new StringOption()
+    val bar = new StringOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+      foo.setNull()
+      bar.setNull()
+    }
+    override def copyFrom(other: FooBar): Unit = {
+      id.copyFrom(other.id)
+      foo.copyFrom(other.foo)
+      bar.copyFrom(other.bar)
+    }
+
+    def getIdOption: IntOption = id
     def getFooOption: StringOption = foo
+    def getBarOption: StringOption = bar
   }
 
   class SplitOperator {
 
     @Split
-    def split(baa: Baa, hoges: Result[Hoge], foos: Result[Foo]): Unit = ???
+    def split(foobar: FooBar, foos: Result[Foo], bars: Result[Bar]): Unit = ???
   }
 }

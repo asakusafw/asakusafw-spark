@@ -61,25 +61,25 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 1))
   } {
     it should s"build extract driver class with OutputType.${outputType}" in {
-      val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
       val operator = OperatorExtractor
         .extract(classOf[Extract], classOf[ExtractOperator], "extract")
-        .input("hogeList", ClassDescription.of(classOf[Hoge]), hogesMarker.getOutput)
-        .output("hogeResult", ClassDescription.of(classOf[Hoge]))
+        .input("fooList", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
         .output("fooResult", ClassDescription.of(classOf[Foo]))
+        .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("nResult", ClassDescription.of(classOf[N]))
         .argument("n", ImmediateDescription.of(10))
         .build()
 
-      val hogeResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-      operator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
-
       val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
       operator.findOutput("fooResult").connect(fooResultMarker.getInput)
+
+      val barResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Bar]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("barResult").connect(barResultMarker.getInput)
 
       val nResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[N]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
@@ -87,25 +87,25 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
 
       val plan = PlanBuilder.from(Seq(operator))
         .add(
-          Seq(hogesMarker),
-          Seq(hogeResultMarker, fooResultMarker,
+          Seq(foosMarker),
+          Seq(fooResultMarker, barResultMarker,
             nResultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
       val subplan = plan.getElements.head
       subplan.putAttribute(classOf[SubPlanInfo],
         new SubPlanInfo(subplan, SubPlanInfo.DriverType.EXTRACT, Seq.empty[SubPlanInfo.DriverOption], operator))
 
-      val hogeResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeResultMarker.getOriginalSerialNumber).get
-      hogeResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
-
       val fooResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get
       fooResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooResultOutput, SubPlanOutputInfo.OutputType.PARTITIONED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("hogeId"), Seq("-id")), null))
+        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+
+      val barResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == barResultMarker.getOriginalSerialNumber).get
+      barResultOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(barResultOutput, SubPlanOutputInfo.OutputType.PARTITIONED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("fooId"), Seq("-id")), null))
 
       val nResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == nResultMarker.getOriginalSerialNumber).get
       nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
@@ -115,10 +115,10 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[ExtractDriver[_]])
 
-      val hoges = sc.parallelize(0 until 10).map { i =>
-        val hoge = new Hoge()
-        hoge.id.modify(i)
-        ((), hoge)
+      val foos = sc.parallelize(0 until 10).map { i =>
+        val foo = new Foo()
+        foo.id.modify(i)
+        ((), foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -128,7 +128,7 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         .newInstance(
           sc,
           hadoopConf,
-          Seq(Future.successful(hoges)),
+          Seq(Future.successful(foos)),
           Map.empty)
       val results = driver.execute()
 
@@ -141,36 +141,42 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       }
 
       assert(driver.branchKeys ===
-        Set(hogeResultMarker, fooResultMarker,
+        Set(fooResultMarker, barResultMarker,
           nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-      val hogeResult = Await.result(
-        results(getBranchKey(hogeResultMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
-        }, Duration.Inf)
-        .collect.toSeq
-      assert(hogeResult.size === 10)
-      assert(hogeResult === (0 until 10))
+      val ((fooResult, barResult), nResult) =
+        Await.result(
+          results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq
+          }.zip {
+            results(getBranchKey(barResultMarker.getOriginalSerialNumber)).map {
+              _.map {
+                case (_, bar: Bar) => bar
+              }.mapPartitionsWithIndex({
+                case (part, iter) => iter.map(bar => (part, bar.fooId.get, bar.id.get))
+              }).collect.toSeq
+            }
+          }.zip {
+            results(getBranchKey(nResultMarker.getOriginalSerialNumber)).map {
+              _.map {
+                case (_, n: N) => n.n.get
+              }.collect.toSeq
+            }
+          }, Duration.Inf)
 
-      val fooResult = Await.result(
-        results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Foo]).mapPartitionsWithIndex({
-            case (part, iter) => iter.map(foo => (part, foo.hogeId.get, foo.id.get))
-          })
-        }, Duration.Inf)
-        .collect.toSeq
-      assert(fooResult.size === 45)
-      fooResult.groupBy(_._2).foreach {
-        case (hogeId, foos) =>
-          val part = foos.head._1
-          assert(foos.tail.forall(_._1 == part))
-          assert(foos.map(_._3) === (0 until hogeId).map(j => (hogeId * (hogeId - 1)) / 2 + j).reverse)
+      assert(fooResult.size === 10)
+      assert(fooResult === (0 until 10))
+
+      assert(barResult.size === 45)
+      barResult.groupBy(_._2).foreach {
+        case (fooId, bars) =>
+          val part = bars.head._1
+          assert(bars.tail.forall(_._1 == part))
+          assert(bars.map(_._3) === (0 until fooId).map(j => (fooId * (fooId - 1)) / 2 + j).reverse)
       }
 
-      val nResult = Await.result(
-        results(getBranchKey(nResultMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[N]).map(_.n.get)
-        }, Duration.Inf).collect.toSeq
       assert(nResult.size === 10)
       nResult.foreach(n => assert(n === 10))
     }
@@ -182,34 +188,34 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 0))
   } {
     it should s"build extract driver class missing port connection with OutputType.${outputType}" in {
-      val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
       val operator = OperatorExtractor
         .extract(classOf[Extract], classOf[ExtractOperator], "extract")
-        .input("hogeList", ClassDescription.of(classOf[Hoge]), hogesMarker.getOutput)
-        .output("hogeResult", ClassDescription.of(classOf[Hoge]))
+        .input("fooList", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
         .output("fooResult", ClassDescription.of(classOf[Foo]))
+        .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("nResult", ClassDescription.of(classOf[N]))
         .argument("n", ImmediateDescription.of(10))
         .build()
 
-      val hogeResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-      operator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
+      operator.findOutput("fooResult").connect(fooResultMarker.getInput)
 
       val plan = PlanBuilder.from(Seq(operator))
         .add(
-          Seq(hogesMarker),
-          Seq(hogeResultMarker)).build().getPlan()
+          Seq(foosMarker),
+          Seq(fooResultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
       val subplan = plan.getElements.head
       subplan.putAttribute(classOf[SubPlanInfo],
         new SubPlanInfo(subplan, SubPlanInfo.DriverType.EXTRACT, Seq.empty[SubPlanInfo.DriverOption], operator))
 
-      val hogeResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeResultMarker.getOriginalSerialNumber).get
-      hogeResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      val fooResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get
+      fooResultOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
@@ -219,10 +225,10 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[ExtractDriver[_]])
 
-      val hoges = sc.parallelize(0 until 10).map { i =>
-        val hoge = new Hoge()
-        hoge.id.modify(i)
-        ((), hoge)
+      val foos = sc.parallelize(0 until 10).map { i =>
+        val foo = new Foo()
+        foo.id.modify(i)
+        ((), foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -232,7 +238,7 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         .newInstance(
           sc,
           hadoopConf,
-          Seq(Future.successful(hoges)),
+          Seq(Future.successful(foos)),
           Map.empty)
 
       assert(driver.partitioners.size === partitioners)
@@ -246,29 +252,31 @@ class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       }
 
       assert(driver.branchKeys ===
-        Set(hogeResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
+        Set(fooResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-      val hogeResult = Await.result(
-        results(getBranchKey(hogeResultMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
+      val fooResult = Await.result(
+        results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
+          _.map {
+            case (_, foo: Foo) => foo.id.get
+          }.collect.toSeq
         }, Duration.Inf)
-        .collect.toSeq
-      assert(hogeResult.size === 10)
-      assert(hogeResult === (0 until 10))
+
+      assert(fooResult.size === 10)
+      assert(fooResult === (0 until 10))
     }
   }
 }
 
 object ExtractDriverClassBuilderSpec {
 
-  class Hoge extends DataModel[Hoge] with Writable {
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
     }
-    override def copyFrom(other: Hoge): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
     }
     override def readFields(in: DataInput): Unit = {
@@ -281,30 +289,30 @@ object ExtractDriverClassBuilderSpec {
     def getIdOption: IntOption = id
   }
 
-  class Foo extends DataModel[Foo] with Writable {
+  class Bar extends DataModel[Bar] with Writable {
 
     val id = new IntOption()
-    val hogeId = new IntOption()
+    val fooId = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
-      hogeId.setNull()
+      fooId.setNull()
     }
-    override def copyFrom(other: Foo): Unit = {
+    override def copyFrom(other: Bar): Unit = {
       id.copyFrom(other.id)
-      hogeId.copyFrom(other.hogeId)
+      fooId.copyFrom(other.fooId)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      hogeId.readFields(in)
+      fooId.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      hogeId.write(out)
+      fooId.write(out)
     }
 
     def getIdOption: IntOption = id
-    def getHogeIdOption: IntOption = hogeId
+    def getFooIdOption: IntOption = fooId
   }
 
   class N extends DataModel[N] with Writable {
@@ -329,21 +337,21 @@ object ExtractDriverClassBuilderSpec {
 
   class ExtractOperator {
 
-    private[this] val foo = new Foo()
+    private[this] val bar = new Bar()
 
     private[this] val n = new N
 
     @Extract
     def extract(
-      hoge: Hoge,
-      hogeResult: Result[Hoge], fooResult: Result[Foo],
+      foo: Foo,
+      fooResult: Result[Foo], barResult: Result[Bar],
       nResult: Result[N], n: Int): Unit = {
-      hogeResult.add(hoge)
-      for (i <- 0 until hoge.id.get) {
-        foo.reset()
-        foo.id.modify((hoge.id.get * (hoge.id.get - 1)) / 2 + i)
-        foo.hogeId.copyFrom(hoge.id)
-        fooResult.add(foo)
+      fooResult.add(foo)
+      for (i <- 0 until foo.id.get) {
+        bar.reset()
+        bar.id.modify((foo.id.get * (foo.id.get - 1)) / 2 + i)
+        bar.fooId.copyFrom(foo.id)
+        barResult.add(bar)
       }
       this.n.n.modify(n)
       nResult.add(this.n)

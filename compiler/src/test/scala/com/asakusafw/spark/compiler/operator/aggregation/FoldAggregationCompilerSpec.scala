@@ -46,33 +46,33 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
   it should "compile Aggregation for Fold" in {
     val operator = OperatorExtractor
       .extract(classOf[Fold], classOf[FoldOperator], "fold")
-      .input("input", ClassDescription.of(classOf[Hoge]))
-      .output("output", ClassDescription.of(classOf[Hoge]))
+      .input("input", ClassDescription.of(classOf[Foo]))
+      .output("output", ClassDescription.of(classOf[Foo]))
       .argument("n", ImmediateDescription.of(10))
       .build()
 
     implicit val context = newAggregationCompilerContext("flowId")
 
     val thisType = AggregationCompiler.compile(operator)
-    val cls = context.loadClass[Aggregation[Seq[_], Hoge, Hoge]](thisType.getClassName)
+    val cls = context.loadClass[Aggregation[Seq[_], Foo, Foo]](thisType.getClassName)
 
     val aggregation = cls.newInstance()
     assert(aggregation.mapSideCombine === true)
 
     val valueCombiner = aggregation.valueCombiner()
     valueCombiner.insertAll((0 until 100).map { i =>
-      val hoge = new Hoge()
-      hoge.i.modify(i)
-      (Seq(i % 2), hoge)
+      val foo = new Foo()
+      foo.i.modify(i)
+      (Seq(i % 2), foo)
     }.iterator)
     assert(valueCombiner.toSeq.map { case (k, v) => k -> v.i.get }
       === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
 
     val combinerCombiner = aggregation.combinerCombiner()
     combinerCombiner.insertAll((0 until 100).map { i =>
-      val hoge = new Hoge()
-      hoge.i.modify(i)
-      (Seq(i % 2), hoge)
+      val foo = new Foo()
+      foo.i.modify(i)
+      (Seq(i % 2), foo)
     }.iterator)
     assert(combinerCombiner.toSeq.map { case (k, v) => k -> v.i.get }
       === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
@@ -81,33 +81,33 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
   it should "compile Aggregation for Fold with projective model" in {
     val operator = OperatorExtractor
       .extract(classOf[Fold], classOf[FoldOperator], "foldp")
-      .input("input", ClassDescription.of(classOf[Hoge]))
-      .output("output", ClassDescription.of(classOf[Hoge]))
+      .input("input", ClassDescription.of(classOf[Foo]))
+      .output("output", ClassDescription.of(classOf[Foo]))
       .argument("n", ImmediateDescription.of(10))
       .build()
 
     implicit val context = newAggregationCompilerContext("flowId")
 
     val thisType = AggregationCompiler.compile(operator)
-    val cls = context.loadClass[Aggregation[Seq[_], Hoge, Hoge]](thisType.getClassName)
+    val cls = context.loadClass[Aggregation[Seq[_], Foo, Foo]](thisType.getClassName)
 
     val aggregation = cls.newInstance()
     assert(aggregation.mapSideCombine === true)
 
     val valueCombiner = aggregation.valueCombiner()
     valueCombiner.insertAll((0 until 100).map { i =>
-      val hoge = new Hoge()
-      hoge.i.modify(i)
-      (Seq(i % 2), hoge)
+      val foo = new Foo()
+      foo.i.modify(i)
+      (Seq(i % 2), foo)
     }.iterator)
     assert(valueCombiner.toSeq.map { case (k, v) => k -> v.i.get }
       === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
 
     val combinerCombiner = aggregation.combinerCombiner()
     combinerCombiner.insertAll((0 until 100).map { i =>
-      val hoge = new Hoge()
-      hoge.i.modify(i)
-      (Seq(i % 2), hoge)
+      val foo = new Foo()
+      foo.i.modify(i)
+      (Seq(i % 2), foo)
     }.iterator)
     assert(combinerCombiner.toSeq.map { case (k, v) => k -> v.i.get }
       === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
@@ -116,11 +116,11 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
 
 object FoldAggregationCompilerSpec {
 
-  trait HogeP {
+  trait FooP {
     def getIOption: IntOption
   }
 
-  class Hoge extends DataModel[Hoge] with HogeP {
+  class Foo extends DataModel[Foo] with FooP {
 
     val i = new IntOption()
 
@@ -128,7 +128,7 @@ object FoldAggregationCompilerSpec {
       i.setNull()
     }
 
-    override def copyFrom(other: Hoge): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       i.copyFrom(other.i)
     }
 
@@ -138,13 +138,13 @@ object FoldAggregationCompilerSpec {
   class FoldOperator {
 
     @Fold(partialAggregation = PartialAggregation.PARTIAL)
-    def fold(acc: Hoge, value: Hoge, n: Int): Unit = {
+    def fold(acc: Foo, value: Foo, n: Int): Unit = {
       acc.i.add(value.i)
       acc.i.add(n)
     }
 
     @Fold(partialAggregation = PartialAggregation.PARTIAL)
-    def foldp[H <: HogeP](acc: H, value: H, n: Int): Unit = {
+    def foldp[F <: FooP](acc: F, value: F, n: Int): Unit = {
       acc.getIOption.add(value.getIOption)
       acc.getIOption.add(n)
     }
