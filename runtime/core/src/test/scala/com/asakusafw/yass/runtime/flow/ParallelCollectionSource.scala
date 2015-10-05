@@ -16,7 +16,7 @@
 package com.asakusafw.yass.runtime
 package flow
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
 import org.apache.spark.rdd.RDD
@@ -33,11 +33,13 @@ class ParallelCollectionSource[T: ClassTag](
   @transient
   private var result: Future[RDD[T]] = _
 
-  override def compute(rc: RoundContext): Map[BranchKey, Future[RDD[_]]] = synchronized {
-    if (result == null) {
-      val rdd = rc.sc.parallelize(data, numSlices.getOrElse(rc.sc.defaultParallelism))
-      result = Future.successful(rdd)
+  override def compute(
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] =
+    synchronized {
+      if (result == null) {
+        val rdd = rc.sc.parallelize(data, numSlices.getOrElse(rc.sc.defaultParallelism))
+        result = Future.successful(rdd)
+      }
+      Map(branchKey -> result)
     }
-    Map(branchKey -> result)
-  }
 }

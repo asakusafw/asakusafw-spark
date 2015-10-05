@@ -16,13 +16,12 @@
 package com.asakusafw.yass.runtime
 package flow
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd._
 
@@ -34,9 +33,10 @@ class MapBroadcast(
   partitioner: Partitioner)(
     val label: String) extends Broadcast {
 
-  override def broadcast(rc: RoundContext): Future[Broadcasted[_]] = {
+  override def broadcast(
+    rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
 
-    source.getOrCompute(rc)(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]]).map { rdd =>
+    source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]]).map { rdd =>
 
       rc.sc.clearCallSite()
       rc.sc.setCallSite(label)

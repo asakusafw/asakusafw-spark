@@ -73,7 +73,7 @@ class AggregateSpec extends FlatSpec with SparkSugar with RoundContextSugar {
         val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
 
         val result = Await.result(
-          aggregate.getOrCompute(rc)(Result).map {
+          aggregate.getOrCompute(rc).apply(Result).map {
             _.map {
               case (_, foo: Foo) => (foo.id.get, foo.price.get)
             }.collect.toSeq.sortBy(_._1)
@@ -100,12 +100,12 @@ class AggregateSpec extends FlatSpec with SparkSugar with RoundContextSugar {
       val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
 
       val (result1, result2) = Await.result(
-        aggregate.getOrCompute(rc)(Result1).map {
+        aggregate.getOrCompute(rc).apply(Result1).map {
           _.map {
             case (_, foo: Foo) => (foo.id.get, foo.price.get)
           }.collect.toSeq.sortBy(_._1)
         }.zip {
-          aggregate.getOrCompute(rc)(Result2).map {
+          aggregate.getOrCompute(rc).apply(Result2).map {
             _.map {
               case (_, foo: Foo) => foo.price.get
             }.collect.toSeq

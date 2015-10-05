@@ -16,12 +16,11 @@
 package com.asakusafw.yass.runtime
 package flow
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 class MapPartitions[T, U: ClassTag](
@@ -32,7 +31,8 @@ class MapPartitions[T, U: ClassTag](
 
   override def label: String = parent.label
 
-  override def compute(rc: RoundContext): Map[BranchKey, Future[RDD[_]]] = {
+  override def compute(
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
     val prevs = parent.getOrCompute(rc)
     prevs +
       (branchKey -> prevs(branchKey).map {

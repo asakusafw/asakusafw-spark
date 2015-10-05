@@ -17,7 +17,7 @@ package com.asakusafw.yass.runtime
 package flow
 
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
 import org.apache.spark.rdd.RDD
@@ -26,9 +26,11 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 trait Source extends Node {
 
-  def compute(rc: RoundContext): Map[BranchKey, Future[RDD[_]]]
+  def compute(
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]]
 
-  final def getOrCompute(rc: RoundContext): Map[BranchKey, Future[RDD[_]]] = {
+  final def getOrCompute(
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
     Source.getOrCompute(this)(rc)
   }
 
@@ -96,7 +98,10 @@ object Source {
   private[this] val generatedRDDs =
     mutable.WeakHashMap.empty[Source, mutable.Map[RoundContext, Map[BranchKey, Future[RDD[_]]]]]
 
-  private def getOrCompute(source: Source)(rc: RoundContext): Map[BranchKey, Future[RDD[_]]] =
+  private def getOrCompute(
+    source: Source)(
+      rc: RoundContext)(
+        implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] =
     synchronized {
       generatedRDDs
         .getOrElseUpdate(source, mutable.WeakHashMap.empty)

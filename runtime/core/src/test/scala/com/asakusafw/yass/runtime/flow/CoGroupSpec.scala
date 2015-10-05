@@ -81,23 +81,23 @@ class CoGroupSpec extends FlatSpec with SparkSugar with RoundContextSugar {
 
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
-          cogroup.getOrCompute(rc)(FooResult).map {
+          cogroup.getOrCompute(rc).apply(FooResult).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
-            cogroup.getOrCompute(rc)(BarResult).map {
+            cogroup.getOrCompute(rc).apply(BarResult).map {
               _.map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
-            cogroup.getOrCompute(rc)(FooError).map {
+            cogroup.getOrCompute(rc).apply(FooError).map {
               _.map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
-              cogroup.getOrCompute(rc)(BarError).map {
+              cogroup.getOrCompute(rc).apply(BarError).map {
                 _.map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)

@@ -16,13 +16,12 @@
 package com.asakusafw.yass.runtime
 package flow
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.Partitioner
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.SparkClient.executionContext
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class Extract[T](
@@ -32,11 +31,12 @@ abstract class Extract[T](
   with UsingBroadcasts
   with Branching[T] {
 
-  override def compute(rc: RoundContext): Map[BranchKey, Future[RDD[_]]] = {
+  override def compute(
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc)(branchKey).map(_.asInstanceOf[RDD[(_, T)]])
+        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, T)]])
     }
 
     val future =

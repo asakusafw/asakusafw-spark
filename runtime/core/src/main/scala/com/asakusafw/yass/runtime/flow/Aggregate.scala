@@ -16,12 +16,11 @@
 package com.asakusafw.yass.runtime
 package flow
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd._
@@ -37,11 +36,12 @@ abstract class Aggregate[V, C](
 
   def aggregation: Aggregation[ShuffleKey, V, C]
 
-  override def compute(rc: RoundContext): Map[BranchKey, Future[RDD[_]]] = {
+  override def compute(
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc)(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, V)]])
+        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, V)]])
     }
 
     val future = Future.sequence(rdds).zip(zipBroadcasts(rc)).map {
