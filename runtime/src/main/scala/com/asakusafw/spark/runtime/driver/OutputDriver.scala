@@ -17,12 +17,12 @@ package com.asakusafw.spark.runtime
 package driver
 
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.io.NullWritable
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.{ RDD, UnionRDD }
@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class OutputDriver[T: ClassTag](
@@ -45,7 +44,8 @@ abstract class OutputDriver[T: ClassTag](
 
   val Logger = LoggerFactory.getLogger(getClass())
 
-  override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
+  override def execute()(
+    implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
     val job = JobCompatibility.newJob(hadoopConf.value)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])

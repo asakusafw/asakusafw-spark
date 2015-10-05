@@ -15,16 +15,13 @@
  */
 package com.asakusafw.spark.runtime.driver
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.Writable
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class SubPlanDriver(
@@ -33,5 +30,5 @@ abstract class SubPlanDriver(
 
   def label: String
 
-  def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]
+  def execute()(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]
 }

@@ -16,7 +16,7 @@
 package com.asakusafw.spark.runtime
 package driver
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
@@ -29,7 +29,6 @@ import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: ClassTag](
@@ -42,7 +41,8 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
 
   def extraConfigurations: Map[String, String]
 
-  override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
+  override def execute()(
+    implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
     val job = JobCompatibility.newJob(hadoopConf.value)
 
     paths.foreach { ps =>

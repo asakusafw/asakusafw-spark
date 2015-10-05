@@ -15,18 +15,18 @@
  */
 package com.asakusafw.spark.runtime.driver
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.broadcast.Broadcast
 
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd._
 
 trait UsingBroadcasts {
 
   def broadcasts: Map[BroadcastId, Future[Broadcast[_]]]
 
-  def zipBroadcasts(): Future[Map[BroadcastId, Broadcast[_]]] = {
+  def zipBroadcasts()(
+    implicit ec: ExecutionContext): Future[Map[BroadcastId, Broadcast[_]]] = {
     (Future.successful(Map.empty[BroadcastId, Broadcast[_]]) /: broadcasts) {
       case (broadcasts, (broadcastId, broadcast)) =>
         broadcasts.zip(broadcast).map {

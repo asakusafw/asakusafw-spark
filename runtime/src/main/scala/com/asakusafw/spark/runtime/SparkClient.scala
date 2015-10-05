@@ -22,7 +22,6 @@ import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd._
 
@@ -36,13 +35,16 @@ abstract class SparkClient {
     val sc = new SparkContext(conf)
     try {
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
-      execute(sc, hadoopConf)
+      execute(sc, hadoopConf)(SparkClient.executionContext)
     } finally {
       sc.stop()
     }
   }
 
-  def execute(sc: SparkContext, hadoopConf: Broadcast[Configuration]): Int
+  def execute(
+    sc: SparkContext,
+    hadoopConf: Broadcast[Configuration])(
+      implicit ec: ExecutionContext): Int
 
   def kryoRegistrator: String
 
@@ -52,7 +54,8 @@ abstract class SparkClient {
     prev: Future[RDD[(ShuffleKey, V)]],
     sort: Option[Ordering[ShuffleKey]],
     grouping: Ordering[ShuffleKey],
-    part: Partitioner): Future[Broadcast[Map[ShuffleKey, Seq[V]]]] = {
+    part: Partitioner)(
+      implicit ec: ExecutionContext): Future[Broadcast[Map[ShuffleKey, Seq[V]]]] = {
 
     prev.map { p =>
       sc.clearCallSite()
