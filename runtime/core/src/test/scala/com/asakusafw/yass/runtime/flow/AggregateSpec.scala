@@ -39,6 +39,7 @@ import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
+import com.asakusafw.spark.runtime.operator.{ GenericEdgeFragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.rdd._
 
 @RunWith(classOf[JUnitRunner])

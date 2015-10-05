@@ -114,6 +114,11 @@
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.compat.version}</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.asakusafw.spark</groupId>
+      <artifactId>asakusa-spark-runtime</artifactId>
+      <classifier>tests</classifier>
+    </dependency>
   </dependencies>
 
 </project>

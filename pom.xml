@@ -32,7 +32,7 @@
 
   <properties>
     <asakusafw.version>0.7.4-hadoop2</asakusafw.version>
-    <asakusafw-spark.version>0.2.0</asakusafw-spark.version>
+    <asakusafw-spark.version>0.2.1-SNAPSHOT</asakusafw-spark.version>
 
     <scala.compat.version>2.10</scala.compat.version>
     <scala.version>${scala.compat.version}.5</scala.version>
@@ -507,6 +507,13 @@ encoding/<project>=UTF-8
         <groupId>org.scalatest</groupId>
         <artifactId>scalatest_${scala.compat.version}</artifactId>
         <version>${scalatest.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw.spark</groupId>
+        <artifactId>asakusa-spark-runtime</artifactId>
+        <classifier>tests</classifier>
+        <version>${asakusafw-spark.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>
