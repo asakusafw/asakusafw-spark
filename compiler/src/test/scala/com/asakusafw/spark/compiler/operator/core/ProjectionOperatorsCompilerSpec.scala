@@ -54,92 +54,98 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with UsingCompilerContext
   behavior of classOf[ProjectionOperatorsCompiler].getSimpleName
 
   it should "compile Project operator" in {
+    import Project._
+
     val operator = CoreOperator.builder(CoreOperatorKind.PROJECT)
-      .input("input", ClassDescription.of(classOf[ProjectInputModel]))
-      .output("output", ClassDescription.of(classOf[ProjectOutputModel]))
+      .input("input", ClassDescription.of(classOf[Input]))
+      .output("output", ClassDescription.of(classOf[Output]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[ProjectInputModel]](thisType.getClassName)
+    val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
 
-    val out = new GenericOutputFragment[ProjectOutputModel]
+    val out = new GenericOutputFragment[Output]()
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
-    val dm = new ProjectInputModel()
+    val input = new Project.Input()
     for (i <- 0 until 10) {
-      dm.i.modify(i)
-      dm.l.modify(i)
-      fragment.add(dm)
+      input.i.modify(i)
+      input.l.modify(i)
+      fragment.add(input)
     }
     out.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
+      case (output, i) =>
+        assert(output.i.get === i)
     }
     fragment.reset()
   }
 
   it should "compile Extend operator" in {
+    import Extend._
+
     val operator = CoreOperator.builder(CoreOperatorKind.EXTEND)
-      .input("input", ClassDescription.of(classOf[ExtendInputModel]))
-      .output("output", ClassDescription.of(classOf[ExtendOutputModel]))
+      .input("input", ClassDescription.of(classOf[Input]))
+      .output("output", ClassDescription.of(classOf[Output]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[ExtendInputModel]](thisType.getClassName)
+    val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
 
-    val out = new GenericOutputFragment[ExtendOutputModel]
+    val out = new GenericOutputFragment[Output]()
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
-    val dm = new ExtendInputModel()
+    val input = new Input()
     for (i <- 0 until 10) {
-      dm.i.modify(i)
-      fragment.add(dm)
+      input.i.modify(i)
+      fragment.add(input)
     }
     out.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
-        assert(dm.l.isNull)
+      case (output, i) =>
+        assert(output.i.get === i)
+        assert(output.l.isNull)
     }
     fragment.reset()
   }
 
   it should "compile Restructure operator" in {
+    import Restructure._
+
     val operator = CoreOperator.builder(CoreOperatorKind.RESTRUCTURE)
-      .input("input", ClassDescription.of(classOf[RestructureInputModel]))
-      .output("output", ClassDescription.of(classOf[RestructureOutputModel]))
+      .input("input", ClassDescription.of(classOf[Input]))
+      .output("output", ClassDescription.of(classOf[Output]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[RestructureInputModel]](thisType.getClassName)
+    val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
 
-    val out = new GenericOutputFragment[RestructureOutputModel]
+    val out = new GenericOutputFragment[Output]()
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
     fragment.reset()
-    val dm = new RestructureInputModel()
+    val input = new Input()
     for (i <- 0 until 10) {
-      dm.i.modify(i)
-      fragment.add(dm)
+      input.i.modify(i)
+      fragment.add(input)
     }
     out.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
-        assert(dm.d.isNull)
+      case (output, i) =>
+        assert(output.i.get === i)
+        assert(output.d.isNull)
     }
 
     fragment.reset()
@@ -148,147 +154,156 @@ class ProjectionOperatorsCompilerSpec extends FlatSpec with UsingCompilerContext
 
 object ProjectionOperatorsCompilerSpec {
 
-  class ProjectInputModel extends DataModel[ProjectInputModel] with Writable {
+  object Project {
 
-    val i: IntOption = new IntOption()
-    val l: LongOption = new LongOption()
+    class Input extends DataModel[Input] with Writable {
 
-    override def reset: Unit = {
-      i.setNull()
-      l.setNull()
-    }
-    override def copyFrom(other: ProjectInputModel): Unit = {
-      i.copyFrom(other.i)
-      l.copyFrom(other.l)
-    }
-    override def readFields(in: DataInput): Unit = {
-      i.readFields(in)
-      l.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      i.write(out)
-      l.write(out)
+      val i: IntOption = new IntOption()
+      val l: LongOption = new LongOption()
+
+      override def reset: Unit = {
+        i.setNull()
+        l.setNull()
+      }
+      override def copyFrom(other: Input): Unit = {
+        i.copyFrom(other.i)
+        l.copyFrom(other.l)
+      }
+      override def readFields(in: DataInput): Unit = {
+        i.readFields(in)
+        l.readFields(in)
+      }
+      override def write(out: DataOutput): Unit = {
+        i.write(out)
+        l.write(out)
+      }
+
+      def getIOption: IntOption = i
+      def getLOption: LongOption = l
     }
 
-    def getIOption: IntOption = i
-    def getLOption: LongOption = l
+    class Output extends DataModel[Output] with Writable {
+
+      val i: IntOption = new IntOption()
+
+      override def reset: Unit = {
+        i.setNull()
+      }
+      override def copyFrom(other: Output): Unit = {
+        i.copyFrom(other.i)
+      }
+      override def readFields(in: DataInput): Unit = {
+        i.readFields(in)
+      }
+      override def write(out: DataOutput): Unit = {
+        i.write(out)
+      }
+
+      def getIOption: IntOption = i
+    }
   }
 
-  class ProjectOutputModel extends DataModel[ProjectOutputModel] with Writable {
+  object Extend {
 
-    val i: IntOption = new IntOption()
+    class Input extends DataModel[Input] with Writable {
 
-    override def reset: Unit = {
-      i.setNull()
-    }
-    override def copyFrom(other: ProjectOutputModel): Unit = {
-      i.copyFrom(other.i)
-    }
-    override def readFields(in: DataInput): Unit = {
-      i.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      i.write(out)
+      val i: IntOption = new IntOption()
+
+      override def reset: Unit = {
+        i.setNull()
+      }
+      override def copyFrom(other: Input): Unit = {
+        i.copyFrom(other.i)
+      }
+      override def readFields(in: DataInput): Unit = {
+        i.readFields(in)
+      }
+      override def write(out: DataOutput): Unit = {
+        i.write(out)
+      }
+
+      def getIOption: IntOption = i
     }
 
-    def getIOption: IntOption = i
+    class Output extends DataModel[Output] with Writable {
+
+      val i: IntOption = new IntOption()
+      val l: LongOption = new LongOption()
+
+      override def reset: Unit = {
+        i.setNull()
+        l.setNull()
+      }
+      override def copyFrom(other: Output): Unit = {
+        i.copyFrom(other.i)
+        l.copyFrom(other.l)
+      }
+      override def readFields(in: DataInput): Unit = {
+        i.readFields(in)
+        l.readFields(in)
+      }
+      override def write(out: DataOutput): Unit = {
+        i.write(out)
+        l.write(out)
+      }
+
+      def getIOption: IntOption = i
+      def getLOption: LongOption = l
+    }
   }
 
-  class ExtendInputModel extends DataModel[ExtendInputModel] with Writable {
+  object Restructure {
 
-    val i: IntOption = new IntOption()
+    class Input extends DataModel[Input] with Writable {
 
-    override def reset: Unit = {
-      i.setNull()
-    }
-    override def copyFrom(other: ExtendInputModel): Unit = {
-      i.copyFrom(other.i)
-    }
-    override def readFields(in: DataInput): Unit = {
-      i.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      i.write(out)
-    }
+      val i: IntOption = new IntOption()
+      val l: LongOption = new LongOption()
 
-    def getIOption: IntOption = i
-  }
+      override def reset: Unit = {
+        i.setNull()
+        l.setNull()
+      }
+      override def copyFrom(other: Input): Unit = {
+        i.copyFrom(other.i)
+        l.copyFrom(other.l)
+      }
+      override def readFields(in: DataInput): Unit = {
+        i.readFields(in)
+        l.readFields(in)
+      }
+      override def write(out: DataOutput): Unit = {
+        i.write(out)
+        l.write(out)
+      }
 
-  class ExtendOutputModel extends DataModel[ExtendOutputModel] with Writable {
-
-    val i: IntOption = new IntOption()
-    val l: LongOption = new LongOption()
-
-    override def reset: Unit = {
-      i.setNull()
-      l.setNull()
-    }
-    override def copyFrom(other: ExtendOutputModel): Unit = {
-      i.copyFrom(other.i)
-      l.copyFrom(other.l)
-    }
-    override def readFields(in: DataInput): Unit = {
-      i.readFields(in)
-      l.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      i.write(out)
-      l.write(out)
+      def getIOption: IntOption = i
+      def getLOption: LongOption = l
     }
 
-    def getIOption: IntOption = i
-    def getLOption: LongOption = l
-  }
+    class Output extends DataModel[Output] with Writable {
 
-  class RestructureInputModel extends DataModel[RestructureInputModel] with Writable {
+      val i: IntOption = new IntOption()
+      val d: DoubleOption = new DoubleOption()
 
-    val i: IntOption = new IntOption()
-    val l: LongOption = new LongOption()
+      override def reset: Unit = {
+        i.setNull()
+        d.setNull()
+      }
+      override def copyFrom(other: Output): Unit = {
+        i.copyFrom(other.i)
+        d.copyFrom(other.d)
+      }
+      override def readFields(in: DataInput): Unit = {
+        i.readFields(in)
+        d.readFields(in)
+      }
+      override def write(out: DataOutput): Unit = {
+        i.write(out)
+        d.write(out)
+      }
 
-    override def reset: Unit = {
-      i.setNull()
-      l.setNull()
+      def getIOption: IntOption = i
+      def getDOption: DoubleOption = d
     }
-    override def copyFrom(other: RestructureInputModel): Unit = {
-      i.copyFrom(other.i)
-      l.copyFrom(other.l)
-    }
-    override def readFields(in: DataInput): Unit = {
-      i.readFields(in)
-      l.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      i.write(out)
-      l.write(out)
-    }
-
-    def getIOption: IntOption = i
-    def getLOption: LongOption = l
-  }
-
-  class RestructureOutputModel extends DataModel[RestructureOutputModel] with Writable {
-
-    val i: IntOption = new IntOption()
-    val d: DoubleOption = new DoubleOption()
-
-    override def reset: Unit = {
-      i.setNull()
-      d.setNull()
-    }
-    override def copyFrom(other: RestructureOutputModel): Unit = {
-      i.copyFrom(other.i)
-      d.copyFrom(other.d)
-    }
-    override def readFields(in: DataInput): Unit = {
-      i.readFields(in)
-      d.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      i.write(out)
-      d.write(out)
-    }
-
-    def getIOption: IntOption = i
-    def getDOption: DoubleOption = d
   }
 }

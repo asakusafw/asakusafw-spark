@@ -55,33 +55,33 @@ class UpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
   it should "compile Update operator" in {
     val operator = OperatorExtractor.extract(
       classOf[Update], classOf[UpdateOperator], "update")
-      .input("in", ClassDescription.of(classOf[TestModel]))
-      .output("out", ClassDescription.of(classOf[TestModel]))
+      .input("in", ClassDescription.of(classOf[Foo]))
+      .output("out", ClassDescription.of(classOf[Foo]))
       .argument("rate", ImmediateDescription.of(100))
       .build();
 
     implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[TestModel]](thisType.getClassName)
+    val cls = context.loadClass[Fragment[Foo]](thisType.getClassName)
 
-    val out = new GenericOutputFragment[TestModel]
+    val out = new GenericOutputFragment[Foo]()
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
     fragment.reset()
-    val dm = new TestModel()
+    val foo = new Foo()
     for (i <- 0 until 10) {
-      dm.reset()
-      dm.i.modify(i)
-      fragment.add(dm)
+      foo.reset()
+      foo.i.modify(i)
+      fragment.add(foo)
     }
     out.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
-        assert(dm.l.get === i * 100)
+      case (foo, i) =>
+        assert(foo.i.get === i)
+        assert(foo.l.get === i * 100)
     }
 
     fragment.reset()
@@ -90,33 +90,33 @@ class UpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
   it should "compile Update operator with projective model" in {
     val operator = OperatorExtractor.extract(
       classOf[Update], classOf[UpdateOperator], "updatep")
-      .input("in", ClassDescription.of(classOf[TestModel]))
-      .output("out", ClassDescription.of(classOf[TestModel]))
+      .input("in", ClassDescription.of(classOf[Foo]))
+      .output("out", ClassDescription.of(classOf[Foo]))
       .argument("rate", ImmediateDescription.of(100))
       .build();
 
     implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[TestModel]](thisType.getClassName)
+    val cls = context.loadClass[Fragment[Foo]](thisType.getClassName)
 
-    val out = new GenericOutputFragment[TestModel]
+    val out = new GenericOutputFragment[Foo]()
 
     val fragment = cls
       .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
 
     fragment.reset()
-    val dm = new TestModel()
+    val foo = new Foo()
     for (i <- 0 until 10) {
-      dm.reset()
-      dm.i.modify(i)
-      fragment.add(dm)
+      foo.reset()
+      foo.i.modify(i)
+      fragment.add(foo)
     }
     out.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
-        assert(dm.l.get === i * 100)
+      case (foo, i) =>
+        assert(foo.i.get === i)
+        assert(foo.l.get === i * 100)
     }
 
     fragment.reset()
@@ -125,12 +125,12 @@ class UpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
 object UpdateOperatorCompilerSpec {
 
-  trait TestP {
+  trait FooP {
     def getIOption: IntOption
     def getLOption: LongOption
   }
 
-  class TestModel extends DataModel[TestModel] with TestP with Writable {
+  class Foo extends DataModel[Foo] with FooP with Writable {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
@@ -139,7 +139,7 @@ object UpdateOperatorCompilerSpec {
       i.setNull()
       l.setNull()
     }
-    override def copyFrom(other: TestModel): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       i.copyFrom(other.i)
       l.copyFrom(other.l)
     }
@@ -159,13 +159,13 @@ object UpdateOperatorCompilerSpec {
   class UpdateOperator {
 
     @Update
-    def update(item: TestModel, rate: Int): Unit = {
-      item.l.modify(rate * item.i.get)
+    def update(foo: Foo, rate: Int): Unit = {
+      foo.l.modify(rate * foo.i.get)
     }
 
     @Update
-    def updatep[T <: TestP](item: T, rate: Int): Unit = {
-      item.getLOption.modify(rate * item.getIOption.get)
+    def updatep[F <: FooP](foo: F, rate: Int): Unit = {
+      foo.getLOption.modify(rate * foo.getIOption.get)
     }
   }
 }

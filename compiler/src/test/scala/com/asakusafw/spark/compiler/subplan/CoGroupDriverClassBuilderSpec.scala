@@ -69,52 +69,52 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 0))
   } {
     it should s"build cogroup driver class ${method} with OutputType.${outputType}" in {
-      val hogeListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
-      val fooListMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      val barsMarker = MarkerOperator.builder(ClassDescription.of(classOf[Bar]))
         .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
 
       val operator = OperatorExtractor
         .extract(classOf[CoGroup], classOf[CoGroupOperator], method)
-        .input("hogeList", ClassDescription.of(classOf[Hoge]),
+        .input("foos", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq("id")),
-          hogeListMarker.getOutput)
-        .input("fooList", ClassDescription.of(classOf[Foo]),
-          Groups.parse(Seq("hogeId"), Seq("+id")),
-          fooListMarker.getOutput)
-        .output("hogeResult", ClassDescription.of(classOf[Hoge]))
+          foosMarker.getOutput)
+        .input("bars", ClassDescription.of(classOf[Bar]),
+          Groups.parse(Seq("fooId"), Seq("+id")),
+          barsMarker.getOutput)
         .output("fooResult", ClassDescription.of(classOf[Foo]))
-        .output("hogeError", ClassDescription.of(classOf[Hoge]))
+        .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("fooError", ClassDescription.of(classOf[Foo]))
+        .output("barError", ClassDescription.of(classOf[Bar]))
         .output("nResult", ClassDescription.of(classOf[N]))
         .argument("n", ImmediateDescription.of(10))
         .build()
-
-      val hogeResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
-        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-      operator.findOutput("hogeResult").connect(hogeResultMarker.getInput)
 
       val fooResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
       operator.findOutput("fooResult").connect(fooResultMarker.getInput)
 
-      val hogeErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val barResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Bar]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-      operator.findOutput("hogeError").connect(hogeErrorMarker.getInput)
+      operator.findOutput("barResult").connect(barResultMarker.getInput)
 
       val fooErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
       operator.findOutput("fooError").connect(fooErrorMarker.getInput)
 
-      val hogeAllMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val barErrorMarker = MarkerOperator.builder(ClassDescription.of(classOf[Bar]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
-      operator.findOutput("hogeResult").connect(hogeAllMarker.getInput)
-      operator.findOutput("hogeError").connect(hogeAllMarker.getInput)
+      operator.findOutput("barError").connect(barErrorMarker.getInput)
 
       val fooAllMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
       operator.findOutput("fooResult").connect(fooAllMarker.getInput)
       operator.findOutput("fooError").connect(fooAllMarker.getInput)
+
+      val barAllMarker = MarkerOperator.builder(ClassDescription.of(classOf[Bar]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+      operator.findOutput("barResult").connect(barAllMarker.getInput)
+      operator.findOutput("barError").connect(barAllMarker.getInput)
 
       val nResultMarker = MarkerOperator.builder(ClassDescription.of(classOf[N]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
@@ -122,39 +122,39 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
 
       val plan = PlanBuilder.from(Seq(operator))
         .add(
-          Seq(hogeListMarker, fooListMarker),
-          Seq(hogeResultMarker, fooResultMarker,
-            hogeErrorMarker, fooErrorMarker,
-            hogeAllMarker, fooAllMarker,
+          Seq(foosMarker, barsMarker),
+          Seq(fooResultMarker, barResultMarker,
+            fooErrorMarker, barErrorMarker,
+            fooAllMarker, barAllMarker,
             nResultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
       val subplan = plan.getElements.head
       subplan.putAttribute(classOf[SubPlanInfo],
         new SubPlanInfo(subplan, SubPlanInfo.DriverType.COGROUP, Seq.empty[SubPlanInfo.DriverOption], operator))
 
-      val hogeResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeResultMarker.getOriginalSerialNumber).get
-      hogeResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
-
       val fooResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get
       fooResultOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      val hogeErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeErrorMarker.getOriginalSerialNumber).get
-      hogeErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeErrorOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      val barResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == barResultMarker.getOriginalSerialNumber).get
+      barResultOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(barResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val fooErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooErrorMarker.getOriginalSerialNumber).get
       fooErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(fooErrorOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      val hogeAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == hogeAllMarker.getOriginalSerialNumber).get
-      hogeAllOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(hogeAllOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      val barErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == barErrorMarker.getOriginalSerialNumber).get
+      barErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(barErrorOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val fooAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooAllMarker.getOriginalSerialNumber).get
       fooAllOutput.putAttribute(classOf[SubPlanOutputInfo],
         new SubPlanOutputInfo(fooAllOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+
+      val barAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == barAllMarker.getOriginalSerialNumber).get
+      barAllOutput.putAttribute(classOf[SubPlanOutputInfo],
+        new SubPlanOutputInfo(barAllOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       val nResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == nResultMarker.getOriginalSerialNumber).get
       nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
@@ -170,20 +170,20 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
-      val hogeOrd = new HogeSortOrdering()
-      val hogeList = sc.parallelize(0 until 10).map { i =>
-        val hoge = new Hoge()
-        hoge.id.modify(i)
-        val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(hoge.id), serde.serialize(new BooleanOption().modify(hoge.id.get % 3 == 0))), hoge)
-      }
-      val fooOrd = new FooSortOrdering()
-      val fooList = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
+      val fooOrd = new Foo.SortOrdering()
+      val foos = sc.parallelize(0 until 10).map { i =>
         val foo = new Foo()
-        foo.id.modify(10 + j)
-        foo.hogeId.modify(i)
+        foo.id.modify(i)
         val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(foo.hogeId), serde.serialize(new IntOption().modify(foo.id.toString.hashCode))), foo)
+        (new ShuffleKey(serde.serialize(foo.id), serde.serialize(new BooleanOption().modify(foo.id.get % 3 == 0))), foo)
+      }
+      val barOrd = new Bar.SortOrdering()
+      val bars = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
+        val bar = new Bar()
+        bar.id.modify(10 + j)
+        bar.fooId.modify(i)
+        val serde = new WritableSerDe()
+        (new ShuffleKey(serde.serialize(bar.fooId), serde.serialize(new IntOption().modify(bar.id.toString.hashCode))), bar)
       })
       val grouping = new GroupingOrdering()
       val part = new HashPartitioner(2)
@@ -197,7 +197,7 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
         .newInstance(
           sc,
           hadoopConf,
-          Seq((Seq(Future.successful(hogeList)), Option(hogeOrd)), (Seq(Future.successful(fooList)), Option(fooOrd))),
+          Seq((Seq(Future.successful(foos)), Option(fooOrd)), (Seq(Future.successful(bars)), Option(barOrd))),
           grouping,
           part,
           Map.empty)
@@ -212,82 +212,91 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
       }
 
       assert(driver.branchKeys ===
-        Set(hogeResultMarker, fooResultMarker,
-          hogeErrorMarker, fooErrorMarker,
-          hogeAllMarker, fooAllMarker,
+        Set(fooResultMarker, barResultMarker,
+          fooErrorMarker, barErrorMarker,
+          fooAllMarker, barAllMarker,
           nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
 
-      val hogeResult = Await.result(
-        results(getBranchKey(hogeResultMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
-        }, Duration.Inf)
-        .collect.toSeq
-      assert(hogeResult.size === 1)
-      assert(hogeResult(0) === 1)
+      val (((fooResult, barResult), (fooError, barError)), ((fooAll, barAll), nResult)) =
+        Await.result(
+          results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq
+          }.zip {
+            results(getBranchKey(barResultMarker.getOriginalSerialNumber)).map {
+              _.map {
+                case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+              }.collect.toSeq
+            }
+          }.zip {
+            results(getBranchKey(fooErrorMarker.getOriginalSerialNumber)).map {
+              _.map {
+                case (_, foo: Foo) => foo.id.get
+              }.collect.toSeq.sorted
+            }.zip {
+              results(getBranchKey(barErrorMarker.getOriginalSerialNumber)).map {
+                _.map {
+                  case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+                }.collect.toSeq.sortBy(_._2)
+              }
+            }
+          }.zip {
+            results(getBranchKey(fooAllMarker.getOriginalSerialNumber)).map {
+              _.map {
+                case (_, foo: Foo) => foo.id.get
+              }.collect.toSeq.sorted
+            }.zip {
+              results(getBranchKey(barAllMarker.getOriginalSerialNumber)).map {
+                _.map {
+                  case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+                }.collect.toSeq.sortBy(_._2)
+              }
+            }.zip {
+              results(getBranchKey(nResultMarker.getOriginalSerialNumber)).map {
+                _.map {
+                  case (_, n: N) => n.n.get
+                }.collect.toSeq
+              }
+            }
+          }, Duration.Inf)
 
-      val fooResult = Await.result(
-        results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
-        }, Duration.Inf)
-        .collect.toSeq
       assert(fooResult.size === 1)
-      assert(fooResult(0)._1 === 10)
-      assert(fooResult(0)._2 === 1)
+      assert(fooResult(0) === 1)
 
-      val hogeError = Await.result(
-        results(getBranchKey(hogeErrorMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
-        }, Duration.Inf)
-        .collect.toSeq.sorted
-      assert(hogeError.size === 9)
-      assert(hogeError(0) === 0)
+      assert(barResult.size === 1)
+      assert(barResult(0)._1 === 10)
+      assert(barResult(0)._2 === 1)
+
+      assert(fooError.size === 9)
+      assert(fooError(0) === 0)
       for (i <- 2 until 10) {
-        assert(hogeError(i - 1) === i)
+        assert(fooError(i - 1) === i)
       }
 
-      val fooError = Await.result(
-        results(getBranchKey(fooErrorMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
-        }, Duration.Inf)
-        .collect.toSeq.sortBy(_._2)
-      assert(fooError.size === 44)
+      assert(barError.size === 44)
       for {
         i <- 2 until 10
         j <- 0 until i
       } {
-        assert(fooError((i * (i - 1)) / 2 + j - 1)._1 == 10 + j)
-        assert(fooError((i * (i - 1)) / 2 + j - 1)._2 == i)
+        assert(barError((i * (i - 1)) / 2 + j - 1)._1 == 10 + j)
+        assert(barError((i * (i - 1)) / 2 + j - 1)._2 == i)
       }
 
-      val hogeAll = Await.result(
-        results(getBranchKey(hogeAllMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Hoge]).map(_.id.get)
-        }, Duration.Inf)
-        .collect.toSeq.sorted
-      assert(hogeAll.size === 10)
+      assert(fooAll.size === 10)
       for (i <- 0 until 10) {
-        assert(hogeAll(i) === i)
+        assert(fooAll(i) === i)
       }
 
-      val fooAll = Await.result(
-        results(getBranchKey(fooAllMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[Foo]).map(foo => (foo.id.get, foo.hogeId.get))
-        }, Duration.Inf)
-        .collect.toSeq.sortBy(_._2)
-      assert(fooAll.size === 45)
+      assert(barAll.size === 45)
       for {
         i <- 0 until 10
         j <- 0 until i
       } {
-        assert(fooAll((i * (i - 1)) / 2 + j)._1 == 10 + j)
-        assert(fooAll((i * (i - 1)) / 2 + j)._2 == i)
+        assert(barAll((i * (i - 1)) / 2 + j)._1 == 10 + j)
+        assert(barAll((i * (i - 1)) / 2 + j)._2 == i)
       }
 
-      val nResult = Await.result(
-        results(getBranchKey(nResultMarker.getOriginalSerialNumber)).map {
-          _.map(_._2.asInstanceOf[N]).map(_.n.get)
-        }, Duration.Inf)
-        .collect.toSeq
       assert(nResult.size === 10)
       nResult.foreach(n => assert(n === 10))
     }
@@ -296,14 +305,21 @@ class CoGroupDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSu
 
 object CoGroupDriverClassBuilderSpec {
 
-  class Hoge extends DataModel[Hoge] with Writable {
+  class GroupingOrdering extends Ordering[ShuffleKey] {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      IntOption.compareBytes(x.grouping, 0, x.grouping.length, y.grouping, 0, y.grouping.length)
+    }
+  }
+
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
     }
-    override def copyFrom(other: Hoge): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
     }
     override def readFields(in: DataInput): Unit = {
@@ -316,30 +332,60 @@ object CoGroupDriverClassBuilderSpec {
     def getIdOption: IntOption = id
   }
 
-  class Foo extends DataModel[Foo] with Writable {
+  object Foo {
+
+    class SortOrdering extends GroupingOrdering {
+
+      override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+        val cmp = super.compare(x, y)
+        if (cmp == 0) {
+          BooleanOption.compareBytes(x.ordering, 0, x.ordering.length, y.ordering, 0, y.ordering.length)
+        } else {
+          cmp
+        }
+      }
+    }
+  }
+
+  class Bar extends DataModel[Bar] with Writable {
 
     val id = new IntOption()
-    val hogeId = new IntOption()
+    val fooId = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
-      hogeId.setNull()
+      fooId.setNull()
     }
-    override def copyFrom(other: Foo): Unit = {
+    override def copyFrom(other: Bar): Unit = {
       id.copyFrom(other.id)
-      hogeId.copyFrom(other.hogeId)
+      fooId.copyFrom(other.fooId)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      hogeId.readFields(in)
+      fooId.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      hogeId.write(out)
+      fooId.write(out)
     }
 
     def getIdOption: IntOption = id
-    def getHogeIdOption: IntOption = hogeId
+    def getFooIdOption: IntOption = fooId
+  }
+
+  object Bar {
+
+    class SortOrdering extends GroupingOrdering {
+
+      override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+        val cmp = super.compare(x, y)
+        if (cmp == 0) {
+          IntOption.compareBytes(x.ordering, 0, x.ordering.length, y.ordering, 0, y.ordering.length)
+        } else {
+          cmp
+        }
+      }
+    }
   }
 
   class N extends DataModel[N] with Writable {
@@ -362,53 +408,22 @@ object CoGroupDriverClassBuilderSpec {
     def getNOption: IntOption = n
   }
 
-  class GroupingOrdering extends Ordering[ShuffleKey] {
-
-    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      IntOption.compareBytes(x.grouping, 0, x.grouping.length, y.grouping, 0, y.grouping.length)
-    }
-  }
-
-  class HogeSortOrdering extends GroupingOrdering {
-
-    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      val cmp = super.compare(x, y)
-      if (cmp == 0) {
-        BooleanOption.compareBytes(x.ordering, 0, x.ordering.length, y.ordering, 0, y.ordering.length)
-      } else {
-        cmp
-      }
-    }
-  }
-
-  class FooSortOrdering extends GroupingOrdering {
-
-    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      val cmp = super.compare(x, y)
-      if (cmp == 0) {
-        IntOption.compareBytes(x.ordering, 0, x.ordering.length, y.ordering, 0, y.ordering.length)
-      } else {
-        cmp
-      }
-    }
-  }
-
   class CoGroupOperator {
 
     private[this] val n = new N
 
     @CoGroup
     def cogroup(
-      hogeList: JList[Hoge], fooList: JList[Foo],
-      hogeResult: Result[Hoge], fooResult: Result[Foo],
-      hogeError: Result[Hoge], fooError: Result[Foo],
+      foos: JList[Foo], bars: JList[Bar],
+      fooResult: Result[Foo], barResult: Result[Bar],
+      fooError: Result[Foo], barError: Result[Bar],
       nResult: Result[N], n: Int): Unit = {
-      if (hogeList.size == 1 && fooList.size == 1) {
-        hogeResult.add(hogeList(0))
-        fooResult.add(fooList(0))
+      if (foos.size == 1 && bars.size == 1) {
+        fooResult.add(foos(0))
+        barResult.add(bars(0))
       } else {
-        hogeList.foreach(hogeError.add)
-        fooList.foreach(fooError.add)
+        foos.foreach(fooError.add)
+        bars.foreach(barError.add)
       }
       this.n.n.modify(n)
       nResult.add(this.n)
@@ -416,16 +431,16 @@ object CoGroupDriverClassBuilderSpec {
 
     @CoGroup(inputBuffer = InputBuffer.ESCAPE)
     def cogroupEscape(
-      hogeList: JList[Hoge], fooList: JList[Foo],
-      hogeResult: Result[Hoge], fooResult: Result[Foo],
-      hogeError: Result[Hoge], fooError: Result[Foo],
+      foos: JList[Foo], bars: JList[Bar],
+      fooResult: Result[Foo], barResult: Result[Bar],
+      fooError: Result[Foo], barError: Result[Bar],
       nResult: Result[N], n: Int): Unit = {
-      if (hogeList.size == 1 && fooList.size == 1) {
-        hogeResult.add(hogeList(0))
-        fooResult.add(fooList(0))
+      if (foos.size == 1 && bars.size == 1) {
+        fooResult.add(foos(0))
+        barResult.add(bars(0))
       } else {
-        hogeList.foreach(hogeError.add)
-        fooList.foreach(fooError.add)
+        foos.foreach(fooError.add)
+        bars.foreach(barError.add)
       }
       this.n.n.modify(n)
       nResult.add(this.n)

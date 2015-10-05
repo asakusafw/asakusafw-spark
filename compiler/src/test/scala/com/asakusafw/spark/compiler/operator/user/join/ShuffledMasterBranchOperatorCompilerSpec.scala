@@ -60,12 +60,12 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
   it should "compile MasterBranch operator without master selection" in {
     val operator = OperatorExtractor
       .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branch")
-      .input("hoges", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("low", ClassDescription.of(classOf[Bar]))
+      .output("high", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
@@ -73,8 +73,8 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val low = new GenericOutputFragment[Foo]
-    val high = new GenericOutputFragment[Foo]
+    val low = new GenericOutputFragment[Bar]()
+    val high = new GenericOutputFragment[Bar]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
@@ -83,14 +83,14 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
     {
       fragment.reset()
-      val hoge = new Hoge()
-      hoge.id.modify(10)
-      val hoges = Seq(hoge)
       val foo = new Foo()
       foo.id.modify(10)
-      foo.hogeId.modify(10)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(10)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 0)
       val highs = high.iterator.toSeq
@@ -104,12 +104,12 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
     {
       fragment.reset()
-      val hoges = Seq.empty[Hoge]
-      val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
-      val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val foos = Seq.empty[Foo]
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 1)
       assert(lows.head.id.get === 10)
@@ -125,12 +125,12 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
   it should "compile MasterBranch operator with master selection" in {
     val operator = OperatorExtractor
       .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchWithSelection")
-      .input("hoges", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("low", ClassDescription.of(classOf[Bar]))
+      .output("high", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
@@ -138,8 +138,8 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val low = new GenericOutputFragment[Foo]
-    val high = new GenericOutputFragment[Foo]
+    val low = new GenericOutputFragment[Bar]()
+    val high = new GenericOutputFragment[Bar]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
@@ -148,16 +148,16 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
     {
       fragment.reset()
-      val hoge = new Hoge()
-      hoge.id.modify(10)
-      val hoges = Seq(hoge)
-      val foos = (0 until 10).map { i =>
-        val foo = new Foo()
-        foo.id.modify(i)
-        foo.hogeId.modify(10)
-        foo
+      val foo = new Foo()
+      foo.id.modify(10)
+      val foos = Seq(foo)
+      val bars = (0 until 10).map { i =>
+        val bar = new Bar()
+        bar.id.modify(i)
+        bar.fooId.modify(10)
+        bar
       }
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 5)
       assert(lows.map(_.id.get) === (1 until 10 by 2))
@@ -172,12 +172,12 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
     {
       fragment.reset()
-      val hoges = Seq.empty[Hoge]
-      val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
-      val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val foos = Seq.empty[Foo]
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 1)
       assert(lows.head.id.get === 10)
@@ -193,12 +193,12 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
   it should "compile MasterBranch operator without master selection with projective model" in {
     val operator = OperatorExtractor
       .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchp")
-      .input("hoges", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("low", ClassDescription.of(classOf[Bar]))
+      .output("high", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
@@ -206,8 +206,8 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val low = new GenericOutputFragment[Foo]
-    val high = new GenericOutputFragment[Foo]
+    val low = new GenericOutputFragment[Bar]()
+    val high = new GenericOutputFragment[Bar]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
@@ -216,14 +216,14 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
     {
       fragment.reset()
-      val hoge = new Hoge()
-      hoge.id.modify(10)
-      val hoges = Seq(hoge)
       val foo = new Foo()
       foo.id.modify(10)
-      foo.hogeId.modify(10)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(10)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 0)
       val highs = high.iterator.toSeq
@@ -237,12 +237,12 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
     {
       fragment.reset()
-      val hoges = Seq.empty[Hoge]
-      val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
-      val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val foos = Seq.empty[Foo]
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 1)
       assert(lows.head.id.get === 10)
@@ -258,12 +258,12 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
   it should "compile MasterBranch operator with master selection with projective model" in {
     val operator = OperatorExtractor
       .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchWithSelectionp")
-      .input("hoges", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("low", ClassDescription.of(classOf[Bar]))
+      .output("high", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
@@ -271,8 +271,8 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val low = new GenericOutputFragment[Foo]
-    val high = new GenericOutputFragment[Foo]
+    val low = new GenericOutputFragment[Bar]()
+    val high = new GenericOutputFragment[Bar]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
@@ -281,16 +281,16 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
     {
       fragment.reset()
-      val hoge = new Hoge()
-      hoge.id.modify(10)
-      val hoges = Seq(hoge)
-      val foos = (0 until 10).map { i =>
-        val foo = new Foo()
-        foo.id.modify(i)
-        foo.hogeId.modify(10)
-        foo
+      val foo = new Foo()
+      foo.id.modify(10)
+      val foos = Seq(foo)
+      val bars = (0 until 10).map { i =>
+        val bar = new Bar()
+        bar.id.modify(i)
+        bar.fooId.modify(10)
+        bar
       }
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 5)
       assert(lows.map(_.id.get) === (1 until 10 by 2))
@@ -305,12 +305,12 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
     {
       fragment.reset()
-      val hoges = Seq.empty[Hoge]
-      val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
-      val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val foos = Seq.empty[Foo]
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 1)
       assert(lows.head.id.get === 10)
@@ -326,66 +326,66 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
 
 object ShuffledMasterBranchOperatorCompilerSpec {
 
-  trait HogeP {
-    def getIdOption: IntOption
-  }
-
-  class Hoge extends DataModel[Hoge] with HogeP with Writable {
-
-    val id = new IntOption()
-
-    override def reset(): Unit = {
-      id.setNull()
-    }
-    override def copyFrom(other: Hoge): Unit = {
-      id.copyFrom(other.id)
-    }
-    override def readFields(in: DataInput): Unit = {
-      id.readFields(in)
-    }
-    override def write(out: DataOutput): Unit = {
-      id.write(out)
-    }
-
-    def getIdOption: IntOption = id
-  }
-
   trait FooP {
     def getIdOption: IntOption
-    def getHogeIdOption: IntOption
   }
 
   class Foo extends DataModel[Foo] with FooP with Writable {
 
     val id = new IntOption()
-    val hogeId = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
-      hogeId.setNull()
     }
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
-      hogeId.copyFrom(other.hogeId)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      hogeId.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      hogeId.write(out)
     }
 
     def getIdOption: IntOption = id
-    def getHogeIdOption: IntOption = hogeId
+  }
+
+  trait BarP {
+    def getIdOption: IntOption
+    def getFooIdOption: IntOption
+  }
+
+  class Bar extends DataModel[Bar] with BarP with Writable {
+
+    val id = new IntOption()
+    val fooId = new IntOption()
+
+    override def reset(): Unit = {
+      id.setNull()
+      fooId.setNull()
+    }
+    override def copyFrom(other: Bar): Unit = {
+      id.copyFrom(other.id)
+      fooId.copyFrom(other.fooId)
+    }
+    override def readFields(in: DataInput): Unit = {
+      id.readFields(in)
+      fooId.readFields(in)
+    }
+    override def write(out: DataOutput): Unit = {
+      id.write(out)
+      fooId.write(out)
+    }
+
+    def getIdOption: IntOption = id
+    def getFooIdOption: IntOption = fooId
   }
 
   class MasterBranchOperator {
 
     @MasterBranchOp
-    def branch(hoge: Hoge, foo: Foo): BranchOperatorCompilerSpecTestBranch = {
-      if (hoge == null || hoge.id.get < 5) {
+    def branch(foo: Foo, bar: Bar): BranchOperatorCompilerSpecTestBranch = {
+      if (foo == null || foo.id.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW
       } else {
         BranchOperatorCompilerSpecTestBranch.HIGH
@@ -393,8 +393,8 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     }
 
     @MasterBranchOp(selection = "select")
-    def branchWithSelection(hoge: Hoge, foo: Foo): BranchOperatorCompilerSpecTestBranch = {
-      if (hoge == null || hoge.id.get < 5) {
+    def branchWithSelection(foo: Foo, bar: Bar): BranchOperatorCompilerSpecTestBranch = {
+      if (foo == null || foo.id.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW
       } else {
         BranchOperatorCompilerSpecTestBranch.HIGH
@@ -402,17 +402,17 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     }
 
     @MasterSelection
-    def select(hoges: JList[Hoge], foo: Foo): Hoge = {
-      if (foo.id.get % 2 == 0) {
-        hoges.headOption.orNull
+    def select(foos: JList[Foo], bar: Bar): Foo = {
+      if (bar.id.get % 2 == 0) {
+        foos.headOption.orNull
       } else {
         null
       }
     }
 
     @MasterBranchOp
-    def branchp[H <: HogeP, F <: FooP](hoge: H, foo: F): BranchOperatorCompilerSpecTestBranch = {
-      if (hoge == null || hoge.getIdOption.get < 5) {
+    def branchp[F <: FooP, B <: BarP](foo: F, bar: B): BranchOperatorCompilerSpecTestBranch = {
+      if (foo == null || foo.getIdOption.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW
       } else {
         BranchOperatorCompilerSpecTestBranch.HIGH
@@ -420,8 +420,8 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     }
 
     @MasterBranchOp(selection = "selectp")
-    def branchWithSelectionp[H <: HogeP, F <: FooP](hoge: H, foo: F): BranchOperatorCompilerSpecTestBranch = {
-      if (hoge == null || hoge.getIdOption.get < 5) {
+    def branchWithSelectionp[F <: FooP, B <: BarP](foo: F, bar: B): BranchOperatorCompilerSpecTestBranch = {
+      if (foo == null || foo.getIdOption.get < 5) {
         BranchOperatorCompilerSpecTestBranch.LOW
       } else {
         BranchOperatorCompilerSpecTestBranch.HIGH
@@ -429,15 +429,15 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     }
 
     @MasterSelection
-    def selectp[H <: HogeP, F <: FooP](hoges: JList[H], foo: F): H = {
-      if (foo.getIdOption.get % 2 == 0) {
-        if (hoges.size > 0) {
-          hoges.head
+    def selectp[Foo <: FooP, B <: BarP](foos: JList[Foo], bar: B): Foo = {
+      if (bar.getIdOption.get % 2 == 0) {
+        if (foos.size > 0) {
+          foos.head
         } else {
-          null.asInstanceOf[H]
+          null.asInstanceOf[Foo]
         }
       } else {
-        null.asInstanceOf[H]
+        null.asInstanceOf[Foo]
       }
     }
   }

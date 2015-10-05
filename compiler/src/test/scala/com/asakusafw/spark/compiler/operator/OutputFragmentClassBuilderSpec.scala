@@ -42,20 +42,20 @@ class OutputFragmentClassBuilderSpec extends FlatSpec with UsingCompilerContext 
   it should "compile OutputFragment" in {
     implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OutputFragmentClassBuilder.getOrCompile(classOf[TestModel].asType)
-    val cls = context.loadClass[OutputFragment[TestModel]](thisType.getClassName)
+    val thisType = OutputFragmentClassBuilder.getOrCompile(classOf[Foo].asType)
+    val cls = context.loadClass[OutputFragment[Foo]](thisType.getClassName)
 
     val fragment = cls.getConstructor(classOf[Int]).newInstance(Int.box(-1))
 
     fragment.reset()
-    val dm = new TestModel()
+    val foo = new Foo()
     for (i <- 0 until 10) {
-      dm.i.modify(i)
-      fragment.add(dm)
+      foo.i.modify(i)
+      fragment.add(foo)
     }
     fragment.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
+      case (foo, i) =>
+        assert(foo.i.get === i)
     }
 
     fragment.reset()
@@ -64,14 +64,14 @@ class OutputFragmentClassBuilderSpec extends FlatSpec with UsingCompilerContext 
 
 object OutputFragmentClassBuilderSpec {
 
-  class TestModel extends DataModel[TestModel] with Writable {
+  class Foo extends DataModel[Foo] with Writable {
 
     val i: IntOption = new IntOption()
 
     override def reset: Unit = {
       i.setNull()
     }
-    override def copyFrom(other: TestModel): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       i.copyFrom(other.i)
     }
     override def readFields(in: DataInput): Unit = {

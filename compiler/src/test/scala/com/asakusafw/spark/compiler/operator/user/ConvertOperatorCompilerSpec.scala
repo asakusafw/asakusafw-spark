@@ -56,39 +56,39 @@ class ConvertOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
   it should "compile Convert operator" in {
     val operator = OperatorExtractor
       .extract(classOf[Convert], classOf[ConvertOperator], "convert")
-      .input("input", ClassDescription.of(classOf[InputModel]))
-      .output("original", ClassDescription.of(classOf[InputModel]))
-      .output("out", ClassDescription.of(classOf[OutputModel]))
+      .input("input", ClassDescription.of(classOf[Input]))
+      .output("original", ClassDescription.of(classOf[Input]))
+      .output("out", ClassDescription.of(classOf[Output]))
       .argument("n", ImmediateDescription.of(10))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[InputModel]](thisType.getClassName)
+    val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
 
-    val out1 = new GenericOutputFragment[InputModel]
-    val out2 = new GenericOutputFragment[OutputModel]
+    val out1 = new GenericOutputFragment[Input]()
+    val out2 = new GenericOutputFragment[Output]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, out1, out2)
     fragment.reset()
 
-    val dm = new InputModel()
+    val input = new Input()
     for (i <- 0 until 10) {
-      dm.i.modify(i)
-      dm.l.modify(i)
-      fragment.add(dm)
+      input.i.modify(i)
+      input.l.modify(i)
+      fragment.add(input)
     }
     out1.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
-        assert(dm.l.get === i)
+      case (input, i) =>
+        assert(input.i.get === i)
+        assert(input.l.get === i)
     }
     out2.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.l.get === 10 * i)
+      case (output, i) =>
+        assert(output.l.get === 10 * i)
     }
     fragment.reset()
   }
@@ -96,39 +96,39 @@ class ConvertOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
   it should "compile Convert operator with projective model" in {
     val operator = OperatorExtractor
       .extract(classOf[Convert], classOf[ConvertOperator], "convertp")
-      .input("input", ClassDescription.of(classOf[InputModel]))
-      .output("original", ClassDescription.of(classOf[InputModel]))
-      .output("out", ClassDescription.of(classOf[OutputModel]))
+      .input("input", ClassDescription.of(classOf[Input]))
+      .output("original", ClassDescription.of(classOf[Input]))
+      .output("out", ClassDescription.of(classOf[Output]))
       .argument("n", ImmediateDescription.of(10))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
 
     val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[InputModel]](thisType.getClassName)
+    val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
 
-    val out1 = new GenericOutputFragment[InputModel]
-    val out2 = new GenericOutputFragment[OutputModel]
+    val out1 = new GenericOutputFragment[Input]()
+    val out2 = new GenericOutputFragment[Output]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, out1, out2)
 
     fragment.reset()
-    val dm = new InputModel()
+    val input = new Input()
     for (i <- 0 until 10) {
-      dm.i.modify(i)
-      dm.l.modify(i)
-      fragment.add(dm)
+      input.i.modify(i)
+      input.l.modify(i)
+      fragment.add(input)
     }
     out1.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.i.get === i)
-        assert(dm.l.get === i)
+      case (input, i) =>
+        assert(input.i.get === i)
+        assert(input.l.get === i)
     }
     out2.iterator.zipWithIndex.foreach {
-      case (dm, i) =>
-        assert(dm.l.get === 10 * i)
+      case (output, i) =>
+        assert(output.l.get === 10 * i)
     }
 
     fragment.reset()
@@ -142,7 +142,7 @@ object ConvertOperatorCompilerSpec {
     def getLOption: LongOption
   }
 
-  class InputModel extends DataModel[InputModel] with InputP with Writable {
+  class Input extends DataModel[Input] with InputP with Writable {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
@@ -151,7 +151,7 @@ object ConvertOperatorCompilerSpec {
       i.setNull()
       l.setNull()
     }
-    override def copyFrom(other: InputModel): Unit = {
+    override def copyFrom(other: Input): Unit = {
       i.copyFrom(other.i)
       l.copyFrom(other.l)
     }
@@ -168,14 +168,14 @@ object ConvertOperatorCompilerSpec {
     def getLOption: LongOption = l
   }
 
-  class OutputModel extends DataModel[OutputModel] with Writable {
+  class Output extends DataModel[Output] with Writable {
 
     val l: LongOption = new LongOption()
 
     override def reset: Unit = {
       l.setNull()
     }
-    override def copyFrom(other: OutputModel): Unit = {
+    override def copyFrom(other: Output): Unit = {
       l.copyFrom(other.l)
     }
     override def readFields(in: DataInput): Unit = {
@@ -190,17 +190,17 @@ object ConvertOperatorCompilerSpec {
 
   class ConvertOperator {
 
-    private[this] val out = new OutputModel()
+    private[this] val out = new Output()
 
     @Convert
-    def convert(in: InputModel, n: Int): OutputModel = {
+    def convert(in: Input, n: Int): Output = {
       out.reset()
       out.l.modify(n * in.l.get)
       out
     }
 
     @Convert
-    def convertp[I <: InputP](in: I, n: Int): OutputModel = {
+    def convertp[I <: InputP](in: I, n: Int): Output = {
       out.reset()
       out.getLOption.modify(n * in.getLOption.get)
       out

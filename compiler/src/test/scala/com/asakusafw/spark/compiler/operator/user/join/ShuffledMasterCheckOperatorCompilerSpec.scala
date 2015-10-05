@@ -59,12 +59,12 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
   it should "compile MasterCheck operator without master selection" in {
     val operator = OperatorExtractor
       .extract(classOf[MasterCheckOp], classOf[MasterCheckOperator], "check")
-      .input("hoges", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")))
-      .output("found", ClassDescription.of(classOf[Foo]))
-      .output("missed", ClassDescription.of(classOf[Foo]))
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("found", ClassDescription.of(classOf[Bar]))
+      .output("missed", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
@@ -72,8 +72,8 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val found = new GenericOutputFragment[Foo]
-    val missed = new GenericOutputFragment[Foo]
+    val found = new GenericOutputFragment[Bar]()
+    val missed = new GenericOutputFragment[Bar]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
@@ -82,14 +82,14 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
 
     {
       fragment.reset()
-      val hoge = new Hoge()
-      hoge.id.modify(1)
-      val hoges = Seq(hoge)
       val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
+      foo.id.modify(1)
       val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val founds = found.iterator.toSeq
       assert(founds.size === 1)
       assert(founds.head.id.get === 10)
@@ -103,12 +103,12 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
 
     {
       fragment.reset()
-      val hoges = Seq.empty[Hoge]
-      val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
-      val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val foos = Seq.empty[Foo]
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val founds = found.iterator.toSeq
       assert(founds.size === 0)
       val misseds = missed.iterator.toSeq
@@ -124,12 +124,12 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
   it should "compile MasterCheck operator with master selection" in {
     val operator = OperatorExtractor
       .extract(classOf[MasterCheckOp], classOf[MasterCheckOperator], "checkWithSelection")
-      .input("hoges", ClassDescription.of(classOf[Hoge]),
-        Groups.parse(Seq("id")))
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("hogeId"), Seq("+id")))
-      .output("found", ClassDescription.of(classOf[Foo]))
-      .output("missed", ClassDescription.of(classOf[Foo]))
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("found", ClassDescription.of(classOf[Bar]))
+      .output("missed", ClassDescription.of(classOf[Bar]))
       .build()
 
     implicit val context = newOperatorCompilerContext("flowId")
@@ -137,8 +137,8 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
     val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
     val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val found = new GenericOutputFragment[Foo]
-    val missed = new GenericOutputFragment[Foo]
+    val found = new GenericOutputFragment[Bar]()
+    val missed = new GenericOutputFragment[Bar]()
 
     val fragment = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
@@ -147,16 +147,16 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
 
     {
       fragment.reset()
-      val hoge = new Hoge()
-      hoge.id.modify(0)
-      val hoges = Seq(hoge)
-      val foos = (0 until 10).map { i =>
-        val foo = new Foo()
-        foo.id.modify(i)
-        foo.hogeId.modify(0)
-        foo
+      val foo = new Foo()
+      foo.id.modify(0)
+      val foos = Seq(foo)
+      val bars = (0 until 10).map { i =>
+        val bar = new Bar()
+        bar.id.modify(i)
+        bar.fooId.modify(0)
+        bar
       }
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val founds = found.iterator.toSeq
       assert(founds.size === 5)
       assert(founds.map(_.id.get) === (0 until 10 by 2))
@@ -171,12 +171,12 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
 
     {
       fragment.reset()
-      val hoges = Seq.empty[Hoge]
-      val foo = new Foo()
-      foo.id.modify(10)
-      foo.hogeId.modify(1)
-      val foos = Seq(foo)
-      fragment.add(Seq(hoges.iterator, foos.iterator))
+      val foos = Seq.empty[Foo]
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      val bars = Seq(bar)
+      fragment.add(Seq(foos.iterator, bars.iterator))
       val founds = found.iterator.toSeq
       assert(founds.size === 0)
       val misseds = missed.iterator.toSeq
@@ -192,14 +192,14 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
 
 object ShuffledMasterCheckOperatorCompilerSpec {
 
-  class Hoge extends DataModel[Hoge] with Writable {
+  class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
     }
-    override def copyFrom(other: Hoge): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
     }
     override def readFields(in: DataInput): Unit = {
@@ -212,44 +212,44 @@ object ShuffledMasterCheckOperatorCompilerSpec {
     def getIdOption: IntOption = id
   }
 
-  class Foo extends DataModel[Foo] with Writable {
+  class Bar extends DataModel[Bar] with Writable {
 
     val id = new IntOption()
-    val hogeId = new IntOption()
+    val fooId = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
-      hogeId.setNull()
+      fooId.setNull()
     }
-    override def copyFrom(other: Foo): Unit = {
+    override def copyFrom(other: Bar): Unit = {
       id.copyFrom(other.id)
-      hogeId.copyFrom(other.hogeId)
+      fooId.copyFrom(other.fooId)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      hogeId.readFields(in)
+      fooId.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      hogeId.write(out)
+      fooId.write(out)
     }
 
     def getIdOption: IntOption = id
-    def getHogeIdOption: IntOption = hogeId
+    def getFooIdOption: IntOption = fooId
   }
 
   class MasterCheckOperator {
 
     @MasterCheckOp
-    def check(hoge: Hoge, foo: Foo): Boolean = ???
+    def check(foo: Foo, bar: Bar): Boolean = ???
 
     @MasterCheckOp(selection = "select")
-    def checkWithSelection(hoge: Hoge, foo: Foo): Boolean = ???
+    def checkWithSelection(foo: Foo, bar: Bar): Boolean = ???
 
     @MasterSelection
-    def select(hoges: JList[Hoge], foo: Foo): Hoge = {
-      if (foo.id.get % 2 == 0) {
-        hoges.headOption.orNull
+    def select(foos: JList[Foo], bar: Bar): Foo = {
+      if (bar.id.get % 2 == 0) {
+        foos.headOption.orNull
       } else {
         null
       }

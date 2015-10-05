@@ -68,23 +68,23 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       (PartitionGroupInfo.DataSize.HUGE, 32))
   } {
     it should s"build aggregate driver class with DataSize.${dataSize}" in {
-      val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
       val operator = OperatorExtractor
         .extract(classOf[Fold], classOf[FoldOperator], "fold")
-        .input("hoges", ClassDescription.of(classOf[Hoge]), hogesMarker.getOutput)
-        .output("result", ClassDescription.of(classOf[Hoge]))
+        .input("foos", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
+        .output("result", ClassDescription.of(classOf[Foo]))
         .argument("n", ImmediateDescription.of(10))
         .build()
 
-      val resultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val resultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
       operator.findOutput("result").connect(resultMarker.getInput)
 
       val plan = PlanBuilder.from(Seq(operator))
         .add(
-          Seq(hogesMarker),
+          Seq(foosMarker),
           Seq(resultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
       val subplan = plan.getElements.head
@@ -101,14 +101,14 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       val thisType = compiler.compile(subplan)
       context.addClass(context.branchKeys)
       context.addClass(context.broadcastIds)
-      val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
+      val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Foo, Foo]])
 
-      val hoges = sc.parallelize(0 until 10).map { i =>
-        val hoge = new Hoge()
-        hoge.i.modify(i % 2)
-        hoge.sum.modify(i)
+      val foos = sc.parallelize(0 until 10).map { i =>
+        val foo = new Foo()
+        foo.i.modify(i % 2)
+        foo.sum.modify(i)
         val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(hoge.i), Array.empty), hoge)
+        (new ShuffleKey(serde.serialize(foo.i), Array.empty), foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -120,7 +120,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         .newInstance(
           sc,
           hadoopConf,
-          Seq(Future.successful(hoges)),
+          Seq(Future.successful(foos)),
           Option(new SortOrdering()),
           new HashPartitioner(2),
           Map.empty)
@@ -143,10 +143,11 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         results(getBranchKey(resultMarker.getOriginalSerialNumber))
           .map { rdd =>
             assert(rdd.partitions.size === numPartitions)
-            rdd.map(_.asInstanceOf[(_, Hoge)]._2).map(hoge => (hoge.i.get, hoge.sum.get))
-          },
-        Duration.Inf)
-        .collect.toSeq.sortBy(_._1)
+            rdd.map {
+              case (_, foo: Foo) => (foo.i.get, foo.sum.get)
+            }.collect.toSeq.sortBy(_._1)
+          }, Duration.Inf)
+
       assert(result.size === 2)
       assert(result(0)._1 === 0)
       assert(result(0)._2 === (0 until 10 by 2).sum + 4 * 10)
@@ -155,23 +156,23 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
     }
 
     it should s"build aggregate driver class with DataSize.${dataSize} with grouping is empty" in {
-      val hogesMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
       val operator = OperatorExtractor
         .extract(classOf[Fold], classOf[FoldOperator], "fold")
-        .input("hoges", ClassDescription.of(classOf[Hoge]), hogesMarker.getOutput)
-        .output("result", ClassDescription.of(classOf[Hoge]))
+        .input("foos", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
+        .output("result", ClassDescription.of(classOf[Foo]))
         .argument("n", ImmediateDescription.of(10))
         .build()
 
-      val resultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Hoge]))
+      val resultMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
       operator.findOutput("result").connect(resultMarker.getInput)
 
       val plan = PlanBuilder.from(Seq(operator))
         .add(
-          Seq(hogesMarker),
+          Seq(foosMarker),
           Seq(resultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
       val subplan = plan.getElements.head
@@ -188,14 +189,14 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
       val thisType = compiler.compile(subplan)
       context.addClass(context.branchKeys)
       context.addClass(context.broadcastIds)
-      val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Hoge, Hoge]])
+      val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Foo, Foo]])
 
-      val hoges = sc.parallelize(0 until 10).map { i =>
-        val hoge = new Hoge()
-        hoge.i.modify(i % 2)
-        hoge.sum.modify(i)
+      val foos = sc.parallelize(0 until 10).map { i =>
+        val foo = new Foo()
+        foo.i.modify(i % 2)
+        foo.sum.modify(i)
         val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(hoge.i), Array.empty), hoge)
+        (new ShuffleKey(serde.serialize(foo.i), Array.empty), foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -207,7 +208,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         .newInstance(
           sc,
           hadoopConf,
-          Seq(Future.successful(hoges)),
+          Seq(Future.successful(foos)),
           Option(new SortOrdering()),
           new HashPartitioner(2),
           Map.empty)
@@ -230,10 +231,11 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
         results(getBranchKey(resultMarker.getOriginalSerialNumber))
           .map { rdd =>
             assert(rdd.partitions.size === 1)
-            rdd.map(_.asInstanceOf[(_, Hoge)]._2).map(hoge => (hoge.i.get, hoge.sum.get))
-          },
-        Duration.Inf)
-        .collect.toSeq.sortBy(_._1)
+            rdd.map {
+              case (_, foo: Foo) => (foo.i.get, foo.sum.get)
+            }.collect.toSeq.sortBy(_._1)
+          }, Duration.Inf)
+
       assert(result.size === 2)
       assert(result(0)._1 === 0)
       assert(result(0)._2 === (0 until 10 by 2).sum + 4 * 10)
@@ -245,7 +247,7 @@ class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServer
 
 object AggregateDriverClassBuilderSpec {
 
-  class Hoge extends DataModel[Hoge] with Writable {
+  class Foo extends DataModel[Foo] with Writable {
 
     val i = new IntOption()
     val sum = new IntOption()
@@ -254,7 +256,7 @@ object AggregateDriverClassBuilderSpec {
       i.setNull()
       sum.setNull()
     }
-    override def copyFrom(other: Hoge): Unit = {
+    override def copyFrom(other: Foo): Unit = {
       i.copyFrom(other.i)
       sum.copyFrom(other.sum)
     }
@@ -281,7 +283,7 @@ object AggregateDriverClassBuilderSpec {
   class FoldOperator {
 
     @Fold(partialAggregation = PartialAggregation.PARTIAL)
-    def fold(acc: Hoge, value: Hoge, n: Int): Unit = {
+    def fold(acc: Foo, value: Foo, n: Int): Unit = {
       acc.sum.add(value.sum)
       acc.sum.add(n)
     }
