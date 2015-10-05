@@ -4,6 +4,8 @@
 .settings
 target
 .cache
+.cache-main
+.cache-tests
 .scala_dependencies
 .worksheet
 dependency-reduced-pom.xml
