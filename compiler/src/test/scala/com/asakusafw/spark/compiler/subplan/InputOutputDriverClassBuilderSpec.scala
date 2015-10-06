@@ -46,7 +46,7 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.runtime.{ HadoopConfForEach, TempDir }
+import com.asakusafw.spark.runtime.{ HadoopConfForEach, TempDirForEach }
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, InputDriver, OutputDriver }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
@@ -58,7 +58,7 @@ class InputOutputDriverClassBuilderSpec
   extends FlatSpec
   with SparkWithClassServerForAll
   with HadoopConfForEach
-  with TempDir
+  with TempDirForEach
   with UsingCompilerContext {
 
   import InputOutputDriverClassBuilderSpec._
@@ -66,7 +66,7 @@ class InputOutputDriverClassBuilderSpec
   behavior of "Input/OutputDriverClassBuilder"
 
   it should "build input and output driver class" in {
-    val tmpDir = new File(createTempDirectory("test-").toFile, "tmp")
+    val tmpDir = new File(createTempDirectoryForEach("test-").toFile, "tmp")
     val path = tmpDir.getAbsolutePath
 
     val jpContext = new MockJobflowProcessorContext(

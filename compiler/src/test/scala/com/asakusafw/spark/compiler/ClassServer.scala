@@ -32,20 +32,14 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.util.TraceClassVisitor
 import org.slf4j.LoggerFactory
 
-import com.asakusafw.spark.runtime.TempDir
-
 import resource._
 
 class ClassServer(val root: Path, val parent: ClassLoader, conf: SparkConf, securityManager: SecurityManager) {
 
   val Logger = LoggerFactory.getLogger(getClass)
 
-  def this(parent: ClassLoader, conf: SparkConf, securityManager: SecurityManager) = {
-    this(TempDir.createTempDirectory("classserver-"), parent, conf, securityManager)
-  }
-
-  def this(parent: ClassLoader, conf: SparkConf) = {
-    this(parent, conf, new SecurityManager(conf))
+  def this(root: Path, parent: ClassLoader, conf: SparkConf) = {
+    this(root, parent, conf, new SecurityManager(conf))
   }
 
   private val httpServer = new HttpServer(conf, root.toFile(), securityManager, serverName = "ClassServer")

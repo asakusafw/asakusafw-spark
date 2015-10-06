@@ -46,14 +46,14 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverSpecTest extends InputOutputDriverSpec
 
-class InputOutputDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEach with TempDir {
+class InputOutputDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEach with TempDirForEach {
 
   import InputOutputDriverSpec._
 
   behavior of "Input/OutputDriver"
 
   it should "output and input" in {
-    val tmpDir = createTempDirectory("test-").toFile
+    val tmpDir = createTempDirectoryForEach("test-").toFile
     val path = new File(tmpDir, s"output-${EXPR_EXECUTION_ID}").getAbsolutePath
 
     val foos = sc.parallelize(0 until 10).map(Foo.intToFoo).asInstanceOf[RDD[(_, Foo)]]

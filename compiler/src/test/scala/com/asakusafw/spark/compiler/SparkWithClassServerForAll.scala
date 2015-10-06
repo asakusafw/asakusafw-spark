@@ -21,9 +21,9 @@ import scala.collection.JavaConversions._
 
 import org.apache.spark.SparkConf
 
-import com.asakusafw.spark.runtime.SparkForAll
+import com.asakusafw.spark.runtime.{ SparkForAll, TempDirForAll }
 
-trait SparkWithClassServerForAll extends SparkForAll { self: Suite =>
+trait SparkWithClassServerForAll extends TempDirForAll with SparkForAll { self: Suite =>
 
   var cl: ClassLoader = _
   var classServer: ClassServer = _
@@ -33,7 +33,7 @@ trait SparkWithClassServerForAll extends SparkForAll { self: Suite =>
   }
 
   override def configure(conf: SparkConf): SparkConf = {
-    classServer = new ClassServer(cl, conf)
+    classServer = new ClassServer(createTempDirectoryForAll("classserver-"), cl, conf)
     val uri = classServer.start()
     Thread.currentThread().setContextClassLoader(classServer.classLoader)
 

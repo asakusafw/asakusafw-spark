@@ -61,7 +61,7 @@ import com.asakusafw.vocabulary.operator._
 @RunWith(classOf[JUnitRunner])
 class SparkClientCompilerSpecTest extends SparkClientCompilerSpec
 
-class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir {
+class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirForEach {
 
   import SparkClientCompilerSpec._
 
@@ -131,7 +131,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDir 
     }
 
     def createTempDirs(): (File, File) = {
-      val tmpDir = createTempDirectory("test-").toFile
+      val tmpDir = createTempDirectoryForEach("test-").toFile
       val classpath = new File(tmpDir, "classes").getAbsoluteFile
       classpath.mkdirs()
       val path = new File(tmpDir, "tmp").getAbsoluteFile
