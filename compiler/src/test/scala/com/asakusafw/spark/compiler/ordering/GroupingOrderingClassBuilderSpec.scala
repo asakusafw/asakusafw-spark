@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import com.asakusafw.runtime.value._
+import com.asakusafw.runtime.value.{ IntOption, LongOption }
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.tools.asm._

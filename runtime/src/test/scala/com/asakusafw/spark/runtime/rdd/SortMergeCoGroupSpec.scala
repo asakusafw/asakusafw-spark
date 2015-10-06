@@ -20,8 +20,8 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
-import org.apache.spark._
-import org.apache.spark.rdd._
+import org.apache.spark.Partitioner
+import org.apache.spark.rdd.{ RDD, ShuffledRDD }
 
 @RunWith(classOf[JUnitRunner])
 class SortMergeCoGroupSpecTest extends SortMergeCoGroupSpec
