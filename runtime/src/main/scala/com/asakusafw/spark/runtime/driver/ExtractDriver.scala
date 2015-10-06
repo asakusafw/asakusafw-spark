@@ -15,14 +15,13 @@
  */
 package com.asakusafw.spark.runtime.driver
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ Partitioner, SparkContext }
-import org.apache.spark.rdd.{ RDD, UnionRDD }
 import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.rdd.{ RDD, UnionRDD }
 
-import com.asakusafw.spark.runtime.SparkClient.executionContext
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class ExtractDriver[T](
@@ -34,7 +33,8 @@ abstract class ExtractDriver[T](
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
-  override def execute(): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
+  override def execute()(
+    implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
 
     val future =
       (if (prevs.size == 1) {

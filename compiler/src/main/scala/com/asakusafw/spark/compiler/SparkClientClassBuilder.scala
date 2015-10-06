@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable
 import scala.collection.JavaConversions._
-import scala.concurrent.{ Await, Awaitable, Future }
+import scala.concurrent.{ Await, Awaitable, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
@@ -70,6 +70,7 @@ class SparkClientClassBuilder(
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
         }
         .build())
+    fieldDef.newField("ec", classOf[ExecutionContext].asType)
     fieldDef.newField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[mutable.Map[_, _]].asType) {
@@ -130,7 +131,10 @@ class SparkClientClassBuilder(
     methodDef.newMethod(
       "execute",
       Type.INT_TYPE,
-      Seq(classOf[SparkContext].asType, classOf[Broadcast[Configuration]].asType),
+      Seq(
+        classOf[SparkContext].asType,
+        classOf[Broadcast[Configuration]].asType,
+        classOf[ExecutionContext].asType),
       new MethodSignatureBuilder()
         .newParameterType(classOf[SparkContext].asType)
         .newParameterType {
@@ -138,11 +142,13 @@ class SparkClientClassBuilder(
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
           }
         }
+        .newParameterType(classOf[ExecutionContext].asType)
         .newReturnType(Type.INT_TYPE)
         .build()) { mb =>
         import mb._ // scalastyle:ignore
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
+        val ecVar = `var`(classOf[ExecutionContext].asType, hadoopConfVar.nextLocal)
         thisVar.push()
           .putField("sc", classOf[SparkContext].asType, scVar.push())
         thisVar.push()
@@ -150,6 +156,8 @@ class SparkClientClassBuilder(
             "hadoopConf",
             classOf[Broadcast[Configuration]].asType,
             hadoopConfVar.push())
+        thisVar.push()
+          .putField("ec", classOf[ExecutionContext].asType, ecVar.push())
         thisVar.push()
           .putField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType,
             pushObject(mb)(mutable.Map)
@@ -209,9 +217,12 @@ class SparkClientClassBuilder(
           val hadoopConfVar = thisVar.push()
             .getField("hadoopConf", classOf[Broadcast[Configuration]].asType)
             .store(scVar.nextLocal)
+          val ecVar = thisVar.push()
+            .getField("ec", classOf[ExecutionContext].asType)
+            .store(hadoopConfVar.nextLocal)
           val rddsVar = thisVar.push()
             .getField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType)
-            .store(hadoopConfVar.nextLocal)
+            .store(ecVar.nextLocal)
           val terminatorsVar = thisVar.push()
             .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
             .store(rddsVar.nextLocal)
@@ -250,7 +261,10 @@ class SparkClientClassBuilder(
               nextLocal)(
                 context.instantiatorCompilerContext)
           val rdds = driverVar.push()
-            .invokeV("execute", classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType)
+            .invokeV(
+              "execute",
+              classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType,
+              ecVar.push())
           val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
 
           for {
@@ -282,7 +296,8 @@ class SparkClientClassBuilder(
                     dataModelRef.groupingTypes(group.getGrouping),
                     dataModelRef.orderingTypes(group.getOrdering))),
                 groupingOrdering(mb)(dataModelRef.groupingTypes(group.getGrouping)),
-                partitioner(mb)(ldc(1))))
+                partitioner(mb)(ldc(1)),
+                ecVar.push()))
           }
 
           addTraversableToMap(mb)(rddsVar.push(), resultVar.push())
