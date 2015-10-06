@@ -31,23 +31,23 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark._
+import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd._
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fragment._
+import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverSpecTest extends InputOutputDriverSpec
 
-class InputOutputDriverSpec extends FlatSpec with SparkSugar with TempDir {
+class InputOutputDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEach with TempDir {
 
   import InputOutputDriverSpec._
 

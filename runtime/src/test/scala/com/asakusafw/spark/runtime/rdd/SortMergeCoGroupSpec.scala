@@ -26,7 +26,7 @@ import org.apache.spark.rdd._
 @RunWith(classOf[JUnitRunner])
 class SortMergeCoGroupSpecTest extends SortMergeCoGroupSpec
 
-class SortMergeCoGroupSpec extends FlatSpec with SparkSugar {
+class SortMergeCoGroupSpec extends FlatSpec with SparkForAll {
 
   import SortMergeCoGroupSpec._
 

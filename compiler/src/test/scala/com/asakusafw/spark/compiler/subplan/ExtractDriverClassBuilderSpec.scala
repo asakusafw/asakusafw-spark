@@ -29,27 +29,32 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
-import org.apache.spark._
+import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.lang.compiler.model.description._
+import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
 import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value._
+import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.runtime.driver._
+import com.asakusafw.spark.runtime.HadoopConfForEach
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, ExtractDriver, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.vocabulary.operator.Extract
 
 @RunWith(classOf[JUnitRunner])
 class ExtractDriverClassBuilderSpecTest extends ExtractDriverClassBuilderSpec
 
-class ExtractDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with UsingCompilerContext {
+class ExtractDriverClassBuilderSpec
+  extends FlatSpec
+  with SparkWithClassServerForAll
+  with HadoopConfForEach
+  with UsingCompilerContext {
 
   import ExtractDriverClassBuilderSpec._
 

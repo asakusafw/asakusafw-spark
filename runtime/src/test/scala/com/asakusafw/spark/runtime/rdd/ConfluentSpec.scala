@@ -28,7 +28,7 @@ import com.asakusafw.runtime.value.IntOption
 @RunWith(classOf[JUnitRunner])
 class ConfluentSpecTest extends ConfluentSpec
 
-class ConfluentSpec extends FlatSpec with SparkSugar {
+class ConfluentSpec extends FlatSpec with SparkForAll {
 
   import ConfluentSpec._
 

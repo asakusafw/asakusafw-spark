@@ -21,7 +21,7 @@ import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
-import java.nio.file.{ Files, Path }
+import java.nio.file.Files
 
 import scala.collection.mutable
 import scala.collection.JavaConversions._
@@ -37,24 +37,29 @@ import org.apache.spark.rdd.RDD
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
-import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph._
+import com.asakusafw.lang.compiler.model.description.ClassDescription
+import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, ExternalOutput, MarkerOperator }
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value._
+import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.runtime.TempDir
-import com.asakusafw.spark.runtime.driver._
+import com.asakusafw.spark.runtime.{ HadoopConfForEach, TempDir }
+import com.asakusafw.spark.runtime.driver.{ BroadcastId, InputDriver, OutputDriver }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])
 class InputOutputDriverClassBuilderSpecTest extends InputOutputDriverClassBuilderSpec
 
-class InputOutputDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with TempDir with UsingCompilerContext {
+class InputOutputDriverClassBuilderSpec
+  extends FlatSpec
+  with SparkWithClassServerForAll
+  with HadoopConfForEach
+  with TempDir
+  with UsingCompilerContext {
 
   import InputOutputDriverClassBuilderSpec._
 

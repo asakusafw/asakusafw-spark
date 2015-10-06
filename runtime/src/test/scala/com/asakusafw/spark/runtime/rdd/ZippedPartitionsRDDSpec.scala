@@ -23,7 +23,7 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class ZippedPartitionsRDDSpecTest extends ZippedPartitionsRDDSpec
 
-class ZippedPartitionsRDDSpec extends FlatSpec with SparkSugar {
+class ZippedPartitionsRDDSpec extends FlatSpec with SparkForAll {
 
   behavior of classOf[ZippedPartitionsRDD[_]].getSimpleName
 

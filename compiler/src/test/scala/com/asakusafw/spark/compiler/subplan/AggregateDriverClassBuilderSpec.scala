@@ -29,23 +29,21 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
-import org.apache.spark._
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.lang.compiler.model.PropertyName
-import com.asakusafw.lang.compiler.model.description._
-import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, Groups, MarkerOperator }
+import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
+import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
-import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value._
+import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.planning.{ PartitionGroupInfo, SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.runtime.driver._
+import com.asakusafw.spark.runtime.{ HadoopConfForEach, Props }
+import com.asakusafw.spark.runtime.driver.{ AggregateDriver, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.orderings._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator.Fold
@@ -53,11 +51,20 @@ import com.asakusafw.vocabulary.operator.Fold
 @RunWith(classOf[JUnitRunner])
 class AggregateDriverClassBuilderSpecTest extends AggregateDriverClassBuilderSpec
 
-class AggregateDriverClassBuilderSpec extends FlatSpec with SparkWithClassServerSugar with UsingCompilerContext {
+class AggregateDriverClassBuilderSpec
+  extends FlatSpec
+  with SparkWithClassServerForAll
+  with HadoopConfForEach
+  with UsingCompilerContext {
 
   import AggregateDriverClassBuilderSpec._
 
   behavior of classOf[AggregateDriverClassBuilder].getSimpleName
+
+  override def configure(conf: SparkConf): SparkConf = {
+    conf.set(Props.Parallelism, 8.toString)
+    super.configure(conf)
+  }
 
   for {
     (dataSize, numPartitions) <- Seq(

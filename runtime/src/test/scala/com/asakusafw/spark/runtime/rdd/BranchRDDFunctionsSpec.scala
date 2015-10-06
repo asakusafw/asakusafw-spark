@@ -25,7 +25,7 @@ import org.apache.spark.{ HashPartitioner, TaskContext }
 @RunWith(classOf[JUnitRunner])
 class BranchRDDFunctionsSpecTest extends BranchRDDFunctionsSpec
 
-class BranchRDDFunctionsSpec extends FlatSpec with SparkSugar {
+class BranchRDDFunctionsSpec extends FlatSpec with SparkForAll {
 
   behavior of "BranchRDDFunctions"
 
