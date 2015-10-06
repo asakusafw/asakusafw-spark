@@ -36,8 +36,7 @@ import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
-import com.asakusafw.spark.runtime.operator.GenericOutputFragment
+import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])

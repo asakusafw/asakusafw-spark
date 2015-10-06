@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime.operator
+package com.asakusafw.spark.runtime.fragment
 
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.io.Writable
 
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 
 class GenericEdgeFragment[T <: DataModel[T]: ClassTag](children: Array[Fragment[T]])
   extends EdgeFragment[T](children) {

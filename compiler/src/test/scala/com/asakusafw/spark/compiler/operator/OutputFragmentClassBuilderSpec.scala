@@ -21,12 +21,11 @@ import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
-import java.lang.{ Long => JLong }
 
 import org.apache.hadoop.io.Writable
 
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value._
+import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
 

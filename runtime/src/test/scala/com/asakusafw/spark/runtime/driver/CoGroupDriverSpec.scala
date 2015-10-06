@@ -35,9 +35,8 @@ import org.apache.spark.rdd.RDD
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
+import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])

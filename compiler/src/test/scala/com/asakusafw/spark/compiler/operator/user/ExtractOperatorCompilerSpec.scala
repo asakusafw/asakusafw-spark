@@ -24,23 +24,18 @@ import org.scalatest.junit.JUnitRunner
 import java.io.{ DataInput, DataOutput }
 
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 
 import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
 
-import com.asakusafw.lang.compiler.api.CompilerOptions
-import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
-import com.asakusafw.lang.compiler.model.description._
+import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value._
+import com.asakusafw.runtime.value.{ IntOption, LongOption }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.compiler.subplan.{ BranchKeysClassBuilder, BroadcastIdsClassBuilder }
 import com.asakusafw.spark.runtime.driver.BroadcastId
-import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.operator.GenericOutputFragment
+import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Extract
 
