@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime.operator
+package com.asakusafw.spark.runtime.fragment
 
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.io.Writable
 
-import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.runtime.model.DataModel
 
 class GenericOutputFragment[T <: DataModel[T] with Writable: ClassTag] extends OutputFragment[T] {

@@ -15,26 +15,67 @@
  */
 package com.asakusafw.spark.runtime
 
-import java.io.File
+import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, Suite }
+
 import java.nio.file.{ Files, Path }
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
-trait TempDir {
+import resource._
 
-  def createTempDirectory(prefix: String): Path = {
-    val tmpDir = Files.createTempDirectory(prefix)
-    sys.addShutdownHook {
-      def deleteRecursively(path: Path): Unit = {
-        if (Files.isDirectory(path)) {
-          Files.newDirectoryStream(path).foreach(deleteRecursively)
-        }
-        Files.delete(path)
+object TempDir {
+
+  def deleteRecursively(path: Path): Unit = {
+    if (Files.exists(path)) {
+      if (Files.isDirectory(path)) {
+        managed(Files.newDirectoryStream(path))
+          .acquireAndGet { stream =>
+            stream.iterator.toList
+          }
+          .foreach(deleteRecursively)
       }
-      deleteRecursively(tmpDir)
+      Files.delete(path)
     }
-    tmpDir
   }
 }
 
-object TempDir extends TempDir
+trait TempDirForAll extends BeforeAndAfterAll { self: Suite =>
+
+  private val tmpDirs = mutable.Set.empty[Path]
+
+  def createTempDirectoryForAll(prefix: String): Path = {
+    val tmpDir = Files.createTempDirectory(prefix)
+    tmpDirs += tmpDir
+    tmpDir
+  }
+
+  override def afterAll(): Unit = {
+    try {
+      tmpDirs.foreach(TempDir.deleteRecursively)
+      tmpDirs.clear()
+    } finally {
+      super.afterAll()
+    }
+  }
+}
+
+trait TempDirForEach extends BeforeAndAfterEach { self: Suite =>
+
+  private val tmpDirs = mutable.Set.empty[Path]
+
+  def createTempDirectoryForEach(prefix: String): Path = {
+    val tmpDir = Files.createTempDirectory(prefix)
+    tmpDirs += tmpDir
+    tmpDir
+  }
+
+  override def afterEach(): Unit = {
+    try {
+      tmpDirs.foreach(TempDir.deleteRecursively)
+      tmpDirs.clear()
+    } finally {
+      super.afterEach()
+    }
+  }
+}

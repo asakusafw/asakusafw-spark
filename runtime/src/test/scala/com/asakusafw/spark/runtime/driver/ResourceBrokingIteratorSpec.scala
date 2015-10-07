@@ -28,7 +28,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
-import org.apache.spark._
+import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
@@ -36,14 +36,13 @@ import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.operator.GenericOutputFragment
+import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
 class ResourceBrokingIteratorSpecTest extends ResourceBrokingIteratorSpec
 
-class ResourceBrokingIteratorSpec extends FlatSpec with SparkSugar {
+class ResourceBrokingIteratorSpec extends FlatSpec with SparkForAll with HadoopConfForEach {
 
   import ResourceBrokingIteratorSpec._
 

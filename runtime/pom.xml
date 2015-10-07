@@ -114,6 +114,11 @@
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.compat.version}</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.jsuereth</groupId>
+      <artifactId>scala-arm_${scala.compat.version}</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 </project>

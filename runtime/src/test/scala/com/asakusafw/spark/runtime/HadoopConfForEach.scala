@@ -15,44 +15,22 @@
  */
 package com.asakusafw.spark.runtime
 
-import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach }
-import org.scalatest.Suite
+import org.scalatest.{ BeforeAndAfterEach, Suite }
 
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.bridge.stage.StageInfo
 
-trait SparkSugar extends BeforeAndAfterAll with BeforeAndAfterEach { self: Suite =>
+trait HadoopConfForEach extends BeforeAndAfterEach {
+  self: Suite with SparkForAll =>
 
-  // for all
-  var sc: SparkContext = _
-
-  // for each
   var flowId: String = _
   var hadoopConf: Broadcast[Configuration] = _
-
-  override def beforeAll(): Unit = {
-    try {
-      super.beforeAll()
-    } finally {
-      val conf = new SparkConf
-      conf.setMaster("local[8]")
-      conf.setAppName(getClass.getName)
-      conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-      conf.set("spark.kryo.registrator", kryoRegistrator)
-
-      conf.set(Props.Parallelism, 8.toString)
-
-      sc = new SparkContext(conf)
-    }
-  }
 
   private[this] val nextId = new AtomicInteger(0)
 
@@ -78,15 +56,4 @@ trait SparkSugar extends BeforeAndAfterAll with BeforeAndAfterEach { self: Suite
       super.afterEach()
     }
   }
-
-  override def afterAll(): Unit = {
-    try {
-      sc.stop
-      sc = null
-    } finally {
-      super.afterAll()
-    }
-  }
-
-  def kryoRegistrator: String = "com.asakusafw.spark.runtime.serializer.KryoRegistrator"
 }
