@@ -20,9 +20,10 @@ import scala.collection.JavaConversions._
 import org.apache.hadoop.conf.Configuration
 
 import com.asakusafw.bridge.stage.StageInfo
+import com.asakusafw.spark.runtime.SparkForAll
 
 trait RoundContextSugar {
-  self: SparkSugar =>
+  self: SparkForAll =>
 
   def newRoundContext(stageInfo: StageInfo): RoundContext = {
     val conf = new Configuration(sc.hadoopConfiguration)

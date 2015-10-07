@@ -34,17 +34,17 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.spark.runtime.SparkForAll
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
-import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
+import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.operator.GenericOutputFragment
 import com.asakusafw.spark.runtime.rdd._
 
 @RunWith(classOf[JUnitRunner])
 class ExtractSpecTest extends ExtractSpec
 
-class ExtractSpec extends FlatSpec with SparkSugar with RoundContextSugar {
+class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
   import ExtractSpec._
 
