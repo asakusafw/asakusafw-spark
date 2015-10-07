@@ -77,59 +77,6 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
       s"${parallelism.map(p => s",parallelism=${p}").getOrElse("")}" +
       "]"
 
-    def execute(graph: OperatorGraph, subplans: Int, path: File, classpath: File): Unit = {
-
-      val compiler = new SparkClientCompiler {
-
-        override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
-          val plan = super.preparePlan(jpContext, source)
-          assert(plan.getElements.size === subplans)
-          plan
-        }
-      }
-
-      val jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", path.getPath, Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath)
-      jpContext.registerExtension(
-        classOf[InspectionExtension],
-        new AbstractInspectionExtension {
-
-          override def addResource(location: Location) = {
-            jpContext.addResourceFile(location)
-          }
-        })
-
-      val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
-
-      compiler.process(jpContext, jobflow)
-
-      val cl = Thread.currentThread.getContextClassLoader
-      try {
-        val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
-        Thread.currentThread.setContextClassLoader(classloader)
-        val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
-          .asSubclass(classOf[SparkClient])
-        val instance = cls.newInstance
-
-        val conf = new SparkConf()
-        conf.setAppName("AsakusaSparkClient")
-        conf.setMaster("local[8]")
-        threshold.foreach(i => conf.set("spark.shuffle.sort.bypassMergeThreshold", i.toString))
-
-        val stageInfo = new StageInfo(
-          sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
-        conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
-
-        parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
-
-        instance.execute(conf)
-      } finally {
-        Thread.currentThread.setContextClassLoader(cl)
-      }
-    }
-
     def createTempDirs(): (File, File) = {
       val tmpDir = createTempDirectoryForEach("test-").toFile
       val classpath = new File(tmpDir, "classes").getAbsoluteFile
@@ -183,7 +130,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         .newInstance("output", inputOperator.getOperatorPort)
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
-      execute(graph, 2, path, classpath)
+
+      compile(graph, 2, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         val result = readResult[Foo]("output", path)
@@ -221,67 +170,27 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
-      val compiler = new SparkClientCompiler {
+      { // compile
+        val jpContext = newJPContext(path, classpath)
+        jpContext.registerExtension(
+          classOf[InputFormatInfoExtension],
+          new InputFormatInfoExtension() {
 
-        override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
-          val plan = super.preparePlan(jpContext, source)
-          assert(plan.getElements.size === 2)
-          plan
-        }
+            override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
+              new InputFormatInfo(
+                ClassDescription.of(classOf[TemporaryInputFormat[_]]),
+                ClassDescription.of(classOf[NullWritable]),
+                ClassDescription.of(classOf[Foo]),
+                Map(FileInputFormat.INPUT_DIR -> s"${path.getPath}/external/input/foo/part-*"))
+            }
+          })
+        val jobflow = newJobflow(graph)
+
+        val compiler = newCompiler(2)
+        compiler.process(jpContext, jobflow)
       }
 
-      val jpContext = new MockJobflowProcessorContext(
-        new CompilerOptions("buildid", path.getPath, Map.empty[String, String]),
-        Thread.currentThread.getContextClassLoader,
-        classpath)
-      jpContext.registerExtension(
-        classOf[InspectionExtension],
-        new AbstractInspectionExtension {
-
-          override def addResource(location: Location) = {
-            jpContext.addResourceFile(location)
-          }
-        })
-      jpContext.registerExtension(
-        classOf[InputFormatInfoExtension],
-        new InputFormatInfoExtension() {
-
-          override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
-            new InputFormatInfo(
-              ClassDescription.of(classOf[TemporaryInputFormat[_]]),
-              ClassDescription.of(classOf[NullWritable]),
-              ClassDescription.of(classOf[Foo]),
-              Map(FileInputFormat.INPUT_DIR -> s"${path.getPath}/external/input/foo/part-*"))
-          }
-        })
-
-      val jobflow = new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
-
-      compiler.process(jpContext, jobflow)
-
-      val cl = Thread.currentThread.getContextClassLoader
-      try {
-        val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
-        Thread.currentThread.setContextClassLoader(classloader)
-        val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
-          .asSubclass(classOf[SparkClient])
-        val instance = cls.newInstance
-
-        val conf = new SparkConf()
-        conf.setAppName("AsakusaSparkClient")
-        conf.setMaster("local[8]")
-        threshold.foreach(i => conf.set("spark.shuffle.sort.bypassMergeThreshold", i.toString))
-
-        val stageInfo = new StageInfo(
-          sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
-        conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
-
-        parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
-
-        instance.execute(conf)
-      } finally {
-        Thread.currentThread.setContextClassLoader(cl)
-      }
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         val result = readResult[Foo]("output", path)
@@ -324,7 +233,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         .newInstance("output", loggingOperator.findOutput("output"))
 
       val graph = new OperatorGraph(Seq(inputOperator, loggingOperator, outputOperator))
-      execute(graph, 2, path, classpath)
+
+      compile(graph, 2, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         val result = readResult[Foo]("output", path)
@@ -375,7 +286,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         extractOperator,
         evenOutputOperator,
         oddOutputOperator))
-      execute(graph, 3, path, classpath)
+
+      compile(graph, 3, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -442,7 +355,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         extractOperator,
         evenOutputOperator,
         oddOutputOperator))
-      execute(graph, 4, path, classpath)
+
+      compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -547,7 +462,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         fooInputOperator, foo2InputOperator, barInputOperator,
         cogroupOperator,
         fooResultOutputOperator, barResultOutputOperator, fooErrorOutputOperator, barErrorOutputOperator))
-      execute(graph, 8, path, classpath)
+
+      compile(graph, 8, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -678,7 +595,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         foo1InputOperator, foo2InputOperator, barInputOperator,
         cogroupOperator,
         fooResultOutputOperator, barResultOutputOperator, fooErrorOutputOperator, barErrorOutputOperator))
-      execute(graph, 8, path, classpath)
+
+      compile(graph, 8, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -798,7 +717,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         foo1InputOperator, foo2InputOperator, barInputOperator,
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
-      execute(graph, 6, path, classpath)
+
+      compile(graph, 6, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -881,7 +802,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         fooInputOperator, barInputOperator,
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
-      execute(graph, 4, path, classpath)
+
+      compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -980,7 +903,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         foo1InputOperator, foo2InputOperator, barInputOperator,
         masterCheckOperator,
         joinedOutputOperator, missedOutputOperator))
-      execute(graph, 6, path, classpath)
+
+      compile(graph, 6, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -1063,7 +988,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         fooInputOperator, barInputOperator,
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
-      execute(graph, 4, path, classpath)
+
+      compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -1129,7 +1056,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         fooInputOperator,
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
-      execute(graph, 4, path, classpath)
+
+      compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -1203,7 +1132,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         baz1InputOperator, baz2InputOperator,
         foldOperator,
         resultOutputOperator))
-      execute(graph, 4, path, classpath)
+
+      compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -1273,7 +1204,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         baz1InputOperator, baz2InputOperator,
         foldOperator,
         resultOutputOperator))
-      execute(graph, 4, path, classpath)
+
+      compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -1340,7 +1273,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         baz1InputOperator, baz2InputOperator,
         summarizeOperator,
         resultOutputOperator))
-      execute(graph, 4, path, classpath)
+
+      compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -1416,7 +1351,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         baz1InputOperator, baz2InputOperator,
         summarizeOperator,
         resultOutputOperator))
-      execute(graph, 4, path, classpath)
+
+      compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>
         {
@@ -1440,6 +1377,71 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
       block(sc)
     } finally {
       sc.stop
+    }
+  }
+
+  def newJPContext(path: File, classpath: File): MockJobflowProcessorContext = {
+    val jpContext = new MockJobflowProcessorContext(
+      new CompilerOptions("buildid", path.getPath, Map.empty[String, String]),
+      Thread.currentThread.getContextClassLoader,
+      classpath)
+    jpContext.registerExtension(
+      classOf[InspectionExtension],
+      new AbstractInspectionExtension {
+
+        override def addResource(location: Location) = {
+          jpContext.addResourceFile(location)
+        }
+      })
+    jpContext
+  }
+
+  def newJobflow(graph: OperatorGraph): Jobflow = {
+    new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
+  }
+
+  def newCompiler(subplans: Int): SparkClientCompiler = {
+    new SparkClientCompiler {
+
+      override def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
+        val plan = super.preparePlan(jpContext, source)
+        assert(plan.getElements.size === subplans)
+        plan
+      }
+    }
+  }
+
+  def compile(graph: OperatorGraph, subplans: Int, path: File, classpath: File): Unit = {
+    val jpContext = newJPContext(path, classpath)
+    val jobflow = newJobflow(graph)
+
+    val compiler = newCompiler(subplans)
+    compiler.process(jpContext, jobflow)
+  }
+
+  def execute(classpath: File, threshold: Option[Int], parallelism: Option[Int]): Unit = {
+    val cl = Thread.currentThread.getContextClassLoader
+    try {
+      val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
+      Thread.currentThread.setContextClassLoader(classloader)
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
+        .asSubclass(classOf[SparkClient])
+      val instance = cls.newInstance
+
+      val conf = new SparkConf()
+      conf.setAppName("AsakusaSparkClient")
+      conf.setMaster("local[8]")
+      threshold.foreach(i => conf.set("spark.shuffle.sort.bypassMergeThreshold", i.toString))
+
+      val stageInfo = new StageInfo(
+        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
+      conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
+
+      parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
+
+      instance.execute(conf)
+    } finally {
+      Thread.currentThread.setContextClassLoader(cl)
     }
   }
 }
