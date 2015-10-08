@@ -94,13 +94,21 @@ class AggregateDriverClassBuilderSpec
           Seq(foosMarker),
           Seq(resultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
+
       val subplan = plan.getElements.head
-      subplan.putAttribute(classOf[SubPlanInfo],
-        new SubPlanInfo(subplan, SubPlanInfo.DriverType.AGGREGATE, Seq.empty[SubPlanInfo.DriverOption], operator))
-      val subplanOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == resultMarker.getOriginalSerialNumber).get
-      subplanOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("i")), operator))
-      subplanOutput.putAttribute(classOf[PartitionGroupInfo], new PartitionGroupInfo(dataSize))
+      subplan.putAttr(
+        new SubPlanInfo(_,
+          SubPlanInfo.DriverType.AGGREGATE,
+          Seq.empty[SubPlanInfo.DriverOption],
+          operator))
+      subplan.findOut(resultMarker)
+        .putAttr(
+          new SubPlanOutputInfo(_,
+            SubPlanOutputInfo.OutputType.AGGREGATED,
+            Seq.empty[SubPlanOutputInfo.OutputOption],
+            Groups.parse(Seq("i")),
+            operator))
+        .putAttr(_ => new PartitionGroupInfo(dataSize))
 
       implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
@@ -135,19 +143,18 @@ class AggregateDriverClassBuilderSpec
       val results = driver.execute()
 
       val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
-      def getBranchKey(osn: Long): BranchKey = {
-        val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      def getBranchKey(marker: MarkerOperator): BranchKey = {
+        val sn = subplan.getOperators.toSet
+          .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
-      assert(driver.branchKeys ===
-        Set(resultMarker)
-        .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
+      assert(driver.branchKeys === Set(resultMarker).map(getBranchKey))
 
-      assert(driver.partitioners(getBranchKey(resultMarker.getOriginalSerialNumber)).get.numPartitions === numPartitions)
+      assert(driver.partitioners(getBranchKey(resultMarker)).get.numPartitions === numPartitions)
 
       val result = Await.result(
-        results(getBranchKey(resultMarker.getOriginalSerialNumber))
+        results(getBranchKey(resultMarker))
           .map { rdd =>
             assert(rdd.partitions.size === numPartitions)
             rdd.map {
@@ -182,13 +189,21 @@ class AggregateDriverClassBuilderSpec
           Seq(foosMarker),
           Seq(resultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
+
       val subplan = plan.getElements.head
-      subplan.putAttribute(classOf[SubPlanInfo],
-        new SubPlanInfo(subplan, SubPlanInfo.DriverType.AGGREGATE, Seq.empty[SubPlanInfo.DriverOption], operator))
-      val subplanOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == resultMarker.getOriginalSerialNumber).get
-      subplanOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(subplanOutput, SubPlanOutputInfo.OutputType.AGGREGATED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq.empty[String]), operator))
-      subplanOutput.putAttribute(classOf[PartitionGroupInfo], new PartitionGroupInfo(dataSize))
+      subplan.putAttr(
+        new SubPlanInfo(_,
+          SubPlanInfo.DriverType.AGGREGATE,
+          Seq.empty[SubPlanInfo.DriverOption],
+          operator))
+      subplan.findOut(resultMarker)
+        .putAttr(
+          new SubPlanOutputInfo(_,
+            SubPlanOutputInfo.OutputType.AGGREGATED,
+            Seq.empty[SubPlanOutputInfo.OutputOption],
+            Groups.parse(Seq.empty[String]),
+            operator))
+        .putAttr(_ => new PartitionGroupInfo(dataSize))
 
       implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
@@ -223,19 +238,18 @@ class AggregateDriverClassBuilderSpec
       val results = driver.execute()
 
       val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
-      def getBranchKey(osn: Long): BranchKey = {
-        val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      def getBranchKey(marker: MarkerOperator): BranchKey = {
+        val sn = subplan.getOperators.toSet
+          .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
-      assert(driver.branchKeys ===
-        Set(resultMarker)
-        .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
+      assert(driver.branchKeys === Set(resultMarker).map(getBranchKey))
 
-      assert(driver.partitioners(getBranchKey(resultMarker.getOriginalSerialNumber)).get.numPartitions === 1)
+      assert(driver.partitioners(getBranchKey(resultMarker)).get.numPartitions === 1)
 
       val result = Await.result(
-        results(getBranchKey(resultMarker.getOriginalSerialNumber))
+        results(getBranchKey(resultMarker))
           .map { rdd =>
             assert(rdd.partitions.size === 1)
             rdd.map {
