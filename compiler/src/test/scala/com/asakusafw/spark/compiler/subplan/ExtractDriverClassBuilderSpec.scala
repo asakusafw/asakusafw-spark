@@ -71,7 +71,7 @@ class ExtractDriverClassBuilderSpec
 
       val operator = OperatorExtractor
         .extract(classOf[Extract], classOf[ExtractOperator], "extract")
-        .input("fooList", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
+        .input("foos", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
         .output("fooResult", ClassDescription.of(classOf[Foo]))
         .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("nResult", ClassDescription.of(classOf[N]))
@@ -96,21 +96,32 @@ class ExtractDriverClassBuilderSpec
           Seq(fooResultMarker, barResultMarker,
             nResultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
+
       val subplan = plan.getElements.head
-      subplan.putAttribute(classOf[SubPlanInfo],
-        new SubPlanInfo(subplan, SubPlanInfo.DriverType.EXTRACT, Seq.empty[SubPlanInfo.DriverOption], operator))
+      subplan.putAttr(
+        new SubPlanInfo(_,
+          SubPlanInfo.DriverType.EXTRACT,
+          Seq.empty[SubPlanInfo.DriverOption],
+          operator))
 
-      val fooResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get
-      fooResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      subplan.findOut(fooResultMarker)
+        .putAttr(
+          new SubPlanOutputInfo(_,
+            outputType,
+            Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-      val barResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == barResultMarker.getOriginalSerialNumber).get
-      barResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(barResultOutput, SubPlanOutputInfo.OutputType.PARTITIONED, Seq.empty[SubPlanOutputInfo.OutputOption], Groups.parse(Seq("fooId"), Seq("-id")), null))
+      subplan.findOut(barResultMarker)
+        .putAttr(
+          new SubPlanOutputInfo(_,
+            SubPlanOutputInfo.OutputType.PARTITIONED,
+            Seq.empty[SubPlanOutputInfo.OutputOption],
+            Groups.parse(Seq("fooId"), Seq("-id")), null))
 
-      val nResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == nResultMarker.getOriginalSerialNumber).get
-      nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      subplan.findOut(nResultMarker)
+        .putAttr(
+          new SubPlanOutputInfo(_,
+            outputType,
+            Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
@@ -140,23 +151,24 @@ class ExtractDriverClassBuilderSpec
       assert(driver.partitioners.size === partitioners)
 
       val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
-      def getBranchKey(osn: Long): BranchKey = {
-        val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      def getBranchKey(marker: MarkerOperator): BranchKey = {
+        val sn = subplan.getOperators.toSet
+          .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
       assert(driver.branchKeys ===
         Set(fooResultMarker, barResultMarker,
-          nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
+          nResultMarker).map(getBranchKey))
 
       val ((fooResult, barResult), nResult) =
         Await.result(
-          results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
+          results(getBranchKey(fooResultMarker)).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
-            results(getBranchKey(barResultMarker.getOriginalSerialNumber)).map {
+            results(getBranchKey(barResultMarker)).map {
               _.map {
                 case (_, bar: Bar) => bar
               }.mapPartitionsWithIndex({
@@ -164,7 +176,7 @@ class ExtractDriverClassBuilderSpec
               }).collect.toSeq
             }
           }.zip {
-            results(getBranchKey(nResultMarker.getOriginalSerialNumber)).map {
+            results(getBranchKey(nResultMarker)).map {
               _.map {
                 case (_, n: N) => n.n.get
               }.collect.toSeq
@@ -198,7 +210,7 @@ class ExtractDriverClassBuilderSpec
 
       val operator = OperatorExtractor
         .extract(classOf[Extract], classOf[ExtractOperator], "extract")
-        .input("fooList", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
+        .input("foos", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
         .output("fooResult", ClassDescription.of(classOf[Foo]))
         .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("nResult", ClassDescription.of(classOf[N]))
@@ -214,13 +226,19 @@ class ExtractDriverClassBuilderSpec
           Seq(foosMarker),
           Seq(fooResultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
-      val subplan = plan.getElements.head
-      subplan.putAttribute(classOf[SubPlanInfo],
-        new SubPlanInfo(subplan, SubPlanInfo.DriverType.EXTRACT, Seq.empty[SubPlanInfo.DriverOption], operator))
 
-      val fooResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get
-      fooResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      val subplan = plan.getElements.head
+      subplan.putAttr(
+        new SubPlanInfo(_,
+          SubPlanInfo.DriverType.EXTRACT,
+          Seq.empty[SubPlanInfo.DriverOption],
+          operator))
+
+      subplan.findOut(fooResultMarker)
+        .putAttr(
+          new SubPlanOutputInfo(_,
+            outputType,
+            Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
@@ -251,16 +269,16 @@ class ExtractDriverClassBuilderSpec
       val results = driver.execute()
 
       val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
-      def getBranchKey(osn: Long): BranchKey = {
-        val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      def getBranchKey(marker: MarkerOperator): BranchKey = {
+        val sn = subplan.getOperators.toSet
+          .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
-      assert(driver.branchKeys ===
-        Set(fooResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
+      assert(driver.branchKeys === Set(fooResultMarker).map(getBranchKey))
 
       val fooResult = Await.result(
-        results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
+        results(getBranchKey(fooResultMarker)).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq

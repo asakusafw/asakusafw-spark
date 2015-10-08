@@ -130,37 +130,27 @@ class CoGroupDriverClassBuilderSpec
             fooAllMarker, barAllMarker,
             nResultMarker)).build().getPlan()
       assert(plan.getElements.size === 1)
+
       val subplan = plan.getElements.head
-      subplan.putAttribute(classOf[SubPlanInfo],
-        new SubPlanInfo(subplan, SubPlanInfo.DriverType.COGROUP, Seq.empty[SubPlanInfo.DriverOption], operator))
+      subplan.putAttr(
+        new SubPlanInfo(_,
+          SubPlanInfo.DriverType.COGROUP,
+          Seq.empty[SubPlanInfo.DriverOption],
+          operator))
 
-      val fooResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooResultMarker.getOriginalSerialNumber).get
-      fooResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
-
-      val barResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == barResultMarker.getOriginalSerialNumber).get
-      barResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(barResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
-
-      val fooErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooErrorMarker.getOriginalSerialNumber).get
-      fooErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooErrorOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
-
-      val barErrorOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == barErrorMarker.getOriginalSerialNumber).get
-      barErrorOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(barErrorOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
-
-      val fooAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == fooAllMarker.getOriginalSerialNumber).get
-      fooAllOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooAllOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
-
-      val barAllOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == barAllMarker.getOriginalSerialNumber).get
-      barAllOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(barAllOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
-
-      val nResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == nResultMarker.getOriginalSerialNumber).get
-      nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(nResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      for {
+        marker <- Seq(
+          fooResultMarker, barResultMarker,
+          fooErrorMarker, barErrorMarker,
+          fooAllMarker, barAllMarker,
+          nResultMarker)
+      } {
+        subplan.findOut(marker)
+          .putAttr(
+            new SubPlanOutputInfo(_,
+              outputType,
+              Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      }
 
       implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
@@ -208,8 +198,9 @@ class CoGroupDriverClassBuilderSpec
       assert(driver.partitioners.size === partitioners)
 
       val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
-      def getBranchKey(osn: Long): BranchKey = {
-        val sn = subplan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+      def getBranchKey(marker: MarkerOperator): BranchKey = {
+        val sn = subplan.getOperators.toSet
+          .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
@@ -217,45 +208,45 @@ class CoGroupDriverClassBuilderSpec
         Set(fooResultMarker, barResultMarker,
           fooErrorMarker, barErrorMarker,
           fooAllMarker, barAllMarker,
-          nResultMarker).map(marker => getBranchKey(marker.getOriginalSerialNumber)))
+          nResultMarker).map(getBranchKey))
 
       val (((fooResult, barResult), (fooError, barError)), ((fooAll, barAll), nResult)) =
         Await.result(
-          results(getBranchKey(fooResultMarker.getOriginalSerialNumber)).map {
+          results(getBranchKey(fooResultMarker)).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
-            results(getBranchKey(barResultMarker.getOriginalSerialNumber)).map {
+            results(getBranchKey(barResultMarker)).map {
               _.map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
-            results(getBranchKey(fooErrorMarker.getOriginalSerialNumber)).map {
+            results(getBranchKey(fooErrorMarker)).map {
               _.map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
-              results(getBranchKey(barErrorMarker.getOriginalSerialNumber)).map {
+              results(getBranchKey(barErrorMarker)).map {
                 _.map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
             }
           }.zip {
-            results(getBranchKey(fooAllMarker.getOriginalSerialNumber)).map {
+            results(getBranchKey(fooAllMarker)).map {
               _.map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
-              results(getBranchKey(barAllMarker.getOriginalSerialNumber)).map {
+              results(getBranchKey(barAllMarker)).map {
                 _.map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
             }.zip {
-              results(getBranchKey(nResultMarker.getOriginalSerialNumber)).map {
+              results(getBranchKey(nResultMarker)).map {
                 _.map {
                   case (_, n: N) => n.n.get
                 }.collect.toSeq

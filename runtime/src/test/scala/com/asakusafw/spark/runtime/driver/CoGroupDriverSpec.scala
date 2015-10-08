@@ -320,14 +320,14 @@ object CoGroupDriverSpec {
 
     override def add(groups: Seq[Iterator[_]]): Unit = {
       assert(groups.size == 2)
-      val fooList = groups(0).asInstanceOf[Iterator[Foo]].toSeq
-      val barList = groups(1).asInstanceOf[Iterator[Bar]].toSeq
-      if (fooList.size == 1 && barList.size == 1) {
-        outputs(FooResult).asInstanceOf[OutputFragment[Foo]].add(fooList.head)
-        outputs(BarResult).asInstanceOf[OutputFragment[Bar]].add(barList.head)
+      val foos = groups(0).asInstanceOf[Iterator[Foo]].toSeq
+      val bars = groups(1).asInstanceOf[Iterator[Bar]].toSeq
+      if (foos.size == 1 && bars.size == 1) {
+        outputs(FooResult).asInstanceOf[OutputFragment[Foo]].add(foos.head)
+        outputs(BarResult).asInstanceOf[OutputFragment[Bar]].add(bars.head)
       } else {
-        fooList.foreach(outputs(FooError).asInstanceOf[OutputFragment[Foo]].add)
-        barList.foreach(outputs(BarError).asInstanceOf[OutputFragment[Bar]].add)
+        foos.foreach(outputs(FooError).asInstanceOf[OutputFragment[Foo]].add)
+        bars.foreach(outputs(BarError).asInstanceOf[OutputFragment[Bar]].add)
       }
     }
 

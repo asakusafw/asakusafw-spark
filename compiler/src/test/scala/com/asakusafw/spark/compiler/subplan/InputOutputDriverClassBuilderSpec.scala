@@ -91,9 +91,13 @@ class InputOutputDriverClassBuilderSpec
         Seq(outputMarker),
         Seq(endMarker)).build().getPlan()
     assert(outputPlan.getElements.size === 1)
+
     val outputSubPlan = outputPlan.getElements.head
-    outputSubPlan.putAttribute(classOf[SubPlanInfo],
-      new SubPlanInfo(outputSubPlan, SubPlanInfo.DriverType.OUTPUT, Seq.empty[SubPlanInfo.DriverOption], outputOperator))
+    outputSubPlan.putAttr(
+      new SubPlanInfo(_,
+        SubPlanInfo.DriverType.OUTPUT,
+        Seq.empty[SubPlanInfo.DriverOption],
+        outputOperator))
 
     // FIXME: should use the same flowId as StageInfo's.
     val outputCompilerContext = newSubPlanCompilerContext("outtputFlowId", jpContext)
@@ -153,12 +157,19 @@ class InputOutputDriverClassBuilderSpec
         Seq(beginMarker),
         Seq(inputMarker)).build().getPlan()
     assert(inputPlan.getElements.size === 1)
+
     val inputSubPlan = inputPlan.getElements.head
-    inputSubPlan.putAttribute(classOf[SubPlanInfo],
-      new SubPlanInfo(inputSubPlan, SubPlanInfo.DriverType.INPUT, Seq.empty[SubPlanInfo.DriverOption], inputOperator))
-    val inputSubplanOutput = inputSubPlan.getOutputs.find(_.getOperator.getOriginalSerialNumber == inputMarker.getOriginalSerialNumber).get
-    inputSubplanOutput.putAttribute(classOf[SubPlanOutputInfo],
-      new SubPlanOutputInfo(inputSubplanOutput, SubPlanOutputInfo.OutputType.DONT_CARE, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+    inputSubPlan.putAttr(
+      new SubPlanInfo(_,
+        SubPlanInfo.DriverType.INPUT,
+        Seq.empty[SubPlanInfo.DriverOption],
+        inputOperator))
+
+    inputSubPlan.findOut(inputMarker)
+      .putAttr(
+        new SubPlanOutputInfo(_,
+          SubPlanOutputInfo.OutputType.DONT_CARE,
+          Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
     // FIXME: should use the same flowId as StageInfo's.
     val inputCompilerContext = newSubPlanCompilerContext("inputFlowId", jpContext)
@@ -182,17 +193,16 @@ class InputOutputDriverClassBuilderSpec
     val inputs = inputDriver.execute()
 
     val branchKeyCls = classServer.loadClass(inputCompilerContext.branchKeys.thisType.getClassName)
-    def getBranchKey(osn: Long): BranchKey = {
-      val sn = inputSubPlan.getOperators.toSet.find(_.getOriginalSerialNumber == osn).get.getSerialNumber
+    def getBranchKey(marker: MarkerOperator): BranchKey = {
+      val sn = inputSubPlan.getOperators.toSet
+        .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
       branchKeyCls.getField(inputCompilerContext.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
     }
 
-    assert(inputDriver.branchKeys ===
-      Set(inputMarker)
-      .map(marker => getBranchKey(marker.getOriginalSerialNumber)))
+    assert(inputDriver.branchKeys === Set(inputMarker).map(getBranchKey))
 
     val result = Await.result(
-      inputs(getBranchKey(inputMarker.getOriginalSerialNumber)).map {
+      inputs(getBranchKey(inputMarker)).map {
         _.map {
           case (_, foo: Foo) => foo.id.get
         }.collect.toSeq.sorted
