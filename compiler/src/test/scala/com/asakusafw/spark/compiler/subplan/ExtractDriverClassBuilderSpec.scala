@@ -71,7 +71,7 @@ class ExtractDriverClassBuilderSpec
 
       val operator = OperatorExtractor
         .extract(classOf[Extract], classOf[ExtractOperator], "extract")
-        .input("fooList", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
+        .input("foos", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
         .output("fooResult", ClassDescription.of(classOf[Foo]))
         .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("nResult", ClassDescription.of(classOf[N]))
@@ -110,7 +110,7 @@ class ExtractDriverClassBuilderSpec
 
       val nResultOutput = subplan.getOutputs.find(_.getOperator.getOriginalSerialNumber == nResultMarker.getOriginalSerialNumber).get
       nResultOutput.putAttribute(classOf[SubPlanOutputInfo],
-        new SubPlanOutputInfo(fooResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+        new SubPlanOutputInfo(nResultOutput, outputType, Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
       implicit val context = newSubPlanCompilerContext(flowId, classServer.root.toFile)
 
@@ -198,7 +198,7 @@ class ExtractDriverClassBuilderSpec
 
       val operator = OperatorExtractor
         .extract(classOf[Extract], classOf[ExtractOperator], "extract")
-        .input("fooList", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
+        .input("foos", ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
         .output("fooResult", ClassDescription.of(classOf[Foo]))
         .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("nResult", ClassDescription.of(classOf[N]))

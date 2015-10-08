@@ -53,9 +53,9 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
   it should "compile CoGroup operator" in {
     val operator = OperatorExtractor
       .extract(classOf[CoGroup], classOf[CoGroupOperator], "cogroup")
-      .input("fooList", ClassDescription.of(classOf[Foo]),
+      .input("foos", ClassDescription.of(classOf[Foo]),
         Groups.parse(Seq("id")))
-      .input("barList", ClassDescription.of(classOf[Bar]),
+      .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("fooResult", ClassDescription.of(classOf[Foo]))
       .output("barResult", ClassDescription.of(classOf[Bar]))
@@ -262,16 +262,16 @@ object CoGroupOperatorCompilerSpec {
 
     @CoGroup
     def cogroup(
-      fooList: JList[Foo], barList: JList[Bar],
+      foos: JList[Foo], bars: JList[Bar],
       fooResult: Result[Foo], barResult: Result[Bar],
       fooError: Result[Foo], barError: Result[Bar],
       nResult: Result[N], n: Int): Unit = {
-      if (fooList.size == 1 && barList.size == 1) {
-        fooResult.add(fooList(0))
-        barResult.add(barList(0))
+      if (foos.size == 1 && bars.size == 1) {
+        fooResult.add(foos(0))
+        barResult.add(bars(0))
       } else {
-        fooList.foreach(fooError.add)
-        barList.foreach(barError.add)
+        foos.foreach(fooError.add)
+        bars.foreach(barError.add)
       }
       this.n.n.modify(n)
       nResult.add(this.n)
@@ -279,16 +279,16 @@ object CoGroupOperatorCompilerSpec {
 
     @CoGroup
     def cogroupp[F <: FooP, B <: BarP](
-      fooList: JList[F], barList: JList[B],
+      foos: JList[F], bars: JList[B],
       fooResult: Result[F], barResult: Result[B],
       fooError: Result[F], barError: Result[B],
       nResult: Result[N], n: Int): Unit = {
-      if (fooList.size == 1 && barList.size == 1) {
-        fooResult.add(fooList(0))
-        barResult.add(barList(0))
+      if (foos.size == 1 && bars.size == 1) {
+        fooResult.add(foos(0))
+        barResult.add(bars(0))
       } else {
-        fooList.foreach(fooError.add)
-        barList.foreach(barError.add)
+        foos.foreach(fooError.add)
+        bars.foreach(barError.add)
       }
       this.n.n.modify(n)
       nResult.add(this.n)
