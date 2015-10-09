@@ -17,7 +17,7 @@ package com.asakusafw.yass.runtime
 package flow
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.fixture.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -28,18 +28,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ HashPartitioner, Partitioner }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
-import com.asakusafw.spark.runtime.SparkForAll
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd._
+import com.asakusafw.yass.runtime.fixture.SparkForAll
 
 @RunWith(classOf[JUnitRunner])
 class ExtractSpecTest extends ExtractSpec
@@ -50,7 +50,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
   behavior of classOf[Extract[_]].getSimpleName
 
-  it should "extract simply" in {
+  it should "extract simply" in { implicit sc =>
     import Simple._
 
     val source =
@@ -74,7 +74,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
     }
   }
 
-  it should "extract with branch" in {
+  it should "extract with branch" in { implicit sc =>
     import Branch._
 
     val source =
@@ -108,7 +108,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
     }
   }
 
-  it should "extract with branch and ordering" in {
+  it should "extract with branch and ordering" in { implicit sc =>
     import BranchAndOrdering._
 
     val source =
@@ -251,7 +251,10 @@ object ExtractSpec {
 
     val Result = BranchKey(1)
 
-    class SimpleExtract(prevs: Seq[Target])(val label: String)
+    class SimpleExtract(
+      prevs: Seq[Target])(
+        val label: String)(
+          implicit sc: SparkContext)
       extends Extract[Foo](prevs)(Map.empty) {
 
       override def branchKeys: Set[BranchKey] = Set(Result)
@@ -285,7 +288,10 @@ object ExtractSpec {
     val Result1 = BranchKey(1)
     val Result2 = BranchKey(2)
 
-    class BranchExtract(prevs: Seq[Target])(val label: String)
+    class BranchExtract(
+      prevs: Seq[Target])(
+        val label: String)(
+          implicit sc: SparkContext)
       extends Extract[Foo](prevs)(Map.empty) {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
@@ -351,7 +357,10 @@ object ExtractSpec {
     val Result1 = BranchKey(1)
     val Result2 = BranchKey(2)
 
-    class BranchAndOrderingExtract(prevs: Seq[Target])(val label: String)
+    class BranchAndOrderingExtract(
+      prevs: Seq[Target])(
+        val label: String)(
+          implicit sc: SparkContext)
       extends Extract[Bar](prevs)(Map.empty) {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)

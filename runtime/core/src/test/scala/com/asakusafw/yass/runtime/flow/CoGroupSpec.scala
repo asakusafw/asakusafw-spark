@@ -17,7 +17,7 @@ package com.asakusafw.yass.runtime
 package flow
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.fixture.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -28,18 +28,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ HashPartitioner, Partitioner }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
-import com.asakusafw.spark.runtime.SparkForAll
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd._
+import com.asakusafw.yass.runtime.fixture.SparkForAll
 
 @RunWith(classOf[JUnitRunner])
 class CoGroupSpecTest extends CoGroupSpec
@@ -50,7 +50,7 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
   behavior of classOf[CoGroup].getSimpleName
 
-  it should "cogroup" in {
+  it should "cogroup" in { implicit sc =>
     val foos =
       new ParallelCollectionSource(FooInput, (0 until 100))("input")
         .mapWithRoundContext(FooInput)(Foo.intToFoo)
@@ -72,7 +72,7 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       Seq(
         (Seq((foos, FooInput)), Option(fooOrd)),
         (Seq((bars, BarInput)), Option(barOrd))),
-      grouping, partitioner)("cogroup")
+      grouping, partitioner)("cogroup")(sc)
 
     for {
       round <- 0 to 1
@@ -280,7 +280,9 @@ object CoGroupSpec {
   class TestCoGroup(
     @transient inputs: Seq[(Seq[Target], Option[SortOrdering])],
     @transient grouping: GroupOrdering,
-    @transient part: Partitioner)(val label: String)
+    @transient part: Partitioner)(
+      val label: String)(
+        implicit sc: SparkContext)
     extends CoGroup(inputs, grouping, part)(Map.empty) {
 
     override def branchKeys: Set[BranchKey] = {

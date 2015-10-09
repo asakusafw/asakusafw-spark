@@ -19,6 +19,7 @@ package flow
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -27,7 +28,8 @@ class ParallelCollectionSource[T: ClassTag](
   val branchKey: BranchKey,
   data: Seq[T],
   numSlices: Option[Int] = None)(
-    val label: String)
+    val label: String)(
+      @transient implicit val sc: SparkContext)
   extends Source {
 
   @transient
@@ -37,7 +39,7 @@ class ParallelCollectionSource[T: ClassTag](
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] =
     synchronized {
       if (result == null) {
-        val rdd = rc.sc.parallelize(data, numSlices.getOrElse(rc.sc.defaultParallelism))
+        val rdd = sc.parallelize(data, numSlices.getOrElse(sc.defaultParallelism))
         result = Future.successful(rdd)
       }
       Map(branchKey -> result)

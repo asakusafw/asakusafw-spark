@@ -18,7 +18,7 @@ package flow
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.Partitioner
+import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.driver.BroadcastId
@@ -26,7 +26,8 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class Extract[T](
   prevs: Seq[Target])(
-    val broadcasts: Map[BroadcastId, Broadcast])
+    val broadcasts: Map[BroadcastId, Broadcast])(
+      @transient implicit val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[T] {
@@ -59,7 +60,7 @@ abstract class Extract[T](
           if (unioning.isEmpty) {
             coalesced
           } else {
-            rc.sc.union(coalesced, unioning: _*)
+            sc.union(coalesced, unioning: _*)
           }
         }
       }).zip(zipBroadcasts(rc)).map {

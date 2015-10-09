@@ -19,6 +19,7 @@ package flow
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -27,7 +28,8 @@ class MapPartitions[T, U: ClassTag](
   parent: Source,
   branchKey: BranchKey,
   f: RoundContext => (Int, Iterator[T]) => Iterator[U],
-  preservesPartitioning: Boolean = false) extends Source {
+  preservesPartitioning: Boolean = false)(
+    @transient implicit val sc: SparkContext) extends Source {
 
   override def label: String = parent.label
 

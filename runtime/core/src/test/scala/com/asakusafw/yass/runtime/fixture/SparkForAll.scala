@@ -13,14 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.yass.runtime
-package flow
+package com.asakusafw.yass.runtime.fixture
+
+import org.scalatest.Outcome
+import org.scalatest.fixture.FlatSpec
 
 import org.apache.spark.SparkContext
 
-trait Node extends Serializable {
+import com.asakusafw.spark.runtime
 
-  implicit def sc: SparkContext
+trait SparkForAll extends runtime.SparkForAll { self: FlatSpec =>
 
-  def label: String
+  type FixtureParam = SparkContext
+
+  override def withFixture(test: OneArgTest): Outcome = {
+    withFixture(test.toNoArgTest(sc))
+  }
 }

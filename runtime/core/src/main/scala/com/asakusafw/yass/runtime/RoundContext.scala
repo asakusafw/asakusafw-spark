@@ -16,9 +16,9 @@
 package com.asakusafw.yass.runtime
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
-class RoundContext(
-  @transient val sc: SparkContext,
-  val hadoopConf: Broadcasted[Configuration]) extends Serializable
+trait RoundContext extends Serializable {
+
+  def hadoopConf: Broadcasted[Configuration]
+}

@@ -18,7 +18,7 @@ package flow
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.Partitioner
+import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
@@ -28,7 +28,8 @@ abstract class CoGroup(
   prevs: Seq[(Seq[Target], Option[SortOrdering])],
   grouping: GroupOrdering,
   part: Partitioner)(
-    val broadcasts: Map[BroadcastId, Broadcast])
+    val broadcasts: Map[BroadcastId, Broadcast])(
+      @transient implicit val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[Seq[Iterator[_]]] {
@@ -48,8 +49,8 @@ abstract class CoGroup(
         }).zip(zipBroadcasts(rc)).map {
           case (prevs, broadcasts) =>
 
-            rc.sc.clearCallSite()
-            rc.sc.setCallSite(label)
+            sc.clearCallSite()
+            sc.setCallSite(label)
 
             val cogrouped = smcogroup[ShuffleKey](
               prevs.map {

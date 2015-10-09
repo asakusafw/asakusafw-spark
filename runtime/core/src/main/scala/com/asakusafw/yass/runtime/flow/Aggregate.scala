@@ -18,7 +18,7 @@ package flow
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark._
+import org.apache.spark.{ InterruptibleIterator, Partitioner, SparkContext, TaskContext }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.aggregation.Aggregation
@@ -29,7 +29,8 @@ abstract class Aggregate[V, C](
   prevs: Seq[Target],
   sort: Option[SortOrdering],
   partitioner: Partitioner)(
-    val broadcasts: Map[BroadcastId, Broadcast])
+    val broadcasts: Map[BroadcastId, Broadcast])(
+      @transient implicit val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[C] {
@@ -47,8 +48,8 @@ abstract class Aggregate[V, C](
     val future = Future.sequence(rdds).zip(zipBroadcasts(rc)).map {
       case (prevs, broadcasts) =>
 
-        rc.sc.clearCallSite()
-        rc.sc.setCallSite(label)
+        sc.clearCallSite()
+        sc.setCallSite(label)
 
         val aggregated = {
           if (aggregation.mapSideCombine) {

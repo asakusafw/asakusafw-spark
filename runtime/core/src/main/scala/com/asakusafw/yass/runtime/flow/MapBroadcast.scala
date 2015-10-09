@@ -18,7 +18,7 @@ package flow
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.Partitioner
+import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
@@ -31,17 +31,18 @@ class MapBroadcast(
   sort: Option[SortOrdering],
   group: GroupOrdering,
   partitioner: Partitioner)(
-    val label: String) extends Broadcast {
+    val label: String)(
+      @transient implicit val sc: SparkContext) extends Broadcast {
 
   override def broadcast(
     rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
 
     source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]]).map { rdd =>
 
-      rc.sc.clearCallSite()
-      rc.sc.setCallSite(label)
+      sc.clearCallSite()
+      sc.setCallSite(label)
 
-      rc.sc.broadcast(
+      sc.broadcast(
         smcogroup(Seq((rdd, sort)), partitioner, group)
           .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[_]]) }
           .collect()

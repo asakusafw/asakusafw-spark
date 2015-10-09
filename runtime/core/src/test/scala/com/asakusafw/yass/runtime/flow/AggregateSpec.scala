@@ -17,7 +17,7 @@ package com.asakusafw.yass.runtime
 package flow
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.fixture.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -26,15 +26,15 @@ import scala.collection.JavaConversions._
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.reflect.ClassTag
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ HashPartitioner, Partitioner }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
-import com.asakusafw.spark.runtime.SparkForAll
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{
@@ -45,6 +45,7 @@ import com.asakusafw.spark.runtime.fragment.{
 }
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd._
+import com.asakusafw.yass.runtime.fixture.SparkForAll
 
 @RunWith(classOf[JUnitRunner])
 class AggregateSpecTest extends AggregateSpec
@@ -58,7 +59,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
   for {
     mapSideCombine <- Seq(true, false)
   } {
-    it should s"aggregate with map-side combine = ${mapSideCombine}" in {
+    it should s"aggregate with map-side combine = ${mapSideCombine}" in { implicit sc =>
       import TotalAggregate._
 
       val source =
@@ -90,7 +91,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
     }
   }
 
-  it should "aggregate partially" in {
+  it should "aggregate partially" in { implicit sc =>
     import PartialAggregate._
 
     val source =
@@ -224,7 +225,9 @@ object AggregateSpec {
       prev: Target,
       sort: Option[SortOrdering],
       part: Partitioner,
-      val aggregation: Aggregation[ShuffleKey, Foo, Foo])(val label: String)
+      val aggregation: Aggregation[ShuffleKey, Foo, Foo])(
+        val label: String)(
+          implicit sc: SparkContext)
       extends Aggregate[Foo, Foo](Seq(prev), sort, part)(Map.empty) {
 
       override def branchKeys: Set[BranchKey] = Set(Result)
@@ -277,7 +280,9 @@ object AggregateSpec {
     val Result2 = BranchKey(2)
 
     class TestPartialAggregationExtract(
-      @transient prev: Target)(val label: String)
+      @transient prev: Target)(
+        val label: String)(
+          implicit sc: SparkContext)
       extends Extract[Foo](Seq(prev))(Map.empty) {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
