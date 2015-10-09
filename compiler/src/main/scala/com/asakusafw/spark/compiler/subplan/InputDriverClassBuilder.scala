@@ -168,7 +168,7 @@ class InputDriverClassBuilder(
     methodDef.newMethod(
       "fragments",
       classOf[(_, _)].asType,
-      Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType),
+      Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType, Type.INT_TYPE),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
@@ -180,6 +180,7 @@ class InputDriverClassBuilder(
               }
           }
         }
+        .newParameterType(Type.INT_TYPE)
         .newReturnType {
           _.newClassType(classOf[(_, _)].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
@@ -203,9 +204,7 @@ class InputDriverClassBuilder(
         import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar =
-          thisVar.push().invokeV("fragmentBufferSize", Type.INT_TYPE)
-            .store(broadcastsVar.nextLocal)
+        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
         val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
 
         val fragmentBuilder =
