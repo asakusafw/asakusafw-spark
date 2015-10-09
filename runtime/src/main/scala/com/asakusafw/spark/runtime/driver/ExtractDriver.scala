@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime.driver
+package com.asakusafw.spark.runtime
+package driver
 
 import scala.concurrent.{ ExecutionContext, Future }
 
@@ -65,7 +66,8 @@ abstract class ExtractDriver[T](
           sc.clearCallSite()
           sc.setCallSite(label)
 
-          branch(prev, broadcasts)
+          branch(prev, broadcasts, hadoopConf)(
+            sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
       }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

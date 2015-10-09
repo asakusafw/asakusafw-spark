@@ -21,7 +21,10 @@ import org.apache.hadoop.io.Writable
 
 import com.asakusafw.runtime.model.DataModel
 
-class GenericOutputFragment[T <: DataModel[T] with Writable: ClassTag] extends OutputFragment[T] {
+class GenericOutputFragment[T <: DataModel[T] with Writable: ClassTag](bufferSize: Int)
+  extends OutputFragment[T](bufferSize) {
+
+  def this() = this(-1)
 
   override def newDataModel(): T = {
     classTag[T].runtimeClass.newInstance().asInstanceOf[T]

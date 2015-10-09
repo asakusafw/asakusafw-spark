@@ -68,7 +68,8 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
         classTag[V].runtimeClass.asInstanceOf[Class[V]])
     }.zip(zipBroadcasts()).map {
       case (rdd, broadcasts) =>
-        branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts)
+        branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, hadoopConf)(
+          sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
     }
     branchKeys.map(key => key -> future.map(_(key))).toMap
   }
