@@ -330,12 +330,14 @@ object CoGroupSpec {
       }
     }
 
-    override def fragments(broadcasts: Map[BroadcastId, Broadcasted[_]]): (Fragment[Seq[Iterator[_]]], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(
+      broadcasts: Map[BroadcastId, Broadcasted[_]])(
+        fragmentBufferSize: Int): (Fragment[Seq[Iterator[_]]], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
-        FooResult -> new GenericOutputFragment[Foo](),
-        BarResult -> new GenericOutputFragment[Bar](),
-        FooError -> new GenericOutputFragment[Foo](),
-        BarError -> new GenericOutputFragment[Bar]())
+        FooResult -> new GenericOutputFragment[Foo](fragmentBufferSize),
+        BarResult -> new GenericOutputFragment[Bar](fragmentBufferSize),
+        FooError -> new GenericOutputFragment[Foo](fragmentBufferSize),
+        BarError -> new GenericOutputFragment[Bar](fragmentBufferSize))
       val fragment = new TestCoGroupFragment(outputs)
       (fragment, outputs)
     }

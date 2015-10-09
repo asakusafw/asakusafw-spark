@@ -21,8 +21,9 @@ import scala.concurrent.{ ExecutionContext, Future }
 import org.apache.spark.{ InterruptibleIterator, Partitioner, SparkContext, TaskContext }
 import org.apache.spark.rdd.RDD
 
+import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
+import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class Aggregate[V, C](
@@ -34,6 +35,9 @@ abstract class Aggregate[V, C](
   extends Source
   with UsingBroadcasts
   with Branching[C] {
+
+  private val fragmentBufferSize =
+    sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   def aggregation: Aggregation[ShuffleKey, V, C]
 
@@ -84,7 +88,7 @@ abstract class Aggregate[V, C](
           }
         }
 
-        branch(aggregated.asInstanceOf[RDD[(_, C)]], broadcasts)(rc)
+        branch(aggregated.asInstanceOf[RDD[(_, C)]], broadcasts, rc.hadoopConf)(fragmentBufferSize)
     }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

@@ -250,8 +250,10 @@ object AggregateSpec {
         ???
       }
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcasted[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment = new GenericOutputFragment[Foo]()
+      override def fragments(
+        broadcasts: Map[BroadcastId, Broadcasted[_]])(
+          fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment = new GenericOutputFragment[Foo](fragmentBufferSize)
         val outputs = Map(Result -> fragment)
         (fragment, outputs)
       }
@@ -319,9 +321,11 @@ object AggregateSpec {
         foo
       }
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcasted[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment1 = new GenericOutputFragment[Foo]()
-        val fragment2 = new GenericOutputFragment[Foo]()
+      override def fragments(
+        broadcasts: Map[BroadcastId, Broadcasted[_]])(
+          fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment1 = new GenericOutputFragment[Foo](fragmentBufferSize)
+        val fragment2 = new GenericOutputFragment[Foo](fragmentBufferSize)
         (new GenericEdgeFragment[Foo](Array(fragment1, fragment2)), Map(
           Result1 -> fragment1,
           Result2 -> fragment2))

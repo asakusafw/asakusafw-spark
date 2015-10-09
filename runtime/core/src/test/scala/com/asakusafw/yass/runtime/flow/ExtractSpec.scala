@@ -276,8 +276,9 @@ object ExtractSpec {
       }
 
       override def fragments(
-        broadcasts: Map[BroadcastId, Broadcasted[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment = new GenericOutputFragment[Foo]()
+        broadcasts: Map[BroadcastId, Broadcasted[_]])(
+          fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment = new GenericOutputFragment[Foo](fragmentBufferSize)
         (fragment, Map(Result -> fragment))
       }
     }
@@ -324,9 +325,10 @@ object ExtractSpec {
       }
 
       override def fragments(
-        broadcasts: Map[BroadcastId, Broadcasted[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
-        val foo1Output = new GenericOutputFragment[Foo]()
-        val foo2Output = new GenericOutputFragment[Foo]()
+        broadcasts: Map[BroadcastId, Broadcasted[_]])(
+          fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val foo1Output = new GenericOutputFragment[Foo](fragmentBufferSize)
+        val foo2Output = new GenericOutputFragment[Foo](fragmentBufferSize)
         val fragment = new BranchFragment(foo1Output, foo2Output)
         (fragment,
           Map(
@@ -399,9 +401,11 @@ object ExtractSpec {
         bar
       }
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcasted[_]]): (Fragment[Bar], Map[BranchKey, OutputFragment[_]]) = {
-        val bar1Output = new GenericOutputFragment[Bar]()
-        val bar2Output = new GenericOutputFragment[Bar]()
+      override def fragments(
+        broadcasts: Map[BroadcastId, Broadcasted[_]])(
+          fragmentBufferSize: Int): (Fragment[Bar], Map[BranchKey, OutputFragment[_]]) = {
+        val bar1Output = new GenericOutputFragment[Bar](fragmentBufferSize)
+        val bar2Output = new GenericOutputFragment[Bar](fragmentBufferSize)
         val fragment = new BranchFragment(bar1Output, bar2Output)
         (fragment,
           Map(

@@ -21,7 +21,8 @@ import scala.concurrent.{ ExecutionContext, Future }
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.driver.BroadcastId
+import com.asakusafw.spark.runtime.Props
+import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId }
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class Extract[T](
@@ -31,6 +32,9 @@ abstract class Extract[T](
   extends Source
   with UsingBroadcasts
   with Branching[T] {
+
+  private val fragmentBufferSize =
+    sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
@@ -65,7 +69,7 @@ abstract class Extract[T](
         }
       }).zip(zipBroadcasts(rc)).map {
         case (prev, broadcasts) =>
-          branch(prev, broadcasts)(rc)
+          branch(prev, broadcasts, rc.hadoopConf)(fragmentBufferSize)
       }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

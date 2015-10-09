@@ -21,7 +21,8 @@ import scala.concurrent.{ ExecutionContext, Future }
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
+import com.asakusafw.spark.runtime.Props
+import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroup(
@@ -33,6 +34,9 @@ abstract class CoGroup(
   extends Source
   with UsingBroadcasts
   with Branching[Seq[Iterator[_]]] {
+
+  private val fragmentBufferSize =
+    sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
@@ -60,7 +64,9 @@ abstract class CoGroup(
               part,
               grouping)
 
-            branch(cogrouped.asInstanceOf[RDD[(_, Seq[Iterator[_]])]], broadcasts)(rc)
+            branch(
+              cogrouped.asInstanceOf[RDD[(_, Seq[Iterator[_]])]], broadcasts, rc.hadoopConf)(
+                fragmentBufferSize)
         }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap
