@@ -35,7 +35,7 @@ trait PartitionersField
   with ScalaIdioms
   with SparkIdioms {
 
-  implicit def context: SubPlanCompiler.Context
+  implicit def context: PartitionersField.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -112,5 +112,13 @@ trait PartitionersField
           })
       }
     }
+  }
+}
+
+object PartitionersField {
+
+  trait Context {
+
+    def branchKeys: BranchKeys
   }
 }

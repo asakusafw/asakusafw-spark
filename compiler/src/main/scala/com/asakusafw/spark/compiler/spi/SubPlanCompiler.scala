@@ -29,7 +29,7 @@ import com.asakusafw.lang.compiler.hadoop.InputFormatInfo
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
-import com.asakusafw.spark.compiler.subplan._
+import com.asakusafw.spark.compiler.subplan.{ Branching, BranchKeys, Instantiator }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 trait SubPlanCompiler {
@@ -48,7 +48,8 @@ object SubPlanCompiler {
   trait Context
     extends CompilerContext
     with ClassLoaderProvider
-    with DataModelLoaderProvider {
+    with DataModelLoaderProvider
+    with Branching.Context {
 
     def options: CompilerOptions
 

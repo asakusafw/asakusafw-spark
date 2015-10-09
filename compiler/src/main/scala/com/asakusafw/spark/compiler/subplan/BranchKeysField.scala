@@ -29,7 +29,7 @@ trait BranchKeysField
   extends ClassBuilder
   with ScalaIdioms {
 
-  implicit def context: SubPlanCompiler.Context
+  implicit def context: BranchKeysField.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -78,5 +78,13 @@ trait BranchKeysField
         builder += context.branchKeys.getField(mb, marker)
       }
     }
+  }
+}
+
+object BranchKeysField {
+
+  trait Context {
+
+    def branchKeys: BranchKeys
   }
 }
