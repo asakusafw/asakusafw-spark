@@ -61,7 +61,7 @@ class InputDriverClassBuilder(
       .build(),
     classOf[InputDriver[_, _, _]].asType)
   with Branching
-  with DriverLabel
+  with LabelField
   with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {

@@ -50,7 +50,7 @@ class OutputDriverClassBuilder(
       }
       .build(),
     classOf[OutputDriver[_]].asType)
-  with DriverLabel
+  with LabelField
   with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {

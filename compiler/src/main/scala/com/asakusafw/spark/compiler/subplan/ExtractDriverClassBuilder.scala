@@ -55,7 +55,7 @@ class ExtractDriverClassBuilder(
       .build(),
     classOf[ExtractDriver[_]].asType)
   with Branching
-  with DriverLabel
+  with LabelField
   with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
