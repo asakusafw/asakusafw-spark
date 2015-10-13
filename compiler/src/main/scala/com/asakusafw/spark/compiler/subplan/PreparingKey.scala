@@ -38,7 +38,7 @@ trait PreparingKey
   extends ClassBuilder
   with ScalaIdioms {
 
-  implicit def context: SubPlanCompiler.Context
+  implicit def context: PreparingKey.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -133,5 +133,14 @@ trait PreparingKey
             })
       })
     `return`(shuffleKey)
+  }
+}
+
+object PreparingKey {
+
+  trait Context
+    extends DataModelLoaderProvider {
+
+    def branchKeys: BranchKeys
   }
 }

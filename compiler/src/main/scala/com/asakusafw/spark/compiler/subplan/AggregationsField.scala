@@ -34,7 +34,7 @@ trait AggregationsField
   extends ClassBuilder
   with ScalaIdioms {
 
-  implicit def context: SubPlanCompiler.Context
+  implicit def context: AggregationsField.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -105,5 +105,15 @@ trait AggregationsField
             AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)))
       }
     }
+  }
+}
+
+object AggregationsField {
+
+  trait Context {
+
+    def branchKeys: BranchKeys
+
+    def aggregationCompilerContext: AggregationCompiler.Context
   }
 }

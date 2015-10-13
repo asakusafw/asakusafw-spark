@@ -155,8 +155,10 @@ object InputOutputDriverSpec {
       ???
     }
 
-    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
-      val fragment = new GenericOutputFragment[Foo]()
+    override def fragments(
+      broadcasts: Map[BroadcastId, Broadcast[_]])(
+        fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+      val fragment = new GenericOutputFragment[Foo](fragmentBufferSize)
       val outputs = Map(Result -> fragment)
       (fragment, outputs)
     }

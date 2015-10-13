@@ -124,9 +124,11 @@ object ResourceBrokingIteratorSpec {
       ???
     }
 
-    override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+    override def fragments(
+      broadcasts: Map[BroadcastId, Broadcast[_]])(
+        fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
-        Result -> new GenericOutputFragment[Foo]())
+        Result -> new GenericOutputFragment[Foo](fragmentBufferSize))
       val fragment = new TestFragment(outputs(Result))
       (fragment, outputs)
     }

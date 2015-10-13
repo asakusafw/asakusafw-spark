@@ -35,7 +35,7 @@ trait OrderingsField
   with ScalaIdioms
   with SparkIdioms {
 
-  implicit def context: SubPlanCompiler.Context
+  implicit def context: OrderingsField.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -109,5 +109,15 @@ trait OrderingsField
             dataModelRef.orderingTypes(partitionInfo.getOrdering)))
       }
     }
+  }
+}
+
+object OrderingsField {
+
+  trait Context
+    extends CompilerContext
+    with DataModelLoaderProvider {
+
+    def branchKeys: BranchKeys
   }
 }

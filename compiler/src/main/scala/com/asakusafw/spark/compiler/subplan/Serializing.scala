@@ -31,7 +31,7 @@ trait Serializing
   extends ClassBuilder
   with ScalaIdioms {
 
-  implicit def context: SubPlanCompiler.Context
+  implicit def context: Serializing.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
 
@@ -135,5 +135,13 @@ trait Serializing
     } else {
       output.getOperator.getDataType.asType
     }
+  }
+}
+
+object Serializing {
+
+  trait Context {
+
+    def branchKeys: BranchKeys
   }
 }

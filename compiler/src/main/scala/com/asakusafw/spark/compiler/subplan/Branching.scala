@@ -16,10 +16,8 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import org.objectweb.asm.Type
-
-import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.compiler.spi.AggregationCompiler
+import com.asakusafw.spark.tools.asm.ClassBuilder
 
 trait Branching
   extends ClassBuilder
@@ -28,4 +26,19 @@ trait Branching
   with OrderingsField
   with AggregationsField
   with PreparingKey
-  with Serializing
+  with Serializing {
+
+  override def context: Branching.Context
+}
+
+object Branching {
+
+  trait Context
+    extends CompilerContext
+    with BranchKeysField.Context
+    with PartitionersField.Context
+    with OrderingsField.Context
+    with AggregationsField.Context
+    with PreparingKey.Context
+    with Serializing.Context
+}

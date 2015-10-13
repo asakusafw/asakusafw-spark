@@ -226,8 +226,10 @@ object AggregateDriverSpec {
         ???
       }
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment = new GenericOutputFragment[Foo]()
+      override def fragments(
+        broadcasts: Map[BroadcastId, Broadcast[_]])(
+          fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment = new GenericOutputFragment[Foo](fragmentBufferSize)
         val outputs = Map(Result -> fragment)
         (fragment, outputs)
       }
@@ -297,9 +299,11 @@ object AggregateDriverSpec {
         foo
       }
 
-      override def fragments(broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
-        val fragment1 = new GenericOutputFragment[Foo]()
-        val fragment2 = new GenericOutputFragment[Foo]()
+      override def fragments(
+        broadcasts: Map[BroadcastId, Broadcast[_]])(
+          fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
+        val fragment1 = new GenericOutputFragment[Foo](fragmentBufferSize)
+        val fragment2 = new GenericOutputFragment[Foo](fragmentBufferSize)
         (new GenericEdgeFragment[Foo](Array(fragment1, fragment2)),
           Map(
             Result1 -> fragment1,

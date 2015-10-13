@@ -21,7 +21,7 @@ import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.Partitioner
+import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
@@ -32,10 +32,8 @@ import com.asakusafw.spark.runtime.io._
 import com.asakusafw.spark.runtime.rdd._
 
 trait Branching[T] {
-  this: SubPlanDriver =>
 
-  protected val fragmentBufferSize =
-    sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
+  def sc: SparkContext
 
   def branchKeys: Set[BranchKey]
 
@@ -52,25 +50,30 @@ trait Branching[T] {
   def deserialize(branch: BranchKey, value: Array[Byte]): Any
 
   def fragments(
-    broadcasts: Map[BroadcastId, Broadcast[_]]): (Fragment[T], Map[BranchKey, OutputFragment[_]])
+    broadcasts: Map[BroadcastId, Broadcast[_]])(
+      fragmentBufferSize: Int): (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
   def branch(
     rdd: RDD[(_, T)],
-    broadcasts: Map[BroadcastId, Broadcast[_]]): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
+    broadcasts: Map[BroadcastId, Broadcast[_]],
+    hadoopConf: Broadcast[Configuration])(
+      fragmentBufferSize: Int): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
-        rdd.mapPartitions({ iter =>
-          iterateFragments(iter, broadcasts).map {
+        rdd.mapPartitions(
+          iterateFragments(_, broadcasts, hadoopConf)(fragmentBufferSize).map {
             case (Branch(_, k), v) => (k, v)
-          }
-        }, preservesPartitioning = true))
+          }, preservesPartitioning = true))
     } else {
       rdd.branch[ShuffleKey, Array[Byte]](
         branchKeys,
-        if (aggregations.values.exists(_.mapSideCombine)) {
-          iterateWithCombiner(_, broadcasts)
-        } else {
-          iterateWithoutCombiner(_, broadcasts)
+        { iter =>
+          val fragmentsIter = iterateFragments(iter, broadcasts, hadoopConf)(fragmentBufferSize)
+          if (aggregations.values.exists(_.mapSideCombine)) {
+            iterateWithCombiner(fragmentsIter)
+          } else {
+            iterateWithoutCombiner(fragmentsIter)
+          }
         },
         partitioners =
           partitioners.map {
@@ -91,16 +94,14 @@ trait Branching[T] {
   }
 
   private def iterateWithCombiner(
-    iter: Iterator[(_, T)],
-    broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
+    iter: Iterator[(Branch[ShuffleKey], _)]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
     val combiners = aggregations.collect {
       case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
     }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]
 
-    iterateFragments(iter, broadcasts).flatMap {
+    iter.flatMap {
       case (Branch(b, k), v) if combiners.contains(b) =>
-        combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]]
-          .insert(k, v)
+        combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]].insert(k, v)
         Iterator.empty
       case (bk @ Branch(b, _), v) => Iterator((bk, serialize(b, v)))
     } ++ combiners.iterator.flatMap {
@@ -112,17 +113,18 @@ trait Branching[T] {
   }
 
   private def iterateWithoutCombiner(
-    iter: Iterator[(_, T)],
-    broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
-    iterateFragments(iter, broadcasts).map {
+    iter: Iterator[(Branch[ShuffleKey], _)]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
+    iter.map {
       case (bk @ Branch(b, _), value) => (bk, serialize(b, value))
     }
   }
 
   private def iterateFragments(
     iter: Iterator[(_, T)],
-    broadcasts: Map[BroadcastId, Broadcast[_]]): Iterator[(Branch[ShuffleKey], _)] = {
-    val (fragment, outputs) = fragments(broadcasts)
+    broadcasts: Map[BroadcastId, Broadcast[_]],
+    hadoopConf: Broadcast[Configuration])(
+      fragmentBufferSize: Int): Iterator[(Branch[ShuffleKey], _)] = {
+    val (fragment, outputs) = fragments(broadcasts)(fragmentBufferSize)
     assert(outputs.keys.toSet == branchKeys,
       s"The branch keys of outputs and branch keys field should be the same: (${
         outputs.keys.mkString("(", ",", ")")
