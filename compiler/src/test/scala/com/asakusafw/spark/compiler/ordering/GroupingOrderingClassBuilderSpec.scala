@@ -42,9 +42,11 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with UsingCompilerContex
 
     {
       val x = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))),
+        Array.emptyByteArray)
       val y = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))),
+        Array.emptyByteArray)
       assert(ordering.equiv(x, y) === true)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === false)
@@ -53,9 +55,11 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with UsingCompilerContex
     }
     {
       val x = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(0), new LongOption().modify(1L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(0), new LongOption().modify(1L))),
+        Array.emptyByteArray)
       val y = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))),
+        Array.emptyByteArray)
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === true)
@@ -64,9 +68,11 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with UsingCompilerContex
     }
     {
       val x = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))),
+        Array.emptyByteArray)
       val y = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(0), new LongOption().modify(1L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(0), new LongOption().modify(1L))),
+        Array.emptyByteArray)
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === false)
       assert(ordering.lt(x, y) === false)
@@ -75,9 +81,11 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with UsingCompilerContex
     }
     {
       val x = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(0L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(0L))),
+        Array.emptyByteArray)
       val y = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))),
+        Array.emptyByteArray)
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === true)
       assert(ordering.lt(x, y) === true)
@@ -86,9 +94,11 @@ class GroupingOrderingClassBuilderSpec extends FlatSpec with UsingCompilerContex
     }
     {
       val x = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(1L))),
+        Array.emptyByteArray)
       val y = new ShuffleKey(
-        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(0L))), Array.empty)
+        WritableSerDe.serialize(Seq(new IntOption().modify(1), new LongOption().modify(0L))),
+        Array.emptyByteArray)
       assert(ordering.equiv(x, y) === false)
       assert(ordering.lteq(x, y) === false)
       assert(ordering.lt(x, y) === false)
