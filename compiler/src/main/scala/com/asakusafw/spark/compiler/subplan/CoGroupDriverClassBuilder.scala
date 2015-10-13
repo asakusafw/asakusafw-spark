@@ -49,7 +49,7 @@ class CoGroupDriverClassBuilder(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/driver/CoGroupDriver$$${nextId};"),
     classOf[CoGroupDriver].asType)
   with Branching
-  with DriverLabel
+  with LabelField
   with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {

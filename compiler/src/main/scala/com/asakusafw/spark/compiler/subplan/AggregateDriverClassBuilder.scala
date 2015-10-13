@@ -62,7 +62,7 @@ class AggregateDriverClassBuilder(
       .build(),
     classOf[AggregateDriver[_, _]].asType)
   with Branching
-  with DriverLabel
+  with LabelField
   with ScalaIdioms {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {

@@ -18,7 +18,7 @@ package com.asakusafw.spark.compiler.subplan
 import com.asakusafw.lang.compiler.model.graph.Operator
 import com.asakusafw.spark.tools.asm._
 
-trait DriverLabel extends ClassBuilder {
+trait LabelField extends ClassBuilder {
 
   def label: String
 
