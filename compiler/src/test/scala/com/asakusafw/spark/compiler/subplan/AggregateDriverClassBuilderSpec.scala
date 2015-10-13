@@ -218,7 +218,7 @@ class AggregateDriverClassBuilderSpec
         foo.i.modify(i % 2)
         foo.sum.modify(i)
         val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(foo.i), Array.empty), foo)
+        (new ShuffleKey(Array.empty, Array.empty), foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -231,7 +231,7 @@ class AggregateDriverClassBuilderSpec
           sc,
           hadoopConf,
           Seq(Future.successful(foos)),
-          Option(new SortOrdering()),
+          None,
           new HashPartitioner(2),
           Map.empty)
 
@@ -257,11 +257,8 @@ class AggregateDriverClassBuilderSpec
             }.collect.toSeq.sortBy(_._1)
           }, Duration.Inf)
 
-      assert(result.size === 2)
-      assert(result(0)._1 === 0)
-      assert(result(0)._2 === (0 until 10 by 2).sum + 4 * 10)
-      assert(result(1)._1 === 1)
-      assert(result(1)._2 === (1 until 10 by 2).sum + 4 * 10)
+      assert(result.size === 1)
+      assert(result.head._2 === (0 until 10).sum + 9 * 10)
     }
   }
 }
