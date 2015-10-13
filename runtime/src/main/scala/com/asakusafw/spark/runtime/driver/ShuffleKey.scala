@@ -20,10 +20,10 @@ import java.util.Arrays
 import com.asakusafw.runtime.io.util.WritableRawComparable
 
 class ShuffleKey(
-    var grouping: Array[Byte],
-    var ordering: Array[Byte]) extends Equals {
+  val grouping: Array[Byte],
+  val ordering: Array[Byte]) extends Equals {
 
-  def this() = this(Array.empty, Array.empty)
+  def this() = this(Array.emptyByteArray, Array.emptyByteArray)
 
   override def hashCode: Int = Arrays.hashCode(grouping)
 
@@ -41,5 +41,5 @@ class ShuffleKey(
     obj.isInstanceOf[ShuffleKey]
   }
 
-  def dropOrdering: ShuffleKey = new ShuffleKey(grouping, Array.empty)
+  def dropOrdering: ShuffleKey = new ShuffleKey(grouping, Array.emptyByteArray)
 }
