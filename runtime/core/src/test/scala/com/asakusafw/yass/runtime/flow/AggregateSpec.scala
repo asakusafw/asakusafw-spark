@@ -239,7 +239,7 @@ object AggregateSpec {
       override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
-        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.empty)
+        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
@@ -300,7 +300,7 @@ object AggregateSpec {
       }
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
-        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.empty)
+        new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
       }
 
       override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
