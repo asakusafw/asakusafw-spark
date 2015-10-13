@@ -123,7 +123,7 @@ class AggregateDriverClassBuilderSpec
         foo.i.modify(i % 2)
         foo.sum.modify(i)
         val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(foo.i), Array.empty), foo)
+        (new ShuffleKey(serde.serialize(foo.i), Array.emptyByteArray), foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -217,8 +217,7 @@ class AggregateDriverClassBuilderSpec
         val foo = new Foo()
         foo.i.modify(i % 2)
         foo.sum.modify(i)
-        val serde = new WritableSerDe()
-        (new ShuffleKey(Array.empty, Array.empty), foo)
+        (new ShuffleKey(Array.emptyByteArray, Array.emptyByteArray), foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
