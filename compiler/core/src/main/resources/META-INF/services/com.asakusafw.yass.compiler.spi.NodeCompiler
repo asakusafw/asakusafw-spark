@@ -1,1 +1,2 @@
 com.asakusafw.yass.compiler.flow.ExtractCompiler
+com.asakusafw.yass.compiler.flow.CoGroupCompiler
