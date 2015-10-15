@@ -31,7 +31,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.{ GeneratedClassPackageInternalName => _, _ }
+import com.asakusafw.spark.compiler.{ GeneratedClassPackageInternalName, ScalaIdioms }
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }

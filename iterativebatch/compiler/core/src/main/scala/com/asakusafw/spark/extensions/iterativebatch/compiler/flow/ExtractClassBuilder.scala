@@ -29,7 +29,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.{ GeneratedClassPackageInternalName => _, _ }
+import com.asakusafw.spark.compiler._
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
