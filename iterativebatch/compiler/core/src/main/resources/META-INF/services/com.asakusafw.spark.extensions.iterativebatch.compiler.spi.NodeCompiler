@@ -1,0 +1,3 @@
+com.asakusafw.spark.extensions.iterativebatch.compiler.flow.ExtractCompiler
+com.asakusafw.spark.extensions.iterativebatch.compiler.flow.AggregateCompiler
+com.asakusafw.spark.extensions.iterativebatch.compiler.flow.CoGroupCompiler
