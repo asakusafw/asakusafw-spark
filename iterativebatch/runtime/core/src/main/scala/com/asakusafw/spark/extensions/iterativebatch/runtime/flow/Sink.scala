@@ -20,5 +20,5 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 trait Sink extends Node {
 
-  def submitJob(rc: RoundContext)(implicit ec: ExecutionContext): Option[Future[Unit]]
+  def submitJob(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit]
 }
