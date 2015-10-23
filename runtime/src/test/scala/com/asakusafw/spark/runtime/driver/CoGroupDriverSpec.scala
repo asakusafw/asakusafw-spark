@@ -28,7 +28,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
@@ -48,73 +48,162 @@ class CoGroupDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEach
 
   behavior of "CoGroupDriver"
 
-  it should "cogroup" in {
-    val foos = sc.parallelize(0 until 100)
-      .map(Foo.intToFoo).asInstanceOf[RDD[(ShuffleKey, _)]]
-    val fooOrd = new Foo.SortOrdering()
+  for {
+    numSlices <- Seq(8, 4)
+  } {
+    val conf = s"[numSlices = ${numSlices}]"
 
-    val bars = sc.parallelize(0 until 100)
-      .flatMap(i => (0 until i).iterator.map(Bar.intToBar(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
-    val barOrd = new Bar.SortOrdering()
+    it should s"cogroup: ${conf}" in {
+      val foos = sc.parallelize(0 until 100, numSlices)
+        .map(Foo.intToFoo).asInstanceOf[RDD[(ShuffleKey, _)]]
+      val fooOrd = new Foo.SortOrdering()
 
-    val grouping = new GroupingOrdering()
-    val partitioner = new HashPartitioner(2)
-    val driver = new TestCoGroupDriver(
-      sc, hadoopConf,
-      Seq(
-        (Seq(Future.successful(foos)), Option(fooOrd)),
-        (Seq(Future.successful(bars)), Option(barOrd))),
-      grouping, partitioner)
+      val bars = sc.parallelize(0 until 100, numSlices)
+        .flatMap(i => (0 until i).iterator.map(Bar.intToBar(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
+      val barOrd = new Bar.SortOrdering()
 
-    val outputs = driver.execute()
+      val grouping = new GroupingOrdering()
+      val partitioner = new HashPartitioner(2)
+      val driver = new TestCoGroupDriver(
+        sc, hadoopConf,
+        Seq(
+          (Seq(Future.successful(foos)), Option(fooOrd)),
+          (Seq(Future.successful(bars)), Option(barOrd))),
+        grouping, partitioner)
 
-    val ((fooResult, barResult), (fooError, barError)) =
-      Await.result(
-        outputs(FooResult).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq
-        }.zip {
-          outputs(BarResult).map {
-            _.map {
-              case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
-            }.collect.toSeq
-          }
-        }.zip {
-          outputs(FooError).map {
+      val outputs = driver.execute()
+
+      val ((fooResult, barResult), (fooError, barError)) =
+        Await.result(
+          outputs(FooResult).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
-            }.collect.toSeq.sorted
+            }.collect.toSeq
           }.zip {
-            outputs(BarError).map {
+            outputs(BarResult).map {
               _.map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
-              }.collect.toSeq.sortBy(_._2)
+              }.collect.toSeq
             }
-          }
-        }, Duration.Inf)
+          }.zip {
+            outputs(FooError).map {
+              _.map {
+                case (_, foo: Foo) => foo.id.get
+              }.collect.toSeq.sorted
+            }.zip {
+              outputs(BarError).map {
+                _.map {
+                  case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+                }.collect.toSeq.sortBy(_._2)
+              }
+            }
+          }, Duration.Inf)
 
-    assert(fooResult.size === 1)
-    assert(fooResult.head === 1)
+      assert(fooResult.size === 1)
+      assert(fooResult.head === 1)
 
-    assert(barResult.size === 1)
-    assert(barResult.head._1 === 100)
-    assert(barResult.head._2 === 1)
+      assert(barResult.size === 1)
+      assert(barResult.head._1 === 100)
+      assert(barResult.head._2 === 1)
 
-    assert(fooError.size === 99)
-    assert(fooError.head === 0)
-    for (i <- 2 until 10) {
-      assert(fooError(i - 1) === i)
+      assert(fooError.size === 99)
+      assert(fooError.head === 0)
+      for (i <- 2 until 10) {
+        assert(fooError(i - 1) === i)
+      }
+
+      assert(barError.size === 4949)
+      for {
+        i <- 2 until 100
+        j <- 0 until i
+      } {
+        assert(barError((i * (i - 1)) / 2 + j - 1)._1 === 100 + j)
+        assert(barError((i * (i - 1)) / 2 + j - 1)._2 === i)
+      }
     }
 
-    assert(barError.size === 4949)
-    for {
-      i <- 2 until 100
-      j <- 0 until i
-    } {
-      assert(barError((i * (i - 1)) / 2 + j - 1)._1 === 100 + j)
-      assert(barError((i * (i - 1)) / 2 + j - 1)._2 === i)
+    it should s"cogroup multiple prevs: ${conf}" in {
+      val foos1 = sc.parallelize(0 until 50, numSlices)
+        .map(Foo.intToFoo).asInstanceOf[RDD[(ShuffleKey, _)]]
+      val foos2 = sc.parallelize(50 until 100, numSlices)
+        .map(Foo.intToFoo).asInstanceOf[RDD[(ShuffleKey, _)]]
+      val fooOrd = new Foo.SortOrdering()
+
+      val bars1 = sc.parallelize(0 until 50, numSlices)
+        .flatMap(i => (0 until i).iterator.map(Bar.intToBar(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
+      val bars2 = sc.parallelize(50 until 100, numSlices)
+        .flatMap(i => (0 until i).iterator.map(Bar.intToBar(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
+      val barOrd = new Bar.SortOrdering()
+
+      val grouping = new GroupingOrdering()
+      val partitioner = new HashPartitioner(2)
+      val driver = new TestCoGroupDriver(
+        sc, hadoopConf,
+        Seq(
+          (Seq(Future.successful(foos1), Future.successful(foos2)), Option(fooOrd)),
+          (Seq(Future.successful(bars1), Future.successful(bars2)), Option(barOrd))),
+        grouping, partitioner)
+
+      val outputs = driver.execute()
+
+      val ((fooResult, barResult), (fooError, barError)) =
+        Await.result(
+          outputs(FooResult).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq
+          }.zip {
+            outputs(BarResult).map {
+              _.map {
+                case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+              }.collect.toSeq
+            }
+          }.zip {
+            outputs(FooError).map {
+              _.map {
+                case (_, foo: Foo) => foo.id.get
+              }.collect.toSeq.sorted
+            }.zip {
+              outputs(BarError).map {
+                _.map {
+                  case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+                }.collect.toSeq.sortBy(_._2)
+              }
+            }
+          }, Duration.Inf)
+
+      assert(fooResult.size === 1)
+      assert(fooResult.head === 1)
+
+      assert(barResult.size === 1)
+      assert(barResult.head._1 === 100)
+      assert(barResult.head._2 === 1)
+
+      assert(fooError.size === 99)
+      assert(fooError.head === 0)
+      for (i <- 2 until 10) {
+        assert(fooError(i - 1) === i)
+      }
+
+      assert(barError.size === 4949)
+      for {
+        i <- 2 until 100
+        j <- 0 until i
+      } {
+        assert(barError((i * (i - 1)) / 2 + j - 1)._1 === 100 + j)
+        assert(barError((i * (i - 1)) / 2 + j - 1)._2 === i)
+      }
     }
+  }
+}
+
+@RunWith(classOf[JUnitRunner])
+class CoGroupDriverWithParallelismSpecTest extends CoGroupDriverWithParallelismSpec
+
+class CoGroupDriverWithParallelismSpec extends CoGroupDriverSpec {
+
+  override def configure(conf: SparkConf): SparkConf = {
+    conf.set("spark.default.parallelism", 8.toString)
   }
 }
 

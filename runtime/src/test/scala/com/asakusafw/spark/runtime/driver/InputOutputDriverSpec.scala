@@ -31,7 +31,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.{ Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
@@ -52,25 +52,68 @@ class InputOutputDriverSpec extends FlatSpec with SparkForAll with HadoopConfFor
 
   behavior of "Input/OutputDriver"
 
-  it should "output and input" in {
-    val tmpDir = createTempDirectoryForEach("test-").toFile
-    val path = new File(tmpDir, s"output-${EXPR_EXECUTION_ID}").getAbsolutePath
+  for {
+    numSlices <- Seq(8, 4)
+  } {
+    val conf = s"[numSlices = ${numSlices}]"
 
-    val foos = sc.parallelize(0 until 10).map(Foo.intToFoo).asInstanceOf[RDD[(_, Foo)]]
+    it should s"output and input: ${conf}" in {
+      val tmpDir = createTempDirectoryForEach("test-").toFile
+      val path = new File(tmpDir, s"output-${EXPR_EXECUTION_ID}").getAbsolutePath
 
-    val terminators = mutable.Set.empty[Future[Unit]]
-    new TestOutputDriver(sc, hadoopConf, Future.successful(foos), terminators, path).execute()
-    Await.result(Future.sequence(terminators), Duration.Inf)
+      val foos = sc.parallelize(0 until 10, numSlices).map(Foo.intToFoo).asInstanceOf[RDD[(_, Foo)]]
 
-    val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
-    val result = Await.result(
-      inputs(Result).map {
-        _.map {
-          case (_, foo: Foo) => foo.id.get
-        }.collect.toSeq.sorted
-      }, Duration.Inf)
+      val terminators = mutable.Set.empty[Future[Unit]]
+      new TestOutputDriver(sc, hadoopConf, Future.successful(foos), terminators, path).execute()
+      Await.result(Future.sequence(terminators), Duration.Inf)
 
-    assert(result === (0 until 10))
+      val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
+      val result = Await.result(
+        inputs(Result).map {
+          _.map {
+            case (_, foo: Foo) => foo.id.get
+          }.collect.toSeq.sorted
+        }, Duration.Inf)
+
+      assert(result === (0 until 10))
+    }
+
+    it should s"output and input multiple prevs: ${conf}" in {
+      val tmpDir = createTempDirectoryForEach("test-").toFile
+      val path = new File(tmpDir, s"output-${EXPR_EXECUTION_ID}").getAbsolutePath
+
+      val foos1 = sc.parallelize(0 until 5, numSlices).map(Foo.intToFoo).asInstanceOf[RDD[(_, Foo)]]
+      val foos2 = sc.parallelize(5 until 10, numSlices).map(Foo.intToFoo).asInstanceOf[RDD[(_, Foo)]]
+
+      val terminators = mutable.Set.empty[Future[Unit]]
+      new TestOutputDriver(
+        sc,
+        hadoopConf,
+        Seq(Future.successful(foos1), Future.successful(foos2)),
+        terminators,
+        path).execute()
+      Await.result(Future.sequence(terminators), Duration.Inf)
+
+      val inputs = new TestInputDriver(sc, hadoopConf, path).execute()
+      val result = Await.result(
+        inputs(Result).map {
+          _.map {
+            case (_, foo: Foo) => foo.id.get
+          }.collect.toSeq.sorted
+        }, Duration.Inf)
+
+      assert(result === (0 until 10))
+    }
+  }
+}
+
+@RunWith(classOf[JUnitRunner])
+class InputOutputDriverWithParallelismSpecTest extends InputOutputDriverWithParallelismSpec
+
+class InputOutputDriverWithParallelismSpec extends InputOutputDriverSpec {
+
+  override def configure(conf: SparkConf): SparkConf = {
+    conf.set("spark.default.parallelism", 8.toString)
   }
 }
 
@@ -117,10 +160,17 @@ object InputOutputDriverSpec {
   class TestOutputDriver(
     @transient sc: SparkContext,
     @transient hadoopConf: Broadcast[Configuration],
-    @transient input: Future[RDD[(_, Foo)]],
+    @transient inputs: Seq[Future[RDD[(_, Foo)]]],
     @transient terminators: mutable.Set[Future[Unit]],
     val path: String)
-    extends OutputDriver[Foo](sc, hadoopConf)(Seq(input), terminators) {
+    extends OutputDriver[Foo](sc, hadoopConf)(inputs, terminators) {
+
+    def this(
+      sc: SparkContext,
+      hadoopConf: Broadcast[Configuration],
+      input: Future[RDD[(_, Foo)]],
+      terminators: mutable.Set[Future[Unit]],
+      path: String) = this(sc, hadoopConf, Seq(input), terminators, path)
 
     override def label = "TestOutput"
   }
@@ -163,5 +213,4 @@ object InputOutputDriverSpec {
       (fragment, outputs)
     }
   }
-
 }
