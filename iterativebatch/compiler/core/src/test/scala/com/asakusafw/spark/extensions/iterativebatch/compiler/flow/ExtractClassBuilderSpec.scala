@@ -335,27 +335,16 @@ object ExtractClassBuilderSpec {
 
   object Foo {
 
-    val intToFoo = { rc: RoundContext =>
+    def intToFoo(rc: RoundContext): Int => (_, Foo) = {
 
       val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
       val round = stageInfo.getBatchArguments()("round").toInt
 
-      new Function1[Int, (NullWritable, Foo)] with Serializable {
+      lazy val foo = new Foo()
 
-        @transient
-        private[this] var f: Foo = _
-
-        private[this] def foo: Foo = {
-          if (f == null) {
-            f = new Foo()
-          }
-          f
-        }
-
-        override def apply(i: Int): (NullWritable, Foo) = {
-          foo.id.modify(100 * round + i)
-          (NullWritable.get, foo)
-        }
+      { i =>
+        foo.id.modify(100 * round + i)
+        (NullWritable.get, foo)
       }
     }
   }
@@ -408,9 +397,9 @@ object ExtractClassBuilderSpec {
 
   class ExtractOperator {
 
-    private[this] val bar = new Bar()
+    private val bar = new Bar()
 
-    private[this] val n = new N
+    private val n = new N()
 
     @ExtractOp
     def extract(

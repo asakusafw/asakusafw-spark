@@ -161,29 +161,19 @@ object AggregateSpec {
 
   object Foo {
 
-    val intToFoo = { rc: RoundContext =>
+    def intToFoo(rc: RoundContext): Int => (_, Foo) = {
 
       val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
       val round = stageInfo.getBatchArguments()("round").toInt
 
-      new Function1[Int, (ShuffleKey, Foo)] with Serializable {
+      lazy val foo = new Foo()
 
-        @transient var f: Foo = _
-
-        def foo: Foo = {
-          if (f == null) {
-            f = new Foo()
-          }
-          f
-        }
-
-        override def apply(i: Int): (ShuffleKey, Foo) = {
-          foo.id.modify(100 * round + (i % 2))
-          foo.price.modify(100 * round + i * 100)
-          val shuffleKey = new ShuffleKey(
-            WritableSerDe.serialize(foo.id), WritableSerDe.serialize(foo.price))
-          (shuffleKey, foo)
-        }
+      { i =>
+        foo.id.modify(100 * round + (i % 2))
+        foo.price.modify(100 * round + i * 100)
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(foo.id), WritableSerDe.serialize(foo.price))
+        (shuffleKey, foo)
       }
     }
   }
@@ -308,14 +298,7 @@ object AggregateSpec {
         WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
-      @transient var f: Foo = _
-
-      def foo = {
-        if (f == null) {
-          f = new Foo()
-        }
-        f
-      }
+      lazy val foo = new Foo()
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
         WritableSerDe.deserialize(value, foo)

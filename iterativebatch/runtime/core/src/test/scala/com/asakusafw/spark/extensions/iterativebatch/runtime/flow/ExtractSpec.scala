@@ -170,27 +170,16 @@ object ExtractSpec {
 
   object Foo {
 
-    val intToFoo = { rc: RoundContext =>
+    def intToFoo(rc: RoundContext): Int => (_, Foo) = {
 
       val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
       val round = stageInfo.getBatchArguments()("round").toInt
 
-      new Function1[Int, (NullWritable, Foo)] with Serializable {
+      lazy val foo = new Foo()
 
-        @transient
-        private[this] var f: Foo = _
-
-        private[this] def foo: Foo = {
-          if (f == null) {
-            f = new Foo()
-          }
-          f
-        }
-
-        override def apply(i: Int): (NullWritable, Foo) = {
-          foo.id.modify(100 * round + i)
-          (NullWritable.get, foo)
-        }
+      { i =>
+        foo.id.modify(100 * round + i)
+        (NullWritable.get, foo)
       }
     }
   }
@@ -220,28 +209,17 @@ object ExtractSpec {
 
   object Bar {
 
-    val intToBar = { rc: RoundContext =>
+    def intToBar(rc: RoundContext): Int => (_, Bar) = {
 
       val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
       val round = stageInfo.getBatchArguments()("round").toInt
 
-      new Function1[Int, (NullWritable, Bar)] with Serializable {
+      lazy val bar = new Bar()
 
-        @transient
-        private[this] var b: Bar = _
-
-        private[this] def bar: Bar = {
-          if (b == null) {
-            b = new Bar()
-          }
-          b
-        }
-
-        override def apply(i: Int): (NullWritable, Bar) = {
-          bar.id.modify(100 * round + (i % 5))
-          bar.ord.modify(100 * round + i)
-          (NullWritable.get, bar)
-        }
+      { i =>
+        bar.id.modify(100 * round + (i % 5))
+        bar.ord.modify(100 * round + i)
+        (NullWritable.get, bar)
       }
     }
   }
@@ -310,15 +288,7 @@ object ExtractSpec {
         WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
-      @transient
-      private[this] var f: Foo = _
-
-      private[this] def foo = {
-        if (f == null) {
-          f = new Foo()
-        }
-        f
-      }
+      lazy val foo = new Foo()
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
         WritableSerDe.deserialize(value, foo)
@@ -387,15 +357,7 @@ object ExtractSpec {
         WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
-      @transient
-      private[this] var b: Bar = _
-
-      private[this] def bar = {
-        if (b == null) {
-          b = new Bar()
-        }
-        b
-      }
+      lazy val bar = new Bar()
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
         WritableSerDe.deserialize(value, bar)

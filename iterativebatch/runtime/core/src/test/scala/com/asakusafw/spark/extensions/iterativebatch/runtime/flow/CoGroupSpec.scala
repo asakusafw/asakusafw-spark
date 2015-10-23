@@ -59,11 +59,7 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
     val bars =
       new ParallelCollectionSource(BarInput, (0 until 100))("input")
-        .flatMapWithRoundContext(BarInput) {
-          rc =>
-            i: Int =>
-              (0 until i).iterator.map(Bar.intToBar(rc)(i, _))
-        }
+        .flatMapWithRoundContext(BarInput)(Bar.intToBars)
     val barOrd = new Bar.SortOrdering()
 
     val grouping = new GroupingOrdering()
@@ -162,29 +158,19 @@ object CoGroupSpec {
 
   object Foo {
 
-    val intToFoo = { rc: RoundContext =>
+    def intToFoo(rc: RoundContext): Int => (_, Foo) = {
 
       val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
       val round = stageInfo.getBatchArguments()("round").toInt
 
-      new Function1[Int, (ShuffleKey, Foo)] with Serializable {
+      lazy val foo = new Foo()
 
-        @transient var f: Foo = _
-
-        def foo: Foo = {
-          if (f == null) {
-            f = new Foo()
-          }
-          f
-        }
-
-        override def apply(i: Int): (ShuffleKey, Foo) = {
-          foo.id.modify(100 * round + i)
-          val shuffleKey = new ShuffleKey(
-            WritableSerDe.serialize(foo.id),
-            WritableSerDe.serialize(new BooleanOption().modify(i % 3 == 0)))
-          (shuffleKey, foo)
-        }
+      { i =>
+        foo.id.modify(100 * round + i)
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(foo.id),
+          WritableSerDe.serialize(new BooleanOption().modify(i % 3 == 0)))
+        (shuffleKey, foo)
       }
     }
 
@@ -228,23 +214,15 @@ object CoGroupSpec {
 
   object Bar {
 
-    val intToBar = { rc: RoundContext =>
+    def intToBars(rc: RoundContext): Int => Iterator[(_, Bar)] = {
 
       val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
       val round = stageInfo.getBatchArguments()("round").toInt
 
-      new Function2[Int, Int, (ShuffleKey, Bar)] with Serializable {
+      lazy val bar = new Bar()
 
-        @transient var b: Bar = _
-
-        def bar: Bar = {
-          if (b == null) {
-            b = new Bar()
-          }
-          b
-        }
-
-        override def apply(i: Int, j: Int): (ShuffleKey, Bar) = {
+      { i =>
+        (0 until i).iterator.map { j =>
           bar.id.modify(100 * round + j)
           bar.fooId.modify(100 * round + i)
           val shuffleKey = new ShuffleKey(
@@ -302,23 +280,8 @@ object CoGroupSpec {
       WritableSerDe.serialize(value.asInstanceOf[Writable])
     }
 
-    @transient var f: Foo = _
-
-    def foo = {
-      if (f == null) {
-        f = new Foo()
-      }
-      f
-    }
-
-    @transient var b: Bar = _
-
-    def bar = {
-      if (b == null) {
-        b = new Bar()
-      }
-      b
-    }
+    lazy val foo = new Foo()
+    lazy val bar = new Bar()
 
     override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
       branch match {

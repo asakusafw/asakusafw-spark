@@ -317,30 +317,20 @@ object AggregateClassBuilderSpec {
 
   object Foo {
 
-    val intToFoo = { rc: RoundContext =>
+    def intToFoo(rc: RoundContext): Int => (_, Foo) = {
 
       val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
       val round = stageInfo.getBatchArguments()("round").toInt
 
-      new Function1[Int, (ShuffleKey, Foo)] with Serializable {
+      lazy val foo = new Foo()
 
-        @transient var f: Foo = _
-
-        def foo: Foo = {
-          if (f == null) {
-            f = new Foo()
-          }
-          f
-        }
-
-        override def apply(i: Int): (ShuffleKey, Foo) = {
-          foo.i.modify(100 * round + (i % 2))
-          foo.sum.modify(100 * round + i * 100)
-          val shuffleKey = new ShuffleKey(
-            WritableSerDe.serialize(foo.i),
-            Array.emptyByteArray)
-          (shuffleKey, foo)
-        }
+      { i =>
+        foo.i.modify(100 * round + (i % 2))
+        foo.sum.modify(100 * round + i * 100)
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(foo.i),
+          Array.emptyByteArray)
+        (shuffleKey, foo)
       }
     }
 
