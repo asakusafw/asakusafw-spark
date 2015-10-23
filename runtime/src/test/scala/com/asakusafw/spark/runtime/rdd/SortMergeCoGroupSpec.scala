@@ -50,7 +50,7 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkForAll {
         .setKeyOrdering(ord3)
 
     val grouping = new GroupingOrdering
-    val cogrouped = smcogroup(
+    val cogrouped = sc.smcogroup(
       Seq(
         (rdd1.asInstanceOf[RDD[((String, Int), Any)]], None),
         (rdd2.asInstanceOf[RDD[((String, Int), Any)]], Some(implicitly[Ordering[(String, Int)]])),
@@ -77,7 +77,7 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkForAll {
 
     val part = new GroupingPartitioner(2)
     val grouping = new GroupingOrdering
-    val cogrouped = smcogroup(
+    val cogrouped = sc.smcogroup(
       Seq((rdd.asInstanceOf[RDD[((String, Int), Any)]], None)),
       part,
       grouping)
@@ -91,6 +91,16 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkForAll {
         assert(actualValues.size === 1)
         assert(actualValues(0) === Seq(k))
     }
+  }
+
+  it should "smcogroup empty rdds" in {
+    val part = new GroupingPartitioner(2)
+    val grouping = new GroupingOrdering
+    val cogrouped = sc.smcogroup(
+      Seq.empty,
+      part,
+      grouping)
+    assert(cogrouped.collect === Array.empty)
   }
 }
 

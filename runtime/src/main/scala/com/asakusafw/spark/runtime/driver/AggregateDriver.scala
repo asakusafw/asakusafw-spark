@@ -50,7 +50,7 @@ abstract class AggregateDriver[V, C](
         val aggregated = {
           if (aggregation.mapSideCombine) {
             val part = Some(partitioner)
-            confluent(
+            sc.confluent(
               prevs.map { prev =>
                 if (prev.partitioner == part) {
                   prev.asInstanceOf[RDD[(ShuffleKey, C)]]
@@ -70,7 +70,7 @@ abstract class AggregateDriver[V, C](
                 new InterruptibleIterator(context, combiner.iterator)
               }, preservesPartitioning = true)
           } else {
-            confluent(prevs, partitioner, sort)
+            sc.confluent(prevs, partitioner, sort)
               .mapPartitions({ iter =>
                 val combiner = aggregation.valueCombiner
                 combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })

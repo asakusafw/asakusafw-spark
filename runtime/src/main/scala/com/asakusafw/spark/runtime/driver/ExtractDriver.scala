@@ -44,7 +44,7 @@ abstract class ExtractDriver[T](
         Future.sequence(prevs).map { prevs =>
           val part = Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*)
           val (unioning, coalescing) = prevs.partition(_.partitions.size < part.numPartitions)
-          val coalesced = zipPartitions(
+          val coalesced = sc.zipPartitions(
             coalescing.map { prev =>
               if (prev.partitions.size == part.numPartitions) {
                 prev
