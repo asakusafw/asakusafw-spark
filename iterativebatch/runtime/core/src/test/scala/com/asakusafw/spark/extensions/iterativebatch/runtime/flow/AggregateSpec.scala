@@ -82,7 +82,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
         val result = Await.result(
           aggregate.getOrCompute(rc).apply(Result).map {
             _.map {
-              case (_, foo: Foo) => (foo.id.get, foo.price.get)
+              case (_, foo: Foo) => (foo.id.get, foo.sum.get)
             }.collect.toSeq.sortBy(_._1)
           }, Duration.Inf)
         assert(result === Seq(
@@ -109,12 +109,12 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val (result1, result2) = Await.result(
         aggregate.getOrCompute(rc).apply(Result1).map {
           _.map {
-            case (_, foo: Foo) => (foo.id.get, foo.price.get)
+            case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
         }.zip {
           aggregate.getOrCompute(rc).apply(Result2).map {
             _.map {
-              case (_, foo: Foo) => foo.price.get
+              case (_, foo: Foo) => foo.sum.get
             }.collect.toSeq
           }
         }, Duration.Inf)
@@ -139,23 +139,23 @@ object AggregateSpec {
   class Foo extends DataModel[Foo] with Writable {
 
     val id = new IntOption()
-    val price = new IntOption()
+    val sum = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
-      price.setNull()
+      sum.setNull()
     }
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
-      price.copyFrom(other.price)
+      sum.copyFrom(other.sum)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
-      price.readFields(in)
+      sum.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
-      price.write(out)
+      sum.write(out)
     }
   }
 
@@ -170,9 +170,9 @@ object AggregateSpec {
 
       { i =>
         foo.id.modify(100 * round + (i % 2))
-        foo.price.modify(100 * round + i * 100)
+        foo.sum.modify(100 * round + i * 100)
         val shuffleKey = new ShuffleKey(
-          WritableSerDe.serialize(foo.id), WritableSerDe.serialize(foo.price))
+          WritableSerDe.serialize(foo.id), WritableSerDe.serialize(foo.sum))
         (shuffleKey, foo)
       }
     }
@@ -191,7 +191,7 @@ object AggregateSpec {
     }
 
     override def mergeValue(combiner: Foo, value: Foo): Foo = {
-      combiner.price.add(value.price)
+      combiner.sum.add(value.sum)
       combiner
     }
 
@@ -201,7 +201,7 @@ object AggregateSpec {
     }
 
     override def mergeCombiners(comb1: Foo, comb2: Foo): Foo = {
-      comb1.price.add(comb2.price)
+      comb1.sum.add(comb2.sum)
       comb1
     }
   }
