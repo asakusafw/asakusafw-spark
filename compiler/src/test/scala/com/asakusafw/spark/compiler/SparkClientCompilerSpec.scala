@@ -109,12 +109,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo", path) {
-          sc.parallelize(0 until 100).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 100).map(Foo.intToFoo)
         }
       }
 
@@ -148,12 +143,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo", path) {
-          sc.parallelize(0 until 100).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 100).map(Foo.intToFoo)
         }
       }
 
@@ -206,12 +196,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo", path) {
-          sc.parallelize(0 until 100).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 100).map(Foo.intToFoo)
         }
       }
 
@@ -251,12 +236,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo", path) {
-          sc.parallelize(0 until 100).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 100).map(Foo.intToFoo)
         }
       }
 
@@ -313,12 +293,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo", path) {
-          sc.parallelize(0 until 100).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 100).map(Foo.intToFoo)
         }
       }
 
@@ -382,29 +357,13 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo1", path) {
-          sc.parallelize(0 until 5).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 5).map(Foo.intToFoo)
         }
         prepareData("foo2", path) {
-          sc.parallelize(5 until 10).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(5 until 10).map(Foo.intToFoo)
         }
         prepareData("bar", path) {
-          sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
-            val bar = new Bar()
-            bar.id.modify(10 + j)
-            bar.fooId.modify(i)
-            bar.bar.modify(s"bar${10 + j}")
-            bar
-          })
+          sc.parallelize(0 until 10).flatMap(Bar.intToBars)
         }
       }
 
@@ -515,29 +474,13 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo1", path) {
-          sc.parallelize(0 until 5).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 5).map(Foo.intToFoo)
         }
         prepareData("foo2", path) {
-          sc.parallelize(5 until 10).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(5 until 10).map(Foo.intToFoo)
         }
         prepareData("bar", path) {
-          sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
-            val bar = new Bar()
-            bar.id.modify(10 + j)
-            bar.fooId.modify(i)
-            bar.bar.modify(s"bar${10 + j}")
-            bar
-          })
+          sc.parallelize(0 until 10).flatMap(Bar.intToBars)
         }
       }
 
@@ -645,29 +588,13 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo1", path) {
-          sc.parallelize(0 until 5).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 5).map(Foo.intToFoo)
         }
         prepareData("foo2", path) {
-          sc.parallelize(5 until 10).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(5 until 10).map(Foo.intToFoo)
         }
         prepareData("bar", path) {
-          sc.parallelize(5 until 15).map { i =>
-            val bar = new Bar()
-            bar.id.modify(10 + i)
-            bar.fooId.modify(i)
-            bar.bar.modify(s"bar${10 + i}")
-            bar
-          }
+          sc.parallelize(5 until 15).map(Bar.intToBar)
         }
       }
 
@@ -746,21 +673,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo", path) {
-          sc.parallelize(0 until 10).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 10).map(Foo.intToFoo)
         }
         prepareData("bar", path) {
-          sc.parallelize(5 until 15).map { i =>
-            val bar = new Bar()
-            bar.id.modify(10 + i)
-            bar.fooId.modify(i)
-            bar.bar.modify(s"bar${10 + i}")
-            bar
-          }
+          sc.parallelize(5 until 15).map(Bar.intToBar)
         }
       }
 
@@ -831,29 +747,13 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo1", path) {
-          sc.parallelize(0 until 5).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 5).map(Foo.intToFoo)
         }
         prepareData("foo2", path) {
-          sc.parallelize(5 until 10).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(5 until 10).map(Foo.intToFoo)
         }
         prepareData("bar", path) {
-          sc.parallelize(5 until 15).map { i =>
-            val bar = new Bar()
-            bar.id.modify(10 + i)
-            bar.fooId.modify(i)
-            bar.bar.modify(s"bar${10 + i}")
-            bar
-          }
+          sc.parallelize(5 until 15).map(Bar.intToBar)
         }
       }
 
@@ -932,21 +832,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo", path) {
-          sc.parallelize(0 until 10).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 10).map(Foo.intToFoo)
         }
         prepareData("bar", path) {
-          sc.parallelize(5 until 15).map { i =>
-            val bar = new Bar()
-            bar.id.modify(10 + i)
-            bar.fooId.modify(i)
-            bar.bar.modify(s"bar${10 + i}")
-            bar
-          }
+          sc.parallelize(5 until 15).map(Bar.intToBar)
         }
       }
 
@@ -1017,12 +906,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("foo", path) {
-          sc.parallelize(0 until 10).map { i =>
-            val foo = new Foo()
-            foo.id.modify(i)
-            foo.foo.modify(s"foo${i}")
-            foo
-          }
+          sc.parallelize(0 until 10).map(Foo.intToFoo)
         }
       }
 
@@ -1084,20 +968,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("baz1", path) {
-          sc.parallelize(0 until 50).map { i =>
-            val baz = new Baz()
-            baz.id.modify(i % 2)
-            baz.n.modify(100 * i)
-            baz
-          }
+          sc.parallelize(0 until 50).map(Baz.intToBaz)
         }
         prepareData("baz2", path) {
-          sc.parallelize(50 until 100).map { i =>
-            val baz = new Baz()
-            baz.id.modify(i % 2)
-            baz.n.modify(100 * i)
-            baz
-          }
+          sc.parallelize(50 until 100).map(Baz.intToBaz)
         }
       }
 
@@ -1156,20 +1030,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("baz1", path) {
-          sc.parallelize(0 until 50).map { i =>
-            val baz = new Baz()
-            baz.id.modify(i % 2)
-            baz.n.modify(100 * i)
-            baz
-          }
+          sc.parallelize(0 until 50).map(Baz.intToBaz)
         }
         prepareData("baz2", path) {
-          sc.parallelize(50 until 100).map { i =>
-            val baz = new Baz()
-            baz.id.modify(i % 2)
-            baz.n.modify(100 * i)
-            baz
-          }
+          sc.parallelize(50 until 100).map(Baz.intToBaz)
         }
       }
 
@@ -1225,20 +1089,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("baz1", path) {
-          sc.parallelize(0 until 500).map { i =>
-            val baz = new Baz()
-            baz.id.modify(i % 2)
-            baz.n.modify(100 * i)
-            baz
-          }
+          sc.parallelize(0 until 500).map(Baz.intToBaz)
         }
         prepareData("baz2", path) {
-          sc.parallelize(500 until 1000).map { i =>
-            val baz = new Baz()
-            baz.id.modify(i % 2)
-            baz.n.modify(100 * i)
-            baz
-          }
+          sc.parallelize(500 until 1000).map(Baz.intToBaz)
         }
       }
 
@@ -1303,20 +1157,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
       spark { implicit sc =>
         prepareData("baz1", path) {
-          sc.parallelize(0 until 500).map { i =>
-            val baz = new Baz()
-            baz.id.modify(i % 2)
-            baz.n.modify(100 * i)
-            baz
-          }
+          sc.parallelize(0 until 500).map(Baz.intToBaz)
         }
         prepareData("baz2", path) {
-          sc.parallelize(500 until 1000).map { i =>
-            val baz = new Baz()
-            baz.id.modify(i % 2)
-            baz.n.modify(100 * i)
-            baz
-          }
+          sc.parallelize(500 until 1000).map(Baz.intToBaz)
         }
       }
 
@@ -1474,6 +1318,20 @@ object SparkClientCompilerSpec {
     def getFooOption: StringOption = foo
   }
 
+  object Foo {
+
+    def intToFoo: Int => Foo = {
+
+      lazy val foo = new Foo()
+
+      { i =>
+        foo.id.modify(i)
+        foo.foo.modify(s"foo${i}")
+        foo
+      }
+    }
+  }
+
   class Bar extends DataModel[Bar] with Writable {
 
     val id = new IntOption()
@@ -1504,6 +1362,35 @@ object SparkClientCompilerSpec {
     def getIdOption: IntOption = id
     def getFooIdOption: IntOption = fooId
     def getBarOption: StringOption = bar
+  }
+
+  object Bar {
+
+    def intToBar: Int => Bar = {
+
+      lazy val bar = new Bar()
+
+      { i =>
+        bar.id.modify(10 + i)
+        bar.fooId.modify(i)
+        bar.bar.modify(s"bar${10 + i}")
+        bar
+      }
+    }
+
+    def intToBars: Int => Iterator[Bar] = {
+
+      lazy val bar = new Bar()
+
+      { i =>
+        (0 until i).iterator.map { j =>
+          bar.id.modify(10 + j)
+          bar.fooId.modify(i)
+          bar.bar.modify(s"bar${10 + j}")
+          bar
+        }
+      }
+    }
   }
 
   @Joined(terms = Array(
@@ -1569,6 +1456,20 @@ object SparkClientCompilerSpec {
 
     def getIdOption: IntOption = id
     def getNOption: IntOption = n
+  }
+
+  object Baz {
+
+    def intToBaz: Int => Baz = {
+
+      lazy val baz = new Baz()
+
+      { i =>
+        baz.id.modify(i % 2)
+        baz.n.modify(100 * i)
+        baz
+      }
+    }
   }
 
   @Summarized(term = new Summarized.Term(

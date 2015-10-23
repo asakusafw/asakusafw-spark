@@ -131,10 +131,14 @@ class ExtractDriverClassBuilderSpec
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[ExtractDriver[_]])
 
-      val foos = sc.parallelize(0 until 10).map { i =>
-        val foo = new Foo()
-        foo.id.modify(i)
-        ((), foo)
+      val foos = sc.parallelize(0 until 10).map {
+
+        lazy val foo = new Foo()
+
+        { i =>
+          foo.id.modify(i)
+          ((), foo)
+        }
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -248,10 +252,14 @@ class ExtractDriverClassBuilderSpec
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[ExtractDriver[_]])
 
-      val foos = sc.parallelize(0 until 10).map { i =>
-        val foo = new Foo()
-        foo.id.modify(i)
-        ((), foo)
+      val foos = sc.parallelize(0 until 10).map {
+
+        lazy val foo = new Foo()
+
+        { i =>
+          foo.id.modify(i)
+          ((), foo)
+        }
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -360,9 +368,9 @@ object ExtractDriverClassBuilderSpec {
 
   class ExtractOperator {
 
-    private[this] val bar = new Bar()
+    private val bar = new Bar()
 
-    private[this] val n = new N
+    private val n = new N()
 
     @Extract
     def extract(

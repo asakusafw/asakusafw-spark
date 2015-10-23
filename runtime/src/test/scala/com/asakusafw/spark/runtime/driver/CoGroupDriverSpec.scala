@@ -59,7 +59,7 @@ class CoGroupDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEach
       val fooOrd = new Foo.SortOrdering()
 
       val bars = sc.parallelize(0 until 100, numSlices)
-        .flatMap(i => (0 until i).iterator.map(Bar.intToBar(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
+        .flatMap(Bar.intToBars).asInstanceOf[RDD[(ShuffleKey, _)]]
       val barOrd = new Bar.SortOrdering()
 
       val grouping = new GroupingOrdering()
@@ -130,9 +130,9 @@ class CoGroupDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEach
       val fooOrd = new Foo.SortOrdering()
 
       val bars1 = sc.parallelize(0 until 50, numSlices)
-        .flatMap(i => (0 until i).iterator.map(Bar.intToBar(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
+        .flatMap(Bar.intToBars).asInstanceOf[RDD[(ShuffleKey, _)]]
       val bars2 = sc.parallelize(50 until 100, numSlices)
-        .flatMap(i => (0 until i).iterator.map(Bar.intToBar(i, _))).asInstanceOf[RDD[(ShuffleKey, _)]]
+        .flatMap(Bar.intToBars).asInstanceOf[RDD[(ShuffleKey, _)]]
       val barOrd = new Bar.SortOrdering()
 
       val grouping = new GroupingOrdering()
@@ -238,18 +238,11 @@ object CoGroupDriverSpec {
 
   object Foo {
 
-    def intToFoo = new Function1[Int, (ShuffleKey, Foo)] with Serializable {
+    def intToFoo: Int => (ShuffleKey, Foo) = {
 
-      @transient var f: Foo = _
+      lazy val foo = new Foo()
 
-      def foo: Foo = {
-        if (f == null) {
-          f = new Foo()
-        }
-        f
-      }
-
-      override def apply(i: Int): (ShuffleKey, Foo) = {
+      { i =>
         foo.id.modify(i)
         val shuffleKey = new ShuffleKey(
           WritableSerDe.serialize(foo.id),
@@ -298,24 +291,19 @@ object CoGroupDriverSpec {
 
   object Bar {
 
-    def intToBar = new Function2[Int, Int, (ShuffleKey, Bar)] with Serializable {
+    def intToBars: Int => Iterator[(ShuffleKey, Bar)] = {
 
-      @transient var b: Bar = _
+      lazy val bar = new Bar()
 
-      def bar: Bar = {
-        if (b == null) {
-          b = new Bar()
+      { i =>
+        (0 until i).iterator.map { j =>
+          bar.id.modify(100 + j)
+          bar.fooId.modify(i)
+          val shuffleKey = new ShuffleKey(
+            WritableSerDe.serialize(bar.fooId),
+            WritableSerDe.serialize(new IntOption().modify(bar.id.toString.hashCode)))
+          (shuffleKey, bar)
         }
-        b
-      }
-
-      override def apply(i: Int, j: Int): (ShuffleKey, Bar) = {
-        bar.id.modify(100 + j)
-        bar.fooId.modify(i)
-        val shuffleKey = new ShuffleKey(
-          WritableSerDe.serialize(bar.fooId),
-          WritableSerDe.serialize(new IntOption().modify(bar.id.toString.hashCode)))
-        (shuffleKey, bar)
       }
     }
 
@@ -365,23 +353,8 @@ object CoGroupDriverSpec {
       WritableSerDe.serialize(value.asInstanceOf[Writable])
     }
 
-    @transient var f: Foo = _
-
-    def foo = {
-      if (f == null) {
-        f = new Foo()
-      }
-      f
-    }
-
-    @transient var b: Bar = _
-
-    def bar = {
-      if (b == null) {
-        b = new Bar()
-      }
-      b
-    }
+    lazy val foo = new Foo()
+    lazy val bar = new Bar()
 
     override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
       branch match {

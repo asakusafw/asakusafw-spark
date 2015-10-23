@@ -139,16 +139,11 @@ object InputOutputDriverSpec {
 
   object Foo {
 
-    def intToFoo = new Function1[Int, (_, Foo)] with Serializable {
+    def intToFoo: Int => (_, Foo) = {
 
-      @transient var f: Foo = _
-      def foo: Foo = {
-        if (f == null) {
-          f = new Foo()
-        }
-        f
-      }
-      override def apply(i: Int): (_, Foo) = {
+      lazy val foo = new Foo()
+
+      { i =>
         foo.id.modify(i)
         (null, foo)
       }

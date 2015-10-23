@@ -111,10 +111,14 @@ class InputOutputDriverClassBuilderSpec
     outputCompilerContext.addClass(outputCompilerContext.broadcastIds)
     val outputDriverCls = classServer.loadClass(outputDriverType).asSubclass(classOf[OutputDriver[Foo]])
 
-    val foos = sc.parallelize(0 until 10).map { i =>
-      val foo = new Foo()
-      foo.id.modify(i)
-      (foo, foo)
+    val foos = sc.parallelize(0 until 10).map {
+
+      lazy val foo = new Foo()
+
+      { i =>
+        foo.id.modify(i)
+        (foo, foo)
+      }
     }
     val terminators = mutable.Set.empty[Future[Unit]]
     val outputDriver = outputDriverCls.getConstructor(

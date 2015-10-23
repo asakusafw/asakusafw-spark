@@ -118,12 +118,16 @@ class AggregateDriverClassBuilderSpec
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Foo, Foo]])
 
-      val foos = sc.parallelize(0 until 10).map { i =>
-        val foo = new Foo()
-        foo.i.modify(i % 2)
-        foo.sum.modify(i)
-        val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(foo.i), Array.emptyByteArray), foo)
+      val foos = sc.parallelize(0 until 10).map {
+
+        lazy val foo = new Foo()
+
+        { i =>
+          foo.i.modify(i % 2)
+          foo.sum.modify(i)
+          val serde = new WritableSerDe()
+          (new ShuffleKey(serde.serialize(foo.i), Array.emptyByteArray), foo)
+        }
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -213,11 +217,15 @@ class AggregateDriverClassBuilderSpec
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Foo, Foo]])
 
-      val foos = sc.parallelize(0 until 10).map { i =>
-        val foo = new Foo()
-        foo.i.modify(i % 2)
-        foo.sum.modify(i)
-        (new ShuffleKey(Array.emptyByteArray, Array.emptyByteArray), foo)
+      val foos = sc.parallelize(0 until 10).map {
+
+        lazy val foo = new Foo()
+
+        { i =>
+          foo.i.modify(i % 2)
+          foo.sum.modify(i)
+          (new ShuffleKey(Array.emptyByteArray, Array.emptyByteArray), foo)
+        }
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],

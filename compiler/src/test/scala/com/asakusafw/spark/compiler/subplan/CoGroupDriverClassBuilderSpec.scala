@@ -163,20 +163,30 @@ class CoGroupDriverClassBuilderSpec
       val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
       val fooOrd = new Foo.SortOrdering()
-      val foos = sc.parallelize(0 until 10).map { i =>
-        val foo = new Foo()
-        foo.id.modify(i)
-        val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(foo.id), serde.serialize(new BooleanOption().modify(foo.id.get % 3 == 0))), foo)
+      val foos = sc.parallelize(0 until 10).map {
+
+        lazy val foo = new Foo()
+
+        { i =>
+          foo.id.modify(i)
+          val serde = new WritableSerDe()
+          (new ShuffleKey(serde.serialize(foo.id), serde.serialize(new BooleanOption().modify(foo.id.get % 3 == 0))), foo)
+        }
       }
       val barOrd = new Bar.SortOrdering()
-      val bars = sc.parallelize(0 until 10).flatMap(i => (0 until i).map { j =>
-        val bar = new Bar()
-        bar.id.modify(10 + j)
-        bar.fooId.modify(i)
-        val serde = new WritableSerDe()
-        (new ShuffleKey(serde.serialize(bar.fooId), serde.serialize(new IntOption().modify(bar.id.toString.hashCode))), bar)
-      })
+      val bars = sc.parallelize(0 until 10).flatMap {
+
+        lazy val bar = new Bar()
+
+        { i =>
+          (0 until i).iterator.map { j =>
+            bar.id.modify(10 + j)
+            bar.fooId.modify(i)
+            val serde = new WritableSerDe()
+            (new ShuffleKey(serde.serialize(bar.fooId), serde.serialize(new IntOption().modify(bar.id.toString.hashCode))), bar)
+          }
+        }
+      }
       val grouping = new GroupingOrdering()
       val part = new HashPartitioner(2)
       val driver = cls.getConstructor(
