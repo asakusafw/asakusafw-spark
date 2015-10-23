@@ -61,7 +61,7 @@ abstract class SparkClient {
       sc.clearCallSite()
       sc.setCallSite(label)
 
-      val results = smcogroup(
+      val results = sc.smcogroup(
         Seq((p.asInstanceOf[RDD[(ShuffleKey, _)]], sort)),
         part,
         grouping)

@@ -29,7 +29,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
@@ -55,18 +55,50 @@ class AggregateDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEa
   behavior of classOf[AggregateDriver[_, _]].getSimpleName
 
   for {
+    numSlices <- Seq(8, 4)
     mapSideCombine <- Seq(true, false)
   } {
-    it should s"aggregate with map-side combine = ${mapSideCombine}" in {
+    val conf = s"[numSlices = ${numSlices}, combine = ${mapSideCombine}] "
+
+    it should s"aggregate: ${conf}" in {
       import TotalAggregate._
 
-      val foos = sc.parallelize(0 until 10).map(Foo.intToFoo)
+      val foos = sc.parallelize(0 until 10, numSlices).map(Foo.intToFoo)
 
       val partitioner = new HashPartitioner(2)
       val aggregation = new TestAggregation(mapSideCombine)
 
       val driver = new TestAggregateDriver(
         sc, hadoopConf, Future.successful(foos),
+        Option(new SortOrdering()),
+        partitioner,
+        aggregation)
+
+      val outputs = driver.execute()
+      val result = Await.result(
+        outputs(Result).map {
+          _.map {
+            case (_, foo: Foo) => (foo.id.get, foo.sum.get)
+          }.collect.toSeq.sortBy(_._1)
+        }, Duration.Inf)
+
+      assert(result ===
+        Seq((0, (0 until 10 by 2).map(_ * 100).sum), (1, (1 until 10 by 2).map(_ * 100).sum)))
+    }
+
+    it should s"aggregate multiple prevs: ${conf}" in {
+      import TotalAggregate._
+
+      val foos1 = sc.parallelize(0 until 5, numSlices).map(Foo.intToFoo)
+      val foos2 = sc.parallelize(5 until 10, numSlices).map(Foo.intToFoo)
+
+      val partitioner = new HashPartitioner(2)
+      val aggregation = new TestAggregation(mapSideCombine)
+
+      val driver = new TestAggregateDriver(
+        sc,
+        hadoopConf,
+        Seq(Future.successful(foos1), Future.successful(foos2)),
         Option(new SortOrdering()),
         partitioner,
         aggregation)
@@ -112,6 +144,16 @@ class AggregateDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEa
         (1, (0 until 10).filter(_ % 2 == 1).filter(_ < 5).map(_ * 100).sum),
         (1, (0 until 10).filter(_ % 2 == 1).filterNot(_ < 5).map(_ * 100).sum)))
     assert(result2 === (0 until 10).map(100 * _))
+  }
+}
+
+@RunWith(classOf[JUnitRunner])
+class AggregateDriverWithParallelismSpecTest extends AggregateDriverWithParallelismSpec
+
+class AggregateDriverWithParallelismSpec extends AggregateDriverSpec {
+
+  override def configure(conf: SparkConf): SparkConf = {
+    conf.set("spark.default.parallelism", 8.toString)
   }
 }
 
@@ -198,11 +240,20 @@ object AggregateDriverSpec {
     class TestAggregateDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: Future[RDD[(ShuffleKey, Foo)]],
+      @transient prevs: Seq[Future[RDD[(ShuffleKey, Foo)]]],
       @transient sort: Option[Ordering[ShuffleKey]],
       @transient part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Foo, Foo])
-      extends AggregateDriver[Foo, Foo](sc, hadoopConf)(Seq(prev), sort, part)(Map.empty) {
+      extends AggregateDriver[Foo, Foo](sc, hadoopConf)(prevs, sort, part)(Map.empty) {
+
+      def this(
+        sc: SparkContext,
+        hadoopConf: Broadcast[Configuration],
+        prev: Future[RDD[(ShuffleKey, Foo)]],
+        sort: Option[Ordering[ShuffleKey]],
+        part: Partitioner,
+        aggregation: Aggregation[ShuffleKey, Foo, Foo]) =
+        this(sc, hadoopConf, Seq(prev), sort, part, aggregation)
 
       override def label = "TestAggregation"
 
@@ -260,8 +311,13 @@ object AggregateDriverSpec {
     class TestPartialAggregationExtractDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: Future[RDD[(_, Foo)]])
-      extends ExtractDriver[Foo](sc, hadoopConf)(Seq(prev))(Map.empty) {
+      @transient prevs: Seq[Future[RDD[(_, Foo)]]])
+      extends ExtractDriver[Foo](sc, hadoopConf)(prevs)(Map.empty) {
+
+      def this(
+        sc: SparkContext,
+        hadoopConf: Broadcast[Configuration],
+        prev: Future[RDD[(_, Foo)]]) = this(sc, hadoopConf, Seq(prev))
 
       override def label = "TestPartialAggregation"
 

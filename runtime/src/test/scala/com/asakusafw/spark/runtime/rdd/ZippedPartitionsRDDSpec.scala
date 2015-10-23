@@ -31,7 +31,7 @@ class ZippedPartitionsRDDSpec extends FlatSpec with SparkForAll {
     val rdd1 = sc.parallelize(0 until 100, 4)
     val rdd2 = sc.parallelize(100 until 200, 4)
     val rdd3 = sc.parallelize(200 until 300, 4)
-    val zipped = zipPartitions(Seq(rdd1, rdd2, rdd3)) {
+    val zipped = sc.zipPartitions(Seq(rdd1, rdd2, rdd3)) {
       case Seq(
         iter1: Iterator[Int] @unchecked,
         iter2: Iterator[Int] @unchecked,
@@ -46,5 +46,13 @@ class ZippedPartitionsRDDSpec extends FlatSpec with SparkForAll {
       } yield {
         i + (h * 100) + (p * 25)
       }))
+  }
+
+  it should "zip empty partitions" in {
+    val zipped = sc.zipPartitions(Seq.empty) { iters =>
+      assert(iters.size === 0)
+      iters.iterator.flatten
+    }
+    assert(zipped.collect === Array.empty)
   }
 }

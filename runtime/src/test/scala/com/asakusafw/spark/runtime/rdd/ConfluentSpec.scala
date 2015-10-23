@@ -45,13 +45,21 @@ class ConfluentSpec extends FlatSpec with SparkForAll {
         sc.parallelize(0 until 100).flatMap(i => Seq(((i.toString, 4), i + 400), ((i.toString, 3), i + 300))), part)
         .setKeyOrdering(ord)
 
-    val confluented = confluent(Seq(rdd1, rdd2, rdd3), part, Some(ord))
+    val confluented = sc.confluent(Seq(rdd1, rdd2, rdd3), part, Some(ord))
     val (part0, part1) = (0 until 100).sortBy(_.toString).partition { i =>
       val part = i.toString.hashCode % 2
       (if (part < 0) part + 2 else part) == 0
     }
     assert(confluented.collect ===
       (part0 ++ part1).flatMap(i => (0 until 5).map(j => ((i.toString, j), i + 100 * j))))
+  }
+
+  it should "confluent empty rdds" in {
+    val part = new GroupingPartitioner(2)
+    val ord = implicitly[Ordering[(String, Int)]]
+
+    val confluented = sc.confluent(Seq.empty, part, Some(ord))
+    assert(confluented.collect === Array.empty)
   }
 
   it should "confluent rdds of mutable values" in {
@@ -79,7 +87,7 @@ class ConfluentSpec extends FlatSpec with SparkForAll {
         .setKeyOrdering(ord)
         .mapPartitions(new Func, preservesPartitioning = true)
 
-    val confluented = confluent(Seq(rdd1, rdd2, rdd3), part, Some(ord))
+    val confluented = sc.confluent(Seq(rdd1, rdd2, rdd3), part, Some(ord))
     val (part0, part1) = (0 until 10).sortBy(_.toString).partition { i =>
       val part = i.toString.hashCode % 2
       (if (part < 0) part + 2 else part) == 0

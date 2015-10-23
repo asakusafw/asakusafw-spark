@@ -28,7 +28,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
@@ -48,85 +48,124 @@ class ExtractDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEach
 
   behavior of classOf[ExtractDriver[_]].getSimpleName
 
-  it should "map simply" in {
-    import Simple._
+  for {
+    numSlices <- Seq(8, 4)
+  } {
+    val conf = s"[numSlices = ${numSlices}]"
 
-    val foos = sc.parallelize(0 until 100).map(Foo.intToFoo)
+    it should s"map simply: ${conf}" in {
+      import Simple._
 
-    val driver = new SimpleExtractDriver(sc, hadoopConf, Future.successful(foos))
+      val foos = sc.parallelize(0 until 100, numSlices).map(Foo.intToFoo)
 
-    val outputs = driver.execute()
+      val driver = new SimpleExtractDriver(sc, hadoopConf, Future.successful(foos))
 
-    val result = Await.result(
-      outputs(Result).map {
-        _.map {
-          case (_, foo: Foo) => foo.id.get
-        }.collect.toSeq
-      }, Duration.Inf)
-    assert(result.size === 100)
-    assert(result === (0 until 100))
-  }
+      val outputs = driver.execute()
 
-  it should "map with branch" in {
-    import Branch._
-
-    val foos = sc.parallelize(0 until 100).map(Foo.intToFoo)
-
-    val driver = new BranchExtractDriver(sc, hadoopConf, Future.successful(foos))
-
-    val outputs = driver.execute()
-
-    val (result1, result2) =
-      Await.result(
-        outputs(Result1).map {
+      val result = Await.result(
+        outputs(Result).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq
-        }.zip {
-          outputs(Result2).map {
+        }, Duration.Inf)
+      assert(result.size === 100)
+      assert(result === (0 until 100))
+    }
+
+    it should s"map multiple prevs: ${conf}" in {
+      import Simple._
+
+      val foos1 = sc.parallelize(0 until 50, numSlices).map(Foo.intToFoo)
+      val foos2 = sc.parallelize(50 until 100, numSlices).map(Foo.intToFoo)
+
+      val driver = new SimpleExtractDriver(
+        sc,
+        hadoopConf,
+        Seq(Future.successful(foos1), Future.successful(foos2)))
+
+      val outputs = driver.execute()
+
+      val result = Await.result(
+        outputs(Result).map {
+          _.map {
+            case (_, foo: Foo) => foo.id.get
+          }.collect.toSeq.sorted
+        }, Duration.Inf)
+      assert(result.size === 100)
+      assert(result === (0 until 100))
+    }
+
+    it should s"map with branch: ${conf}" in {
+      import Branch._
+
+      val foos = sc.parallelize(0 until 100, numSlices).map(Foo.intToFoo)
+
+      val driver = new BranchExtractDriver(sc, hadoopConf, Future.successful(foos))
+
+      val outputs = driver.execute()
+
+      val (result1, result2) =
+        Await.result(
+          outputs(Result1).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
-          }
-        }, Duration.Inf)
+          }.zip {
+            outputs(Result2).map {
+              _.map {
+                case (_, foo: Foo) => foo.id.get
+              }.collect.toSeq
+            }
+          }, Duration.Inf)
 
-    assert(result1.size === 50)
-    assert(result1 === (0 until 100 by 2))
+      assert(result1.size === 50)
+      assert(result1 === (0 until 100 by 2))
 
-    assert(result2.size === 50)
-    assert(result2 === (1 until 100 by 2))
-  }
+      assert(result2.size === 50)
+      assert(result2 === (1 until 100 by 2))
+    }
 
-  it should "map with branch and ordering" in {
-    import BranchAndOrdering._
+    it should s"map with branch and ordering: ${conf}" in {
+      import BranchAndOrdering._
 
-    val foos = sc.parallelize(0 until 100).map(Bar.intToBar)
+      val foos = sc.parallelize(0 until 100, numSlices).map(Bar.intToBar)
 
-    val driver = new BranchAndOrderingExtractDriver(sc, hadoopConf, Future.successful(foos))
+      val driver = new BranchAndOrderingExtractDriver(sc, hadoopConf, Future.successful(foos))
 
-    val outputs = driver.execute()
+      val outputs = driver.execute()
 
-    val (result1, result2) =
-      Await.result(
-        outputs(Result1).map {
-          _.map {
-            case (_, bar: Bar) => (bar.id.get, bar.ord.get)
-          }.collect.toSeq
-        }.zip {
-          outputs(Result2).map {
+      val (result1, result2) =
+        Await.result(
+          outputs(Result1).map {
             _.map {
               case (_, bar: Bar) => (bar.id.get, bar.ord.get)
             }.collect.toSeq
-          }
-        }, Duration.Inf)
+          }.zip {
+            outputs(Result2).map {
+              _.map {
+                case (_, bar: Bar) => (bar.id.get, bar.ord.get)
+              }.collect.toSeq
+            }
+          }, Duration.Inf)
 
-    assert(result1.size === 40)
-    assert(result1.map(_._1) === (0 until 100).map(_ % 5).filter(_ % 3 == 0))
-    assert(result1.map(_._2) === (0 until 100).filter(i => (i % 5) % 3 == 0))
+      assert(result1.size === 40)
+      assert(result1.map(_._1) === (0 until 100).map(_ % 5).filter(_ % 3 == 0))
+      assert(result1.map(_._2) === (0 until 100).filter(i => (i % 5) % 3 == 0))
 
-    assert(result2.size === 60)
-    assert(result2 ===
-      (0 until 100).filterNot(i => (i % 5) % 3 == 0).map(i => (i % 5, i)).sortBy(t => (t._1, -t._2)))
+      assert(result2.size === 60)
+      assert(result2 ===
+        (0 until 100).filterNot(i => (i % 5) % 3 == 0).map(i => (i % 5, i)).sortBy(t => (t._1, -t._2)))
+    }
+  }
+}
+
+@RunWith(classOf[JUnitRunner])
+class ExtractDriverWithParallelismSpecTest extends ExtractDriverWithParallelismSpec
+
+class ExtractDriverWithParallelismSpec extends ExtractDriverSpec {
+
+  override def configure(conf: SparkConf): SparkConf = {
+    conf.set("spark.default.parallelism", 8.toString)
   }
 }
 
@@ -221,8 +260,13 @@ object ExtractDriverSpec {
     class SimpleExtractDriver(
       @transient sc: SparkContext,
       @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: Future[RDD[(_, Foo)]])
-      extends ExtractDriver[Foo](sc, hadoopConf)(Seq(prev))(Map.empty) {
+      @transient prevs: Seq[Future[RDD[(_, Foo)]]])
+      extends ExtractDriver[Foo](sc, hadoopConf)(prevs)(Map.empty) {
+
+      def this(
+        sc: SparkContext,
+        hadoopConf: Broadcast[Configuration],
+        prev: Future[RDD[(_, Foo)]]) = this(sc, hadoopConf, Seq(prev))
 
       override def label = "SimpleMap"
 
