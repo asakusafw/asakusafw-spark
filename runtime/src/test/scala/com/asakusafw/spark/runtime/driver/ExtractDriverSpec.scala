@@ -191,18 +191,11 @@ object ExtractDriverSpec {
 
   object Foo {
 
-    def intToFoo = new Function1[Int, (_, Foo)] with Serializable {
+    def intToFoo: Int => (_, Foo) = {
 
-      @transient var f: Foo = _
+      lazy val foo = new Foo()
 
-      def foo: Foo = {
-        if (f == null) {
-          f = new Foo()
-        }
-        f
-      }
-
-      override def apply(i: Int): (_, Foo) = {
+      { i =>
         foo.id.modify(i)
         (NullWritable.get, foo)
       }
@@ -234,18 +227,11 @@ object ExtractDriverSpec {
 
   object Bar {
 
-    def intToBar = new Function1[Int, (_, Bar)] with Serializable {
+    def intToBar: Int => (_, Bar) = {
 
-      @transient var b: Bar = _
+      lazy val bar = new Bar()
 
-      def bar: Bar = {
-        if (b == null) {
-          b = new Bar()
-        }
-        b
-      }
-
-      override def apply(i: Int): (_, Bar) = {
+      { i =>
         bar.id.modify(i % 5)
         bar.ord.modify(i)
         (NullWritable.get, bar)
@@ -336,14 +322,7 @@ object ExtractDriverSpec {
         WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
-      @transient var f: Foo = _
-
-      def foo = {
-        if (f == null) {
-          f = new Foo()
-        }
-        f
-      }
+      lazy val foo = new Foo()
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
         WritableSerDe.deserialize(value, foo)
@@ -414,14 +393,7 @@ object ExtractDriverSpec {
         WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
-      @transient var b: Bar = _
-
-      def bar = {
-        if (b == null) {
-          b = new Bar()
-        }
-        b
-      }
+      lazy val bar = new Bar()
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
         WritableSerDe.deserialize(value, bar)

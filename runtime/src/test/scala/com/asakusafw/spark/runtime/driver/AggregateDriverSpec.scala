@@ -184,18 +184,11 @@ object AggregateDriverSpec {
 
   object Foo {
 
-    def intToFoo = new Function1[Int, (ShuffleKey, Foo)] with Serializable {
+    def intToFoo: Int => (ShuffleKey, Foo) = {
 
-      @transient var f: Foo = _
+      lazy val foo = new Foo()
 
-      def foo: Foo = {
-        if (f == null) {
-          f = new Foo()
-        }
-        f
-      }
-
-      override def apply(i: Int): (ShuffleKey, Foo) = {
+      { i =>
         foo.id.modify(i % 2)
         foo.sum.modify(i * 100)
         val shuffleKey = new ShuffleKey(
@@ -341,14 +334,7 @@ object AggregateDriverSpec {
         WritableSerDe.serialize(value.asInstanceOf[Writable])
       }
 
-      @transient var f: Foo = _
-
-      def foo = {
-        if (f == null) {
-          f = new Foo()
-        }
-        f
-      }
+      lazy val foo = new Foo()
 
       override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
         WritableSerDe.deserialize(value, foo)

@@ -71,21 +71,21 @@ class ConfluentSpec extends FlatSpec with SparkForAll {
         sc.parallelize(0 until 10).map(i => ((i.toString, 0), i)),
         part)
         .setKeyOrdering(ord)
-        .mapPartitions(new Func, preservesPartitioning = true)
+        .mapPartitions(f, preservesPartitioning = true)
 
     val rdd2: RDD[((String, Int), IntOption)] =
       new ShuffledRDD(
         sc.parallelize(0 until 10).flatMap(i => Seq(((i.toString, 1), i + 10), ((i.toString, 2), i + 20))),
         part)
         .setKeyOrdering(ord)
-        .mapPartitions(new Func, preservesPartitioning = true)
+        .mapPartitions(f, preservesPartitioning = true)
 
     val rdd3: RDD[((String, Int), IntOption)] =
       new ShuffledRDD(
         sc.parallelize(0 until 10).flatMap(i => Seq(((i.toString, 4), i + 40), ((i.toString, 3), i + 30))),
         part)
         .setKeyOrdering(ord)
-        .mapPartitions(new Func, preservesPartitioning = true)
+        .mapPartitions(f, preservesPartitioning = true)
 
     val confluented = sc.confluent(Seq(rdd1, rdd2, rdd3), part, Some(ord))
     val (part0, part1) = (0 until 10).sortBy(_.toString).partition { i =>
@@ -110,16 +110,12 @@ object ConfluentSpec {
     }
   }
 
-  class Func extends Function1[Iterator[((String, Int), Int)], Iterator[((String, Int), IntOption)]] with Serializable {
-    @transient var i: IntOption = _
-    def intOption: IntOption = {
-      if (i == null) {
-        i = new IntOption()
-      }
-      i
-    }
-    override def apply(iter: Iterator[((String, Int), Int)]): Iterator[((String, Int), IntOption)] = {
-      iter.map { value =>
+  def f: Iterator[((String, Int), Int)] => Iterator[((String, Int), IntOption)] = {
+
+    lazy val intOption = new IntOption()
+
+    {
+      _.map { value =>
         intOption.modify(value._2)
         (value._1, intOption)
       }

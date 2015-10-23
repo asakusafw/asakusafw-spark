@@ -49,10 +49,14 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkForAll with HadoopC
   behavior of classOf[ResourceBrokingIterator[_]].getSimpleName
 
   it should "broke resources" in {
-    val foos = sc.parallelize(0 until 10).map { i =>
-      val foo = new Foo()
-      foo.id.modify(i)
-      ((), foo)
+    val foos = sc.parallelize(0 until 10).map {
+
+      lazy val foo = new Foo()
+
+      { i =>
+        foo.id.modify(i)
+        ((), foo)
+      }
     }.asInstanceOf[RDD[(_, Foo)]]
 
     val driver = new TestDriver(sc, hadoopConf, Future.successful(foos))
