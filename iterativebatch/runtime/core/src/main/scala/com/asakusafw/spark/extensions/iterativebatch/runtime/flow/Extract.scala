@@ -51,7 +51,7 @@ abstract class Extract[T](
         Future.sequence(rdds).map { rdds =>
           val part = Partitioner.defaultPartitioner(rdds.head, rdds.tail: _*)
           val (unioning, coalescing) = rdds.partition(_.partitions.size < part.numPartitions)
-          val coalesced = zipPartitions(
+          val coalesced = sc.zipPartitions(
             coalescing.map { prev =>
               if (prev.partitions.size == part.numPartitions) {
                 prev

@@ -43,7 +43,7 @@ class MapBroadcast(
       sc.setCallSite(label)
 
       sc.broadcast(
-        smcogroup(Seq((rdd, sort)), partitioner, group)
+        sc.smcogroup(Seq((rdd, sort)), partitioner, group)
           .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[_]]) }
           .collect()
           .toMap)

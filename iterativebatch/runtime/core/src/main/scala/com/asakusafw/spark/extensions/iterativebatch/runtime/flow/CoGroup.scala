@@ -56,10 +56,10 @@ abstract class CoGroup(
             sc.clearCallSite()
             sc.setCallSite(label)
 
-            val cogrouped = smcogroup[ShuffleKey](
+            val cogrouped = sc.smcogroup[ShuffleKey](
               prevs.map {
                 case (rdds, sort) =>
-                  (confluent[ShuffleKey, Any](rdds, part, sort), sort)
+                  (sc.confluent[ShuffleKey, Any](rdds, part, sort), sort)
               },
               part,
               grouping)
