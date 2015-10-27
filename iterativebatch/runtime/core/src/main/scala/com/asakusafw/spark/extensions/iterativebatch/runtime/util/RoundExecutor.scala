@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.extensions.iterativebatch.runtime
+package com.asakusafw.spark.extensions.iterativebatch.runtime.util
 
 import java.util.concurrent.{ Executors, TimeUnit }
 import java.util.concurrent.locks.{ Condition, Lock, ReentrantReadWriteLock }
@@ -32,22 +32,22 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
 
   require(slots > 0, s"The slots should be greater than 0: [${slots}].")
 
-  def started: Boolean = withLock(readLock)(running || terminating)
+  def started: Boolean = readLock.acquireFor(running || terminating)
 
   private var _running: Boolean = false
-  def running: Boolean = withLock(readLock)(_running)
+  def running: Boolean = readLock.acquireFor(_running)
 
   private var _terminating: Boolean = false
-  def terminating: Boolean = withLock(readLock)(_terminating)
+  def terminating: Boolean = readLock.acquireFor(_terminating)
 
   private var _stopped: Boolean = false
-  def stopped: Boolean = withLock(readLock)(_stopped)
+  def stopped: Boolean = readLock.acquireFor(_stopped)
 
   private val queue = mutable.Queue.empty[C]
-  def queueSize: Int = withLock(readLock)(queue.size)
+  def queueSize: Int = readLock.acquireFor(queue.size)
 
   private val runningRounds = mutable.Set.empty[C]
-  def numRunningRounds: Int = withLock(readLock)(runningRounds.size)
+  def numRunningRounds: Int = readLock.acquireFor(runningRounds.size)
 
   private val (readLock, writeLock) = {
     val lock = new ReentrantReadWriteLock()
@@ -73,7 +73,7 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
 
     @tailrec
     override def run(): Unit = {
-      withLock(writeLock) {
+      writeLock.acquireFor {
         if (running) {
           if (queue.isEmpty) {
             queueIsAvailable.await()
@@ -85,7 +85,7 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
             roundStart.signalAll()
 
             executeRound(context) {
-              withLock(writeLock) {
+              writeLock.acquireFor {
                 runningRounds -= context
                 slotIsAvailable.signalAll()
 
@@ -111,7 +111,7 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
   def onStop(): Unit = {}
 
   def start(): Unit = {
-    withLock(writeLock) {
+    writeLock.acquireFor {
       if (!started && !stopped) {
         onStart()
 
@@ -124,7 +124,7 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
   }
 
   def submit(context: C): Unit = {
-    withLock(writeLock) {
+    writeLock.acquireFor {
       if (!terminating && !stopped) {
         queue += context
         queueIsAvailable.signalAll()
@@ -135,7 +135,7 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
   }
 
   def submitAll(contexts: Seq[C]): Unit = {
-    withLock(writeLock) {
+    writeLock.acquireFor {
       contexts.foreach(submit)
     }
   }
@@ -158,17 +158,17 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
 
     @tailrec
     def await(): Boolean = {
-      withTryLock(writeLock, remain()) { locked =>
+      writeLock.tryAcquireFor(remain()) { locked =>
         if (locked) {
           if (running) {
             if (queue.nonEmpty) {
-              if (awaitCondition(roundStart, remain())) {
+              if (roundStart.awaitFor(remain())) {
                 None
               } else {
                 Some(false)
               }
             } else if (runningRounds.nonEmpty) {
-              if (awaitCondition(roundCompletion, remain())) {
+              if (roundCompletion.awaitFor(remain())) {
                 None
               } else {
                 Some(false)
@@ -192,7 +192,7 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
   }
 
   def stop(awaitExecution: Boolean = false, gracefully: Boolean = false): Seq[C] = {
-    withLock(writeLock) {
+    writeLock.acquireFor {
       if (!terminating || !stopped) {
         _terminating = true
         if (awaitExecution) {
@@ -223,51 +223,16 @@ abstract class RoundExecutor[C](name: String, numThreads: Int, slots: Int) {
   }
 
   def awaitTermination(duration: Duration): Boolean = {
-    withTryLock(writeLock, duration) { locked =>
+    writeLock.tryAcquireFor(duration) { locked =>
       if (locked) {
         if (running || terminating) {
-          awaitCondition(termination, duration)
+          termination.awaitFor(duration)
         } else {
           throw new IllegalStateException(s"${name} is not running.")
         }
       } else {
         false
       }
-    }
-  }
-
-  private def withLock[A](lock: Lock)(block: => A): A = {
-    lock.lock()
-    try {
-      block
-    } finally {
-      lock.unlock()
-    }
-  }
-
-  private def withTryLock[A](lock: Lock, duration: Duration)(block: Boolean => A): A = {
-    if (duration.isFinite) {
-      val locked = lock.tryLock(duration.length, duration.unit)
-      if (locked) {
-        try {
-          block(locked)
-        } finally {
-          lock.unlock()
-        }
-      } else {
-        block(locked)
-      }
-    } else {
-      withLock(lock)(block(true))
-    }
-  }
-
-  private def awaitCondition(cond: Condition, duration: Duration): Boolean = {
-    if (duration.isFinite) {
-      cond.await(duration.length, duration.unit)
-    } else {
-      cond.await()
-      true
     }
   }
 }

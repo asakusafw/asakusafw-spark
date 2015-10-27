@@ -20,6 +20,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.Sink
+import com.asakusafw.spark.extensions.iterativebatch.runtime.util.RoundExecutor
 
 abstract class IterativeBatchExecutor(slots: Int)(implicit ec: ExecutionContext)
   extends RoundExecutor[RoundContext]("iterativebatch-executor", slots) {
