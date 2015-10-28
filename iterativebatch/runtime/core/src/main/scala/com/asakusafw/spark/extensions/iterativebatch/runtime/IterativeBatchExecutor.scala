@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.runtime
 
 import java.util.concurrent.TimeUnit
 
-import scala.collection.mutable.{ SynchronizedMap, WeakHashMap }
+import scala.collection.mutable.WeakHashMap
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.Duration
 import scala.util.Try
@@ -26,7 +26,8 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecu
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.Sink
 import com.asakusafw.spark.extensions.iterativebatch.runtime.util.{
   AsynchronousListenerBus,
-  MessageQueue
+  MessageQueue,
+  ReadWriteLockedMap
 }
 
 abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionContext) {
@@ -36,7 +37,7 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
   def sinks: Seq[Sink]
 
   private val results =
-    new WeakHashMap[RoundContext, Try[Unit]] with SynchronizedMap[RoundContext, Try[Unit]]
+    new WeakHashMap[RoundContext, Try[Unit]] with ReadWriteLockedMap[RoundContext, Try[Unit]]
   def result(context: RoundContext): Try[Unit] = results(context)
 
   private val listenerBus = new ListenerBus("iterativebatch-executor-listenerbus")
