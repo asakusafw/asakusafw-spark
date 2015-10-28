@@ -25,7 +25,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.NullWritable
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.{ RDD, UnionRDD }
+import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -73,7 +73,7 @@ abstract class OutputDriver[T: ClassTag](
         if (unioning.isEmpty) {
           coalesced
         } else {
-          new UnionRDD(sc, coalesced +: unioning)
+          sc.union(coalesced +: unioning)
         }
       }
     })

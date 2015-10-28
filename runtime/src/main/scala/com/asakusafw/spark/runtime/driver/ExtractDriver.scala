@@ -21,7 +21,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.{ RDD, UnionRDD }
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.rdd._
 
@@ -57,7 +57,7 @@ abstract class ExtractDriver[T](
           if (unioning.isEmpty) {
             coalesced
           } else {
-            new UnionRDD(sc, coalesced +: unioning)
+            sc.union(coalesced +: unioning)
           }
         }
       }).zip(zipBroadcasts()).map {
