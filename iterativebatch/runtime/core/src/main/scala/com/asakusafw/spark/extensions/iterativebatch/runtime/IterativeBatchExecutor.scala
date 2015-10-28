@@ -22,8 +22,8 @@ import scala.util.Try
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.Sink
 import com.asakusafw.spark.extensions.iterativebatch.runtime.util.RoundExecutor
 
-abstract class IterativeBatchExecutor(slots: Int)(implicit ec: ExecutionContext)
-  extends RoundExecutor[RoundContext]("iterativebatch-executor", slots) {
+abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionContext)
+  extends RoundExecutor[RoundContext]("iterativebatch-executor", numSlots = numSlots) {
 
   def this()(implicit ec: ExecutionContext) = this(Int.MaxValue)
 
@@ -33,11 +33,11 @@ abstract class IterativeBatchExecutor(slots: Int)(implicit ec: ExecutionContext)
     new WeakHashMap[RoundContext, Try[Unit]] with SynchronizedMap[RoundContext, Try[Unit]]
   def result(context: RoundContext): Try[Unit] = results(context)
 
-  protected def executeRound(rc: RoundContext)(onComplete: => Unit): Unit = {
+  override protected def executeRound(rc: RoundContext)(onComplete: () => Unit): Unit = {
     Future.sequence(sinks.map(_.submitJob(rc))).map(_ => ())
       .onComplete { result =>
         results += rc -> result
-        onComplete
+        onComplete()
       }
   }
 }

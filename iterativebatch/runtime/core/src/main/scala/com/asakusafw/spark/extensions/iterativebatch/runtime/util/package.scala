@@ -15,6 +15,7 @@
  */
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.{ Condition, Lock }
 
 import scala.concurrent.duration.Duration
@@ -32,20 +33,20 @@ package object util {
       }
     }
 
-    def tryAcquireFor[A](duration: Duration)(block: Boolean => A): A = {
+    def tryAcquireFor[A](duration: Duration)(block: => Boolean): Boolean = {
       if (duration.isFinite) {
         val locked = lock.tryLock(duration.length, duration.unit)
         if (locked) {
           try {
-            block(locked)
+            block
           } finally {
             lock.unlock()
           }
         } else {
-          block(locked)
+          false
         }
       } else {
-        acquireFor(block(true))
+        acquireFor(block)
       }
     }
   }
@@ -58,6 +59,18 @@ package object util {
       } else {
         cond.await()
         true
+      }
+    }
+  }
+
+  implicit class AugmentedDuration(val duration: Duration) extends AnyVal {
+
+    def remainFrom(from: Long): () => Duration = {
+      if (duration.isFinite) {
+        val until = from + duration.toMillis
+        () => Duration(until - System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+      } else {
+        () => Duration.Inf
       }
     }
   }
