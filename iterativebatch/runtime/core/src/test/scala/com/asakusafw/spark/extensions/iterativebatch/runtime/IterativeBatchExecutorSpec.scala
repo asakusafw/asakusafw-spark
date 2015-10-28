@@ -24,6 +24,7 @@ import java.util.concurrent.{ ArrayBlockingQueue, BlockingQueue, TimeUnit }
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.util.Try
 
 import org.apache.spark.{ SparkConf, SparkContext }
 
@@ -143,6 +144,39 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
         assert(result === (0 until 10).map(i => 10 * round + i))
     }
   }
+
+  it should "handle event listener" in { implicit sc =>
+    import Simple._
+
+    val rcs = (0 until 10).map { round =>
+      newRoundContext(batchArguments = Map("round" -> round.toString))
+    }
+
+    val collection =
+      new mutable.HashMap[RoundContext, Array[Int]] with mutable.SynchronizedMap[RoundContext, Array[Int]]
+
+    val listener = new CallCountListener()
+
+    val executor = new Executor(collection)(implicitly, ExecutionContext.global)
+    executor.addListener(listener)
+    executor.submitAll(rcs)
+
+    executor.start()
+    executor.stop(awaitExecution = true, gracefully = true)
+
+    assert(listener.callOnExecutorStart === 1)
+    assert(listener.callOnRoundStarted === 10)
+    assert(listener.callOnRoundCompleted === 10)
+    assert(listener.callOnExecutorStart === 1)
+
+    rcs.zipWithIndex.foreach {
+      case (rc, round) =>
+        assert(executor.result(rc).isSuccess)
+
+        val result = collection(rc)
+        assert(result === (0 until 100).map(i => 100 * round + i))
+    }
+  }
 }
 
 object IterativeBatchExecutorSpec {
@@ -231,6 +265,30 @@ object IterativeBatchExecutorSpec {
           }
         Seq(new PrintSink(source), new CollectSink(collection)(source))
       }
+    }
+  }
+
+  class CallCountListener extends IterativeBatchExecutor.Listener {
+
+    var callOnExecutorStart = 0
+    var callOnRoundStarted = 0
+    var callOnRoundCompleted = 0
+    var callOnExecutorStop = 0
+
+    override def onExecutorStart(): Unit = {
+      callOnExecutorStart += 1
+    }
+
+    override def onRoundStart(rc: RoundContext): Unit = {
+      callOnRoundStarted += 1
+    }
+
+    override def onRoundCompleted(rc: RoundContext, result: Try[Unit]): Unit = {
+      callOnRoundCompleted += 1
+    }
+
+    override def onExecutorStop(): Unit = {
+      callOnExecutorStop += 1
     }
   }
 }

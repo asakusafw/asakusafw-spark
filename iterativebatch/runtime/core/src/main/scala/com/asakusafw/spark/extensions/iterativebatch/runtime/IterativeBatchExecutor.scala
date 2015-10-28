@@ -20,7 +20,11 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.Sink
-import com.asakusafw.spark.extensions.iterativebatch.runtime.util.RoundExecutor
+import com.asakusafw.spark.extensions.iterativebatch.runtime.util.{
+  AsynchronousListenerBus,
+  RoundExecutor
+}
+import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor._
 
 abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionContext)
   extends RoundExecutor[RoundContext]("iterativebatch-executor", numSlots = numSlots) {
@@ -33,11 +37,64 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
     new WeakHashMap[RoundContext, Try[Unit]] with SynchronizedMap[RoundContext, Try[Unit]]
   def result(context: RoundContext): Try[Unit] = results(context)
 
+  private val listenerBus = new ListenerBus("iterativebatch-executor-listenerbus")
+
+  def addListener(listener: Listener): Unit = {
+    listenerBus.addListener(listener)
+  }
+
+  override def onStart(): Unit = {
+    super.onStart()
+    listenerBus.start()
+    listenerBus.post(ExecutorStart)
+  }
+
+  override def onStop(): Unit = {
+    listenerBus.post(ExecutorStop)
+    listenerBus.stop()
+    super.onStop()
+  }
+
   override protected def executeRound(rc: RoundContext)(onComplete: () => Unit): Unit = {
+    listenerBus.post(RoundStarted(rc))
     Future.sequence(sinks.map(_.submitJob(rc))).map(_ => ())
       .onComplete { result =>
         results += rc -> result
         onComplete()
+        listenerBus.post(RoundCompleted(rc, result))
       }
+  }
+}
+
+object IterativeBatchExecutor {
+
+  sealed trait Event
+  case object ExecutorStart extends Event
+  case class RoundStarted(rc: RoundContext) extends Event
+  case class RoundCompleted(rc: RoundContext, result: Try[Unit]) extends Event
+  case object ExecutorStop extends Event
+
+  trait Listener {
+
+    def onExecutorStart(): Unit = {}
+
+    def onRoundStart(rc: RoundContext): Unit = {}
+
+    def onRoundCompleted(rc: RoundContext, result: Try[Unit]): Unit = {}
+
+    def onExecutorStop(): Unit = {}
+  }
+
+  class ListenerBus(name: String)
+    extends AsynchronousListenerBus[Listener, Event](name) {
+
+    override def postEvent(listener: Listener, event: Event): Unit = {
+      event match {
+        case ExecutorStart => listener.onExecutorStart()
+        case RoundStarted(rc) => listener.onRoundStart(rc)
+        case RoundCompleted(rc, result) => listener.onRoundCompleted(rc, result)
+        case ExecutorStop => listener.onExecutorStop()
+      }
+    }
   }
 }
