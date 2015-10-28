@@ -16,7 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime.util
 
 import java.util.concurrent.{ Executors, TimeUnit }
-import java.util.concurrent.locks.{ Condition, Lock, ReentrantReadWriteLock }
+import java.util.concurrent.locks.ReentrantReadWriteLock
 
 import scala.annotation.tailrec
 import scala.collection.mutable

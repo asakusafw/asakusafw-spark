@@ -15,13 +15,6 @@
  */
 package com.asakusafw.spark.extensions.iterativebatch.runtime.util
 
-import java.util.concurrent.Executors
-import java.util.concurrent.locks.ReentrantReadWriteLock
-
-import scala.collection.mutable
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder
-
 abstract class AsynchronousListenerBus[L, E](name: String)
   extends ListenerBus[L, E] {
 
