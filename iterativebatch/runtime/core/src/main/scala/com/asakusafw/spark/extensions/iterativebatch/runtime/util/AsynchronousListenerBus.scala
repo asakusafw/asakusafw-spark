@@ -25,23 +25,23 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder
 abstract class AsynchronousListenerBus[L, E](name: String)
   extends ListenerBus[L, E] {
 
-  private val executor = new RoundExecutor[E](name) {
+  private val queue = new MessageQueue[E](name) {
 
-    override protected def executeRound(event: E)(onComplete: () => Unit): Unit = {
+    override protected def handleMessage(event: E)(onComplete: () => Unit): Unit = {
       postToAll(event)
       onComplete()
     }
   }
 
   def start(): Unit = {
-    executor.start()
+    queue.start()
   }
 
   def stop(): Unit = {
-    executor.stop(awaitExecution = true, gracefully = true)
+    queue.stop(awaitExecution = true, gracefully = true)
   }
 
   override def post(event: E): Unit = {
-    executor.submit(event)
+    queue.submit(event)
   }
 }

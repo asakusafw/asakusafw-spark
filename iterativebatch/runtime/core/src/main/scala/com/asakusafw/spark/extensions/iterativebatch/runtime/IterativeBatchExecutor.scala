@@ -15,19 +15,21 @@
  */
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 
+import java.util.concurrent.TimeUnit
+
 import scala.collection.mutable.{ SynchronizedMap, WeakHashMap }
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.duration.Duration
 import scala.util.Try
 
+import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor._
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.Sink
 import com.asakusafw.spark.extensions.iterativebatch.runtime.util.{
   AsynchronousListenerBus,
-  RoundExecutor
+  MessageQueue
 }
-import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor._
 
-abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionContext)
-  extends RoundExecutor[RoundContext]("iterativebatch-executor", numSlots = numSlots) {
+abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionContext) {
 
   def this()(implicit ec: ExecutionContext) = this(Int.MaxValue)
 
@@ -43,27 +45,63 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
     listenerBus.addListener(listener)
   }
 
-  override def onStart(): Unit = {
-    super.onStart()
-    listenerBus.start()
-    listenerBus.post(ExecutorStart)
-  }
+  private val queue =
+    new MessageQueue[RoundContext]("iterativebatch-executor", numSlots = numSlots) {
 
-  override def onStop(): Unit = {
-    listenerBus.post(ExecutorStop)
-    listenerBus.stop()
-    super.onStop()
-  }
-
-  override protected def executeRound(rc: RoundContext)(onComplete: () => Unit): Unit = {
-    listenerBus.post(RoundStarted(rc))
-    Future.sequence(sinks.map(_.submitJob(rc))).map(_ => ())
-      .onComplete { result =>
-        results += rc -> result
-        onComplete()
-        listenerBus.post(RoundCompleted(rc, result))
+      override protected def onStart(): Unit = {
+        super.onStart()
+        listenerBus.start()
+        listenerBus.post(ExecutorStart)
       }
+
+      override protected def onStop(): Unit = {
+        listenerBus.post(ExecutorStop)
+        listenerBus.stop()
+        super.onStop()
+      }
+
+      override protected def handleMessage(rc: RoundContext)(onComplete: () => Unit): Unit = {
+        listenerBus.post(RoundStarted(rc))
+        Future.sequence(sinks.map(_.submitJob(rc))).map(_ => ())
+          .onComplete { result =>
+            results += rc -> result
+            onComplete()
+            listenerBus.post(RoundCompleted(rc, result))
+          }
+      }
+    }
+
+  def running: Boolean = queue.running
+  def terminating: Boolean = queue.terminating
+  def stopped: Boolean = queue.stopped
+
+  def queueSize: Int = queue.size
+  def numRunningBatches: Int = queue.numHandlingMessages
+
+  def start(): Unit = {
+    queue.start()
   }
+
+  def stop(awaitExecution: Boolean = false, gracefully: Boolean = false): Seq[RoundContext] = {
+    queue.stop(awaitExecution, gracefully)
+  }
+
+  def submit(rc: RoundContext): Unit = queue.submit(rc)
+  def submitAll(rcs: Seq[RoundContext]): Unit = queue.submitAll(rcs)
+
+  def awaitExecution(): Unit =
+    queue.awaitExecution()
+  def awaitExecution(timeout: Long, unit: TimeUnit): Boolean =
+    queue.awaitExecution(timeout, unit)
+  def awaitExecution(duration: Duration): Boolean =
+    queue.awaitExecution(duration)
+
+  def awaitTermination(): Unit =
+    queue.awaitTermination()
+  def awaitTermination(timeout: Long, unit: TimeUnit): Boolean =
+    queue.awaitTermination(timeout, unit)
+  def awaitTermination(duration: Duration): Boolean =
+    queue.awaitExecution(duration)
 }
 
 object IterativeBatchExecutor {

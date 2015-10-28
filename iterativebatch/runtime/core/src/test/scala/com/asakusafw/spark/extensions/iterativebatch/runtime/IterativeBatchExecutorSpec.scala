@@ -81,7 +81,7 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     assert(executor.terminating === false)
     assert(executor.stopped === true)
     assert(executor.queueSize === 0)
-    assert(executor.numRunningRounds === 0)
+    assert(executor.numRunningBatches === 0)
     assert(remain.isEmpty)
 
     rcs.zipWithIndex.foreach {
@@ -124,13 +124,13 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
 
       assert(executor.awaitExecution(1, TimeUnit.MINUTES) === true)
       assert(executor.queueSize === 0)
-      assert(executor.numRunningRounds === 0)
+      assert(executor.numRunningBatches === 0)
 
       executor.submitAll(rcs2)
 
       executor.awaitExecution()
       assert(executor.queueSize === 0)
-      assert(executor.numRunningRounds === 0)
+      assert(executor.numRunningBatches === 0)
 
     } finally {
       executor.stop()

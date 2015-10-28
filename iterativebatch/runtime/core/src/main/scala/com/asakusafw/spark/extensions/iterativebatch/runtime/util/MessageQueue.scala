@@ -24,7 +24,7 @@ import scala.concurrent.duration.Duration
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 
-abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int = Int.MaxValue) {
+abstract class MessageQueue[M](name: String, numThreads: Int = 1, numSlots: Int = Int.MaxValue) {
 
   require(numThreads > 0, s"The number of threads should be greater than 0: [${numThreads}].")
   require(numSlots > 0, s"The number of slots should be greater than 0: [${numSlots}].")
@@ -47,14 +47,14 @@ abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int
 
   private var _stoppedThreads: Int = 0
 
-  private val queue = mutable.Queue.empty[C]
-  def queueSize: Int = readLock.acquireFor(queue.size)
+  private val queue = mutable.Queue.empty[M]
+  def size: Int = readLock.acquireFor(queue.size)
 
-  private val runningRounds = mutable.Set.empty[C]
-  def numRunningRounds: Int = readLock.acquireFor(runningRounds.size)
+  private val handlingMessages = mutable.Set.empty[M]
+  def numHandlingMessages: Int = readLock.acquireFor(handlingMessages.size)
 
   private val queueIsAvailable = writeLock.newCondition()
-  private val roundCompletion = writeLock.newCondition()
+  private val executeCompletion = writeLock.newCondition()
   private val termination = writeLock.newCondition()
 
   private val executor =
@@ -71,18 +71,18 @@ abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int
     override def run(): Unit = {
       writeLock.acquireFor {
         @tailrec
-        def dequeueOrTerminate(): Option[C] = {
+        def dequeueOrTerminate(): Option[M] = {
           if (running) {
             if (queue.isEmpty) {
               queueIsAvailable.await()
               dequeueOrTerminate()
-            } else if (runningRounds.size >= numSlots) {
-              roundCompletion.await()
+            } else if (handlingMessages.size >= numSlots) {
+              executeCompletion.await()
               dequeueOrTerminate()
             } else {
-              val context = queue.dequeue()
-              runningRounds += context
-              Some(context)
+              val message = queue.dequeue()
+              handlingMessages += message
+              Some(message)
             }
           } else {
             _stoppedThreads += 1
@@ -92,11 +92,11 @@ abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int
         }
         dequeueOrTerminate()
       } match {
-        case Some(context) =>
-          executeRound(context) { () =>
+        case Some(message) =>
+          handleMessage(message) { () =>
             writeLock.acquireFor {
-              runningRounds -= context
-              roundCompletion.signalAll()
+              handlingMessages -= message
+              executeCompletion.signalAll()
             }
           }
           run()
@@ -105,10 +105,10 @@ abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int
     }
   }
 
-  protected def executeRound(context: C)(onComplete: () => Unit): Unit
+  protected def handleMessage(message: M)(onComplete: () => Unit): Unit
 
-  def onStart(): Unit = {}
-  def onStop(): Unit = {}
+  protected def onStart(): Unit = {}
+  protected def onStop(): Unit = {}
 
   def start(): Unit = {
     writeLock.acquireFor {
@@ -123,10 +123,10 @@ abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int
     }
   }
 
-  def submit(context: C): Unit = {
+  def submit(message: M): Unit = {
     writeLock.acquireFor {
       if (!terminating && !stopped) {
-        queue += context
+        queue += message
         queueIsAvailable.signalAll()
       } else {
         throw new IllegalStateException(s"${name} is terminating or stopped.")
@@ -134,10 +134,10 @@ abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int
     }
   }
 
-  def submitAll(contexts: Seq[C]): Unit = {
+  def submitAll(messages: Seq[M]): Unit = {
     writeLock.acquireFor {
       if (!terminating && !stopped) {
-        queue ++= contexts
+        queue ++= messages
         queueIsAvailable.signalAll()
       } else {
         throw new IllegalStateException(s"${name} is terminating or stopped.")
@@ -160,9 +160,9 @@ abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int
       if (running) {
         @tailrec
         def await(): Boolean = {
-          if (queue.isEmpty && runningRounds.isEmpty) {
+          if (queue.isEmpty && handlingMessages.isEmpty) {
             true
-          } else if (roundCompletion.awaitFor(remain())) {
+          } else if (executeCompletion.awaitFor(remain())) {
             await()
           } else {
             false
@@ -175,7 +175,7 @@ abstract class RoundExecutor[C](name: String, numThreads: Int = 1, numSlots: Int
     }
   }
 
-  def stop(awaitExecution: Boolean = false, gracefully: Boolean = false): Seq[C] = {
+  def stop(awaitExecution: Boolean = false, gracefully: Boolean = false): Seq[M] = {
     writeLock.acquireFor {
       if (!terminating || !stopped) {
         _terminating = true
