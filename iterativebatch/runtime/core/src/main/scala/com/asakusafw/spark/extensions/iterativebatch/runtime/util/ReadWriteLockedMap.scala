@@ -19,6 +19,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 
 import scala.collection.mutable.Map
 
+// scalastyle:off
 trait ReadWriteLockedMap[A, B] extends Map[A, B] {
 
   private val (readLock, writeLock) = {
@@ -57,7 +58,7 @@ trait ReadWriteLockedMap[A, B] extends Map[A, B] {
     readLock.acquireFor(super.valuesIterator)
   override def clone(): Self =
     readLock.acquireFor(super.clone())
-  override def foreach[U](f: ((A, B)) => U) =
+  override def foreach[U](f: ((A, B)) => U): Unit =
     readLock.acquireFor(super.foreach(f))
   override def apply(key: A): B =
     readLock.acquireFor(super.apply(key))
@@ -71,6 +72,7 @@ trait ReadWriteLockedMap[A, B] extends Map[A, B] {
     readLock.acquireFor(super.isEmpty)
   override def contains(key: A): Boolean =
     readLock.acquireFor(super.contains(key))
-  override def isDefinedAt(key: A) =
+  override def isDefinedAt(key: A): Boolean =
     readLock.acquireFor(super.isDefinedAt(key))
 }
+// scalastyle:on
