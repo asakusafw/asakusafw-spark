@@ -238,7 +238,7 @@ object InputSpec {
       basePaths: Set[String])(
         val label: String)(
           implicit sc: SparkContext)
-      extends TemporaryInput[Foo]()(Map.empty) {
+      extends TemporaryInput[Foo](Map.empty) {
 
       def this(path: String)(label: String)(implicit sc: SparkContext) = this(Set(path))(label)
 
@@ -278,7 +278,7 @@ object InputSpec {
       val extraConfigurations: Map[String, String])(
         val label: String)(
           implicit sc: SparkContext)
-      extends DirectInput[NullWritable, Foo, TemporaryInputFormat[Foo]]()(Map.empty) {
+      extends DirectInput[TemporaryInputFormat[Foo], NullWritable, Foo](Map.empty) {
 
       override def branchKeys: Set[BranchKey] = Set(Input)
 

@@ -16,9 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package flow
 
-import com.asakusafw.spark.runtime.driver.Branching
+import org.apache.spark.SparkContext
 
-abstract class Input[V]
-  extends Source
-  with UsingBroadcasts
-  with Branching[V]
+abstract class Input(
+  @transient implicit val sc: SparkContext) extends Source

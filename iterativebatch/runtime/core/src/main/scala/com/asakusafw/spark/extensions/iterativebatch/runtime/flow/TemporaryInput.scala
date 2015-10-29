@@ -16,56 +16,32 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package flow
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.reflect.{ classTag, ClassTag }
+import scala.reflect.ClassTag
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.NullWritable
+import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
-import com.asakusafw.spark.runtime.Props
-import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId }
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.driver.BroadcastId
 
-abstract class TemporaryInput[V: ClassTag]()(
+abstract class TemporaryInput[V: ClassTag](
   val broadcasts: Map[BroadcastId, Broadcast])(
-    @transient implicit val sc: SparkContext)
-  extends Input[V] {
+    implicit sc: SparkContext)
+  extends NewHadoopInput[TemporaryInputFormat[V], NullWritable, V] {
 
   def paths: Set[String]
 
-  override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-
-    val future = Future {
-
-      val job = JobCompatibility.newJob(rc.hadoopConf.value)
-
-      val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
-      FileInputFormat.setInputPaths(job, paths.map { path =>
-        new Path(stageInfo.resolveUserVariables(path))
-      }.toSeq: _*)
-
-      sc.clearCallSite()
-      sc.setCallSite(label)
-
-      sc.newAPIHadoopRDD(
-        job.getConfiguration,
-        classOf[TemporaryInputFormat[V]],
-        classOf[NullWritable],
-        classTag[V].runtimeClass.asInstanceOf[Class[V]])
-
-    }.zip(zipBroadcasts(rc)).map {
-      case (rdd, broadcasts) =>
-        branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(
-          sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
-    }
-
-    branchKeys.map(key => key -> future.map(_(key))).toMap
+  override def newJob(rc: RoundContext): Job = {
+    val job = JobCompatibility.newJob(rc.hadoopConf.value)
+    val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
+    FileInputFormat.setInputPaths(job, paths.map { path =>
+      new Path(stageInfo.resolveUserVariables(path))
+    }.toSeq: _*)
+    job
   }
 }

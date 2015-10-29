@@ -16,51 +16,26 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package flow
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.reflect.{ classTag, ClassTag }
+import scala.reflect.ClassTag
 
-import org.apache.hadoop.mapreduce.InputFormat
+import org.apache.hadoop.mapreduce.{ InputFormat, Job }
 import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.compatibility.JobCompatibility
-import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.driver.BroadcastId
-import com.asakusafw.spark.runtime.rdd.BranchKey
 
-abstract class DirectInput[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: ClassTag]()(
+abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: ClassTag](
   val broadcasts: Map[BroadcastId, Broadcast])(
-    @transient implicit val sc: SparkContext)
-  extends Input[V] {
+    implicit sc: SparkContext)
+  extends NewHadoopInput[IF, K, V] {
 
   def extraConfigurations: Map[String, String]
 
-  override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-
-    val future = Future {
-
-      val job = JobCompatibility.newJob(rc.hadoopConf.value)
-
-      extraConfigurations.foreach {
-        case (k, v) => job.getConfiguration.set(k, v)
-      }
-
-      sc.clearCallSite()
-      sc.setCallSite(label)
-
-      sc.newAPIHadoopRDD(
-        job.getConfiguration,
-        classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
-        classTag[K].runtimeClass.asInstanceOf[Class[K]],
-        classTag[V].runtimeClass.asInstanceOf[Class[V]])
-
-    }.zip(zipBroadcasts(rc)).map {
-      case (rdd, broadcasts) =>
-        branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(
-          sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
+  override def newJob(rc: RoundContext): Job = {
+    val job = JobCompatibility.newJob(rc.hadoopConf.value)
+    extraConfigurations.foreach {
+      case (k, v) => job.getConfiguration.set(k, v)
     }
-
-    branchKeys.map(key => key -> future.map(_(key))).toMap
+    job
   }
 }
