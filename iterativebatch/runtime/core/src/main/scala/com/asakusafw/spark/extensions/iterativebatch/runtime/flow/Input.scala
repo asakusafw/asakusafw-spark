@@ -16,4 +16,9 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package flow
 
-abstract class Input extends Source
+import com.asakusafw.spark.runtime.driver.Branching
+
+abstract class Input[V]
+  extends Source
+  with UsingBroadcasts
+  with Branching[V]

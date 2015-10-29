@@ -123,6 +123,11 @@
       <artifactId>asakusa-spark-runtime</artifactId>
       <classifier>tests</classifier>
     </dependency>
+    <dependency>
+      <groupId>com.jsuereth</groupId>
+      <artifactId>scala-arm_${scala.compat.version}</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 </project>
