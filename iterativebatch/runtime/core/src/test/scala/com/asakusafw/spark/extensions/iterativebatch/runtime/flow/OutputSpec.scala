@@ -76,14 +76,14 @@ class TemporaryOutputSpec extends OutputSpec with RoundContextSugar with TempDir
     val source =
       new ParallelCollectionSource(Input, (0 until 100))("input")
         .mapWithRoundContext(Input)(Foo.intToFoo)
-    val extract = new Temporary.Output((source, Input))(path, "output")
+    val output = new Temporary.Output((source, Input))(path, "output")
 
     for {
       round <- 0 to 1
     } {
       val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
 
-      Await.result(extract.submitJob(rc), Duration.Inf)
+      Await.result(output.submitJob(rc), Duration.Inf)
 
       val result = readResult(path, rc)
       assert(result.size === 100)
