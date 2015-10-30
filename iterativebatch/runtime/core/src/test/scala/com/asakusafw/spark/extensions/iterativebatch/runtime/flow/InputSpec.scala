@@ -89,7 +89,7 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
         input.getOrCompute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq
+          }.collect.toSeq.sorted
         }, Duration.Inf)
 
       assert(result === (0 until 100).map(i => 100 * round + i))
@@ -117,7 +117,7 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
         input.getOrCompute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq
+          }.collect.toSeq.sorted
         }, Duration.Inf)
 
       assert(result === (0 until 100).map(i => 100 * round + i))
@@ -151,7 +151,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
         input.getOrCompute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq
+          }.collect.toSeq.sorted
         }, Duration.Inf)
 
       assert(result === (0 until 100).map(i => 100 * round + i))
@@ -179,7 +179,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
         input.getOrCompute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq
+          }.collect.toSeq.sorted
         }, Duration.Inf)
 
       assert(result === (0 until 100).map(i => 100 * round + i))

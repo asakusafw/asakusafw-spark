@@ -56,7 +56,7 @@ abstract class OutputSpec extends FlatSpec with SparkForAll {
       job.getConfiguration,
       classOf[TemporaryInputFormat[Foo]],
       classOf[NullWritable],
-      classOf[Foo]).map(_._2.id.get).collect.toSeq
+      classOf[Foo]).map(_._2.id.get).collect.toSeq.sorted
   }
 }
 
