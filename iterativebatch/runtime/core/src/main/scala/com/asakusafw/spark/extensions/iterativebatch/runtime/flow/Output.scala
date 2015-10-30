@@ -16,4 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package flow
 
-abstract class Output extends Sink
+import org.apache.spark.SparkContext
+
+abstract class Output(
+  @transient implicit val sc: SparkContext) extends Sink
