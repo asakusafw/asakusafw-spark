@@ -15,20 +15,23 @@
  */
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.{ CompilerOptions, DataModelLoader }
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
+import com.asakusafw.lang.compiler.api.reference.ExternalInputReference
+import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.model.description.ClassDescription
+import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler }
 import com.asakusafw.spark.compiler.subplan.{
   BranchKeysClassBuilder,
   BroadcastIdsClassBuilder
 }
-import com.asakusafw.spark.tools.asm.{ ClassBuilder, SimpleClassLoader }
+import com.asakusafw.spark.tools.asm.ClassBuilder
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
@@ -46,9 +49,33 @@ object MockCompilerContext {
 
     override def classLoader: ClassLoader = jpContext.getClassLoader
     override def dataModelLoader: DataModelLoader = jpContext.getDataModelLoader
+    override def options: CompilerOptions = jpContext.getOptions
 
     override val branchKeys: BranchKeysClassBuilder = new BranchKeysClassBuilder(flowId)
     override val broadcastIds: BroadcastIdsClassBuilder = new BroadcastIdsClassBuilder(flowId)
+
+    override def getInputFormatInfo(
+      name: String, info: ExternalInputInfo): Option[InputFormatInfo] = {
+      Option(InputFormatInfoExtension.resolve(jpContext, name, info))
+    }
+
+    private val externalInputs: mutable.Map[String, ExternalInputReference] = mutable.Map.empty
+
+    override def addExternalInput(
+      name: String, info: ExternalInputInfo): ExternalInputReference = {
+      externalInputs.getOrElseUpdate(
+        name,
+        jpContext.addExternalInput(name, info))
+    }
+
+    private val externalOutputs: mutable.Map[String, Unit] = mutable.Map.empty
+
+    override def addExternalOutput(
+      name: String, info: ExternalOutputInfo, paths: Seq[String]): Unit = {
+      externalOutputs.getOrElseUpdate(
+        name,
+        jpContext.addExternalOutput(name, info, paths))
+    }
 
     override def addClass(builder: ClassBuilder): Type = {
       for {

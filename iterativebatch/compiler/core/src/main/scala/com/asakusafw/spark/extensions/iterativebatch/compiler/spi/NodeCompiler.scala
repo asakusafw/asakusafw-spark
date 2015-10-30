@@ -17,11 +17,15 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler.spi
 
 import java.util.ServiceLoader
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.CompilerOptions
+import com.asakusafw.lang.compiler.api.reference.ExternalInputReference
+import com.asakusafw.lang.compiler.hadoop.InputFormatInfo
+import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.{
   ClassLoaderProvider,
@@ -50,6 +54,12 @@ object NodeCompiler {
     with Branching.Context {
 
     def branchKeys: BranchKeys
+
+    def options: CompilerOptions
+
+    def getInputFormatInfo(name: String, info: ExternalInputInfo): Option[InputFormatInfo]
+    def addExternalInput(name: String, info: ExternalInputInfo): ExternalInputReference
+    def addExternalOutput(name: String, info: ExternalOutputInfo, paths: Seq[String]): Unit
 
     def operatorCompilerContext: OperatorCompiler.Context
     def aggregationCompilerContext: AggregationCompiler.Context
