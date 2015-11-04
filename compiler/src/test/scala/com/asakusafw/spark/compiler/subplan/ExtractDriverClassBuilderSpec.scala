@@ -28,7 +28,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.Writable
+import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -131,15 +131,7 @@ class ExtractDriverClassBuilderSpec
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[ExtractDriver[_]])
 
-      val foos = sc.parallelize(0 until 10).map {
-
-        lazy val foo = new Foo()
-
-        { i =>
-          foo.id.modify(i)
-          ((), foo)
-        }
-      }
+      val foos = sc.parallelize(0 until 10).map(Foo.intToFoo)
       val driver = cls.getConstructor(
         classOf[SparkContext],
         classOf[Broadcast[Configuration]],
@@ -150,7 +142,6 @@ class ExtractDriverClassBuilderSpec
           hadoopConf,
           Seq(Future.successful(foos)),
           Map.empty)
-      val results = driver.execute()
 
       assert(driver.partitioners.size === partitioners)
 
@@ -165,6 +156,7 @@ class ExtractDriverClassBuilderSpec
         Set(fooResultMarker, barResultMarker,
           nResultMarker).map(getBranchKey))
 
+      val results = driver.execute()
       val ((fooResult, barResult), nResult) =
         Await.result(
           results(getBranchKey(fooResultMarker)).map {
@@ -252,15 +244,7 @@ class ExtractDriverClassBuilderSpec
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[ExtractDriver[_]])
 
-      val foos = sc.parallelize(0 until 10).map {
-
-        lazy val foo = new Foo()
-
-        { i =>
-          foo.id.modify(i)
-          ((), foo)
-        }
-      }
+      val foos = sc.parallelize(0 until 10).map(Foo.intToFoo)
       val driver = cls.getConstructor(
         classOf[SparkContext],
         classOf[Broadcast[Configuration]],
@@ -274,8 +258,6 @@ class ExtractDriverClassBuilderSpec
 
       assert(driver.partitioners.size === partitioners)
 
-      val results = driver.execute()
-
       val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
       def getBranchKey(marker: MarkerOperator): BranchKey = {
         val sn = subplan.getOperators.toSet
@@ -285,6 +267,7 @@ class ExtractDriverClassBuilderSpec
 
       assert(driver.branchKeys === Set(fooResultMarker).map(getBranchKey))
 
+      val results = driver.execute()
       val fooResult = Await.result(
         results(getBranchKey(fooResultMarker)).map {
           _.map {
@@ -318,6 +301,19 @@ object ExtractDriverClassBuilderSpec {
     }
 
     def getIdOption: IntOption = id
+  }
+
+  object Foo {
+
+    def intToFoo: Int => (_, Foo) = {
+
+      lazy val foo = new Foo()
+
+      { i =>
+        foo.id.modify(i)
+        (NullWritable.get, foo)
+      }
+    }
   }
 
   class Bar extends DataModel[Bar] with Writable {

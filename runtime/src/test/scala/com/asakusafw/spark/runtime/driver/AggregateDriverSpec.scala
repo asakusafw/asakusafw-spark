@@ -119,7 +119,7 @@ class AggregateDriverSpec extends FlatSpec with SparkForAll with HadoopConfForEa
   it should "aggregate partially" in {
     import PartialAggregate._
 
-    val foos = sc.parallelize(0 until 10, 2).map(Foo.intToFoo).asInstanceOf[RDD[(_, Foo)]]
+    val foos: RDD[(_, Foo)] = sc.parallelize(0 until 10, 2).map(Foo.intToFoo)
 
     val driver = new TestPartialAggregationExtractDriver(sc, hadoopConf, Future.successful(foos))
 
@@ -192,7 +192,8 @@ object AggregateDriverSpec {
         foo.id.modify(i % 2)
         foo.sum.modify(i * 100)
         val shuffleKey = new ShuffleKey(
-          WritableSerDe.serialize(foo.id), WritableSerDe.serialize(foo.sum))
+          WritableSerDe.serialize(foo.id),
+          WritableSerDe.serialize(foo.sum))
         (shuffleKey, foo)
       }
     }

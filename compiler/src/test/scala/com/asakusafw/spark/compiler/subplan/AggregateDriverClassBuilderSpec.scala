@@ -28,7 +28,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.Writable
+import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -118,16 +118,11 @@ class AggregateDriverClassBuilderSpec
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Foo, Foo]])
 
-      val foos = sc.parallelize(0 until 10).map {
-
-        lazy val foo = new Foo()
-
-        { i =>
-          foo.i.modify(i % 2)
-          foo.sum.modify(i)
-          val serde = new WritableSerDe()
-          (new ShuffleKey(serde.serialize(foo.i), Array.emptyByteArray), foo)
-        }
+      val foos = sc.parallelize(0 until 10).map(Foo.intToFoo).map { foo =>
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(foo.i),
+          Array.emptyByteArray)
+        (shuffleKey, foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -144,8 +139,6 @@ class AggregateDriverClassBuilderSpec
           new HashPartitioner(2),
           Map.empty)
 
-      val results = driver.execute()
-
       val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
       def getBranchKey(marker: MarkerOperator): BranchKey = {
         val sn = subplan.getOperators.toSet
@@ -157,6 +150,7 @@ class AggregateDriverClassBuilderSpec
 
       assert(driver.partitioners(getBranchKey(resultMarker)).get.numPartitions === numPartitions)
 
+      val results = driver.execute()
       val result = Await.result(
         results(getBranchKey(resultMarker))
           .map { rdd =>
@@ -217,15 +211,9 @@ class AggregateDriverClassBuilderSpec
       context.addClass(context.broadcastIds)
       val cls = classServer.loadClass(thisType).asSubclass(classOf[AggregateDriver[Foo, Foo]])
 
-      val foos = sc.parallelize(0 until 10).map {
-
-        lazy val foo = new Foo()
-
-        { i =>
-          foo.i.modify(i % 2)
-          foo.sum.modify(i)
-          (new ShuffleKey(Array.emptyByteArray, Array.emptyByteArray), foo)
-        }
+      val foos = sc.parallelize(0 until 10).map(Foo.intToFoo).map { foo =>
+        val shuffleKey = new ShuffleKey(Array.emptyByteArray, Array.emptyByteArray)
+        (shuffleKey, foo)
       }
       val driver = cls.getConstructor(
         classOf[SparkContext],
@@ -242,8 +230,6 @@ class AggregateDriverClassBuilderSpec
           new HashPartitioner(2),
           Map.empty)
 
-      val results = driver.execute()
-
       val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
       def getBranchKey(marker: MarkerOperator): BranchKey = {
         val sn = subplan.getOperators.toSet
@@ -255,6 +241,7 @@ class AggregateDriverClassBuilderSpec
 
       assert(driver.partitioners(getBranchKey(resultMarker)).get.numPartitions === 1)
 
+      val results = driver.execute()
       val result = Await.result(
         results(getBranchKey(resultMarker))
           .map { rdd =>
@@ -296,6 +283,20 @@ object AggregateDriverClassBuilderSpec {
 
     def getIOption: IntOption = i
     def getSumOption: IntOption = sum
+  }
+
+  object Foo {
+
+    def intToFoo: Int => Foo = {
+
+      lazy val foo = new Foo()
+
+      { i =>
+        foo.i.modify(i % 2)
+        foo.sum.modify(i)
+        foo
+      }
+    }
   }
 
   class SortOrdering extends Ordering[ShuffleKey] {
