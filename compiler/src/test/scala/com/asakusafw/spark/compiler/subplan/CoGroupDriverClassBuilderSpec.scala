@@ -163,30 +163,9 @@ class CoGroupDriverClassBuilderSpec
       val cls = classServer.loadClass(thisType).asSubclass(classOf[CoGroupDriver])
 
       val fooOrd = new Foo.SortOrdering()
-      val foos = sc.parallelize(0 until 10).map {
-
-        lazy val foo = new Foo()
-
-        { i =>
-          foo.id.modify(i)
-          val serde = new WritableSerDe()
-          (new ShuffleKey(serde.serialize(foo.id), serde.serialize(new BooleanOption().modify(foo.id.get % 3 == 0))), foo)
-        }
-      }
+      val foos = sc.parallelize(0 until 10).map(Foo.intToFoo)
       val barOrd = new Bar.SortOrdering()
-      val bars = sc.parallelize(0 until 10).flatMap {
-
-        lazy val bar = new Bar()
-
-        { i =>
-          (0 until i).iterator.map { j =>
-            bar.id.modify(10 + j)
-            bar.fooId.modify(i)
-            val serde = new WritableSerDe()
-            (new ShuffleKey(serde.serialize(bar.fooId), serde.serialize(new IntOption().modify(bar.id.toString.hashCode))), bar)
-          }
-        }
-      }
+      val bars = sc.parallelize(0 until 10).flatMap(Bar.intToBars)
       val grouping = new GroupingOrdering()
       val part = new HashPartitioner(2)
       val driver = cls.getConstructor(
@@ -203,7 +182,6 @@ class CoGroupDriverClassBuilderSpec
           grouping,
           part,
           Map.empty)
-      val results = driver.execute()
 
       assert(driver.partitioners.size === partitioners)
 
@@ -220,6 +198,7 @@ class CoGroupDriverClassBuilderSpec
           fooAllMarker, barAllMarker,
           nResultMarker).map(getBranchKey))
 
+      val results = driver.execute()
       val (((fooResult, barResult), (fooError, barError)), ((fooAll, barAll), nResult)) =
         Await.result(
           results(getBranchKey(fooResultMarker)).map {
@@ -337,6 +316,19 @@ object CoGroupDriverClassBuilderSpec {
 
   object Foo {
 
+    def intToFoo: Int => (ShuffleKey, Foo) = {
+
+      lazy val foo = new Foo()
+
+      { i =>
+        foo.id.modify(i)
+        val shuffleKey = new ShuffleKey(
+          WritableSerDe.serialize(foo.id),
+          WritableSerDe.serialize(new BooleanOption().modify(foo.id.get % 3 == 0)))
+        (shuffleKey, foo)
+      }
+    }
+
     class SortOrdering extends GroupingOrdering {
 
       override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
@@ -377,6 +369,22 @@ object CoGroupDriverClassBuilderSpec {
   }
 
   object Bar {
+
+    def intToBars: Int => Iterator[(ShuffleKey, Bar)] = {
+
+      lazy val bar = new Bar()
+
+      { i =>
+        (0 until i).iterator.map { j =>
+          bar.id.modify(10 + j)
+          bar.fooId.modify(i)
+          val shuffleKey = new ShuffleKey(
+            WritableSerDe.serialize(bar.fooId),
+            WritableSerDe.serialize(new IntOption().modify(bar.id.toString.hashCode)))
+          (shuffleKey, bar)
+        }
+      }
+    }
 
     class SortOrdering extends GroupingOrdering {
 

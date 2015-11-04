@@ -170,7 +170,7 @@ object OutputDriverClassBuilderSpec {
 
       { i =>
         foo.id.modify(i)
-        (foo, foo)
+        (NullWritable.get, foo)
       }
     }
   }
