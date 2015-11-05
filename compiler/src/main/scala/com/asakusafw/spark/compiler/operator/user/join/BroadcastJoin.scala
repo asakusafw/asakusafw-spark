@@ -70,30 +70,36 @@ trait BroadcastJoin
     import mb._ // scalastyle:ignore
     val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
-    val marker: MarkerOperator = {
+    val marker: Option[MarkerOperator] = {
       val opposites = masterInput.getOpposites
-      assert(opposites.size == 1,
-        s"The size of master inputs should be 1: ${opposites.size}")
-      val opposite = opposites.head.getOwner
-      assert(opposite.isInstanceOf[MarkerOperator],
-        s"The master input should be marker operator: ${opposite}")
-      assert(
-        opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
-          == PlanMarker.BROADCAST,
-        s"The master input should be BROADCAST marker operator: ${
-          opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
-        }")
-      opposite.asInstanceOf[MarkerOperator]
+      assert(opposites.size <= 1,
+        s"The size of master inputs should be 0 or 1: ${opposites.size}")
+      opposites.headOption.map { opposite =>
+        val operator = opposite.getOwner
+        assert(operator.isInstanceOf[MarkerOperator],
+          s"The master input should be marker operator: ${operator}")
+        assert(
+          operator.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
+            == PlanMarker.BROADCAST,
+          s"The master input should be BROADCAST marker operator: ${
+            operator.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
+          }")
+        operator.asInstanceOf[MarkerOperator]
+      }
     }
 
     thisVar.push().putField(
       "masters",
       classOf[Map[_, _]].asType,
-      applyMap(mb)(
-        broadcastsVar.push(), context.broadcastIds.getField(mb, marker))
-        .cast(classOf[Broadcast[_]].asType)
-        .invokeV("value", classOf[AnyRef].asType)
-        .cast(classOf[Map[_, _]].asType))
+      marker.map { marker =>
+        applyMap(mb)(
+          broadcastsVar.push(), context.broadcastIds.getField(mb, marker))
+          .cast(classOf[Broadcast[_]].asType)
+          .invokeV("value", classOf[AnyRef].asType)
+          .cast(classOf[Map[_, _]].asType)
+      }.getOrElse {
+        buildMap(mb)(_ => ())
+      })
   }
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
