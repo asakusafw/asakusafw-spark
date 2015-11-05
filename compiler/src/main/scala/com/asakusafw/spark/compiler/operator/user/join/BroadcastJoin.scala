@@ -130,21 +130,20 @@ trait BroadcastJoin
       shuffleKey.store(dataModelVar.nextLocal)
     }
 
-    val mVar = thisVar.push().getField("masters", classOf[Map[_, _]].asType)
-      .invokeI("get", classOf[Option[_]].asType, keyVar.push().asType(classOf[AnyRef].asType))
-      .invokeV("orNull", classOf[AnyRef].asType,
-        pushObject(mb)(Predef)
-          .invokeV("conforms", classOf[Predef.<:<[_, _]].asType))
-      .cast(classOf[Seq[_]].asType)
-      .store(keyVar.nextLocal)
-
     val mastersVar =
-      mVar.push().ifNull({
-        pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
-      }, {
-        pushObject(mb)(JavaConversions)
-          .invokeV("seqAsJavaList", classOf[JList[_]].asType, mVar.push())
-      }).store(mVar.nextLocal)
+      thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType)
+        .invokeI("contains", Type.BOOLEAN_TYPE, keyVar.push().asType(classOf[AnyRef].asType))
+        .ifTrue({
+          pushObject(mb)(JavaConversions)
+            .invokeV("seqAsJavaList", classOf[JList[_]].asType,
+              applyMap(mb)(
+                thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType),
+                keyVar.push())
+                .cast(classOf[Seq[_]].asType))
+        }, {
+          pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
+        })
+        .store(keyVar.nextLocal)
 
     val selectedVar = (masterSelection match {
       case Some((name, t)) =>
