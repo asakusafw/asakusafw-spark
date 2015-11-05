@@ -73,17 +73,17 @@ trait BroadcastJoin
     val marker: Option[MarkerOperator] = {
       val opposites = masterInput.getOpposites
       assert(opposites.size <= 1,
-        s"The size of master inputs should be 0 or 1: ${opposites.size}")
+        s"The size of master inputs should be 0 or 1: ${opposites.size} [${operator}]")
       opposites.headOption.map { opposite =>
         val operator = opposite.getOwner
         assert(operator.isInstanceOf[MarkerOperator],
-          s"The master input should be marker operator: ${operator}")
+          s"The master input should be marker operator: ${operator} [${operator}]")
         assert(
           operator.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
             == PlanMarker.BROADCAST,
           s"The master input should be BROADCAST marker operator: ${
             operator.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
-          }")
+          } [${operator}]")
         operator.asInstanceOf[MarkerOperator]
       }
     }

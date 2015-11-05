@@ -54,7 +54,7 @@ object CoGroupDriverInstantiator
     assert(properties.size == 1,
       s"The grouping of all inputs should be the same: ${
         properties.map(_.mkString("(", ",", ")")).mkString("(", ",", ")")
-      }")
+      } [${subplan}]")
 
     val cogroupDriver = pushNew(driverType)
     cogroupDriver.dup().invokeInit(

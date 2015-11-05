@@ -50,9 +50,10 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
-      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
+        + s" [${operator}]")
     assert(operator.inputs.size > 0,
-      s"The size of inputs should be greater than 0: ${operator.inputs.size}")
+      s"The size of inputs should be greater than 0: ${operator.inputs.size} [${operator}]")
 
     assert(
       operator.methodDesc.parameterClasses
@@ -68,7 +69,7 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
         (operator.inputs.map(_ => classOf[JList[_]])
           ++: operator.outputs.map(_ => classOf[Result[_]])
           ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
-      })")
+      }) [${operator}]")
 
     val builder = new CoGroupOperatorFragmentClassBuilder(operator)
 

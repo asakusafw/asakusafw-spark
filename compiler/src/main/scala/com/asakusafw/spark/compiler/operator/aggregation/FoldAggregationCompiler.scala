@@ -38,11 +38,12 @@ class FoldAggregationCompiler extends AggregationCompiler {
       implicit context: AggregationCompiler.Context): Type = {
 
     assert(operator.annotationDesc.resolveClass == of,
-      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
+        + s" [${operator}]")
     assert(operator.inputs.size == 1,
-      s"The size of inputs should be 1: ${operator.inputs.size}")
+      s"The size of inputs should be 1: ${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size == 1,
-      s"The size of outputs should be 1: ${operator.outputs.size}")
+      s"The size of outputs should be 1: ${operator.outputs.size} [${operator}]")
     assert(
       operator.inputs(Fold.ID_INPUT).dataModelType
         == operator.outputs(Fold.ID_OUTPUT).dataModelType,
@@ -50,7 +51,7 @@ class FoldAggregationCompiler extends AggregationCompiler {
         operator.inputs(Fold.ID_INPUT).dataModelType
       }, ${
         operator.outputs(Fold.ID_OUTPUT).dataModelType
-      })")
+      }) [${operator}]")
 
     assert(
       operator.methodDesc.parameterClasses
@@ -66,7 +67,7 @@ class FoldAggregationCompiler extends AggregationCompiler {
         (operator.inputs.map(_.dataModelClass)
           ++: operator.outputs.map(_.dataModelClass)
           ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
-      })")
+      }) [${operator}]")
 
     val builder = new FoldAggregationClassBuilder(operator)
 

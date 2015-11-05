@@ -40,11 +40,12 @@ class ShuffledMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
       implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
-      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
+        + s" [${operator}]")
     assert(operator.inputs.size == 2, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 2: ${operator.inputs.size}")
+      s"The size of inputs should be 2: ${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size == 2,
-      s"The size of outputs should be 2: ${operator.outputs.size}")
+      s"The size of outputs should be 2: ${operator.outputs.size} [${operator}]")
 
     assert(
       operator.outputs.forall(output =>
@@ -52,7 +53,7 @@ class ShuffledMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
           == operator.inputs(MasterJoinUpdateOp.ID_INPUT_TRANSACTION).dataModelType),
       s"All of output types should be the same as the transaction type: ${
         operator.outputs.map(_.dataModelType).mkString("(", ",", ")")
-      }")
+      } [${operator}]")
 
     assert(
       operator.methodDesc.parameterClasses
@@ -66,7 +67,7 @@ class ShuffledMasterJoinUpdateOperatorCompiler extends UserOperatorCompiler {
       }, ${
         (operator.inputs.map(_.dataModelClass)
           ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
-      })")
+      }) [${operator}]")
 
     val builder =
       new ShuffledJoinOperatorFragmentClassBuilder(

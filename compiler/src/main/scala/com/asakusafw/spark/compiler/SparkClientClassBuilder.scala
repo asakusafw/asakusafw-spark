@@ -235,7 +235,8 @@ class SparkClientClassBuilder(
                 if inputInfo.getInputType == SubPlanInputInfo.InputType.BROADCAST
               } {
                 val prevSubPlanOutputs = subPlanInput.getOpposites
-                assert(prevSubPlanOutputs.size == 1)
+                assert(prevSubPlanOutputs.size == 1,
+                  s"The number of input for broadcast should be 1: ${prevSubPlanOutputs.size}")
                 val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
 
                 builder += (
