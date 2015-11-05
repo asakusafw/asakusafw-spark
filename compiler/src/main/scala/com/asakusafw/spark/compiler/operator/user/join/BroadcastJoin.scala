@@ -70,30 +70,36 @@ trait BroadcastJoin
     import mb._ // scalastyle:ignore
     val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
-    val marker: MarkerOperator = {
+    val marker: Option[MarkerOperator] = {
       val opposites = masterInput.getOpposites
-      assert(opposites.size == 1,
-        s"The size of master inputs should be 1: ${opposites.size}")
-      val opposite = opposites.head.getOwner
-      assert(opposite.isInstanceOf[MarkerOperator],
-        s"The master input should be marker operator: ${opposite}")
-      assert(
-        opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
-          == PlanMarker.BROADCAST,
-        s"The master input should be BROADCAST marker operator: ${
-          opposite.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
-        }")
-      opposite.asInstanceOf[MarkerOperator]
+      assert(opposites.size <= 1,
+        s"The size of master inputs should be 0 or 1: ${opposites.size}")
+      opposites.headOption.map { opposite =>
+        val operator = opposite.getOwner
+        assert(operator.isInstanceOf[MarkerOperator],
+          s"The master input should be marker operator: ${operator}")
+        assert(
+          operator.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
+            == PlanMarker.BROADCAST,
+          s"The master input should be BROADCAST marker operator: ${
+            operator.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
+          }")
+        operator.asInstanceOf[MarkerOperator]
+      }
     }
 
     thisVar.push().putField(
       "masters",
       classOf[Map[_, _]].asType,
-      applyMap(mb)(
-        broadcastsVar.push(), context.broadcastIds.getField(mb, marker))
-        .cast(classOf[Broadcast[_]].asType)
-        .invokeV("value", classOf[AnyRef].asType)
-        .cast(classOf[Map[_, _]].asType))
+      marker.map { marker =>
+        applyMap(mb)(
+          broadcastsVar.push(), context.broadcastIds.getField(mb, marker))
+          .cast(classOf[Broadcast[_]].asType)
+          .invokeV("value", classOf[AnyRef].asType)
+          .cast(classOf[Map[_, _]].asType)
+      }.getOrElse {
+        buildMap(mb)(_ => ())
+      })
   }
 
   override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
@@ -124,21 +130,20 @@ trait BroadcastJoin
       shuffleKey.store(dataModelVar.nextLocal)
     }
 
-    val mVar = thisVar.push().getField("masters", classOf[Map[_, _]].asType)
-      .invokeI("get", classOf[Option[_]].asType, keyVar.push().asType(classOf[AnyRef].asType))
-      .invokeV("orNull", classOf[AnyRef].asType,
-        pushObject(mb)(Predef)
-          .invokeV("conforms", classOf[Predef.<:<[_, _]].asType))
-      .cast(classOf[Seq[_]].asType)
-      .store(keyVar.nextLocal)
-
     val mastersVar =
-      mVar.push().ifNull({
-        pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
-      }, {
-        pushObject(mb)(JavaConversions)
-          .invokeV("seqAsJavaList", classOf[JList[_]].asType, mVar.push())
-      }).store(mVar.nextLocal)
+      thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType)
+        .invokeI("contains", Type.BOOLEAN_TYPE, keyVar.push().asType(classOf[AnyRef].asType))
+        .ifTrue({
+          pushObject(mb)(JavaConversions)
+            .invokeV("seqAsJavaList", classOf[JList[_]].asType,
+              applyMap(mb)(
+                thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType),
+                keyVar.push())
+                .cast(classOf[Seq[_]].asType))
+        }, {
+          pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
+        })
+        .store(keyVar.nextLocal)
 
     val selectedVar = (masterSelection match {
       case Some((name, t)) =>
