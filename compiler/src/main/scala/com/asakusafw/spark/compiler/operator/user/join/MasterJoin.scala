@@ -81,14 +81,14 @@ trait MasterJoin
         assert(mapping.getDestinationPort == operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED),
           "The destination port should be the same as the port for MasterJoinOp.ID_OUTPUT_JOINED: "
             + s"(${mapping.getDestinationPort}, "
-            + s"${operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED)})")
+            + s"${operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED)}) [${operator}]")
         val destProperty =
           operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelRef
             .findProperty(mapping.getDestinationProperty)
 
         assert(srcProperty.getType.asType == destProperty.getType.asType,
           "The source and destination types should be the same: "
-            + s"(${srcProperty.getType}, ${destProperty.getType}")
+            + s"(${srcProperty.getType}, ${destProperty.getType}) [${operator}]")
 
         pushObject(mb)(ValueOptionOps)
           .invokeV(

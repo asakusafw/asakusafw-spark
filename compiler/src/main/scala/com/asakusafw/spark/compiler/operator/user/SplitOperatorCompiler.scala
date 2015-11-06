@@ -44,11 +44,12 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
       implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
-      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
+        + s" [${operator}]")
     assert(operator.inputs.size == 1, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 1: ${operator.inputs.size}")
+      s"The size of inputs should be 1: ${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size == 2,
-      s"The size of outputs should be 2: ${operator.outputs.size}")
+      s"The size of outputs should be 2: ${operator.outputs.size} [${operator}]")
 
     val builder = new SplitOperatorFragmentClassBuilder(operator)
 
@@ -105,7 +106,7 @@ private class SplitOperatorFragmentClassBuilder(
     mappings.foreach { mapping =>
       assert(mapping.getSourcePort == operator.inputs(Split.ID_INPUT),
         "The source port should be the same as the port for Split.ID_INPUT: " +
-          s"(${mapping.getSourcePort}, ${operator.inputs(Split.ID_INPUT)})")
+          s"(${mapping.getSourcePort}, ${operator.inputs(Split.ID_INPUT)}) [${operator}]")
       val srcProperty =
         operator.inputs(Split.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
 
@@ -116,7 +117,7 @@ private class SplitOperatorFragmentClassBuilder(
 
       assert(srcProperty.getType.asType == destProperty.getType.asType,
         "The source and destination types should be the same: "
-          + s"(${srcProperty.getType}, ${destProperty.getType}")
+          + s"(${srcProperty.getType}, ${destProperty.getType}) [${operator}]")
 
       pushObject(mb)(ValueOptionOps)
         .invokeV(

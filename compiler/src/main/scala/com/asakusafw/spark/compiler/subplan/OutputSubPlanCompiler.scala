@@ -35,7 +35,7 @@ class OutputSubPlanCompiler extends SubPlanCompiler {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalOutput],
-      s"The dominant operator should be external output: ${primaryOperator}")
+      s"The primary operator should be external output: ${primaryOperator} [${subplan}]")
     val operator = primaryOperator.asInstanceOf[ExternalOutput]
 
     context.addExternalOutput(

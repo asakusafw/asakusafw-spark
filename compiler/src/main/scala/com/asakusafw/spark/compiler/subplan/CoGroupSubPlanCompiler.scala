@@ -37,7 +37,7 @@ class CoGroupSubPlanCompiler extends SubPlanCompiler {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[UserOperator],
-      s"The dominant operator should be user operator: ${primaryOperator}")
+      s"The primary operator should be user operator: ${primaryOperator} [${subplan}]")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
     val builder =

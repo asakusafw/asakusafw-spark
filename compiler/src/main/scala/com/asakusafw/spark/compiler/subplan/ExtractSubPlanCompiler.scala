@@ -36,7 +36,8 @@ class ExtractSubPlanCompiler extends SubPlanCompiler {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
 
     val inputs = subplan.getInputs.toSet[SubPlan.Input]
-    assert(inputs.size == 1)
+    assert(inputs.size == 1,
+      s"The size of inputs should be 1: ${inputs.size} [${subplan}]")
 
     val marker = inputs.head.getOperator
 

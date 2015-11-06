@@ -129,9 +129,10 @@ trait Serializing
   private def outputType(output: SubPlan.Output): Type = {
     val outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
     if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED) {
-      val op = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
-      assert(op.outputs.size == 1)
-      op.outputs.head.getDataType.asType
+      val operator = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
+      assert(operator.outputs.size == 1,
+        s"The size of outputs should be 1: ${operator.outputs.size} [${operator}]")
+      operator.outputs.head.getDataType.asType
     } else {
       output.getOperator.getDataType.asType
     }

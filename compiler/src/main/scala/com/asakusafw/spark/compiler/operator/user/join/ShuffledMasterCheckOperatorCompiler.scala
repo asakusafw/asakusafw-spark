@@ -40,16 +40,17 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
       implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
-      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
+        + s" [${operator}]")
     assert(operator.inputs.size == 2, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 2: ${operator.inputs.size}")
+      s"The size of inputs should be 2: ${operator.inputs.size} [${operator}]")
 
     assert(
       operator.outputs.forall(output =>
         output.dataModelType == operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType),
       s"All of output types should be the same as the transaction type: ${
         operator.outputs.map(_.dataModelType).mkString("(", ",", ")")
-      }")
+      } [${operator}]")
 
     val builder =
       new ShuffledJoinOperatorFragmentClassBuilder(

@@ -40,7 +40,7 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalInput],
-      s"The dominant operator should be external input: ${primaryOperator}")
+      s"The primary operator should be external input: ${primaryOperator} [${subplan}]")
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
     val (keyType, valueType, inputFormatType, paths, extraConfigurations) =

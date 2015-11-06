@@ -47,11 +47,11 @@ class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
       implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
-      s"The operator type is not supported: ${operator.getCoreOperatorKind}")
+      s"The operator type is not supported: ${operator.getCoreOperatorKind} [${operator}]")
     assert(operator.inputs.size == 1,
-      s"The size of inputs should be 1: ${operator.inputs.size}")
+      s"The size of inputs should be 1: ${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size == 1,
-      s"The size of outputs should be 1: ${operator.outputs.size}")
+      s"The size of outputs should be 1: ${operator.outputs.size} [${operator}]")
 
     val builder = new ProjectionOperatorsFragmentClassBuilder(operator)
 
@@ -83,7 +83,7 @@ private class ProjectionOperatorsFragmentClassBuilder(
         .findProperty(mapping.getDestinationProperty)
       assert(srcProperty.getType.asType == destProperty.getType.asType,
         "The source and destination types should be the same: " +
-          s"(${srcProperty.getType}, ${destProperty.getType}")
+          s"(${srcProperty.getType}, ${destProperty.getType} [${operator}]")
 
       pushObject(mb)(ValueOptionOps)
         .invokeV(

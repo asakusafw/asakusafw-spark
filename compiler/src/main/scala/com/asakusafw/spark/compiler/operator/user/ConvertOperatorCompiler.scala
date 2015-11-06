@@ -42,11 +42,12 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
       implicit context: OperatorCompiler.Context): Type = {
 
     assert(support(operator),
-      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}")
+      s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
+        + s" [${operator}]")
     assert(operator.inputs.size == 1, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 1: ${operator.inputs.size}")
+      s"The size of inputs should be 1: ${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size == 2,
-      s"The size of outputs should be 2: ${operator.outputs.size}")
+      s"The size of outputs should be 2: ${operator.outputs.size} [${operator}]")
 
     assert(
       operator.methodDesc.parameterClasses
@@ -60,7 +61,7 @@ class ConvertOperatorCompiler extends UserOperatorCompiler {
       }, ${
         (operator.inputs.map(_.dataModelClass)
           ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
-      })")
+      }) [${operator}]")
 
     val builder = new ConvertOperatorFragmentClassBuilder(operator)
 

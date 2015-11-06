@@ -36,7 +36,6 @@ class SortOrderingClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/ordering/SortOrdering$$${nextId};"),
     groupingOrderingType) {
-  assert(orderingTypes.size > 0)
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
