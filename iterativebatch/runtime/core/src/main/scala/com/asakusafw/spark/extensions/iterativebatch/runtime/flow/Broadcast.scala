@@ -35,7 +35,7 @@ trait Broadcast extends Node {
 object Broadcast {
 
   private[this] val broadcasted =
-    mutable.Map.empty[Broadcast, mutable.Map[RoundContext, Future[Broadcasted[_]]]]
+    mutable.WeakHashMap.empty[Broadcast, mutable.Map[RoundContext, Future[Broadcasted[_]]]]
 
   private def getOrBroadcast(
     broadcast: Broadcast)(
