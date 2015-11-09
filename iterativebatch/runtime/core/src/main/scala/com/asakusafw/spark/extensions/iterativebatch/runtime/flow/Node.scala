@@ -23,4 +23,6 @@ trait Node extends Serializable {
   implicit def sc: SparkContext
 
   def label: String
+
+  def dependencies: Set[Node]
 }

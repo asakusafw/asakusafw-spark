@@ -23,7 +23,7 @@ import scala.concurrent.duration.Duration
 import scala.util.Try
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor._
-import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.Sink
+import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.Terminator
 import com.asakusafw.spark.extensions.iterativebatch.runtime.util.{
   AsynchronousListenerBus,
   MessageQueue,
@@ -34,7 +34,7 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
 
   def this()(implicit ec: ExecutionContext) = this(Int.MaxValue)
 
-  def sinks: Seq[Sink]
+  def terminator: Terminator
 
   private val results =
     new WeakHashMap[RoundContext, Try[Unit]] with ReadWriteLockedMap[RoundContext, Try[Unit]]
@@ -63,7 +63,7 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
 
       override protected def handleMessage(rc: RoundContext)(onComplete: () => Unit): Unit = {
         listenerBus.post(RoundStarted(rc))
-        Future.sequence(sinks.map(_.submitJob(rc))).map(_ => ())
+        terminator.submitJob(rc)
           .onComplete { result =>
             results += rc -> result
             onComplete()

@@ -43,8 +43,7 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Broadcast,
   Extract,
-  Source,
-  Target
+  Source
 }
 
 class ExtractClassBuilder(
@@ -69,7 +68,7 @@ class ExtractClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
-      classOf[Seq[Target]].asType,
+      classOf[Seq[(Source, BranchKey)]].asType,
       classOf[Map[BroadcastId, Broadcast]].asType,
       classOf[SparkContext].asType),
       new MethodSignatureBuilder()
@@ -93,7 +92,7 @@ class ExtractClassBuilder(
         .newVoidReturnType()
         .build()) { mb =>
         import mb._ // scalastyle:ignore
-        val inputsVar = `var`(classOf[Seq[Target]].asType, thisVar.nextLocal)
+        val inputsVar = `var`(classOf[Seq[(Source, BranchKey)]].asType, thisVar.nextLocal)
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast]].asType, inputsVar.nextLocal)
         val scVar = `var`(classOf[SparkContext].asType, broadcastsVar.nextLocal)
 

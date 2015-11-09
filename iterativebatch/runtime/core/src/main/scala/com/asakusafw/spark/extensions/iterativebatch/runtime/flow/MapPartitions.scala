@@ -31,7 +31,9 @@ class MapPartitions[T, U: ClassTag](
   preservesPartitioning: Boolean = false)(
     @transient implicit val sc: SparkContext) extends Source {
 
-  override def label: String = parent.label
+  override val label: String = parent.label
+
+  override val dependencies: Set[Node] = Set(parent)
 
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {

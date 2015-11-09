@@ -213,7 +213,7 @@ object AggregateSpec {
     val Result = BranchKey(1)
 
     class TestAggregate(
-      prev: Target,
+      prev: (Source, BranchKey),
       sort: Option[SortOrdering],
       part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Foo, Foo])(
@@ -273,7 +273,7 @@ object AggregateSpec {
     val Result2 = BranchKey(2)
 
     class TestPartialAggregationExtract(
-      @transient prev: Target)(
+      prev: (Source, BranchKey))(
         val label: String)(
           implicit sc: SparkContext)
       extends Extract[Foo](Seq(prev))(Map.empty) {

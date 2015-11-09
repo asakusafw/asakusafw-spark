@@ -27,7 +27,7 @@ import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class Aggregate[V, C](
-  prevs: Seq[Target],
+  prevs: Seq[(Source, BranchKey)],
   sort: Option[SortOrdering],
   partitioner: Partitioner)(
     val broadcasts: Map[BroadcastId, Broadcast])(
@@ -40,6 +40,8 @@ abstract class Aggregate[V, C](
     sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   def aggregation: Aggregation[ShuffleKey, V, C]
+
+  override val dependencies: Set[Node] = prevs.map(_._1).toSet ++ broadcasts.values
 
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {

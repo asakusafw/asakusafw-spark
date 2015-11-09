@@ -27,13 +27,15 @@ import org.slf4j.LoggerFactory
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class NewHadoopOutput(
-  prevs: Seq[Target])(
+  prevs: Seq[(Source, BranchKey)])(
     implicit sc: SparkContext)
   extends Output {
 
   private[this] val Logger = LoggerFactory.getLogger(getClass())
 
   def newJob(rc: RoundContext): Job
+
+  override val dependencies: Set[Node] = prevs.map(_._1).toSet
 
   override def submitJob(
     rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {

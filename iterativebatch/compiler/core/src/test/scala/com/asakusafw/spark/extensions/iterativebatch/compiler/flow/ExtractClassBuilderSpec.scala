@@ -53,7 +53,7 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Broadcast,
   Extract,
   ParallelCollectionSource,
-  Target
+  Source
 }
 
 @RunWith(classOf[JUnitRunner])
@@ -155,7 +155,7 @@ class ExtractClassBuilderSpec
         new ParallelCollectionSource(getBranchKey(foosMarker), (0 until 10))("input")
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
-        classOf[Seq[Target]],
+        classOf[Seq[(Source, BranchKey)]],
         classOf[Map[BroadcastId, Broadcast]],
         classOf[SparkContext])
         .newInstance(
@@ -277,7 +277,7 @@ class ExtractClassBuilderSpec
         new ParallelCollectionSource(getBranchKey(foosMarker), (0 until 10))("input")
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
-        classOf[Seq[Target]],
+        classOf[Seq[(Source, BranchKey)]],
         classOf[Map[BroadcastId, Broadcast]],
         classOf[SparkContext])
         .newInstance(

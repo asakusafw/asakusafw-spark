@@ -54,7 +54,7 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Aggregate,
   ParallelCollectionSource,
   SortOrdering,
-  Target
+  Source
 }
 import com.asakusafw.spark.extensions.iterativebatch.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -146,7 +146,7 @@ class AggregateClassBuilderSpec
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
 
       val aggregate = cls.getConstructor(
-        classOf[Seq[Target]],
+        classOf[Seq[(Source, BranchKey)]],
         classOf[Option[SortOrdering]],
         classOf[Partitioner],
         classOf[Map[BroadcastId, Broadcast]],
@@ -248,7 +248,7 @@ class AggregateClassBuilderSpec
           }
 
       val aggregate = cls.getConstructor(
-        classOf[Seq[Target]],
+        classOf[Seq[(Source, BranchKey)]],
         classOf[Option[SortOrdering]],
         classOf[Partitioner],
         classOf[Map[BroadcastId, Broadcast]],

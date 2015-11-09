@@ -59,7 +59,7 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   GroupOrdering,
   ParallelCollectionSource,
   SortOrdering,
-  Target
+  Source
 }
 
 @RunWith(classOf[JUnitRunner])
@@ -198,7 +198,7 @@ class CoGroupClassBuilderSpec
       val partitioner = new HashPartitioner(2)
 
       val cogroup = cls.getConstructor(
-        classOf[Seq[(Seq[Target], Option[SortOrdering])]],
+        classOf[Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])]],
         classOf[GroupOrdering],
         classOf[Partitioner],
         classOf[Map[BroadcastId, Broadcast]],

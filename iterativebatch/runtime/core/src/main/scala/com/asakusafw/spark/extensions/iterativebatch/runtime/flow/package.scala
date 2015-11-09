@@ -20,8 +20,6 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 package object flow {
 
-  type Target = (Source, BranchKey)
-
   type SortOrdering = Ordering[ShuffleKey]
   type GroupOrdering = Ordering[ShuffleKey]
 }

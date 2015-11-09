@@ -48,8 +48,7 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   CoGroup,
   GroupOrdering,
   SortOrdering,
-  Source,
-  Target
+  Source
 }
 
 class CoGroupClassBuilder(
@@ -67,7 +66,7 @@ class CoGroupClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
-      classOf[Seq[(Seq[Target], Option[SortOrdering])]].asType,
+      classOf[Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])]].asType,
       classOf[GroupOrdering].asType,
       classOf[Partitioner].asType,
       classOf[Map[BroadcastId, Broadcast]].asType,
@@ -118,7 +117,9 @@ class CoGroupClassBuilder(
         .build()) { mb =>
         import mb._ // scalastyle:ignore
         val prevsVar =
-          `var`(classOf[Seq[(Seq[Target], Option[SortOrdering])]].asType, thisVar.nextLocal)
+          `var`(
+            classOf[Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])]].asType,
+            thisVar.nextLocal)
         val groupingVar = `var`(classOf[GroupOrdering].asType, prevsVar.nextLocal)
         val partVar = `var`(classOf[Partitioner].asType, groupingVar.nextLocal)
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast]].asType, partVar.nextLocal)

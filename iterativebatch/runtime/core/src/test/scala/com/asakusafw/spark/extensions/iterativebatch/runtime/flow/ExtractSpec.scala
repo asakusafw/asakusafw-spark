@@ -231,7 +231,7 @@ object ExtractSpec {
     val Result = BranchKey(1)
 
     class SimpleExtract(
-      prevs: Seq[Target])(
+      prevs: Seq[(Source, BranchKey)])(
         val label: String)(
           implicit sc: SparkContext)
       extends Extract[Foo](prevs)(Map.empty) {
@@ -269,7 +269,7 @@ object ExtractSpec {
     val Result2 = BranchKey(2)
 
     class BranchExtract(
-      prevs: Seq[Target])(
+      prevs: Seq[(Source, BranchKey)])(
         val label: String)(
           implicit sc: SparkContext)
       extends Extract[Foo](prevs)(Map.empty) {
@@ -331,7 +331,7 @@ object ExtractSpec {
     val Result2 = BranchKey(2)
 
     class BranchAndOrderingExtract(
-      prevs: Seq[Target])(
+      prevs: Seq[(Source, BranchKey)])(
         val label: String)(
           implicit sc: SparkContext)
       extends Extract[Bar](prevs)(Map.empty) {

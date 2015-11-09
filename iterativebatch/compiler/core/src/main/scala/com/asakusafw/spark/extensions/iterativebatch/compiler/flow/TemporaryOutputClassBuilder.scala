@@ -36,7 +36,6 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Broadcast,
   Source,
-  Target,
   TemporaryOutput
 }
 
@@ -60,7 +59,7 @@ class TemporaryOutputClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
-      classOf[Seq[Target]].asType,
+      classOf[Seq[(Source, BranchKey)]].asType,
       classOf[SparkContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
@@ -77,7 +76,7 @@ class TemporaryOutputClassBuilder(
         .newVoidReturnType()
         .build()) { mb =>
         import mb._ // scalastyle:ignore
-        val prevsVar = `var`(classOf[Seq[Target]].asType, thisVar.nextLocal)
+        val prevsVar = `var`(classOf[Seq[(Source, BranchKey)]].asType, thisVar.nextLocal)
         val scVar = `var`(classOf[SparkContext].asType, prevsVar.nextLocal)
 
         thisVar.push().invokeInit(

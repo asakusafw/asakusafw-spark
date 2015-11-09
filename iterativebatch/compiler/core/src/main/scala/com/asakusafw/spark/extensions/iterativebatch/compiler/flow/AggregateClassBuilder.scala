@@ -47,8 +47,7 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Aggregate,
   Broadcast,
   SortOrdering,
-  Source,
-  Target
+  Source
 }
 
 class AggregateClassBuilder(
@@ -77,7 +76,7 @@ class AggregateClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
-      classOf[Seq[Target]].asType,
+      classOf[Seq[(Source, BranchKey)]].asType,
       classOf[Option[SortOrdering]].asType,
       classOf[Partitioner].asType,
       classOf[Map[BroadcastId, Future[Broadcast]]].asType,
@@ -113,7 +112,7 @@ class AggregateClassBuilder(
         .newVoidReturnType()
         .build()) { mb =>
         import mb._ // scalastyle:ignore
-        val prevsVar = `var`(classOf[Seq[Target]].asType, thisVar.nextLocal)
+        val prevsVar = `var`(classOf[Seq[(Source, BranchKey)]].asType, thisVar.nextLocal)
         val sortVar = `var`(classOf[Option[SortOrdering]].asType, prevsVar.nextLocal)
         val partVar = `var`(classOf[Partitioner].asType, sortVar.nextLocal)
         val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast]].asType, partVar.nextLocal)

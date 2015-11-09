@@ -35,6 +35,8 @@ class ParallelCollectionSource[T: ClassTag](
   @transient
   private var result: Future[RDD[T]] = _
 
+  override val dependencies: Set[Node] = Set.empty
+
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] =
     synchronized {

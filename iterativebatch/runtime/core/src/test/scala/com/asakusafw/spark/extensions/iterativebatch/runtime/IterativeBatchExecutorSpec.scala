@@ -33,9 +33,11 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.fixture.SparkForAll
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
+  Node,
   ParallelCollectionSource,
   Sink,
-  Source
+  Source,
+  Terminator
 }
 import com.asakusafw.spark.extensions.iterativebatch.runtime.util.ReadWriteLockedMap
 
@@ -188,6 +190,8 @@ object IterativeBatchExecutorSpec {
 
     override val label: String = "print"
 
+    override val dependencies: Set[Node] = Set(prev)
+
     override def submitJob(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
       prev.getOrCompute(rc).apply(Branch).map {
         _.foreach(println)
@@ -200,6 +204,8 @@ object IterativeBatchExecutorSpec {
       prev: Source)(implicit val sc: SparkContext) extends Sink {
 
     override val label: String = "collect"
+
+    override val dependencies: Set[Node] = Set(prev)
 
     override def submitJob(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
       prev.getOrCompute(rc).apply(Branch).map { rdd =>
@@ -223,7 +229,7 @@ object IterativeBatchExecutorSpec {
         implicit sc: SparkContext, ec: ExecutionContext) =
         this(Int.MaxValue, collection)
 
-      override val sinks: Seq[Sink] = {
+      override val terminator: Terminator = {
         val source = new ParallelCollectionSource(Branch, (0 until 100))("source")
           .mapWithRoundContext(Branch) { rc =>
 
@@ -232,7 +238,7 @@ object IterativeBatchExecutorSpec {
 
             { i: Int => 100 * round + i }
           }
-        Seq(new PrintSink(source), new CollectSink(collection)(source))
+        new Terminator(Seq(new PrintSink(source), new CollectSink(collection)(source)))
       }
     }
   }
@@ -250,7 +256,7 @@ object IterativeBatchExecutorSpec {
         implicit sc: SparkContext, ec: ExecutionContext) =
         this(duration, Int.MaxValue, collection)
 
-      override val sinks: Seq[Sink] = {
+      override val terminator: Terminator = {
         val d = duration
         val source = new ParallelCollectionSource(Branch, (0 until 10))("source")
           .mapWithRoundContext(Branch) { rc =>
@@ -264,7 +270,7 @@ object IterativeBatchExecutorSpec {
             Thread.sleep(d)
             i
           }
-        Seq(new PrintSink(source), new CollectSink(collection)(source))
+        new Terminator(Seq(new PrintSink(source), new CollectSink(collection)(source)))
       }
     }
   }

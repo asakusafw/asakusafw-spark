@@ -26,9 +26,10 @@ import org.apache.spark.SparkContext
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
+import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class TemporaryOutput[T: ClassTag](
-  prevs: Seq[Target])(
+  prevs: Seq[(Source, BranchKey)])(
     implicit sc: SparkContext)
   extends NewHadoopOutput(prevs) {
 

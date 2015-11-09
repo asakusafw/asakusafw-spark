@@ -34,6 +34,8 @@ class MapBroadcast(
     val label: String)(
       @transient implicit val sc: SparkContext) extends Broadcast {
 
+  override val dependencies: Set[Node] = Set(source)
+
   override def broadcast(
     rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
 

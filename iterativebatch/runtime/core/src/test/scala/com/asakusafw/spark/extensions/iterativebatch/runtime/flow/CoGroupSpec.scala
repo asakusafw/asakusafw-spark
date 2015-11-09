@@ -257,7 +257,7 @@ object CoGroupSpec {
   val BarError = BranchKey(5)
 
   class TestCoGroup(
-    @transient inputs: Seq[(Seq[Target], Option[SortOrdering])],
+    @transient inputs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
     @transient grouping: GroupOrdering,
     @transient part: Partitioner)(
       val label: String)(

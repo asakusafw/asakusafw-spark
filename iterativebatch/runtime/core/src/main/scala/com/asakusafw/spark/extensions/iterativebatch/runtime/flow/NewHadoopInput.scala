@@ -35,6 +35,8 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V:
 
   def newJob(rc: RoundContext): Job
 
+  override val dependencies: Set[Node] = broadcasts.values.toSet
+
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 

@@ -133,7 +133,7 @@ object OutputSpec {
   object Temporary {
 
     class Output(
-      prev: Target)(
+      prev: (Source, BranchKey))(
         val path: String,
         val label: String)(
           implicit sc: SparkContext)

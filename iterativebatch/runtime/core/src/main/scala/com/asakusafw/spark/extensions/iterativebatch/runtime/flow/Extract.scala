@@ -26,7 +26,7 @@ import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId }
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class Extract[T](
-  prevs: Seq[Target])(
+  prevs: Seq[(Source, BranchKey)])(
     val broadcasts: Map[BroadcastId, Broadcast])(
       @transient implicit val sc: SparkContext)
   extends Source
@@ -35,6 +35,8 @@ abstract class Extract[T](
 
   private val fragmentBufferSize =
     sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
+
+  override val dependencies: Set[Node] = prevs.map(_._1).toSet ++ broadcasts.values
 
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {

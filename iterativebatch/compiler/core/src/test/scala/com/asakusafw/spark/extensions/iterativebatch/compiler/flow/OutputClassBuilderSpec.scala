@@ -54,7 +54,7 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.{ RoundContext, Rou
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Broadcast,
   ParallelCollectionSource,
-  Target,
+  Source,
   TemporaryOutput
 }
 
@@ -144,7 +144,7 @@ class TemporaryOutputClassBuilderSpec
       new ParallelCollectionSource(Input, (0 until 100))("input")
         .mapWithRoundContext(Input)(Foo.intToFoo)
     val output = cls.getConstructor(
-      classOf[Seq[Target]],
+      classOf[Seq[(Source, BranchKey)]],
       classOf[SparkContext])
       .newInstance(
         Seq((source, getBranchKey(foosMarker))),
