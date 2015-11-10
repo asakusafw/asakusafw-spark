@@ -40,23 +40,21 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V:
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 
-    val future = Future {
+    val future = zipBroadcasts(rc).map { broadcasts =>
 
       val job = newJob(rc)
 
       sc.clearCallSite()
       sc.setCallSite(label)
 
-      sc.newAPIHadoopRDD(
+      val rdd = sc.newAPIHadoopRDD(
         job.getConfiguration,
         classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
         classTag[K].runtimeClass.asInstanceOf[Class[K]],
         classTag[V].runtimeClass.asInstanceOf[Class[V]])
 
-    }.zip(zipBroadcasts(rc)).map {
-      case (rdd, broadcasts) =>
-        branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(
-          sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
+      branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(
+        sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
     }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap
