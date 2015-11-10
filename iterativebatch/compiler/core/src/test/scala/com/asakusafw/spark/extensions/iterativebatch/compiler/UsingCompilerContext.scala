@@ -29,6 +29,22 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
 trait UsingCompilerContext extends UCC {
 
+  def newIterativeBatchExecutorCompilerContext(
+    flowId: String, outputDir: File): MockCompilerContext.IterativeBatchExecutorCompiler = {
+    newIterativeBatchExecutorCompilerContext(
+      flowId,
+      new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        outputDir))
+  }
+
+  def newIterativeBatchExecutorCompilerContext(
+    flowId: String,
+    jpContext: JPContext): MockCompilerContext.IterativeBatchExecutorCompiler = {
+    new MockCompilerContext.IterativeBatchExecutorCompiler(flowId)(jpContext)
+  }
+
   def newNodeCompilerContext(flowId: String, outputDir: File): MockCompilerContext.NodeCompiler = {
     newNodeCompilerContext(
       flowId,

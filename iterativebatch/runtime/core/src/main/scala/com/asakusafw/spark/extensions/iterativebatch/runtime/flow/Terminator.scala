@@ -21,9 +21,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.SparkContext
 
-class Terminator(
-  sinks: Seq[Sink])(
-    implicit val sc: SparkContext) extends Sink {
+class Terminator(sinks: Seq[Sink])(implicit val sc: SparkContext) extends Sink {
 
   val label: String = getClass.getName
 

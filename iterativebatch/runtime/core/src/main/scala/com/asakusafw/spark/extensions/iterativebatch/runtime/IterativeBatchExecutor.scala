@@ -72,6 +72,7 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
       }
     }
 
+  def started: Boolean = queue.started
   def running: Boolean = queue.running
   def terminating: Boolean = queue.terminating
   def stopped: Boolean = queue.stopped

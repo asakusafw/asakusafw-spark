@@ -33,6 +33,7 @@ import com.asakusafw.spark.compiler.subplan.{
 }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
+import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.Instantiator
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
 import resource._
@@ -85,5 +86,14 @@ object MockCompilerContext {
       }
       builder.thisType
     }
+  }
+
+  class IterativeBatchExecutorCompiler(flowId: String)(jpContext: JPContext)
+    extends NodeCompiler(flowId)(jpContext)
+    with IterativeBatchExecutorCompiler.Context
+    with Instantiator.Context {
+
+    override def nodeCompilerContext: NodeCompiler.Context = this
+    override def instantiatorCompilerContext: Instantiator.Context = this
   }
 }
