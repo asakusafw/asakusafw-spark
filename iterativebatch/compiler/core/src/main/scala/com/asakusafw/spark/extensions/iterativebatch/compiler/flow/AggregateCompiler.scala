@@ -29,7 +29,9 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
 class AggregateCompiler extends NodeCompiler {
 
-  def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.AGGREGATE
+  override def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.AGGREGATE
+
+  override def instantiator: Instantiator = AggregateInstantiator
 
   override def compile(
     subplan: SubPlan)(

@@ -28,7 +28,9 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
 class CoGroupCompiler extends NodeCompiler {
 
-  def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.COGROUP
+  override def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.COGROUP
+
+  override def instantiator: Instantiator = CoGroupInstantiator
 
   override def compile(
     subplan: SubPlan)(

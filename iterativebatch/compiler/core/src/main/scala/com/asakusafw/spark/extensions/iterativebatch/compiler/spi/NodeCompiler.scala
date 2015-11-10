@@ -36,9 +36,13 @@ import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler }
 import com.asakusafw.spark.compiler.subplan.{ Branching, BranchKeys }
 
+import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.Instantiator
+
 trait NodeCompiler {
 
   def of: SubPlanInfo.DriverType
+
+  def instantiator: Instantiator
 
   def compile(
     subplan: SubPlan)(

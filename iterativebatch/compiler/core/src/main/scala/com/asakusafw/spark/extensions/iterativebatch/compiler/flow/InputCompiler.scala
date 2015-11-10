@@ -32,7 +32,9 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
 class InputCompiler extends NodeCompiler {
 
-  def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.INPUT
+  override def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.INPUT
+
+  override def instantiator: Instantiator = InputInstantiator
 
   override def compile(
     subplan: SubPlan)(

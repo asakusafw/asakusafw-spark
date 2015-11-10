@@ -27,7 +27,9 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
 class ExtractCompiler extends NodeCompiler {
 
-  def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.EXTRACT
+  override def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.EXTRACT
+
+  override def instantiator: Instantiator = ExtractInstantiator
 
   override def compile(
     subplan: SubPlan)(
