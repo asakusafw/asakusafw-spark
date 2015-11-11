@@ -128,7 +128,7 @@ class AggregateClassBuilderSpec
       implicit val context = newNodeCompilerContext(flowId, classServer.root.toFile)
       context.branchKeys.getField(foosInput.getOperator.getSerialNumber)
 
-      val compiler = NodeCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
+      val compiler = NodeCompiler.get(subplan)
       val thisType = compiler.compile(subplan)
       context.addClass(context.branchKeys)
       context.addClass(context.broadcastIds)
@@ -226,7 +226,7 @@ class AggregateClassBuilderSpec
       implicit val context = newNodeCompilerContext(flowId, classServer.root.toFile)
       context.branchKeys.getField(foosInput.getOperator.getSerialNumber)
 
-      val compiler = NodeCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)
+      val compiler = NodeCompiler.get(subplan)
       val thisType = compiler.compile(subplan)
       context.addClass(context.branchKeys)
       context.addClass(context.broadcastIds)

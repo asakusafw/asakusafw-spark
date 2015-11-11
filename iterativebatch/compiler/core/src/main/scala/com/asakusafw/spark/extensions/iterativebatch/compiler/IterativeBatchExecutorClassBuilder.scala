@@ -142,9 +142,7 @@ class IterativeBatchExecutorClassBuilder(
 
     subplans.foreach {
       case (subplan, i) =>
-        val compiler =
-          NodeCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
-            context.nodeCompilerContext)
+        val compiler = NodeCompiler.get(subplan)(context.nodeCompilerContext)
         val nodeType = compiler.compile(subplan)(context.nodeCompilerContext)
 
         methodDef.newMethod(Opcodes.ACC_PRIVATE, s"node${i}", Seq(

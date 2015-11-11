@@ -30,42 +30,46 @@ import com.asakusafw.spark.compiler.subplan.InputDriverClassBuilder
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
-class InputCompiler extends NodeCompiler {
+class DirectInputCompiler extends NodeCompiler {
 
-  override def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.INPUT
+  override def support(
+    subplan: SubPlan)(
+      implicit context: NodeCompiler.Context): Boolean = {
+    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.INPUT && {
+      val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+      val primaryOperator = subPlanInfo.getPrimaryOperator
+      if (primaryOperator.isInstanceOf[ExternalInput]) {
+        val operator = primaryOperator.asInstanceOf[ExternalInput]
+        val inputFormatInfo = context.getInputFormatInfo(operator.getName, operator.getInfo)
+        context.options.useInputDirect && inputFormatInfo.isDefined
+      } else {
+        false
+      }
+    }
+  }
 
   override def instantiator: Instantiator = InputInstantiator
 
   override def compile(
     subplan: SubPlan)(
       implicit context: NodeCompiler.Context): Type = {
+    assert(support(subplan), s"The subplan is not supported: ${subplan}")
+
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
-    assert(primaryOperator.isInstanceOf[ExternalInput],
-      s"The dominant operator should be external input: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
-    val inputFormatInfo = context.getInputFormatInfo(operator.getName, operator.getInfo)
+    val inputFormatInfo = context.getInputFormatInfo(operator.getName, operator.getInfo).get
 
-    val builder = if (context.options.useInputDirect && inputFormatInfo.isDefined) {
-      val info = inputFormatInfo.get
+    val builder =
       new DirectInputClassBuilder(
         operator,
-        info.getFormatClass.asType,
-        info.getKeyClass.asType,
-        info.getValueClass.asType,
-        info.getExtraConfiguration.toMap)(
+        inputFormatInfo.getFormatClass.asType,
+        inputFormatInfo.getKeyClass.asType,
+        inputFormatInfo.getValueClass.asType,
+        inputFormatInfo.getExtraConfiguration.toMap)(
         subPlanInfo.getLabel,
         subplan.getOutputs.toSeq)
-    } else {
-      val inputRef = context.addExternalInput(operator.getName, operator.getInfo)
-      new TemporaryInputClassBuilder(
-        operator,
-        operator.getDataType.asType,
-        inputRef.getPaths.toSeq.sorted)(
-        subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq)
-    }
 
     context.addClass(builder)
   }

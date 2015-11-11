@@ -32,7 +32,6 @@ import com.asakusafw.spark.compiler.{
   CompilerContext,
   DataModelLoaderProvider
 }
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler }
 import com.asakusafw.spark.compiler.subplan.{ Branching, BranchKeys }
 
@@ -40,7 +39,9 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.Instantiator
 
 trait NodeCompiler {
 
-  def of: SubPlanInfo.DriverType
+  def support(
+    subplan: SubPlan)(
+      implicit context: NodeCompiler.Context): Boolean
 
   def instantiator: Instantiator
 
@@ -69,37 +70,28 @@ object NodeCompiler {
     def aggregationCompilerContext: AggregationCompiler.Context
   }
 
-  def apply(
-    driverType: SubPlanInfo.DriverType)(
-      implicit context: NodeCompiler.Context): NodeCompiler = {
-    apply(context.classLoader)(driverType)
+  def get(subplan: SubPlan)(
+    implicit context: NodeCompiler.Context): NodeCompiler = {
+    val compilers = apply(context.classLoader).filter(_.support(subplan))
+    assert(compilers.size != 0,
+      s"The compiler supporting subplan (${subplan}) is not found.")
+    assert(compilers.size == 1,
+      "The number of compiler supporting subplan "
+        + s"(${subplan}) should be 1: ${compilers.size}")
+    compilers.head
   }
 
-  def get(
-    driverType: SubPlanInfo.DriverType)(
-      implicit context: NodeCompiler.Context): Option[NodeCompiler] = {
-    apply(context.classLoader).get(driverType)
-  }
-
-  def support(
-    driverType: SubPlanInfo.DriverType)(
-      implicit context: NodeCompiler.Context): Boolean = {
-    get(driverType).isDefined
-  }
-
-  private[this] val nodeCompilers: mutable.Map[ClassLoader, Map[SubPlanInfo.DriverType, NodeCompiler]] = // scalastyle:ignore
+  private[this] val nodeCompilers: mutable.Map[ClassLoader, Seq[NodeCompiler]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   private[this] def apply(
-    classLoader: ClassLoader): Map[SubPlanInfo.DriverType, NodeCompiler] = {
+    classLoader: ClassLoader): Seq[NodeCompiler] = {
     nodeCompilers.getOrElse(classLoader, reload(classLoader))
   }
 
   private[this] def reload(
-    classLoader: ClassLoader): Map[SubPlanInfo.DriverType, NodeCompiler] = {
-    val ors = ServiceLoader.load(classOf[NodeCompiler], classLoader).map {
-      resolver => resolver.of -> resolver
-    }.toMap[SubPlanInfo.DriverType, NodeCompiler]
+    classLoader: ClassLoader): Seq[NodeCompiler] = {
+    val ors = ServiceLoader.load(classOf[NodeCompiler], classLoader).toSeq
     nodeCompilers(classLoader) = ors
     ors
   }

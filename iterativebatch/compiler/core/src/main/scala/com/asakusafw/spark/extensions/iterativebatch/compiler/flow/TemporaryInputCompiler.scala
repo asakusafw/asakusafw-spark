@@ -18,22 +18,37 @@ package flow
 
 import scala.collection.JavaConversions._
 
+import org.apache.hadoop.io.NullWritable
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.runtime.stage.input.TemporaryInputFormat
+import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
+import com.asakusafw.spark.compiler.subplan.InputDriverClassBuilder
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
-class ExtractCompiler extends NodeCompiler {
+class TemporaryInputCompiler extends NodeCompiler {
 
   override def support(
     subplan: SubPlan)(
       implicit context: NodeCompiler.Context): Boolean = {
-    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.EXTRACT
+    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.INPUT && {
+      val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+      val primaryOperator = subPlanInfo.getPrimaryOperator
+      if (primaryOperator.isInstanceOf[ExternalInput]) {
+        val operator = primaryOperator.asInstanceOf[ExternalInput]
+        val inputFormatInfo = context.getInputFormatInfo(operator.getName, operator.getInfo)
+        !context.options.useInputDirect || inputFormatInfo.isEmpty
+      } else {
+        false
+      }
+    }
   }
 
-  override def instantiator: Instantiator = ExtractInstantiator
+  override def instantiator: Instantiator = InputInstantiator
 
   override def compile(
     subplan: SubPlan)(
@@ -41,15 +56,15 @@ class ExtractCompiler extends NodeCompiler {
     assert(support(subplan), s"The subplan is not supported: ${subplan}")
 
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+    val primaryOperator = subPlanInfo.getPrimaryOperator
+    val operator = primaryOperator.asInstanceOf[ExternalInput]
 
-    val inputs = subplan.getInputs.toSet[SubPlan.Input]
-    assert(inputs.size == 1)
-
-    val marker = inputs.head.getOperator
-
+    val inputRef = context.addExternalInput(operator.getName, operator.getInfo)
     val builder =
-      new ExtractClassBuilder(
-        marker)(
+      new TemporaryInputClassBuilder(
+        operator,
+        operator.getDataType.asType,
+        inputRef.getPaths.toSeq.sorted)(
         subPlanInfo.getLabel,
         subplan.getOutputs.toSeq)
 

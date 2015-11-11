@@ -26,19 +26,25 @@ import com.asakusafw.spark.compiler._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
-class OutputCompiler extends NodeCompiler {
+class TemporaryOutputCompiler extends NodeCompiler {
 
-  override def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.OUTPUT
+  override def support(
+    subplan: SubPlan)(
+      implicit context: NodeCompiler.Context): Boolean = {
+    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.OUTPUT
+  }
 
   override def instantiator: Instantiator = OutputInstantiator
 
   override def compile(
     subplan: SubPlan)(
       implicit context: NodeCompiler.Context): Type = {
+    assert(support(subplan), s"The subplan is not supported: ${subplan}")
+
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[ExternalOutput],
-      s"The dominant operator should be external output: ${primaryOperator}")
+      s"The primary operator should be external output: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[ExternalOutput]
 
     context.addExternalOutput(

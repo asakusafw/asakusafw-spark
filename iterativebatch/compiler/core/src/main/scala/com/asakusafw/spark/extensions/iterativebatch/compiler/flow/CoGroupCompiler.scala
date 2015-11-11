@@ -28,17 +28,23 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
 class CoGroupCompiler extends NodeCompiler {
 
-  override def of: SubPlanInfo.DriverType = SubPlanInfo.DriverType.COGROUP
+  override def support(
+    subplan: SubPlan)(
+      implicit context: NodeCompiler.Context): Boolean = {
+    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.COGROUP
+  }
 
   override def instantiator: Instantiator = CoGroupInstantiator
 
   override def compile(
     subplan: SubPlan)(
       implicit context: NodeCompiler.Context): Type = {
+    assert(support(subplan), s"The subplan is not supported: ${subplan}")
+
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[UserOperator],
-      s"The dominant operator should be user operator: ${primaryOperator}")
+      s"The primary operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
     val builder =
