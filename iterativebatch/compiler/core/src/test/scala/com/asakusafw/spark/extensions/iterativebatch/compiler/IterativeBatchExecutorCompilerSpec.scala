@@ -16,6 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 
 import org.junit.runner.RunWith
+import org.scalatest.Suites
 import org.scalatest.fixture.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
@@ -29,7 +30,7 @@ import scala.reflect.{ classTag, ClassTag }
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
-import org.apache.spark.SparkContext
+import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
@@ -63,7 +64,15 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.{ IterativeBatchExe
 @RunWith(classOf[JUnitRunner])
 class IterativeBatchExecutorCompilerSpecTest extends IterativeBatchExecutorCompilerSpec
 
-class IterativeBatchExecutorCompilerSpec
+class IterativeBatchExecutorCompilerSpec extends Suites(
+  (for {
+    threshold <- Seq(None, Some(0))
+    parallelism <- Seq(None, Some(8), Some(0))
+  } yield {
+    new IterativeBatchExecutorCompilerSpecBase(threshold, parallelism)
+  }): _*)
+
+class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
   extends FlatSpec
   with SparkWithClassServerForAll
   with FlowIdForEach
@@ -74,6 +83,17 @@ class IterativeBatchExecutorCompilerSpec
   import IterativeBatchExecutorCompilerSpec._
 
   behavior of IterativeBatchExecutorCompiler.getClass.getSimpleName
+
+  val configuration =
+    "master=local[8]" +
+      s"${threshold.map(t => s",threshold=${t}").getOrElse("")}" +
+      s"${parallelism.map(p => s",parallelism=${p}").getOrElse("")}"
+
+  override def configure(conf: SparkConf): SparkConf = {
+    threshold.foreach(i => conf.set("spark.shuffle.sort.bypassMergeThreshold", i.toString))
+    parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
+    super.configure(conf)
+  }
 
   def prepareData[T: ClassTag](name: String, path: File)(rdd: RDD[T])(implicit sc: SparkContext): Unit = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
@@ -96,7 +116,7 @@ class IterativeBatchExecutorCompilerSpec
       classTag[T].runtimeClass.asInstanceOf[Class[T]]).map(_._2)
   }
 
-  it should "compile IterativeBatchExecutor from simple plan" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor from simple plan: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -135,7 +155,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor from simple plan with InputFormatInfo" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor from simple plan with InputFormatInfo: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 0 // 1
 
@@ -200,7 +220,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with Logging" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with Logging: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -245,7 +265,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with Extract" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with Extract: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -309,7 +329,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with Checkpoint and Extract" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with Checkpoint and Extract: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -380,7 +400,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with CoGroup" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with CoGroup: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -503,7 +523,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with CoGroup with grouping is empty" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with CoGroup with grouping is empty: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -623,7 +643,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with MasterCheck" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with MasterCheck: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -715,7 +735,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with broadcast MasterCheck" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with broadcast MasterCheck: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -796,7 +816,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with MasterJoin" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with MasterJoin: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -888,7 +908,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with broadcast MasterJoin" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with broadcast MasterJoin: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -969,7 +989,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with broadcast self MasterCheck" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with broadcast self MasterCheck: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -1036,7 +1056,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with Fold" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with Fold: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -1103,7 +1123,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with Fold with grouping is empty" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with Fold with grouping is empty: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -1167,7 +1187,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with Summarize" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with Summarize: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
@@ -1240,7 +1260,7 @@ class IterativeBatchExecutorCompilerSpec
     }
   }
 
-  it should "compile IterativeBatchExecutor with Summarize with grouping is empty" in { implicit sc =>
+  it should s"compile IterativeBatchExecutor with Summarize with grouping is empty: [${configuration}]" in { implicit sc =>
     val path = createTempDirectoryForEach("test-").toFile
     val rounds = 0 to 1
 
