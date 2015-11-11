@@ -45,6 +45,7 @@ trait SparkForAll extends BeforeAndAfterAll { self: Suite =>
       conf.setAppName(getClass.getName)
       conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       conf.set("spark.kryo.registrator", kryoRegistrator)
+      conf.set("spark.kryo.referenceTracking", false.toString)
 
       sc = new SparkContext(configure(conf))
       afterStartSparkContext()
