@@ -21,13 +21,12 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait BranchKeysField
-  extends ClassBuilder
-  with ScalaIdioms {
+trait BranchKeysField extends ClassBuilder {
 
   implicit def context: BranchKeysField.Context
 

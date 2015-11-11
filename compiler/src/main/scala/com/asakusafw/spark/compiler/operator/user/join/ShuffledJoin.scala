@@ -28,13 +28,13 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, ListBuffer }
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait ShuffledJoin
-  extends JoinOperatorFragmentClassBuilder
-  with ScalaIdioms {
+  extends JoinOperatorFragmentClassBuilder {
 
   implicit def context: OperatorCompiler.Context
 

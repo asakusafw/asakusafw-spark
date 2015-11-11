@@ -24,15 +24,14 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, SubPlanCompiler }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait AggregationsField
-  extends ClassBuilder
-  with ScalaIdioms {
+trait AggregationsField extends ClassBuilder {
 
   implicit def context: AggregationsField.Context
 

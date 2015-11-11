@@ -27,12 +27,11 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanInputInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-object ExtractDriverInstantiator
-  extends Instantiator
-  with ScalaIdioms {
+object ExtractDriverInstantiator extends Instantiator {
 
   override def newInstance(
     driverType: Type,

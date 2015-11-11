@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
+package util
 
 import scala.collection.generic.Growable
 import scala.collection.mutable
@@ -24,7 +25,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait ScalaIdioms {
+object ScalaIdioms {
 
   def pushObject(mb: MethodBuilder)(obj: Any): Stack = {
     import mb._ // scalastyle:ignore
@@ -53,26 +54,26 @@ trait ScalaIdioms {
       .invokeV("apply", classOf[ClassTag[_]].asType, ldc(t).asType(classOf[Class[_]].asType))
   }
 
-  def buildArray(mb: MethodBuilder, t: Type)(block: ScalaIdioms.ArrayBuilder => Unit): Stack = {
-    val builder = new ScalaIdioms.ArrayBuilder(mb, t)
+  def buildArray(mb: MethodBuilder, t: Type)(block: ArrayBuilder => Unit): Stack = {
+    val builder = new ArrayBuilder(mb, t)
     block(builder)
     builder.result
   }
 
-  def buildSeq(mb: MethodBuilder)(block: ScalaIdioms.SeqBuilder => Unit): Stack = {
-    val builder = new ScalaIdioms.SeqBuilder(mb)
+  def buildSeq(mb: MethodBuilder)(block: SeqBuilder => Unit): Stack = {
+    val builder = new SeqBuilder(mb)
     block(builder)
     builder.result
   }
 
-  def buildMap(mb: MethodBuilder)(block: ScalaIdioms.MapBuilder => Unit): Stack = {
-    val builder = new ScalaIdioms.MapBuilder(mb)
+  def buildMap(mb: MethodBuilder)(block: MapBuilder => Unit): Stack = {
+    val builder = new MapBuilder(mb)
     block(builder)
     builder.result
   }
 
-  def buildSet(mb: MethodBuilder)(block: ScalaIdioms.SetBuilder => Unit): Stack = {
-    val builder = new ScalaIdioms.SetBuilder(mb)
+  def buildSet(mb: MethodBuilder)(block: SetBuilder => Unit): Stack = {
+    val builder = new SetBuilder(mb)
     block(builder)
     builder.result
   }
@@ -100,11 +101,8 @@ trait ScalaIdioms {
       traversable.asType(classOf[TraversableOnce[_]].asType))
       .pop()
   }
-}
 
-object ScalaIdioms {
-
-  class ArrayBuilder private[ScalaIdioms] (mb: MethodBuilder, t: Type) extends ScalaIdioms {
+  class ArrayBuilder private[ScalaIdioms] (mb: MethodBuilder, t: Type) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -152,7 +150,7 @@ object ScalaIdioms {
     }
   }
 
-  class SeqBuilder private[ScalaIdioms] (mb: MethodBuilder) extends ScalaIdioms {
+  class SeqBuilder private[ScalaIdioms] (mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -179,7 +177,7 @@ object ScalaIdioms {
     }
   }
 
-  class MapBuilder private[ScalaIdioms] (mb: MethodBuilder) extends ScalaIdioms {
+  class MapBuilder private[ScalaIdioms] (mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[(() => Stack, () => Stack)]
 
@@ -206,7 +204,7 @@ object ScalaIdioms {
     }
   }
 
-  class SetBuilder private[ScalaIdioms] (mb: MethodBuilder) extends ScalaIdioms {
+  class SetBuilder private[ScalaIdioms] (mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 

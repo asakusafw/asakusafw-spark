@@ -46,6 +46,8 @@ import com.asakusafw.spark.compiler.serializer.{
 }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.Instantiator
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
+import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.SparkClient
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -58,9 +60,7 @@ class SparkClientClassBuilder(
     implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/SparkClient;"),
-    classOf[SparkClient].asType)
-  with ScalaIdioms
-  with SparkIdioms {
+    classOf[SparkClient].asType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     fieldDef.newField("sc", classOf[SparkContext].asType)

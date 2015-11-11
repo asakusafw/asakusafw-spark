@@ -28,15 +28,14 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait PreparingKey
-  extends ClassBuilder
-  with ScalaIdioms {
+trait PreparingKey extends ClassBuilder {
 
   implicit def context: PreparingKey.Context
 

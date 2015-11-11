@@ -24,6 +24,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -63,8 +64,7 @@ private class SplitOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Split.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
-    operator.outputs)
-  with ScalaIdioms {
+    operator.outputs) {
 
   val mappings =
     JoinedModelUtil.getPropertyMappings(context.classLoader, operator).toSeq

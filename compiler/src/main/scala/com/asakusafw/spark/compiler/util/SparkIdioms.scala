@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
+package util
 
 import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.objectweb.asm.Type
@@ -26,7 +27,7 @@ import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait SparkIdioms extends ScalaIdioms {
+object SparkIdioms {
 
   def partitioner(mb: MethodBuilder)(numPartitions: => Stack): Stack = {
     import mb._ // scalastyle:ignore

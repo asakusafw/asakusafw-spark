@@ -29,6 +29,7 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.flow.processor.InputBuffer
@@ -83,8 +84,7 @@ private class CoGroupOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     classOf[Seq[Iterator[_]]].asType,
     operator.implementationClass.asType,
-    operator.outputs)
-  with ScalaIdioms {
+    operator.outputs) {
 
   val inputBuffer =
     operator.annotationDesc.getElements()("inputBuffer").resolve(context.classLoader)

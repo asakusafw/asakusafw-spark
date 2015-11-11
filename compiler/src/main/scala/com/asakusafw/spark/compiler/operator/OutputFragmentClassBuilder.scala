@@ -26,6 +26,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator.OutputFragmentClassBuilder._
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
 
@@ -42,8 +43,7 @@ class OutputFragmentClassBuilder(
         }
       }
       .build(),
-    classOf[OutputFragment[_]].asType)
-  with ScalaIdioms {
+    classOf[OutputFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(Type.INT_TYPE)) { mb =>
