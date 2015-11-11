@@ -56,21 +56,21 @@ abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: Cl
       case (k, v) => job.getConfiguration.set(k, v)
     }
 
-    val future = Future {
+    val future = zipBroadcasts().map { broadcasts =>
 
       sc.clearCallSite()
       sc.setCallSite(label)
 
-      sc.newAPIHadoopRDD(
+      val rdd = sc.newAPIHadoopRDD(
         job.getConfiguration,
         classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
         classTag[K].runtimeClass.asInstanceOf[Class[K]],
         classTag[V].runtimeClass.asInstanceOf[Class[V]])
-    }.zip(zipBroadcasts()).map {
-      case (rdd, broadcasts) =>
-        branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, hadoopConf)(
-          sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
+
+      branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, hadoopConf)(
+        sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
     }
+
     branchKeys.map(key => key -> future.map(_(key))).toMap
   }
 }
