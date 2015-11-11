@@ -25,14 +25,15 @@ import org.apache.spark.SparkContext
 import org.objectweb.asm.{ Opcodes, Type }
 
 import com.asakusafw.lang.compiler.planning.{ Plan, Planning }
-import com.asakusafw.spark.compiler._
+import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.planning.{
   BroadcastInfo,
-  SubPlanInfo,
   SubPlanInputInfo,
   SubPlanOutputInfo
 }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
+import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.utils.graph.Graphs
@@ -53,9 +54,7 @@ class IterativeBatchExecutorClassBuilder(
   plan: Plan)(
     implicit context: IterativeBatchExecutorCompiler.Context) extends ClassBuilder(
   Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/IterativeBatchExecutor;"),
-  classOf[IterativeBatchExecutor].asType)
-  with ScalaIdioms
-  with SparkIdioms {
+  classOf[IterativeBatchExecutor].asType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     fieldDef.newField(

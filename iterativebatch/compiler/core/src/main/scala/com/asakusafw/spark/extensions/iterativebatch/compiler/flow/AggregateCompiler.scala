@@ -22,7 +22,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler._
+import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler

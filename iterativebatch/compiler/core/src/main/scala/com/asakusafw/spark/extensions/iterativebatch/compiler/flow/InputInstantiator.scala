@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

@@ -29,14 +29,14 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler._
+import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.ExtractClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -63,8 +63,7 @@ class ExtractClassBuilder(
       .build(),
     classOf[Extract[_]].asType)
   with Branching
-  with LabelField
-  with ScalaIdioms {
+  with LabelField {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

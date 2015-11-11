@@ -24,10 +24,10 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.{ GeneratedClassPackageInternalName, ScalaIdioms }
+import com.asakusafw.spark.compiler.GeneratedClassPackageInternalName
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.DirectInputClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -63,8 +63,7 @@ class DirectInputClassBuilder(
         }
       }
       .build(),
-    classOf[DirectInput[_, _, _]].asType)
-  with ScalaIdioms {
+    classOf[DirectInput[_, _, _]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

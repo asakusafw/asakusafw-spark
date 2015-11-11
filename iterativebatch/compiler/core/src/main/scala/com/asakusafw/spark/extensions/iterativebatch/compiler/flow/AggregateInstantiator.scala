@@ -24,17 +24,15 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler._
+import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
-import com.asakusafw.spark.compiler.subplan.NumPartitions
+import com.asakusafw.spark.compiler.subplan.NumPartitions._
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
+import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-object AggregateInstantiator
-  extends Instantiator
-  with NumPartitions
-  with ScalaIdioms
-  with SparkIdioms {
+object AggregateInstantiator extends Instantiator {
 
   override def newInstance(
     nodeType: Type,

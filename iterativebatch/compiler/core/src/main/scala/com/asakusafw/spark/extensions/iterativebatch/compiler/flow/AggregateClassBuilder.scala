@@ -21,25 +21,23 @@ import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
-import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
-import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.{ GeneratedClassPackageInternalName, ScalaIdioms }
+import com.asakusafw.spark.compiler.GeneratedClassPackageInternalName
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.AggregateClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -71,8 +69,7 @@ class AggregateClassBuilder(
       .build(),
     classOf[Aggregate[_, _]].asType)
   with Branching
-  with LabelField
-  with ScalaIdioms {
+  with LabelField {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

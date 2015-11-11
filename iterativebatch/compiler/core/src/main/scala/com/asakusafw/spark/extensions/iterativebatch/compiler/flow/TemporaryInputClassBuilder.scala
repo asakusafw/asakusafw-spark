@@ -24,11 +24,11 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.{ GeneratedClassPackageInternalName, ScalaIdioms }
+import com.asakusafw.spark.compiler.GeneratedClassPackageInternalName
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.TemporaryInputClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -55,8 +55,7 @@ class TemporaryInputClassBuilder(
         }
       }
       .build(),
-    classOf[TemporaryInput[_]].asType)
-  with ScalaIdioms {
+    classOf[TemporaryInput[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
