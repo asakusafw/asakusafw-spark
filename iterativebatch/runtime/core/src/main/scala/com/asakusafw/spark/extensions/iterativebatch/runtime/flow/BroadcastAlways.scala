@@ -16,13 +16,19 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package flow
 
+import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
-trait Broadcast extends Node {
+trait BroadcastAlways {
+  self: Broadcast =>
 
-  def broadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]]
+  @transient
+  private val broadcasted =
+    mutable.WeakHashMap.empty[RoundContext, Future[Broadcasted[_]]]
 
-  def getOrBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]]
+  def getOrBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
+    synchronized(broadcasted.getOrElseUpdate(rc, broadcast(rc)))
+  }
 }

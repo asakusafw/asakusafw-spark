@@ -25,7 +25,7 @@ import org.apache.spark.rdd.RDD
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd._
 
-class MapBroadcast(
+abstract class MapBroadcast(
   source: Source,
   branchKey: BranchKey,
   sort: Option[SortOrdering],
