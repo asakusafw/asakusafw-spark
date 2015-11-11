@@ -26,12 +26,16 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 trait Source extends Node {
 
+  @transient
+  private val generatedRDDs =
+    mutable.WeakHashMap.empty[RoundContext, Map[BranchKey, Future[RDD[_]]]]
+
   def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]]
 
   final def getOrCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-    Source.getOrCompute(this)(rc)
+    synchronized(generatedRDDs.getOrElseUpdate(rc, compute(rc)))
   }
 
   def map[T, U: ClassTag](branchKey: BranchKey)(f: T => U): Source = {
@@ -91,20 +95,4 @@ trait Source extends Node {
       rc: RoundContext => (index: Int, iter: Iterator[T]) => f(rc)(index, iter)
     }, preservesPartitioning)
   }
-}
-
-object Source {
-
-  private[this] val generatedRDDs =
-    mutable.WeakHashMap.empty[Source, mutable.Map[RoundContext, Map[BranchKey, Future[RDD[_]]]]]
-
-  private def getOrCompute(
-    source: Source)(
-      rc: RoundContext)(
-        implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] =
-    synchronized {
-      generatedRDDs
-        .getOrElseUpdate(source, mutable.WeakHashMap.empty)
-        .getOrElseUpdate(rc, source.compute(rc))
-    }
 }

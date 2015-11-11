@@ -27,14 +27,18 @@ import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.driver.Branching
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
-abstract class NewHadoopInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: ClassTag](
-  implicit sc: SparkContext)
+abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
+  implicit sc: SparkContext,
+  @transient ifClassTag: ClassTag[IF],
+  @transient kClassTag: ClassTag[K],
+  @transient vClassTag: ClassTag[V])
   extends Input
   with UsingBroadcasts
   with Branching[V] {
 
   def newJob(rc: RoundContext): Job
 
+  @transient
   override val dependencies: Set[Node] = broadcasts.values.toSet
 
   override def compute(

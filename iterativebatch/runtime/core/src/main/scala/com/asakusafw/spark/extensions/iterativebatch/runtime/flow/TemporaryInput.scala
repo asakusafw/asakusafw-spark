@@ -30,7 +30,7 @@ import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.runtime.driver.BroadcastId
 
 abstract class TemporaryInput[V: ClassTag](
-  val broadcasts: Map[BroadcastId, Broadcast])(
+  @transient val broadcasts: Map[BroadcastId, Broadcast])(
     implicit sc: SparkContext)
   extends NewHadoopInput[TemporaryInputFormat[V], NullWritable, V] {
 

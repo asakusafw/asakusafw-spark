@@ -19,4 +19,4 @@ package flow
 import org.apache.spark.SparkContext
 
 abstract class Output(
-  @transient implicit val sc: SparkContext) extends Sink
+  implicit val sc: SparkContext) extends Sink

@@ -27,20 +27,22 @@ import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class Aggregate[V, C](
-  prevs: Seq[(Source, BranchKey)],
-  sort: Option[SortOrdering],
-  partitioner: Partitioner)(
-    val broadcasts: Map[BroadcastId, Broadcast])(
+  @transient prevs: Seq[(Source, BranchKey)],
+  @transient sort: Option[SortOrdering],
+  @transient partitioner: Partitioner)(
+    @transient val broadcasts: Map[BroadcastId, Broadcast])(
       @transient implicit val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[C] {
 
+  @transient
   private val fragmentBufferSize =
     sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   def aggregation: Aggregation[ShuffleKey, V, C]
 
+  @transient
   override val dependencies: Set[Node] = prevs.map(_._1).toSet ++ broadcasts.values
 
   override def compute(

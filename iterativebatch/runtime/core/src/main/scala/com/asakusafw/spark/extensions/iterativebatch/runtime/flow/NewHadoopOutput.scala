@@ -35,6 +35,7 @@ abstract class NewHadoopOutput(
 
   def newJob(rc: RoundContext): Job
 
+  @transient
   override val dependencies: Set[Node] = prevs.map(_._1).toSet
 
   override def submitJob(

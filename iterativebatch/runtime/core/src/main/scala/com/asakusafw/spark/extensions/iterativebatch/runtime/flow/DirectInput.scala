@@ -25,7 +25,7 @@ import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.spark.runtime.driver.BroadcastId
 
 abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: ClassTag](
-  val broadcasts: Map[BroadcastId, Broadcast])(
+  @transient val broadcasts: Map[BroadcastId, Broadcast])(
     implicit sc: SparkContext)
   extends NewHadoopInput[IF, K, V] {
 

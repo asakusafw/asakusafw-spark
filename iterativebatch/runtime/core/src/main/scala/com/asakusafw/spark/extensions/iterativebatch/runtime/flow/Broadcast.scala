@@ -23,28 +23,15 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 trait Broadcast extends Node {
 
+  @transient
+  private val broadcasted =
+    mutable.WeakHashMap.empty[RoundContext, Future[Broadcasted[_]]]
+
   def broadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]]
 
   final def getOrBroadcast(
     rc: RoundContext)(
       implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
-    Broadcast.getOrBroadcast(this)(rc)
-  }
-}
-
-object Broadcast {
-
-  private[this] val broadcasted =
-    mutable.WeakHashMap.empty[Broadcast, mutable.Map[RoundContext, Future[Broadcasted[_]]]]
-
-  private def getOrBroadcast(
-    broadcast: Broadcast)(
-      rc: RoundContext)(
-        implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
-    synchronized {
-      broadcasted
-        .getOrElseUpdate(broadcast, mutable.WeakHashMap.empty)
-        .getOrElseUpdate(rc, broadcast.broadcast(rc))
-    }
+    synchronized(broadcasted.getOrElseUpdate(rc, broadcast(rc)))
   }
 }

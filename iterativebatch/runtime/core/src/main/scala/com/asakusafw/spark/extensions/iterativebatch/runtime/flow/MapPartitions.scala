@@ -29,7 +29,7 @@ class MapPartitions[T, U: ClassTag](
   branchKey: BranchKey,
   f: RoundContext => (Int, Iterator[T]) => Iterator[U],
   preservesPartitioning: Boolean = false)(
-    @transient implicit val sc: SparkContext) extends Source {
+    implicit val sc: SparkContext) extends Source {
 
   override val label: String = parent.label
 

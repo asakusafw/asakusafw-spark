@@ -26,18 +26,20 @@ import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroup(
-  prevs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
-  grouping: GroupOrdering,
-  part: Partitioner)(
-    val broadcasts: Map[BroadcastId, Broadcast])(
+  @transient prevs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
+  @transient grouping: GroupOrdering,
+  @transient part: Partitioner)(
+    @transient val broadcasts: Map[BroadcastId, Broadcast])(
       @transient implicit val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[Seq[Iterator[_]]] {
 
+  @transient
   private val fragmentBufferSize =
     sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
+  @transient
   override val dependencies: Set[Node] = prevs.flatMap(_._1.map(_._1)).toSet ++ broadcasts.values
 
   override def compute(

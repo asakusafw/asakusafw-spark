@@ -32,7 +32,7 @@ class MapBroadcast(
   group: GroupOrdering,
   partitioner: Partitioner)(
     val label: String)(
-      @transient implicit val sc: SparkContext) extends Broadcast {
+      implicit val sc: SparkContext) extends Broadcast {
 
   override val dependencies: Set[Node] = Set(source)
 
