@@ -24,7 +24,7 @@ import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
-class MapPartitions[T, U: ClassTag](
+abstract class MapPartitions[T, U: ClassTag](
   parent: Source,
   branchKey: BranchKey,
   f: RoundContext => (Int, Iterator[T]) => Iterator[U],

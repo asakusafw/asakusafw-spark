@@ -58,78 +58,87 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
   behavior of classOf[Aggregate[_, _]].getSimpleName
 
   for {
-    mapSideCombine <- Seq(true, false)
+    always <- Seq(true, false)
   } {
-    it should s"aggregate with map-side combine = ${mapSideCombine}" in { implicit sc =>
-      import TotalAggregate._
+    for {
+      mapSideCombine <- Seq(true, false)
+    } {
+      it should s"aggregate with map-side combine = ${mapSideCombine}, compute always = ${always}" in { implicit sc =>
+        import TotalAggregate._
+
+        val source =
+          new ParallelCollectionSource(Input, (0 until 10))("input")
+            .mapWithRoundContext(Input)(Foo.intToFoo)
+
+        val sort = Option(new SortOrdering())
+        val partitioner = new HashPartitioner(2)
+        val aggregation = new TestAggregation(mapSideCombine)
+
+        val aggregate = if (always) {
+          new TestAggregate((source, Input), sort, partitioner, aggregation)("aggregate") with ComputeAlways
+        } else {
+          new TestAggregate((source, Input), sort, partitioner, aggregation)("aggregate") with ComputeOnce
+        }
+
+        for {
+          round <- 0 to 1
+        } {
+          val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+          val bias = if (always) 100 * round else 0
+
+          val result = Await.result(
+            aggregate.getOrCompute(rc).apply(Result).map {
+              _.map {
+                case (_, foo: Foo) => (foo.id.get, foo.sum.get)
+              }.collect.toSeq.sortBy(_._1)
+            }, Duration.Inf)
+          assert(result === Seq(
+            (bias + 0, (0 until 10 by 2).map(i => bias + i * 100).sum),
+            (bias + 1, (1 until 10 by 2).map(i => bias + i * 100).sum)))
+        }
+      }
+    }
+
+    it should s"aggregate partially, compute always = ${always}" in { implicit sc =>
+      import PartialAggregate._
 
       val source =
-        new ParallelCollectionSource(Input, (0 until 10))("input")
+        new ParallelCollectionSource(Input, (0 until 10), Option(2))("input")
           .mapWithRoundContext(Input)(Foo.intToFoo)
 
-      val sort = Option(new SortOrdering())
-      val partitioner = new HashPartitioner(2)
-      val aggregation = new TestAggregation(mapSideCombine)
-
-      val aggregate =
-        new TestAggregate((source, Input), sort, partitioner, aggregation)("aggregate")
+      val aggregate = if (always) {
+        new TestPartialAggregationExtract((source, Input))("partial-aggregate") with ComputeAlways
+      } else {
+        new TestPartialAggregationExtract((source, Input))("partial-aggregate") with ComputeOnce
+      }
 
       for {
         round <- 0 to 1
       } {
         val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
 
-        val result = Await.result(
-          aggregate.getOrCompute(rc).apply(Result).map {
+        val (result1, result2) = Await.result(
+          aggregate.getOrCompute(rc).apply(Result1).map {
             _.map {
               case (_, foo: Foo) => (foo.id.get, foo.sum.get)
             }.collect.toSeq.sortBy(_._1)
+          }.zip {
+            aggregate.getOrCompute(rc).apply(Result2).map {
+              _.map {
+                case (_, foo: Foo) => foo.sum.get
+              }.collect.toSeq
+            }
           }, Duration.Inf)
-        assert(result === Seq(
-          (100 * round + 0, (0 until 10 by 2).map(i => 100 * round + i * 100).sum),
-          (100 * round + 1, (1 until 10 by 2).map(i => 100 * round + i * 100).sum)))
+
+        assert(result1 ===
+          Seq(
+            (bias + 0, (0 until 10).filter(_ % 2 == 0).filter(_ < 5).map(i => bias + i * 100).sum),
+            (bias + 0, (0 until 10).filter(_ % 2 == 0).filterNot(_ < 5).map(i => bias + i * 100).sum),
+            (bias + 1, (0 until 10).filter(_ % 2 == 1).filter(_ < 5).map(i => bias + i * 100).sum),
+            (bias + 1, (0 until 10).filter(_ % 2 == 1).filterNot(_ < 5).map(i => bias + i * 100).sum)))
+        assert(result2 === (0 until 10).map(i => bias + i * 100))
       }
-    }
-  }
-
-  it should "aggregate partially" in { implicit sc =>
-    import PartialAggregate._
-
-    val source =
-      new ParallelCollectionSource(Input, (0 until 10), Option(2))("input")
-        .mapWithRoundContext(Input)(Foo.intToFoo)
-
-    val aggregate = new TestPartialAggregationExtract((source, Input))("partial-aggregate")
-
-    for {
-      round <- 0 to 1
-    } {
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
-
-      val (result1, result2) = Await.result(
-        aggregate.getOrCompute(rc).apply(Result1).map {
-          _.map {
-            case (_, foo: Foo) => (foo.id.get, foo.sum.get)
-          }.collect.toSeq.sortBy(_._1)
-        }.zip {
-          aggregate.getOrCompute(rc).apply(Result2).map {
-            _.map {
-              case (_, foo: Foo) => foo.sum.get
-            }.collect.toSeq
-          }
-        }, Duration.Inf)
-
-      assert(result1 ===
-        Seq(
-          (100 * round + 0,
-            (0 until 10).filter(_ % 2 == 0).filter(_ < 5).map(i => 100 * round + i * 100).sum),
-          (100 * round + 0,
-            (0 until 10).filter(_ % 2 == 0).filterNot(_ < 5).map(i => 100 * round + i * 100).sum),
-          (100 * round + 1,
-            (0 until 10).filter(_ % 2 == 1).filter(_ < 5).map(i => 100 * round + i * 100).sum),
-          (100 * round + 1,
-            (0 until 10).filter(_ % 2 == 1).filterNot(_ < 5).map(i => 100 * round + i * 100).sum)))
-      assert(result2 === (0 until 10).map(i => 100 * round + i * 100))
     }
   }
 }
@@ -212,7 +221,7 @@ object AggregateSpec {
 
     val Result = BranchKey(1)
 
-    class TestAggregate(
+    abstract class TestAggregate(
       prev: (Source, BranchKey),
       sort: Option[SortOrdering],
       part: Partitioner,
@@ -272,7 +281,7 @@ object AggregateSpec {
     val Result1 = BranchKey(1)
     val Result2 = BranchKey(2)
 
-    class TestPartialAggregationExtract(
+    abstract class TestPartialAggregationExtract(
       prev: (Source, BranchKey))(
         val label: String)(
           implicit sc: SparkContext)
