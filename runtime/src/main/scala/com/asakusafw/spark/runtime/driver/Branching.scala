@@ -131,7 +131,6 @@ trait Branching[T] {
       }, ${
         branchKeys.mkString("(", ",", ")")
       })")
-    val branchOutputs = outputs.toArray
 
     new ResourceBrokingIterator(
       hadoopConf.value,
@@ -139,7 +138,7 @@ trait Branching[T] {
         case (_, value) =>
           fragment.reset()
           fragment.add(value)
-          branchOutputs.iterator.flatMap {
+          outputs.iterator.flatMap {
             case (key, output) =>
               output.iterator.map(value => (Branch(key, shuffleKey(key, value)), value))
           }
