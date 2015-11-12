@@ -26,6 +26,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, Operator, OperatorOutput }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.fragment.{ Fragment, StopFragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -35,8 +36,7 @@ class FragmentGraphBuilder(
   broadcastsVar: Var,
   fragmentBufferSizeVar: Var,
   nextLocal: AtomicInteger)(
-    implicit context: OperatorCompiler.Context)
-  extends ScalaIdioms {
+    implicit context: OperatorCompiler.Context) {
   import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty

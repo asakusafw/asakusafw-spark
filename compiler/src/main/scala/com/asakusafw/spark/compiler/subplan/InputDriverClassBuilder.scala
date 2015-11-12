@@ -31,6 +31,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.subplan.InputDriverClassBuilder._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, SubPlanCompiler }
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, InputDriver }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -61,8 +62,7 @@ class InputDriverClassBuilder(
       .build(),
     classOf[InputDriver[_, _, _]].asType)
   with Branching
-  with LabelField
-  with ScalaIdioms {
+  with LabelField {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

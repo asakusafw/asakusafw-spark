@@ -24,6 +24,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.analyzer.util.{ PropertyFolding, SummarizedModelUtil }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -57,8 +58,7 @@ private class SummarizeAggregationClassBuilder(
     implicit context: AggregationCompiler.Context)
   extends AggregationClassBuilder(
     operator.inputs(Summarize.ID_INPUT).dataModelType,
-    operator.outputs(Summarize.ID_OUTPUT).dataModelType)
-  with ScalaIdioms {
+    operator.outputs(Summarize.ID_OUTPUT).dataModelType) {
 
   val propertyFoldings =
     SummarizedModelUtil.getPropertyFoldings(context.classLoader, operator).toSeq

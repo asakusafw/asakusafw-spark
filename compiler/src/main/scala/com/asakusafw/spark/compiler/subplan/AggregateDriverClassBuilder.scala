@@ -34,6 +34,7 @@ import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.AggregateDriverClassBuilder._
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ AggregateDriver, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
@@ -62,8 +63,7 @@ class AggregateDriverClassBuilder(
       .build(),
     classOf[AggregateDriver[_, _]].asType)
   with Branching
-  with LabelField
-  with ScalaIdioms {
+  with LabelField {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

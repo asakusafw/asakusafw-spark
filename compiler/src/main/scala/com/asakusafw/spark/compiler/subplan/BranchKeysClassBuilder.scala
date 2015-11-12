@@ -23,6 +23,7 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -40,8 +41,7 @@ class BranchKeysClassBuilder(flowId: String)
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BranchKeys;"),
     classOf[AnyRef].asType)
-  with BranchKeys
-  with ScalaIdioms {
+  with BranchKeys {
 
   private[this] val branchKeys: mutable.Map[Long, Int] = mutable.Map.empty
 

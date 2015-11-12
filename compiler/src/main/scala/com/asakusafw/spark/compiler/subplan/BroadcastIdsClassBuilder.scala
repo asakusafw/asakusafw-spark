@@ -23,6 +23,7 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -40,8 +41,7 @@ class BroadcastIdsClassBuilder(flowId: String)
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BroadcastIds;"),
     classOf[AnyRef].asType)
-  with BroadcastIds
-  with ScalaIdioms {
+  with BroadcastIds {
 
   private[this] val broadcastIds: mutable.Map[Long, Int] = mutable.Map.empty
 

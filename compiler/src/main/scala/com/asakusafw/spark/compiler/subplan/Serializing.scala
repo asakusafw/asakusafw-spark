@@ -23,13 +23,12 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.tools.asm._
 
-trait Serializing
-  extends ClassBuilder
-  with ScalaIdioms {
+trait Serializing extends ClassBuilder {
 
   implicit def context: Serializing.Context
 

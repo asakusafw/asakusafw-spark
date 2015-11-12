@@ -25,15 +25,14 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
+import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-trait OrderingsField
-  extends ClassBuilder
-  with ScalaIdioms
-  with SparkIdioms {
+trait OrderingsField extends ClassBuilder {
 
   implicit def context: OrderingsField.Context
 

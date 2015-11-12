@@ -25,14 +25,14 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.analyzer.util.PropertyMapping
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
+import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
 trait MasterJoin
-  extends JoinOperatorFragmentClassBuilder
-  with ScalaIdioms {
+  extends JoinOperatorFragmentClassBuilder {
 
   implicit def context: OperatorCompiler.Context
 
