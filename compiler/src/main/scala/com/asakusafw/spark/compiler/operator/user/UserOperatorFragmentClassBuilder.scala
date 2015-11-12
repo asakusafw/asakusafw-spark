@@ -69,7 +69,6 @@ abstract class UserOperatorFragmentClassBuilder(
         thisVar.push().invokeInit(superType)
         initReset(mb)
         initOutputFields(mb, broadcastsVar.nextLocal)
-        initOperatorField(mb)
         initFields(mb)
       }
   }
