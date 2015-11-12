@@ -51,99 +51,118 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
   behavior of classOf[Extract[_]].getSimpleName
 
-  it should "extract simply" in { implicit sc =>
-    import Simple._
+  for {
+    always <- Seq(true, false)
+  } {
+    it should s"extract simply, compute always = ${always}" in { implicit sc =>
+      import Simple._
 
-    val source =
-      new ParallelCollectionSource(Input, (0 until 100))("input")
-        .mapWithRoundContext(Input)(Foo.intToFoo)
-    val extract = new SimpleExtract(Seq((source, Input)))("extract")
+      val source =
+        new ParallelCollectionSource(Input, (0 until 100))("input")
+          .mapWithRoundContext(Input)(Foo.intToFoo)
+      val extract = if (always) {
+        new SimpleExtract(Seq((source, Input)))("extract") with ComputeAlways
+      } else {
+        new SimpleExtract(Seq((source, Input)))("extract") with ComputeOnce
+      }
 
-    for {
-      round <- 0 to 1
-    } {
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+      for {
+        round <- 0 to 1
+      } {
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
 
-      val result = Await.result(
-        extract.getOrCompute(rc).apply(Result).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq
-        }, Duration.Inf)
-      assert(result.size === 100)
-      assert(result === (0 until 100).map(i => 100 * round + i))
-    }
-  }
-
-  it should "extract with branch" in { implicit sc =>
-    import Branch._
-
-    val source =
-      new ParallelCollectionSource(Input, (0 until 100))("input")
-        .mapWithRoundContext(Input)(Foo.intToFoo)
-    val branch = new BranchExtract(Seq((source, Input)))("branch")
-
-    for {
-      round <- 0 to 1
-    } {
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
-
-      val (result1, result2) = Await.result(
-        branch.getOrCompute(rc).apply(Result1).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq
-        }.zip {
-          branch.getOrCompute(rc).apply(Result2).map {
+        val result = Await.result(
+          extract.getOrCompute(rc).apply(Result).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
-          }
-        }, Duration.Inf)
-
-      assert(result1.size === 50)
-      assert(result1 === (0 until 100 by 2).map(i => 100 * round + i))
-
-      assert(result2.size === 50)
-      assert(result2 === (1 until 100 by 2).map(i => 100 * round + i))
+          }, Duration.Inf)
+        assert(result.size === 100)
+        assert(result === (0 until 100).map(i => bias + i))
+      }
     }
-  }
 
-  it should "extract with branch and ordering" in { implicit sc =>
-    import BranchAndOrdering._
+    it should s"extract with branch, compute always = ${always}" in { implicit sc =>
+      import Branch._
 
-    val source =
-      new ParallelCollectionSource(Input, (0 until 100))("input")
-        .mapWithRoundContext(Input)(Bar.intToBar)
-    val branch = new BranchAndOrderingExtract(Seq((source, Input)))("branchAndOrdering")
+      val source =
+        new ParallelCollectionSource(Input, (0 until 100))("input")
+          .mapWithRoundContext(Input)(Foo.intToFoo)
+      val branch = if (always) {
+        new BranchExtract(Seq((source, Input)))("branch") with ComputeAlways
+      } else {
+        new BranchExtract(Seq((source, Input)))("branch") with ComputeOnce
+      }
 
-    for {
-      round <- 0 to 1
-    } {
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+      for {
+        round <- 0 to 1
+      } {
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
 
-      val (result1, result2) = Await.result(
-        branch.getOrCompute(rc).apply(Result1).map {
-          _.map {
-            case (_, bar: Bar) => (bar.id.get, bar.ord.get)
-          }.collect.toSeq
-        }.zip {
-          branch.getOrCompute(rc).apply(Result2).map {
+        val (result1, result2) = Await.result(
+          branch.getOrCompute(rc).apply(Result1).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq
+          }.zip {
+            branch.getOrCompute(rc).apply(Result2).map {
+              _.map {
+                case (_, foo: Foo) => foo.id.get
+              }.collect.toSeq
+            }
+          }, Duration.Inf)
+
+        assert(result1.size === 50)
+        assert(result1 === (0 until 100 by 2).map(i => bias + i))
+
+        assert(result2.size === 50)
+        assert(result2 === (1 until 100 by 2).map(i => bias + i))
+      }
+    }
+
+    it should s"extract with branch and ordering, compute always = ${always}" in { implicit sc =>
+      import BranchAndOrdering._
+
+      val source =
+        new ParallelCollectionSource(Input, (0 until 100))("input")
+          .mapWithRoundContext(Input)(Bar.intToBar)
+      val branch = if (always) {
+        new BranchAndOrderingExtract(Seq((source, Input)))("branchAndOrdering") with ComputeAlways
+      } else {
+        new BranchAndOrderingExtract(Seq((source, Input)))("branchAndOrdering") with ComputeOnce
+      }
+
+      for {
+        round <- 0 to 1
+      } {
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
+
+        val (result1, result2) = Await.result(
+          branch.getOrCompute(rc).apply(Result1).map {
             _.map {
               case (_, bar: Bar) => (bar.id.get, bar.ord.get)
             }.collect.toSeq
-          }
-        }, Duration.Inf)
+          }.zip {
+            branch.getOrCompute(rc).apply(Result2).map {
+              _.map {
+                case (_, bar: Bar) => (bar.id.get, bar.ord.get)
+              }.collect.toSeq
+            }
+          }, Duration.Inf)
 
-      assert(result1.size === 40)
-      assert(result1.map(_._1) === (0 until 100).map(_ % 5).filter(_ % 3 == 0).map(100 * round + _))
-      assert(result1.map(_._2) === (0 until 100).filter(i => (i % 5) % 3 == 0).map(100 * round + _))
+        assert(result1.size === 40)
+        assert(result1.map(_._1) === (0 until 100).map(_ % 5).filter(_ % 3 == 0).map(bias + _))
+        assert(result1.map(_._2) === (0 until 100).filter(i => (i % 5) % 3 == 0).map(bias + _))
 
-      assert(result2.size === 60)
-      assert(result2 ===
-        (0 until 100).filterNot(i => (i % 5) % 3 == 0)
-        .map(i => (100 * round + (i % 5), 100 * round + i))
-        .sortBy(t => (t._1, -t._2)))
+        assert(result2.size === 60)
+        assert(result2 ===
+          (0 until 100).filterNot(i => (i % 5) % 3 == 0)
+          .map(i => (bias + (i % 5), bias + i))
+          .sortBy(t => (t._1, -t._2)))
+      }
     }
   }
 }
@@ -230,7 +249,7 @@ object ExtractSpec {
 
     val Result = BranchKey(1)
 
-    class SimpleExtract(
+    abstract class SimpleExtract(
       prevs: Seq[(Source, BranchKey)])(
         val label: String)(
           implicit sc: SparkContext)
@@ -268,7 +287,7 @@ object ExtractSpec {
     val Result1 = BranchKey(1)
     val Result2 = BranchKey(2)
 
-    class BranchExtract(
+    abstract class BranchExtract(
       prevs: Seq[(Source, BranchKey)])(
         val label: String)(
           implicit sc: SparkContext)
@@ -330,7 +349,7 @@ object ExtractSpec {
     val Result1 = BranchKey(1)
     val Result2 = BranchKey(2)
 
-    class BranchAndOrderingExtract(
+    abstract class BranchAndOrderingExtract(
       prevs: Seq[(Source, BranchKey)])(
         val label: String)(
           implicit sc: SparkContext)

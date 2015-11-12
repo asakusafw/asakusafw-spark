@@ -30,20 +30,13 @@ class ParallelCollectionSource[T: ClassTag](
   numSlices: Option[Int] = None)(
     val label: String)(
       @transient implicit val sc: SparkContext)
-  extends Source {
-
-  @transient
-  private var result: Future[RDD[T]] = _
+  extends Source with ComputeOnce {
 
   override val dependencies: Set[Node] = Set.empty
 
   override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] =
-    synchronized {
-      if (result == null) {
-        val rdd = sc.parallelize(data, numSlices.getOrElse(sc.defaultParallelism))
-        result = Future.successful(rdd)
-      }
-      Map(branchKey -> result)
-    }
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    val rdd = sc.parallelize(data, numSlices.getOrElse(sc.defaultParallelism))
+    Map(branchKey -> Future.successful(rdd))
+  }
 }

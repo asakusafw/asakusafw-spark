@@ -16,7 +16,6 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package flow
 
-import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
@@ -26,73 +25,35 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 trait Source extends Node {
 
-  @transient
-  private val generatedRDDs =
-    mutable.WeakHashMap.empty[RoundContext, Map[BranchKey, Future[RDD[_]]]]
-
   def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]]
 
-  final def getOrCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-    synchronized(generatedRDDs.getOrElseUpdate(rc, compute(rc)))
-  }
+  def getOrCompute(
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]]
 
-  def map[T, U: ClassTag](branchKey: BranchKey)(f: T => U): Source = {
-    new MapPartitions(this, branchKey, {
-      RoundContext => (Int, iter: Iterator[T]) => iter.map(f)
-    }, preservesPartitioning = false)
-  }
+  def map[T, U: ClassTag](branchKey: BranchKey)(f: T => U): Source
 
   def mapWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
-    f: RoundContext => T => U): Source = {
-    new MapPartitions(this, branchKey, {
-      rc: RoundContext => (Int, iter: Iterator[T]) => iter.map(f(rc))
-    }, preservesPartitioning = false)
-  }
+    f: RoundContext => T => U): Source
 
-  def flatMap[T, U: ClassTag](branchKey: BranchKey)(f: T => TraversableOnce[U]): Source = {
-    new MapPartitions(this, branchKey, {
-      RoundContext => (Int, iter: Iterator[T]) => iter.flatMap(f)
-    }, preservesPartitioning = false)
-  }
+  def flatMap[T, U: ClassTag](branchKey: BranchKey)(f: T => TraversableOnce[U]): Source
 
   def flatMapWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
-    f: RoundContext => T => TraversableOnce[U]): Source = {
-    new MapPartitions(this, branchKey, {
-      rc: RoundContext => (Int, iter: Iterator[T]) => iter.flatMap(f(rc))
-    }, preservesPartitioning = false)
-  }
+    f: RoundContext => T => TraversableOnce[U]): Source
 
   def mapPartitions[T, U: ClassTag](branchKey: BranchKey)(
     f: Iterator[T] => Iterator[U],
-    preservesPartitioning: Boolean = false): Source = {
-    new MapPartitions(this, branchKey, {
-      RoundContext => (index: Int, iter: Iterator[T]) => f(iter)
-    }, preservesPartitioning)
-  }
+    preservesPartitioning: Boolean = false): Source
 
   def mapPartitionsWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
     f: RoundContext => Iterator[T] => Iterator[U],
-    preservesPartitioning: Boolean = false): Source = {
-    new MapPartitions(this, branchKey, {
-      rc: RoundContext => (Int, iter: Iterator[T]) => f(rc)(iter)
-    }, preservesPartitioning)
-  }
+    preservesPartitioning: Boolean = false): Source
 
   def mapPartitionsWithIndex[T, U: ClassTag](branchKey: BranchKey)(
     f: (Int, Iterator[T]) => Iterator[U],
-    preservesPartitioning: Boolean = false): Source = {
-    new MapPartitions(this, branchKey, {
-      RoundContext => (index: Int, iter: Iterator[T]) => f(index, iter)
-    }, preservesPartitioning)
-  }
+    preservesPartitioning: Boolean = false): Source
 
   def mapPartitionsWithIndexAndRoundContext[T, U: ClassTag](branchKey: BranchKey)(
     f: RoundContext => (Int, Iterator[T]) => Iterator[U],
-    preservesPartitioning: Boolean = false): Source = {
-    new MapPartitions(this, branchKey, {
-      rc: RoundContext => (index: Int, iter: Iterator[T]) => f(rc)(index, iter)
-    }, preservesPartitioning)
-  }
+    preservesPartitioning: Boolean = false): Source
 }

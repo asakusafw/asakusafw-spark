@@ -72,55 +72,69 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
 
   behavior of classOf[TemporaryInput[_]].getSimpleName
 
-  it should "input" in { implicit sc =>
-    val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
-    val path = new File(tmpDir, "foos_${round}").getAbsolutePath
+  for {
+    always <- Seq(true, false)
+  } {
+    it should s"input, compute always = ${always}" in { implicit sc =>
+      val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
+      val path = new File(tmpDir, "foos_${round}").getAbsolutePath
 
-    val input = new Temporary.Input(path)("input")
+      val input = if (always) {
+        new Temporary.Input(path)("input") with ComputeAlways
+      } else {
+        new Temporary.Input(path)("input") with ComputeOnce
+      }
 
-    for {
-      round <- 0 to 1
-    } {
-      prepareRound(tmpDir, 0 until 100, round)
+      for {
+        round <- 0 to 1
+      } {
+        prepareRound(tmpDir, 0 until 100, round)
 
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
 
-      val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq.sorted
-        }, Duration.Inf)
+        val result = Await.result(
+          input.getOrCompute(rc).apply(Input).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq.sorted
+          }, Duration.Inf)
 
-      assert(result === (0 until 100).map(i => 100 * round + i))
+        assert(result === (0 until 100).map(i => bias + i))
+      }
     }
-  }
 
-  it should "input from multiple paths" in { implicit sc =>
-    val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
-    val tmpDir1 = new File(tmpDir, "path1").getAbsolutePath
-    val tmpDir2 = new File(tmpDir, "path2").getAbsolutePath
-    val path1 = new File(tmpDir1, "foos_${round}").getAbsolutePath
-    val path2 = new File(tmpDir2, "foos_${round}").getAbsolutePath
+    it should s"input from multiple paths, compute always = ${always}" in { implicit sc =>
+      val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
+      val tmpDir1 = new File(tmpDir, "path1").getAbsolutePath
+      val tmpDir2 = new File(tmpDir, "path2").getAbsolutePath
+      val path1 = new File(tmpDir1, "foos_${round}").getAbsolutePath
+      val path2 = new File(tmpDir2, "foos_${round}").getAbsolutePath
 
-    val input = new Temporary.Input(Set(path1, path2))("input")
+      val input = if (always) {
+        new Temporary.Input(Set(path1, path2))("input") with ComputeAlways
+      } else {
+        new Temporary.Input(Set(path1, path2))("input") with ComputeOnce
+      }
 
-    for {
-      round <- 0 to 1
-    } {
-      prepareRound(tmpDir1, 0 until 50, round)
-      prepareRound(tmpDir2, 50 until 100, round)
+      for {
+        round <- 0 to 1
+      } {
+        prepareRound(tmpDir1, 0 until 50, round)
+        prepareRound(tmpDir2, 50 until 100, round)
 
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
 
-      val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq.sorted
-        }, Duration.Inf)
+        val result = Await.result(
+          input.getOrCompute(rc).apply(Input).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq.sorted
+          }, Duration.Inf)
 
-      assert(result === (0 until 100).map(i => 100 * round + i))
+        assert(result === (0 until 100).map(i => bias + i))
+      }
     }
   }
 }
@@ -134,55 +148,69 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
 
   behavior of classOf[DirectInput[_, _, _]].getSimpleName
 
-  it should "input" in { implicit sc =>
-    val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
-    val path = new File(tmpDir, /*"foo_${round}"*/ "foos_0").getAbsolutePath
+  for {
+    always <- Seq(true, false)
+  } {
+    it should s"input, compute always = ${always}" in { implicit sc =>
+      val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
+      val path = new File(tmpDir, /*"foo_${round}"*/ "foos_0").getAbsolutePath
 
-    val input = new Direct.Input(mkExtraConfigurations(path))("input")
+      val input = if (always) {
+        new Direct.Input(mkExtraConfigurations(path))("input") with ComputeAlways
+      } else {
+        new Direct.Input(mkExtraConfigurations(path))("input") with ComputeOnce
+      }
 
-    for {
-      round <- 0 to 0 // 1
-    } {
-      prepareRound(tmpDir, 0 until 100, round)
+      for {
+        round <- 0 to 0 // 1
+      } {
+        prepareRound(tmpDir, 0 until 100, round)
 
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
 
-      val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq.sorted
-        }, Duration.Inf)
+        val result = Await.result(
+          input.getOrCompute(rc).apply(Input).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq.sorted
+          }, Duration.Inf)
 
-      assert(result === (0 until 100).map(i => 100 * round + i))
+        assert(result === (0 until 100).map(i => bias + i))
+      }
     }
-  }
 
-  it should "input from multiple paths" in { implicit sc =>
-    val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
-    val tmpDir1 = new File(tmpDir, "path1").getAbsolutePath
-    val tmpDir2 = new File(tmpDir, "path2").getAbsolutePath
-    val path1 = new File(tmpDir1, /*"foos_${round}"*/ "foos_0").getAbsolutePath
-    val path2 = new File(tmpDir2, /*"foos_${round}"*/ "foos_0").getAbsolutePath
+    it should s"input from multiple paths, compute always = ${always}" in { implicit sc =>
+      val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
+      val tmpDir1 = new File(tmpDir, "path1").getAbsolutePath
+      val tmpDir2 = new File(tmpDir, "path2").getAbsolutePath
+      val path1 = new File(tmpDir1, /*"foos_${round}"*/ "foos_0").getAbsolutePath
+      val path2 = new File(tmpDir2, /*"foos_${round}"*/ "foos_0").getAbsolutePath
 
-    val input = new Direct.Input(mkExtraConfigurations(Set(path1, path2)))("input")
+      val input = if (always) {
+        new Direct.Input(mkExtraConfigurations(Set(path1, path2)))("input") with ComputeAlways
+      } else {
+        new Direct.Input(mkExtraConfigurations(Set(path1, path2)))("input") with ComputeOnce
+      }
 
-    for {
-      round <- 0 to 0 // 1
-    } {
-      prepareRound(tmpDir1, 0 until 50, round)
-      prepareRound(tmpDir2, 50 until 100, round)
+      for {
+        round <- 0 to 0 // 1
+      } {
+        prepareRound(tmpDir1, 0 until 50, round)
+        prepareRound(tmpDir2, 50 until 100, round)
 
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
 
-      val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq.sorted
-        }, Duration.Inf)
+        val result = Await.result(
+          input.getOrCompute(rc).apply(Input).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq.sorted
+          }, Duration.Inf)
 
-      assert(result === (0 until 100).map(i => 100 * round + i))
+        assert(result === (0 until 100).map(i => bias + i))
+      }
     }
   }
 
@@ -234,7 +262,7 @@ object InputSpec {
 
   object Temporary {
 
-    class Input(
+    abstract class Input(
       basePaths: Set[String])(
         val label: String)(
           implicit sc: SparkContext)
@@ -274,7 +302,7 @@ object InputSpec {
 
   object Direct {
 
-    class Input(
+    abstract class Input(
       val extraConfigurations: Map[String, String])(
         val label: String)(
           implicit sc: SparkContext)

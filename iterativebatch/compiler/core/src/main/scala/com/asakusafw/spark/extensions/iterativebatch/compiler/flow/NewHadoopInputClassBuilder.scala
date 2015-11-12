@@ -33,19 +33,25 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
+import com.asakusafw.spark.extensions.iterativebatch.compiler.util.{ MixIn, Mixing }
 
 abstract class NewHadoopInputClassBuilder(
   val operator: ExternalInput,
-  val valueType: Type)(
+  val valueType: Type,
+  computeStrategy: MixIn)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       thisType: Type,
       signature: String,
       superType: Type)(
         implicit val context: NodeCompiler.Context)
-  extends ClassBuilder(thisType, signature, superType)
+  extends ClassBuilder(thisType, signature, superType,
+    computeStrategy.traitType)
   with Branching
-  with LabelField {
+  with LabelField
+  with Mixing {
+
+  override val mixins: Seq[MixIn] = Seq(computeStrategy)
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)

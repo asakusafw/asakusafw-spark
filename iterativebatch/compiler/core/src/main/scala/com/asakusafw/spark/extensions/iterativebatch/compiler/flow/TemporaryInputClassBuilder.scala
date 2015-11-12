@@ -32,18 +32,21 @@ import com.asakusafw.spark.tools.asm._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.TemporaryInputClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
+import com.asakusafw.spark.extensions.iterativebatch.compiler.util.MixIn
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{ Broadcast, TemporaryInput }
 
 class TemporaryInputClassBuilder(
   operator: ExternalInput,
   valueType: Type,
-  paths: Seq[String])(
+  paths: Seq[String],
+  computeStrategy: MixIn)(
     label: String,
     subplanOutputs: Seq[SubPlan.Output])(
       implicit context: NodeCompiler.Context)
   extends NewHadoopInputClassBuilder(
     operator,
-    valueType)(
+    valueType,
+    computeStrategy)(
     label,
     subplanOutputs)(
     Type.getType(
@@ -80,6 +83,7 @@ class TemporaryInputClassBuilder(
           broadcastsVar.push(),
           classTag(mb, valueType),
           scVar.push())
+        initMixIns(mb)
       }
   }
 

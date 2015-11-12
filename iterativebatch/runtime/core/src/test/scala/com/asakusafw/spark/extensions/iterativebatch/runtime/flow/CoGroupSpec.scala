@@ -51,77 +51,90 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
   behavior of classOf[CoGroup].getSimpleName
 
-  it should "cogroup" in { implicit sc =>
-    val foos =
-      new ParallelCollectionSource(FooInput, (0 until 100))("input")
-        .mapWithRoundContext(FooInput)(Foo.intToFoo)
-    val fooOrd = new Foo.SortOrdering()
+  for {
+    always <- Seq(true, false)
+  } {
+    it should s"cogroup, compute always = ${always}" in { implicit sc =>
+      val foos =
+        new ParallelCollectionSource(FooInput, (0 until 100))("input")
+          .mapWithRoundContext(FooInput)(Foo.intToFoo)
+      val fooOrd = new Foo.SortOrdering()
 
-    val bars =
-      new ParallelCollectionSource(BarInput, (0 until 100))("input")
-        .flatMapWithRoundContext(BarInput)(Bar.intToBars)
-    val barOrd = new Bar.SortOrdering()
+      val bars =
+        new ParallelCollectionSource(BarInput, (0 until 100))("input")
+          .flatMapWithRoundContext(BarInput)(Bar.intToBars)
+      val barOrd = new Bar.SortOrdering()
 
-    val grouping = new GroupingOrdering()
-    val partitioner = new HashPartitioner(2)
+      val grouping = new GroupingOrdering()
+      val partitioner = new HashPartitioner(2)
 
-    val cogroup = new TestCoGroup(
-      Seq(
-        (Seq((foos, FooInput)), Option(fooOrd)),
-        (Seq((bars, BarInput)), Option(barOrd))),
-      grouping, partitioner)("cogroup")(sc)
-
-    for {
-      round <- 0 to 1
-    } {
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
-
-      val ((fooResult, barResult), (fooError, barError)) =
-        Await.result(
-          cogroup.getOrCompute(rc).apply(FooResult).map {
-            _.map {
-              case (_, foo: Foo) => foo.id.get
-            }.collect.toSeq
-          }.zip {
-            cogroup.getOrCompute(rc).apply(BarResult).map {
-              _.map {
-                case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
-              }.collect.toSeq
-            }
-          }.zip {
-            cogroup.getOrCompute(rc).apply(FooError).map {
-              _.map {
-                case (_, foo: Foo) => foo.id.get
-              }.collect.toSeq.sorted
-            }.zip {
-              cogroup.getOrCompute(rc).apply(BarError).map {
-                _.map {
-                  case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
-                }.collect.toSeq.sortBy(_._2)
-              }
-            }
-          }, Duration.Inf)
-
-      assert(fooResult.size === 1)
-      assert(fooResult.head === 100 * round + 1)
-
-      assert(barResult.size === 1)
-      assert(barResult.head._1 === 100 * round + 0)
-      assert(barResult.head._2 === 100 * round + 1)
-
-      assert(fooError.size === 99)
-      assert(fooError.head === 100 * round + 0)
-      for (i <- 2 until 10) {
-        assert(fooError(i - 1) === 100 * round + i)
+      val cogroup = if (always) {
+        new TestCoGroup(
+          Seq(
+            (Seq((foos, FooInput)), Option(fooOrd)),
+            (Seq((bars, BarInput)), Option(barOrd))),
+          grouping, partitioner)("cogroup") with ComputeAlways
+      } else {
+        new TestCoGroup(
+          Seq(
+            (Seq((foos, FooInput)), Option(fooOrd)),
+            (Seq((bars, BarInput)), Option(barOrd))),
+          grouping, partitioner)("cogroup") with ComputeOnce
       }
 
-      assert(barError.size === 4949)
       for {
-        i <- 2 until 100
-        j <- 0 until i
+        round <- 0 to 1
       } {
-        assert(barError((i * (i - 1)) / 2 + j - 1)._1 === 100 * round + j)
-        assert(barError((i * (i - 1)) / 2 + j - 1)._2 === 100 * round + i)
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (always) 100 * round else 0
+
+        val ((fooResult, barResult), (fooError, barError)) =
+          Await.result(
+            cogroup.getOrCompute(rc).apply(FooResult).map {
+              _.map {
+                case (_, foo: Foo) => foo.id.get
+              }.collect.toSeq
+            }.zip {
+              cogroup.getOrCompute(rc).apply(BarResult).map {
+                _.map {
+                  case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+                }.collect.toSeq
+              }
+            }.zip {
+              cogroup.getOrCompute(rc).apply(FooError).map {
+                _.map {
+                  case (_, foo: Foo) => foo.id.get
+                }.collect.toSeq.sorted
+              }.zip {
+                cogroup.getOrCompute(rc).apply(BarError).map {
+                  _.map {
+                    case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
+                  }.collect.toSeq.sortBy(_._2)
+                }
+              }
+            }, Duration.Inf)
+
+        assert(fooResult.size === 1)
+        assert(fooResult.head === bias + 1)
+
+        assert(barResult.size === 1)
+        assert(barResult.head._1 === bias + 0)
+        assert(barResult.head._2 === bias + 1)
+
+        assert(fooError.size === 99)
+        assert(fooError.head === bias + 0)
+        for (i <- 2 until 10) {
+          assert(fooError(i - 1) === bias + i)
+        }
+
+        assert(barError.size === 4949)
+        for {
+          i <- 2 until 100
+          j <- 0 until i
+        } {
+          assert(barError((i * (i - 1)) / 2 + j - 1)._1 === bias + j)
+          assert(barError((i * (i - 1)) / 2 + j - 1)._2 === bias + i)
+        }
       }
     }
   }
@@ -256,7 +269,7 @@ object CoGroupSpec {
   val FooError = BranchKey(4)
   val BarError = BranchKey(5)
 
-  class TestCoGroup(
+  abstract class TestCoGroup(
     @transient inputs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
     @transient grouping: GroupOrdering,
     @transient part: Partitioner)(

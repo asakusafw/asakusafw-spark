@@ -31,6 +31,7 @@ import com.asakusafw.spark.tools.asm._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.DirectInputClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
+import com.asakusafw.spark.extensions.iterativebatch.compiler.util.MixIn
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{ Broadcast, DirectInput }
 
 class DirectInputClassBuilder(
@@ -38,13 +39,15 @@ class DirectInputClassBuilder(
   inputFormatType: Type,
   keyType: Type,
   valueType: Type,
-  extraConfigurations: Map[String, String])(
+  extraConfigurations: Map[String, String],
+  computeStrategy: MixIn)(
     label: String,
     subplanOutputs: Seq[SubPlan.Output])(
       implicit context: NodeCompiler.Context)
   extends NewHadoopInputClassBuilder(
     operator,
-    valueType)(
+    valueType,
+    computeStrategy)(
     label,
     subplanOutputs)(
     Type.getType(
@@ -90,6 +93,7 @@ class DirectInputClassBuilder(
           classTag(mb, keyType),
           classTag(mb, valueType),
           scVar.push())
+        initMixIns(mb)
       }
   }
 

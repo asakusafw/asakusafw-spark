@@ -40,6 +40,7 @@ import com.asakusafw.spark.tools.asm._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.CoGroupClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
+import com.asakusafw.spark.extensions.iterativebatch.compiler.util.{ MixIn, Mixing }
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Broadcast,
   CoGroup,
@@ -49,16 +50,21 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
 }
 
 class CoGroupClassBuilder(
-  operator: UserOperator)(
+  operator: UserOperator,
+  computeStrategy: MixIn)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       implicit val context: NodeCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/flow/CoGroup$$${nextId};"),
-    classOf[CoGroup].asType)
+    classOf[CoGroup].asType,
+    computeStrategy.traitType)
   with Branching
-  with LabelField {
+  with LabelField
+  with Mixing {
+
+  override val mixins: Seq[MixIn] = Seq(computeStrategy)
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -128,6 +134,7 @@ class CoGroupClassBuilder(
           partVar.push(),
           broadcastsVar.push(),
           scVar.push())
+        initMixIns(mb)
       }
   }
 
