@@ -89,7 +89,6 @@ private class FoldAggregationClassBuilder(
     ctorDef.newInit(Seq.empty) { mb =>
       import mb._ // scalastyle:ignore
       thisVar.push().invokeInit(superType)
-      initOperatorField(mb)
     }
   }
 

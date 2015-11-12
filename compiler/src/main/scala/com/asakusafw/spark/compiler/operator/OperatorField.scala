@@ -27,16 +27,23 @@ trait OperatorField extends ClassBuilder {
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
 
-    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "operator", operatorType)
+    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT, "operator", operatorType)
   }
 
-  def initOperatorField(mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
-    thisVar.push().putField("operator", operatorType, pushNew0(operatorType))
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod("operator", operatorType, Seq.empty) { mb =>
+      import mb._ // scalastyle:ignore
+      thisVar.push().getField("operator", operatorType).unlessNotNull {
+        thisVar.push().putField("operator", operatorType, pushNew0(operatorType))
+      }
+      `return`(thisVar.push().getField("operator", operatorType))
+    }
   }
 
   def getOperatorField(mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    thisVar.push().getField("operator", operatorType)
+    thisVar.push().invokeV("operator", operatorType)
   }
 }
