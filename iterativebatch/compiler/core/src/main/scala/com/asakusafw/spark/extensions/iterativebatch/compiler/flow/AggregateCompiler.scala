@@ -57,7 +57,8 @@ class AggregateCompiler extends NodeCompiler {
       new AggregateClassBuilder(
         operator.inputs.head.dataModelType,
         operator.outputs.head.dataModelType,
-        operator)(
+        operator,
+        ComputeStrategy.ComputeAlways)( // TODO switch compute type
         subPlanInfo.getLabel,
         subplan.getOutputs.toSeq)
 

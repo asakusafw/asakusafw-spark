@@ -41,6 +41,7 @@ import com.asakusafw.spark.tools.asm._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.AggregateClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
+import com.asakusafw.spark.extensions.iterativebatch.compiler.util.{ MixIn, Mixing }
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Aggregate,
   Broadcast,
@@ -51,7 +52,8 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
 class AggregateClassBuilder(
   val valueType: Type,
   val combinerType: Type,
-  val operator: UserOperator)(
+  val operator: UserOperator,
+  computeStrategy: MixIn)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       implicit val context: NodeCompiler.Context)
@@ -67,9 +69,13 @@ class AggregateClassBuilder(
         }
       }
       .build(),
-    classOf[Aggregate[_, _]].asType)
+    classOf[Aggregate[_, _]].asType,
+    computeStrategy.traitType)
   with Branching
-  with LabelField {
+  with LabelField
+  with Mixing {
+
+  override val mixins: Seq[MixIn] = Seq(computeStrategy)
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -122,6 +128,7 @@ class AggregateClassBuilder(
           partVar.push(),
           broadcastsVar.push(),
           scVar.push())
+        initMixIns(mb)
       }
   }
 

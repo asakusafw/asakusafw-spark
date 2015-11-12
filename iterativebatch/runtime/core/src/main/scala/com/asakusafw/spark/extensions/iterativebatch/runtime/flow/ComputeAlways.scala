@@ -30,7 +30,7 @@ trait ComputeAlways {
   self: Source =>
 
   @transient
-  private val generatedRDDs =
+  private val generatedRDDs: mutable.Map[RoundContext, Map[BranchKey, Future[RDD[_]]]] =
     mutable.WeakHashMap.empty[RoundContext, Map[BranchKey, Future[RDD[_]]]]
 
   override def getOrCompute(

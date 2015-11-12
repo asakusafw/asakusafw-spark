@@ -40,6 +40,7 @@ import com.asakusafw.spark.tools.asm._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.ExtractClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
+import com.asakusafw.spark.extensions.iterativebatch.compiler.util.{ MixIn, Mixing }
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Broadcast,
   Extract,
@@ -47,7 +48,8 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
 }
 
 class ExtractClassBuilder(
-  marker: MarkerOperator)(
+  marker: MarkerOperator,
+  computeStrategy: MixIn)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       implicit val context: NodeCompiler.Context)
@@ -61,9 +63,13 @@ class ExtractClassBuilder(
         }
       }
       .build(),
-    classOf[Extract[_]].asType)
+    classOf[Extract[_]].asType,
+    computeStrategy.traitType)
   with Branching
-  with LabelField {
+  with LabelField
+  with Mixing {
+
+  override val mixins: Seq[MixIn] = Seq(computeStrategy)
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
@@ -100,6 +106,7 @@ class ExtractClassBuilder(
           inputsVar.push(),
           broadcastsVar.push(),
           scVar.push())
+        initMixIns(mb)
       }
   }
 

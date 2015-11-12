@@ -24,6 +24,8 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
+import com.asakusafw.spark.extensions.iterativebatch.compiler.util.MixIn
+import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.ComputeAlways
 
 class ExtractCompiler extends NodeCompiler {
 
@@ -49,7 +51,8 @@ class ExtractCompiler extends NodeCompiler {
 
     val builder =
       new ExtractClassBuilder(
-        marker)(
+        marker,
+        ComputeStrategy.ComputeAlways)( // TODO switch compute type
         subPlanInfo.getLabel,
         subplan.getOutputs.toSeq)
 

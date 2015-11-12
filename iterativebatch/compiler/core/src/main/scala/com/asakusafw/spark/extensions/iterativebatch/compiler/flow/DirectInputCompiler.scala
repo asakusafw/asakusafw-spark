@@ -67,7 +67,8 @@ class DirectInputCompiler extends NodeCompiler {
         inputFormatInfo.getFormatClass.asType,
         inputFormatInfo.getKeyClass.asType,
         inputFormatInfo.getValueClass.asType,
-        inputFormatInfo.getExtraConfiguration.toMap)(
+        inputFormatInfo.getExtraConfiguration.toMap,
+        ComputeStrategy.ComputeAlways)( // TODO switch compute type
         subPlanInfo.getLabel,
         subplan.getOutputs.toSeq)
 

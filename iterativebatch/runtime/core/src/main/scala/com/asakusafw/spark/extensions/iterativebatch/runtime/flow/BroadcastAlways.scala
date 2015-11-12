@@ -25,7 +25,7 @@ trait BroadcastAlways {
   self: Broadcast =>
 
   @transient
-  private val broadcasted =
+  private val broadcasted: mutable.Map[RoundContext, Future[Broadcasted[_]]] =
     mutable.WeakHashMap.empty[RoundContext, Future[Broadcasted[_]]]
 
   def getOrBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {

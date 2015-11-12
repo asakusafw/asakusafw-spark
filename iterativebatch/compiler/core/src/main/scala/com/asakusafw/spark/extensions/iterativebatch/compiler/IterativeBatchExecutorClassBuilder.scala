@@ -43,7 +43,7 @@ import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
 import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
   Broadcast,
-  MapBroadcast,
+  MapBroadcastAlways,
   Node,
   Sink,
   Source,
@@ -204,7 +204,7 @@ class IterativeBatchExecutorClassBuilder(
               allBroadcastsVar.push(),
               context.broadcastIds.getField(mb, subPlanOutput.getOperator), {
                 // TODO switch broadcast type
-                val broadcast = pushNew(classOf[MapBroadcast].asType)
+                val broadcast = pushNew(classOf[MapBroadcastAlways].asType)
                 broadcast.dup().invokeInit(
                   nodeVar.push().asType(classOf[Source].asType),
                   context.branchKeys.getField(mb, subPlanOutput.getOperator),
