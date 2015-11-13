@@ -244,9 +244,9 @@ object ExtractDriverSpec {
     val Result = BranchKey(0)
 
     class SimpleExtractDriver(
-      @transient sc: SparkContext,
-      @transient hadoopConf: Broadcast[Configuration],
-      @transient prevs: Seq[Future[RDD[(_, Foo)]]])
+      sc: SparkContext,
+      hadoopConf: Broadcast[Configuration],
+      prevs: Seq[Future[RDD[(_, Foo)]]])
       extends ExtractDriver[Foo](sc, hadoopConf)(prevs)(Map.empty) {
 
       def this(
@@ -301,9 +301,9 @@ object ExtractDriverSpec {
     val Result2 = BranchKey(1)
 
     class BranchExtractDriver(
-      @transient sc: SparkContext,
-      @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: Future[RDD[(_, Foo)]])
+      sc: SparkContext,
+      hadoopConf: Broadcast[Configuration],
+      prev: Future[RDD[(_, Foo)]])
       extends ExtractDriver[Foo](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
       override def label = "BranchMap"
@@ -365,9 +365,9 @@ object ExtractDriverSpec {
     val Result2 = BranchKey(1)
 
     class BranchAndOrderingExtractDriver(
-      @transient sc: SparkContext,
-      @transient hadoopConf: Broadcast[Configuration],
-      @transient prev: Future[RDD[(_, Bar)]])
+      sc: SparkContext,
+      hadoopConf: Broadcast[Configuration],
+      prev: Future[RDD[(_, Bar)]])
       extends ExtractDriver[Bar](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
       override def label = "BranchAndOrderingMap"

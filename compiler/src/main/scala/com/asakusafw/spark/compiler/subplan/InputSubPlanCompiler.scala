@@ -43,20 +43,20 @@ class InputSubPlanCompiler extends SubPlanCompiler {
       s"The primary operator should be external input: ${primaryOperator} [${subplan}]")
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
-    val (keyType, valueType, inputFormatType, paths, extraConfigurations) =
+    val (inputFormatType, keyType, valueType, paths, extraConfigurations) =
       (if (context.options.useInputDirect) {
         context.getInputFormatInfo(operator.getName, operator.getInfo)
       } else {
         None
       }) match {
         case Some(info) =>
-          (info.getKeyClass.asType, info.getValueClass.asType, info.getFormatClass.asType,
+          (info.getFormatClass.asType, info.getKeyClass.asType, info.getValueClass.asType,
             None, Some(info.getExtraConfiguration.toMap))
         case None =>
           val inputRef = context.addExternalInput(operator.getName, operator.getInfo)
-          (classOf[NullWritable].asType,
+          (classOf[TemporaryInputFormat[_]].asType,
+            classOf[NullWritable].asType,
             operator.getDataType.asType,
-            classOf[TemporaryInputFormat[_]].asType,
             Some(inputRef.getPaths.toSeq.sorted),
             None)
       }
@@ -64,9 +64,9 @@ class InputSubPlanCompiler extends SubPlanCompiler {
     val builder =
       new InputDriverClassBuilder(
         operator,
+        inputFormatType,
         keyType,
         valueType,
-        inputFormatType,
         paths,
         extraConfigurations)(
         subPlanInfo.getLabel,

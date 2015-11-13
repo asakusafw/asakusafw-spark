@@ -156,10 +156,10 @@ object InputDriverSpec {
   val Result = BranchKey(0)
 
   class TestInputDriver(
-    @transient sc: SparkContext,
-    @transient hadoopConf: Broadcast[Configuration],
-    basePaths: Set[String])
-    extends InputDriver[NullWritable, Foo, TemporaryInputFormat[Foo]](sc, hadoopConf)(Map.empty) {
+    sc: SparkContext,
+    hadoopConf: Broadcast[Configuration],
+    @transient basePaths: Set[String])
+    extends InputDriver[TemporaryInputFormat[Foo], NullWritable, Foo](sc, hadoopConf)(Map.empty) {
 
     def this(sc: SparkContext, hadoopConf: Broadcast[Configuration], basePath: String) =
       this(sc, hadoopConf, Set(basePath))

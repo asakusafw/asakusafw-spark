@@ -328,11 +328,11 @@ object CoGroupDriverSpec {
   val BarError = BranchKey(3)
 
   class TestCoGroupDriver(
-    @transient sc: SparkContext,
-    @transient hadoopConf: Broadcast[Configuration],
-    @transient inputs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])],
-    @transient grouping: Ordering[ShuffleKey],
-    @transient part: Partitioner)
+    sc: SparkContext,
+    hadoopConf: Broadcast[Configuration],
+    inputs: Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])],
+    grouping: Ordering[ShuffleKey],
+    part: Partitioner)
     extends CoGroupDriver(sc, hadoopConf)(inputs, grouping, part)(Map.empty) {
 
     override def label = "TestCoGroup"

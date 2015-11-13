@@ -40,9 +40,9 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class InputDriverClassBuilder(
   val operator: ExternalInput,
+  val inputFormatType: Type,
   val keyType: Type,
   val valueType: Type,
-  val inputFormatType: Type,
   val paths: Option[Seq[String]],
   val extraConfigurations: Option[Map[String, String]])(
     val label: String,
@@ -54,9 +54,9 @@ class InputDriverClassBuilder(
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[InputDriver[_, _, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, keyType)
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, inputFormatType)
+            .newTypeArgument(SignatureVisitor.INSTANCEOF, keyType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF, inputFormatType)
         }
       }
       .build(),
@@ -105,9 +105,9 @@ class InputDriverClassBuilder(
           scVar.push(),
           hadoopConfVar.push(),
           broadcastsVar.push(),
+          classTag(mb, inputFormatType),
           classTag(mb, keyType),
-          classTag(mb, valueType),
-          classTag(mb, inputFormatType))
+          classTag(mb, valueType))
       }
   }
 

@@ -31,10 +31,13 @@ import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
-abstract class InputDriver[K: ClassTag, V: ClassTag, IF <: InputFormat[K, V]: ClassTag](
+abstract class InputDriver[IF <: InputFormat[K, V], K, V](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration])(
-    @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]])
+    @transient val broadcasts: Map[BroadcastId, Future[Broadcast[_]]])(
+      implicit @transient ifClassTag: ClassTag[IF],
+      @transient kClassTag: ClassTag[K],
+      @transient vClassTag: ClassTag[V])
   extends SubPlanDriver(sc, hadoopConf) with UsingBroadcasts with Branching[V] {
 
   def paths: Option[Set[String]]
