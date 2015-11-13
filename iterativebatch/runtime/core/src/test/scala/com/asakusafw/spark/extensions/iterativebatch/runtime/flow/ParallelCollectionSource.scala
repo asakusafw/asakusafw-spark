@@ -29,7 +29,7 @@ class ParallelCollectionSource[T: ClassTag](
   data: Seq[T],
   numSlices: Option[Int] = None)(
     val label: String)(
-      @transient implicit val sc: SparkContext)
+      implicit @transient val sc: SparkContext)
   extends Source with ComputeOnce {
 
   override val dependencies: Set[Node] = Set.empty

@@ -31,7 +31,7 @@ abstract class Aggregate[V, C](
   @transient sort: Option[SortOrdering],
   @transient partitioner: Partitioner)(
     @transient val broadcasts: Map[BroadcastId, Broadcast])(
-      @transient implicit val sc: SparkContext)
+      implicit @transient val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[C] {

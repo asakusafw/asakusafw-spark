@@ -19,4 +19,4 @@ package flow
 import org.apache.spark.SparkContext
 
 abstract class Input(
-  @transient implicit val sc: SparkContext) extends Source
+  implicit @transient val sc: SparkContext) extends Source

@@ -28,7 +28,7 @@ import com.asakusafw.spark.runtime.rdd._
 abstract class Extract[T](
   @transient prevs: Seq[(Source, BranchKey)])(
     @transient val broadcasts: Map[BroadcastId, Broadcast])(
-      @transient implicit val sc: SparkContext)
+      implicit @transient val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[T] {
