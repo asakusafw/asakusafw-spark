@@ -126,7 +126,7 @@ class InputDriverClassBuilderSpec
     context.addClass(context.branchKeys)
     context.addClass(context.broadcastIds)
     val cls = classServer.loadClass(thisType)
-      .asSubclass(classOf[InputDriver[NullWritable, Foo, TemporaryInputFormat[Foo]]])
+      .asSubclass(classOf[InputDriver[TemporaryInputFormat[Foo], NullWritable, Foo]])
     val driver = cls.getConstructor(
       classOf[SparkContext],
       classOf[Broadcast[Configuration]],

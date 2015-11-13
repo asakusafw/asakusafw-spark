@@ -103,9 +103,9 @@ object ResourceBrokingIteratorSpec {
   val Result = BranchKey(0)
 
   class TestDriver(
-    @transient sc: SparkContext,
-    @transient hadoopConf: Broadcast[Configuration],
-    @transient prev: Future[RDD[(_, Foo)]])
+    sc: SparkContext,
+    hadoopConf: Broadcast[Configuration],
+    prev: Future[RDD[(_, Foo)]])
     extends ExtractDriver[Foo](sc, hadoopConf)(Seq(prev))(Map.empty) {
 
     override def label = "TestMap"

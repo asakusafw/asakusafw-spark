@@ -153,10 +153,10 @@ object OutputDriverSpec {
   val Result = BranchKey(0)
 
   class TestOutputDriver(
-    @transient sc: SparkContext,
-    @transient hadoopConf: Broadcast[Configuration],
-    @transient inputs: Seq[Future[RDD[(_, Foo)]]],
-    @transient terminators: mutable.Set[Future[Unit]],
+    sc: SparkContext,
+    hadoopConf: Broadcast[Configuration],
+    inputs: Seq[Future[RDD[(_, Foo)]]],
+    terminators: mutable.Set[Future[Unit]],
     val path: String)
     extends OutputDriver[Foo](sc, hadoopConf)(inputs, terminators) {
 

@@ -38,6 +38,8 @@ abstract class AggregateDriver[V, C](
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
+  def aggregation: Aggregation[ShuffleKey, V, C]
+
   override def execute()(
     implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
 
@@ -86,6 +88,4 @@ abstract class AggregateDriver[V, C](
 
     branchKeys.map(key => key -> future.map(_(key))).toMap
   }
-
-  def aggregation: Aggregation[ShuffleKey, V, C]
 }

@@ -232,11 +232,11 @@ object AggregateDriverSpec {
     val Result = BranchKey(0)
 
     class TestAggregateDriver(
-      @transient sc: SparkContext,
-      @transient hadoopConf: Broadcast[Configuration],
-      @transient prevs: Seq[Future[RDD[(ShuffleKey, Foo)]]],
-      @transient sort: Option[Ordering[ShuffleKey]],
-      @transient part: Partitioner,
+      sc: SparkContext,
+      hadoopConf: Broadcast[Configuration],
+      prevs: Seq[Future[RDD[(ShuffleKey, Foo)]]],
+      sort: Option[Ordering[ShuffleKey]],
+      part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Foo, Foo])
       extends AggregateDriver[Foo, Foo](sc, hadoopConf)(prevs, sort, part)(Map.empty) {
 
@@ -303,9 +303,9 @@ object AggregateDriverSpec {
     val Result2 = BranchKey(1)
 
     class TestPartialAggregationExtractDriver(
-      @transient sc: SparkContext,
-      @transient hadoopConf: Broadcast[Configuration],
-      @transient prevs: Seq[Future[RDD[(_, Foo)]]])
+      sc: SparkContext,
+      hadoopConf: Broadcast[Configuration],
+      prevs: Seq[Future[RDD[(_, Foo)]]])
       extends ExtractDriver[Foo](sc, hadoopConf)(prevs)(Map.empty) {
 
       def this(

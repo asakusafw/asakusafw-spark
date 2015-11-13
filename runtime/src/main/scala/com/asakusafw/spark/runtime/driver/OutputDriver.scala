@@ -36,13 +36,15 @@ import com.asakusafw.spark.runtime.rdd._
 abstract class OutputDriver[T: ClassTag](
   sc: SparkContext,
   hadoopConf: Broadcast[Configuration])(
-    @transient prevs: Seq[Future[RDD[(_, T)]]],
-    @transient terminators: mutable.Set[Future[Unit]])
+    prevs: Seq[Future[RDD[(_, T)]]],
+    terminators: mutable.Set[Future[Unit]])
   extends SubPlanDriver(sc, hadoopConf) {
   assert(prevs.size > 0,
     s"Previous RDDs should be more than 0: ${prevs.size}")
 
   val Logger = LoggerFactory.getLogger(getClass())
+
+  def path: String
 
   override def execute()(
     implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[(ShuffleKey, _)]]] = {
@@ -95,6 +97,4 @@ abstract class OutputDriver[T: ClassTag](
 
     Map.empty
   }
-
-  def path: String
 }
