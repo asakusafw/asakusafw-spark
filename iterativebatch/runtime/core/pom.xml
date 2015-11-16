@@ -36,6 +36,29 @@
           <sourceIncludes>
             <sourceInclude>**/*.scala</sourceInclude>
           </sourceIncludes>
+          <additionalConfig>
+            <file>
+              <name>.settings/org.eclipse.core.resources.prefs</name>
+              <content>
+<![CDATA[
+eclipse.preferences.version=1
+encoding/<project>=UTF-8
+]]>
+              </content>
+            </file>
+            <file>
+              <name>.settings/org.scala-ide.sdt.core.prefs</name>
+              <content>
+<![CDATA[
+eclipse.preferences.version=1
+scala.compiler.additionalParams=\ -Xsource\:2.10 -Ymacro-expand\:none
+scala.compiler.installation=2.10
+scala.compiler.useProjectSettings=true
+target=jvm-1.7
+]]>
+              </content>
+            </file>
+          </additionalConfig>
         </configuration>
       </plugin>
     </plugins>
@@ -129,5 +152,31 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>disable-assertions</id>
+      <activation>
+        <property>
+          <name>!debug</name>
+        </property>
+      </activation>
+      <build>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>net.alchim31.maven</groupId>
+              <artifactId>scala-maven-plugin</artifactId>
+              <configuration>
+                <args>
+                  <arg>-Xdisable-assertions</arg>
+                </args>
+              </configuration>
+            </plugin>
+          </plugins>
+        </pluginManagement>
+      </build>
+    </profile>
+  </profiles>
 
 </project>
