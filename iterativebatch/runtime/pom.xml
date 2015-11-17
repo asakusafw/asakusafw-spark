@@ -8,11 +8,9 @@
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
-  <name>Asakusa DSL Compiler for Spark Iterative Batch Extensions Runtime</name>
+  <name>Asakusa on Spark Iterative Batch Extensions Runtime Library</name>
   <artifactId>asakusa-spark-extensions-iterativebatch-runtime</artifactId>
   <packaging>pom</packaging>
-
-  <description>Asakusa DSL Compiler for Spark Iterative Batch Extensions Runtime</description>
 
   <modules>
     <module>core</module>

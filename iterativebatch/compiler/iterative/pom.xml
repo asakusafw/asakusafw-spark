@@ -8,11 +8,9 @@
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
-  <name>Asakusa DSL Compiler for Spark Iterative Batch Extensions Compiler for Iterative</name>
+  <name>Asakusa on Spark Iterative Batch Extensions Compiler for Iterative</name>
   <artifactId>asakusa-spark-extensions-iterativebatch-compiler-iterative</artifactId>
   <packaging>jar</packaging>
-
-  <description>Asakusa DSL Compiler for Spark Iterative Batch Extensions Compiler for Iterative</description>
 
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
