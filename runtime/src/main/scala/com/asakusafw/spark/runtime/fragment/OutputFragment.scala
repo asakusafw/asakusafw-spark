@@ -52,17 +52,29 @@ abstract class OutputFragment[T <: DataModel[T] with Writable](bufferSize: Int)
 
   def iterator: Iterator[T] = {
     buf.end()
+
     val iter = buf.iterator()
+
     new Iterator[T] {
-      def hasNext: Boolean = {
-        if (iter.hasNext) {
-          true
-        } else {
-          reset()
-          false
+
+      private[this] var hasnext = true
+
+      override def hasNext: Boolean = {
+        if (hasnext) {
+          if (!iter.hasNext) {
+            hasnext = false
+            reset()
+          }
         }
+        hasnext
       }
-      def next(): T = iter.next()
+
+      override def next(): T =
+        if (hasNext) {
+          iter.next()
+        } else {
+          Iterator.empty.next()
+        }
     }
   }
 }
