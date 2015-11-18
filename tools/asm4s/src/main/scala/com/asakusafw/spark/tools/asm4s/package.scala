@@ -93,7 +93,8 @@ package object asm4s {
       .pop()
   }
 
-  def addTraversableToMap(map: => Stack, traversable: => Stack)(implicit mb: MethodBuilder): Unit = {
+  def addTraversableToMap(
+    map: => Stack, traversable: => Stack)(implicit mb: MethodBuilder): Unit = {
     map.invokeI(
       NameTransformer.encode("++="),
       classOf[Growable[_]].asType,
