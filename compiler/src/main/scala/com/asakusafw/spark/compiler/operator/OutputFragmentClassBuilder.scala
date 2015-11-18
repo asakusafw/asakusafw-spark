@@ -26,9 +26,9 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator.OutputFragmentClassBuilder._
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm4s._
 
 class OutputFragmentClassBuilder(
   dataModelType: Type)(

@@ -26,10 +26,10 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, Operator, OperatorOutput }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.fragment.{ Fragment, StopFragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 class FragmentGraphBuilder(
   mb: MethodBuilder,

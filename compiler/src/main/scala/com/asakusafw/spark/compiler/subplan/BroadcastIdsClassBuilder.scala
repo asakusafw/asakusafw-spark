@@ -23,10 +23,10 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 trait BroadcastIds {
   this: BroadcastIdsClassBuilder =>

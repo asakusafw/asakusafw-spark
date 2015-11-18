@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler
-package util
+package com.asakusafw.spark.tools
 
 import scala.collection.generic.Growable
 import scala.collection.mutable
@@ -25,7 +24,7 @@ import org.objectweb.asm.Type
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-object ScalaIdioms {
+package object asm4s {
 
   def pushObject(mb: MethodBuilder)(obj: Any): Stack = {
     import mb._ // scalastyle:ignore
@@ -102,7 +101,7 @@ object ScalaIdioms {
       .pop()
   }
 
-  class ArrayBuilder private[ScalaIdioms] (mb: MethodBuilder, t: Type) {
+  class ArrayBuilder private[asm4s] (mb: MethodBuilder, t: Type) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -110,7 +109,7 @@ object ScalaIdioms {
       values += { () => value }
     }
 
-    private[ScalaIdioms] def result: Stack = {
+    private[asm4s] def result: Stack = {
       import mb._ // scalastyle:ignore
       if (values.isEmpty) {
         pushEmptyArray()
@@ -150,7 +149,7 @@ object ScalaIdioms {
     }
   }
 
-  class SeqBuilder private[ScalaIdioms] (mb: MethodBuilder) {
+  class SeqBuilder private[asm4s] (mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -158,7 +157,7 @@ object ScalaIdioms {
       values += { () => value }
     }
 
-    private[ScalaIdioms] def result: Stack = {
+    private[asm4s] def result: Stack = {
       if (values.isEmpty) {
         pushObject(mb)(Seq).invokeV("empty", classOf[Seq[_]].asType)
       } else {
@@ -177,7 +176,7 @@ object ScalaIdioms {
     }
   }
 
-  class MapBuilder private[ScalaIdioms] (mb: MethodBuilder) {
+  class MapBuilder private[asm4s] (mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[(() => Stack, () => Stack)]
 
@@ -185,7 +184,7 @@ object ScalaIdioms {
       values += { (() => key, () => value) }
     }
 
-    private[ScalaIdioms] def result: Stack = {
+    private[asm4s] def result: Stack = {
       if (values.isEmpty) {
         pushObject(mb)(Map).invokeV("empty", classOf[Map[_, _]].asType)
       } else {
@@ -204,7 +203,7 @@ object ScalaIdioms {
     }
   }
 
-  class SetBuilder private[ScalaIdioms] (mb: MethodBuilder) {
+  class SetBuilder private[asm4s] (mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -212,7 +211,7 @@ object ScalaIdioms {
       values += { () => value }
     }
 
-    private[ScalaIdioms] def result: Stack = {
+    private[asm4s] def result: Stack = {
       if (values.isEmpty) {
         pushObject(mb)(Set).invokeV("empty", classOf[Set[_]].asType)
       } else {

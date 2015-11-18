@@ -29,9 +29,9 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.vocabulary.flow.processor.InputBuffer
 import com.asakusafw.vocabulary.operator.{ CoGroup, GroupSort }
 
