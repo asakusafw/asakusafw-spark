@@ -33,7 +33,9 @@ abstract class ClassBuilder(
   val thisType: Type,
   val signature: Option[String],
   val superType: Type,
-  val interfaceTypes: Type*) {
+  _interfaceTypes: Type*) {
+
+  def interfaceTypes: Seq[Type] = _interfaceTypes
 
   val logger = LoggerFactory.getLogger(getClass)
 
