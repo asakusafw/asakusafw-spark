@@ -78,24 +78,23 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
       - CentOS 7 (7.1)
       - JDK 8 (1.8.0_51)
     * - MapR
-      - 4.1.0 (MRv2)
+      - 5.0.0 (MRv2)
       - CentOS 6 (6.6)
       - JDK 7 (1.7.0_75)
     * - Amazon EMR
-      - AMI 4.0.0
+      - AMI 4.1.0
       - Amazon Linux 2015.03
       - JDK 7 (1.7.0_85)
 
 Spark
 -----
 
-Asakusa on Sparkは、Spark 1.5.0 で動作を検証しています。
+Asakusa on Sparkは、Spark 1.5.2 で動作を検証しています。
 
 また、Sparkの動作モードとして、YARN cluster mode、および YARN client modeで動作を確認しています。
 
 ..  attention::
-    Spark 1.4.1 ではいくつかのアプリケーションでのみ動作を確認しています。
-    Spark 1.4.1 を利用して問題が発生した場合は、Spark 1.5.0 を利用してください。
+    その他のバージョンを利用して問題が発生した場合は、上記のバージョンを利用してください。
 
 ..  seealso::
     SparkのYARN上での動作モードについては、Sparkのドキュメント `Running Spark on YARN`_ を参照してください。
@@ -105,17 +104,17 @@ Asakusa on Sparkは、Spark 1.5.0 で動作を検証しています。
 Asakusa Framework 対応バージョンとコンポーネント
 ------------------------------------------------
 
-Asakusa on Sparkは、Asakusa Framework 0.7.4 以降のバージョンが必要です。
+Asakusa on Sparkは、Asakusa Framework 0.7.5 以降のバージョンが必要です。
 
 ..  warning::
-    Asakusa Framework 0.7.4 より古いバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`Asakusa Gradle Plugin マイグレーションガイド <application/gradle-plugin.html#vup-gradle-plugin>` を参考にして 0.7.4 以降のバージョンにマイグレーションしてください。
+    上記のバージョンより古いバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`Asakusa Gradle Plugin マイグレーションガイド <application/gradle-plugin.html#vup-gradle-plugin>` を参考にして上記のバージョンにマイグレーションしてください。
 
 また運用環境で利用するAsakusa Frameworkバージョンは、Hadoop2系向けAsakusa Framework ( ``-hadoop2`` )でのみ動作を検証しています。
 
-アプリケーションのビルドで使用するGradleのバージョンは ``2.2.1`` および ``2.3`` に対応しています。これより古いGradleのバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`プロジェクトで利用するGradleのバージョンアップ <application/gradle-plugin.html#vup-gradle-wrapper>` を参考にしてバージョンをあげてください。
+アプリケーションのビルドで使用するGradleのバージョンは ``2.8`` に対応しています。これより古いGradleのバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`プロジェクトで利用するGradleのバージョンアップ <application/gradle-plugin.html#vup-gradle-wrapper>` を参考にしてバージョンをあげてください。
 
 ..  attention::
-    Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を上述の対応バージョン（例: ``2.3`` ）に設定してください。
+    Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を上記のバージョンに設定してください。
 
 ..  _`Shafu`: http://docs.asakusafw.com/jinrikisha/ja/html/shafu.html
 
@@ -185,7 +184,7 @@ Asakusa on Spark Gradle Pluginを有効にするには、アプリケーショ�
 
 * ``buildscript/dependencis`` ブロックに指定しているAsakusa Gradle Pluginの指定をAsakusa on Spark Gradle Pluginの指定に置き換える。
 
-  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.2.0'``
+  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.2.1'``
 
 * Asakusa on Spark Gradle Pluginを適用する定義を追加する
   
@@ -253,7 +252,7 @@ Spark向けのバッチアプリケーションを実行する際には、次の
 
 上記の手順で :program:`spark-submit` コマンドが見つからない場合、対象処理の実行に失敗します。
 
-Asakusa on Sparkの実行に環境変数を利用する場合、 :file:`$ASAKUSA_HOME/spark/conf/env.sh` 内でエクスポートして定義できます。  
+Asakusa on Sparkの実行に環境変数を利用する場合、 :file:`$ASAKUSA_HOME/spark/conf/env.sh` 内でエクスポートして定義できます。
 
 ..  code-block:: sh
     
