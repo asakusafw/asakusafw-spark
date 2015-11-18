@@ -29,25 +29,27 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 object SparkIdioms {
 
-  def partitioner(mb: MethodBuilder)(numPartitions: => Stack): Stack = {
+  def partitioner(numPartitions: => Stack)(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     val partitioner = pushNew(classOf[HashPartitioner].asType)
     partitioner.dup().invokeInit(numPartitions)
     partitioner.asType(classOf[Partitioner].asType)
   }
 
-  def groupingOrdering(mb: MethodBuilder)(
+  def groupingOrdering(
     groupingTypes: Seq[Type])(
-      implicit context: CompilerContext): Stack = {
+      implicit mb: MethodBuilder,
+      context: CompilerContext): Stack = {
     import mb._ // scalastyle:ignore
     pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupingTypes))
       .asType(classOf[Ordering[ShuffleKey]].asType)
   }
 
-  def sortOrdering(mb: MethodBuilder)(
+  def sortOrdering(
     groupingTypes: Seq[Type],
     orderingTypes: Seq[(Type, Boolean)])(
-      implicit context: CompilerContext): Stack = {
+      implicit mb: MethodBuilder,
+      context: CompilerContext): Stack = {
     import mb._ // scalastyle:ignore
     pushNew0(SortOrderingClassBuilder.getOrCompile(groupingTypes, orderingTypes))
       .asType(classOf[Ordering[ShuffleKey]].asType)

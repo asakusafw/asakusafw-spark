@@ -198,7 +198,7 @@ class CoGroupDriverClassBuilder(
               }
           }
         }
-        .build()) { mb =>
+        .build()) { implicit mb =>
         import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
@@ -207,8 +207,8 @@ class CoGroupDriverClassBuilder(
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
-            context.operatorCompilerContext)
+            broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            implicitly, context.operatorCompilerContext)
         val fragmentVar = {
           val t =
             OperatorCompiler.compile(
@@ -223,7 +223,7 @@ class CoGroupDriverClassBuilder(
         }
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
+        `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

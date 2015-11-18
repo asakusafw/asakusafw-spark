@@ -42,7 +42,7 @@ trait OperatorField extends ClassBuilder {
     }
   }
 
-  def getOperatorField(mb: MethodBuilder): Stack = {
+  def getOperatorField()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     thisVar.push().invokeV("operator", operatorType)
   }

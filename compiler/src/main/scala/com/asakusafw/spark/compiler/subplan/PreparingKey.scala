@@ -44,7 +44,7 @@ trait PreparingKey extends ClassBuilder {
     super.defMethods(methodDef)
 
     methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
-      Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { mb =>
+      Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
@@ -69,11 +69,11 @@ trait PreparingKey extends ClassBuilder {
           methodDef.newMethod(
             methodName,
             classOf[ShuffleKey].asType,
-            Seq(dataModelType)) { mb =>
-              defShuffleKey(mb, dataModelRef, partitionInfo)
+            Seq(dataModelType)) { implicit mb =>
+              defShuffleKey(dataModelRef, partitionInfo)
             }
 
-          branchVar.push().unlessNotEqual(context.branchKeys.getField(mb, op)) {
+          branchVar.push().unlessNotEqual(context.branchKeys.getField(op)) {
             `return`(
               thisVar.push().invokeV(
                 methodName,
@@ -86,22 +86,22 @@ trait PreparingKey extends ClassBuilder {
   }
 
   private[this] def defShuffleKey(
-    mb: MethodBuilder,
     dataModelRef: DataModelReference,
-    partitionInfo: Group): Unit = {
+    partitionInfo: Group)(
+      implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     val dataModelVar = `var`(dataModelRef.getDeclaration.asType, thisVar.nextLocal)
 
     val shuffleKey = pushNew(classOf[ShuffleKey].asType)
     shuffleKey.dup().invokeInit(
       if (partitionInfo.getGrouping.isEmpty) {
-        buildArray(mb, Type.BYTE_TYPE)(_ => ())
+        buildArray(Type.BYTE_TYPE)(_ => ())
       } else {
-        pushObject(mb)(WritableSerDe)
+        pushObject(WritableSerDe)
           .invokeV(
             "serialize",
             classOf[Array[Byte]].asType,
-            buildSeq(mb) { builder =>
+            buildSeq { builder =>
               for {
                 propertyName <- partitionInfo.getGrouping
                 property = dataModelRef.findProperty(propertyName)
@@ -113,13 +113,13 @@ trait PreparingKey extends ClassBuilder {
             })
       },
       if (partitionInfo.getOrdering.isEmpty) {
-        buildArray(mb, Type.BYTE_TYPE)(_ => ())
+        buildArray(Type.BYTE_TYPE)(_ => ())
       } else {
-        pushObject(mb)(WritableSerDe)
+        pushObject(WritableSerDe)
           .invokeV(
             "serialize",
             classOf[Array[Byte]].asType,
-            buildSeq(mb) { builder =>
+            buildSeq { builder =>
               for {
                 propertyName <- partitionInfo.getOrdering.map(_.getPropertyName)
                 property = dataModelRef.findProperty(propertyName)

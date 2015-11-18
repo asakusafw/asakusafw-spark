@@ -31,7 +31,7 @@ import com.asakusafw.spark.tools.asm4s._
 trait BroadcastIds {
   this: BroadcastIdsClassBuilder =>
 
-  def getField(mb: MethodBuilder, marker: MarkerOperator): Stack = {
+  def getField(marker: MarkerOperator)(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     getStatic(thisType, getField(marker.getOriginalSerialNumber), classOf[BroadcastId].asType)
   }
@@ -58,11 +58,11 @@ class BroadcastIdsClassBuilder(flowId: String)
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newStaticInit { mb =>
+    ctorDef.newStaticInit { implicit mb =>
       import mb._ // scalastyle:ignore
       broadcastIds.values.toSeq.sorted.foreach { id =>
         putStatic(thisType, field(id), classOf[BroadcastId].asType,
-          pushObject(mb)(BroadcastId)
+          pushObject(BroadcastId)
             .invokeV("apply", classOf[BroadcastId].asType, ldc(id)))
       }
     }

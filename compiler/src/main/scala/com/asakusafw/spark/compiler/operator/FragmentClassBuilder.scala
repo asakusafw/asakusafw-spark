@@ -48,7 +48,7 @@ abstract class FragmentClassBuilder(
     fieldDef.newField(Opcodes.ACC_PRIVATE, "reset", Type.BOOLEAN_TYPE)
   }
 
-  protected def initReset(mb: MethodBuilder): Unit = {
+  protected def initReset()(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))
   }
@@ -63,19 +63,19 @@ abstract class FragmentClassBuilder(
       `return`()
     }
 
-    methodDef.newMethod("add", Seq(dataModelType)) { mb =>
+    methodDef.newMethod("add", Seq(dataModelType)) { implicit mb =>
       import mb._ // scalastyle:ignore
       thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(false))
-      defAddMethod(mb, `var`(dataModelType, thisVar.nextLocal))
+      defAddMethod(`var`(dataModelType, thisVar.nextLocal))
     }
 
-    methodDef.newMethod("reset", Seq.empty)(defReset)
+    methodDef.newMethod("reset", Seq.empty)(defReset()(_))
   }
 
-  def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit
-  def defReset(mb: MethodBuilder): Unit
+  def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit
+  def defReset()(implicit mb: MethodBuilder): Unit
 
-  protected def unlessReset(mb: MethodBuilder)(b: => Unit): Unit = {
+  protected def unlessReset(b: => Unit)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     thisVar.push().getField("reset", Type.BOOLEAN_TYPE).unlessTrue {
       b

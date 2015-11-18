@@ -34,10 +34,10 @@ trait MasterBranch extends JoinOperatorFragmentClassBuilder {
 
   def operator: UserOperator
 
-  override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
+  override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     block { ctrl =>
-      val branch = getOperatorField(mb)
+      val branch = getOperatorField()
         .invokeV(
           operator.methodDesc.name,
           operator.methodDesc.asType.getReturnType,
@@ -57,7 +57,7 @@ trait MasterBranch extends JoinOperatorFragmentClassBuilder {
               operator.methodDesc.asType.getReturnType,
               enum.name,
               operator.methodDesc.asType.getReturnType)) {
-              getOutputField(mb, output)
+              getOutputField(output)
                 .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
               branch.pop()
               ctrl.break()

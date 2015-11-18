@@ -52,19 +52,19 @@ abstract class AggregationClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("mapSideCombine", Type.BOOLEAN_TYPE, Seq.empty)(defMapSideCombine)
+    methodDef.newMethod("mapSideCombine", Type.BOOLEAN_TYPE, Seq.empty)(defMapSideCombine()(_))
 
     methodDef.newMethod("newCombiner", classOf[AnyRef].asType, Seq.empty) { mb =>
       import mb._ // scalastyle:ignore
       `return`(thisVar.push().invokeV("newCombiner", combinerType))
     }
 
-    methodDef.newMethod("newCombiner", combinerType, Seq.empty)(defNewCombiner)
+    methodDef.newMethod("newCombiner", combinerType, Seq.empty)(defNewCombiner()(_))
 
     methodDef.newMethod(
       "initCombinerByValue",
       classOf[AnyRef].asType,
-      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { mb =>
+      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val combinerVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, combinerVar.nextLocal)
@@ -76,17 +76,17 @@ abstract class AggregationClassBuilder(
     methodDef.newMethod(
       "initCombinerByValue",
       combinerType,
-      Seq(combinerType, valueType)) { mb =>
+      Seq(combinerType, valueType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val combinerVar = `var`(combinerType, thisVar.nextLocal)
         val valueVar = `var`(valueType, combinerVar.nextLocal)
-        defInitCombinerByValue(mb, combinerVar, valueVar)
+        defInitCombinerByValue(combinerVar, valueVar)
       }
 
     methodDef.newMethod(
       "mergeValue",
       classOf[AnyRef].asType,
-      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { mb =>
+      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val combinerVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, combinerVar.nextLocal)
@@ -98,17 +98,17 @@ abstract class AggregationClassBuilder(
     methodDef.newMethod(
       "mergeValue",
       combinerType,
-      Seq(combinerType, valueType)) { mb =>
+      Seq(combinerType, valueType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val combinerVar = `var`(combinerType, thisVar.nextLocal)
         val valueVar = `var`(valueType, combinerVar.nextLocal)
-        defMergeValue(mb, combinerVar, valueVar)
+        defMergeValue(combinerVar, valueVar)
       }
 
     methodDef.newMethod(
       "initCombinerByCombiner",
       classOf[AnyRef].asType,
-      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { mb =>
+      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val comb1Var = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
         val comb2Var = `var`(classOf[AnyRef].asType, comb1Var.nextLocal)
@@ -120,17 +120,17 @@ abstract class AggregationClassBuilder(
     methodDef.newMethod(
       "initCombinerByCombiner",
       combinerType,
-      Seq(combinerType, combinerType)) { mb =>
+      Seq(combinerType, combinerType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val comb1Var = `var`(combinerType, thisVar.nextLocal)
         val comb2Var = `var`(combinerType, comb1Var.nextLocal)
-        defInitCombinerByCombiner(mb, comb1Var, comb2Var)
+        defInitCombinerByCombiner(comb1Var, comb2Var)
       }
 
     methodDef.newMethod(
       "mergeCombiners",
       classOf[AnyRef].asType,
-      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { mb =>
+      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val comb1Var = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
         val comb2Var = `var`(classOf[AnyRef].asType, comb1Var.nextLocal)
@@ -142,20 +142,20 @@ abstract class AggregationClassBuilder(
     methodDef.newMethod(
       "mergeCombiners",
       combinerType,
-      Seq(combinerType, combinerType)) { mb =>
+      Seq(combinerType, combinerType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val comb1Var = `var`(combinerType, thisVar.nextLocal)
         val comb2Var = `var`(combinerType, comb1Var.nextLocal)
-        defMergeCombiners(mb, comb1Var, comb2Var)
+        defMergeCombiners(comb1Var, comb2Var)
       }
   }
 
-  def defMapSideCombine(mb: MethodBuilder): Unit
-  def defNewCombiner(mb: MethodBuilder): Unit
-  def defInitCombinerByValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit
-  def defMergeValue(mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit
-  def defInitCombinerByCombiner(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit
-  def defMergeCombiners(mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit
+  def defMapSideCombine()(implicit mb: MethodBuilder): Unit
+  def defNewCombiner()(implicit mb: MethodBuilder): Unit
+  def defInitCombinerByValue(combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit
+  def defMergeValue(combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit
+  def defInitCombinerByCombiner(comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit
+  def defMergeCombiners(comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit
 }
 
 object AggregationClassBuilder {

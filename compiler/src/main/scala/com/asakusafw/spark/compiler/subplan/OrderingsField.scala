@@ -72,23 +72,23 @@ trait OrderingsField extends ClassBuilder {
               }
           }
         }
-        .build()) { mb =>
+        .build()) { implicit mb =>
         import mb._ // scalastyle:ignore
         thisVar.push().getField("orderings", classOf[Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("orderings", classOf[Map[_, _]].asType, initOrderings(mb))
+          thisVar.push().putField("orderings", classOf[Map[_, _]].asType, initOrderings())
         }
         `return`(thisVar.push().getField("orderings", classOf[Map[_, _]].asType))
       }
   }
 
-  def getOrderingsField(mb: MethodBuilder): Stack = {
+  def getOrderingsField()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     thisVar.push().invokeV("orderings", classOf[Map[_, _]].asType)
   }
 
-  private def initOrderings(mb: MethodBuilder): Stack = {
+  private def initOrderings()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    buildMap(mb) { builder =>
+    buildMap { builder =>
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
@@ -102,8 +102,8 @@ trait OrderingsField extends ClassBuilder {
       } {
         val dataModelRef = output.getOperator.getInput.dataModelRef
         builder += (
-          context.branchKeys.getField(mb, output.getOperator),
-          sortOrdering(mb)(
+          context.branchKeys.getField(output.getOperator),
+          sortOrdering(
             dataModelRef.groupingTypes(partitionInfo.getGrouping),
             dataModelRef.orderingTypes(partitionInfo.getOrdering)))
       }

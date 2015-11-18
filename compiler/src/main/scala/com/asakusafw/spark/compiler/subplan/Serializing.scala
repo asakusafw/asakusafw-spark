@@ -65,12 +65,12 @@ trait Serializing extends ClassBuilder {
       }
 
     methodDef.newMethod("serialize", classOf[Array[Byte]].asType,
-      Seq(classOf[BranchKey].asType, classOf[Writable].asType)) { mb =>
+      Seq(classOf[BranchKey].asType, classOf[Writable].asType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[Writable].asType, branchVar.nextLocal)
         `return`(
-          pushObject(mb)(WritableSerDe)
+          pushObject(WritableSerDe)
             .invokeV("serialize", classOf[Array[Byte]].asType, valueVar.push()))
       }
 
@@ -87,14 +87,14 @@ trait Serializing extends ClassBuilder {
       }
 
     methodDef.newMethod("deserialize", classOf[Writable].asType,
-      Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { mb =>
+      Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { implicit mb =>
         import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val sliceVar = `var`(classOf[Array[Byte]].asType, branchVar.nextLocal)
         val valueVar =
           thisVar.push().invokeV("value", classOf[Writable].asType, branchVar.push())
             .store(sliceVar.nextLocal)
-        pushObject(mb)(WritableSerDe)
+        pushObject(WritableSerDe)
           .invokeV(
             "deserialize",
             sliceVar.push(),
@@ -102,27 +102,28 @@ trait Serializing extends ClassBuilder {
         `return`(valueVar.push())
       }
 
-    methodDef.newMethod("value", classOf[Writable].asType, Seq(classOf[BranchKey].asType)) { mb =>
-      import mb._ // scalastyle:ignore
-      val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
-      for {
-        (output, i) <- subplanOutputs.zipWithIndex
-      } {
-        branchVar.push().unlessNotEqual(context.branchKeys.getField(mb, output.getOperator)) {
-          val t = outputType(output)
-          val outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
-          if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST) {
-            `return`(pushNew0(t))
-          } else {
-            thisVar.push().getField(s"value${i}", t).unlessNotNull {
-              thisVar.push().putField(s"value${i}", t, pushNew0(t))
+    methodDef.newMethod(
+      "value", classOf[Writable].asType, Seq(classOf[BranchKey].asType)) { implicit mb =>
+        import mb._ // scalastyle:ignore
+        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
+        for {
+          (output, i) <- subplanOutputs.zipWithIndex
+        } {
+          branchVar.push().unlessNotEqual(context.branchKeys.getField(output.getOperator)) {
+            val t = outputType(output)
+            val outputInfo = output.getAttribute(classOf[SubPlanOutputInfo])
+            if (outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST) {
+              `return`(pushNew0(t))
+            } else {
+              thisVar.push().getField(s"value${i}", t).unlessNotNull {
+                thisVar.push().putField(s"value${i}", t, pushNew0(t))
+              }
+              `return`(thisVar.push().getField(s"value${i}", t))
             }
-            `return`(thisVar.push().getField(s"value${i}", t))
           }
         }
+        `throw`(pushNew0(classOf[AssertionError].asType))
       }
-      `throw`(pushNew0(classOf[AssertionError].asType))
-    }
   }
 
   private def outputType(output: SubPlan.Output): Type = {

@@ -72,24 +72,24 @@ trait PartitionersField extends ClassBuilder {
               }
           }
         }
-        build ()) { mb =>
+        build ()) { implicit mb =>
         import mb._ // scalastyle:ignore
         thisVar.push().getField("partitioners", classOf[Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners(mb))
+          thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners())
         }
         `return`(thisVar.push().getField("partitioners", classOf[Map[_, _]].asType))
       }
   }
 
-  def getPartitionersField(mb: MethodBuilder): Stack = {
+  def getPartitionersField()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     thisVar.push().invokeV("partitioners", classOf[Map[_, _]].asType)
   }
 
-  private def initPartitioners(mb: MethodBuilder): Stack = {
+  private def initPartitioners()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    buildMap(mb) { builder =>
-      val np = numPartitions(mb)(thisVar.push().invokeV("sc", classOf[SparkContext].asType)) _
+    buildMap { builder =>
+      val np = numPartitions(thisVar.push().invokeV("sc", classOf[SparkContext].asType)) _
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
@@ -99,15 +99,15 @@ trait PartitionersField extends ClassBuilder {
           outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
       } {
         builder += (
-          context.branchKeys.getField(mb, output.getOperator),
+          context.branchKeys.getField(output.getOperator),
           outputInfo.getOutputType match {
             case SubPlanOutputInfo.OutputType.DONT_CARE =>
-              pushObject(mb)(None)
+              pushObject(None)
             case SubPlanOutputInfo.OutputType.AGGREGATED |
               SubPlanOutputInfo.OutputType.PARTITIONED if outputInfo.getPartitionInfo.getGrouping.nonEmpty => // scalastyle:ignore
-              option(mb)(partitioner(mb)(np(output)))
+              option(partitioner(np(output)))
             case _ =>
-              option(mb)(partitioner(mb)(ldc(1)))
+              option(partitioner(ldc(1)))
           })
       }
     }

@@ -54,8 +54,8 @@ trait ShuffledJoin
         .build())
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
     import mb._ // scalastyle:ignore
     thisVar.push()
@@ -65,11 +65,11 @@ trait ShuffledJoin
         pushNew0(classOf[ArrayListBuffer[_]].asType))
   }
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     val mastersVar = {
       val iter =
-        applySeq(mb)(dataModelVar.push(), ldc(0))
+        applySeq(dataModelVar.push(), ldc(0))
           .cast(classOf[Iterator[_]].asType)
       val iterVar = iter.store(dataModelVar.nextLocal)
       val masters = thisVar.push().getField("masters", classOf[ListBuffer[_]].asType)
@@ -93,7 +93,7 @@ trait ShuffledJoin
     }
 
     val txIterVar =
-      applySeq(mb)(dataModelVar.push(), ldc(1))
+      applySeq(dataModelVar.push(), ldc(1))
         .cast(classOf[Iterator[_]].asType)
         .store(mastersVar.nextLocal)
     whileLoop(txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
@@ -101,7 +101,7 @@ trait ShuffledJoin
         .cast(txType).store(txIterVar.nextLocal)
       val selectedVar = (masterSelection match {
         case Some((name, t)) =>
-          getOperatorField(mb)
+          getOperatorField()
             .invokeV(
               name,
               t.getReturnType(),
@@ -113,7 +113,7 @@ trait ShuffledJoin
                   case (s, t) => s().asType(t)
                 }: _*)
         case None =>
-          pushObject(mb)(DefaultMasterSelection)
+          pushObject(DefaultMasterSelection)
             .invokeV(
               "select",
               classOf[AnyRef].asType,
@@ -121,7 +121,7 @@ trait ShuffledJoin
               txVar.push().asType(classOf[AnyRef].asType))
             .cast(masterType)
       }).store(txVar.nextLocal)
-      join(mb, selectedVar, txVar)
+      join(selectedVar, txVar)
     }
 
     mastersVar.push().invokeI("shrink")

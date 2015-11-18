@@ -165,7 +165,7 @@ class ExtractDriverClassBuilder(
               }
           }
         }
-        .build()) { mb =>
+        .build()) { implicit mb =>
         import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
@@ -174,12 +174,12 @@ class ExtractDriverClassBuilder(
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
-            context.operatorCompilerContext)
+            broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            implicitly, context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(marker.getOutput)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
+        `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

@@ -61,17 +61,17 @@ abstract class UserOperatorFragmentClassBuilder(
             }
         })
         .newVoidReturnType()
-        .build()) { mb =>
+        .build()) { implicit mb =>
         import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
         thisVar.push().invokeInit(superType)
-        initReset(mb)
-        initOutputFields(mb, broadcastsVar.nextLocal)
-        initFields(mb)
+        initReset()
+        initOutputFields(broadcastsVar.nextLocal)
+        initFields()
       }
   }
 
-  def initFields(mb: MethodBuilder): Unit = {}
+  def initFields()(implicit mb: MethodBuilder): Unit = {}
 }

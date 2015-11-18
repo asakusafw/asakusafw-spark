@@ -31,7 +31,7 @@ import com.asakusafw.spark.tools.asm4s._
 trait BranchKeys {
   this: BranchKeysClassBuilder =>
 
-  def getField(mb: MethodBuilder, marker: MarkerOperator): Stack = {
+  def getField(marker: MarkerOperator)(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     getStatic(thisType, getField(marker.getSerialNumber), classOf[BranchKey].asType)
   }
@@ -58,11 +58,11 @@ class BranchKeysClassBuilder(flowId: String)
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newStaticInit { mb =>
+    ctorDef.newStaticInit { implicit mb =>
       import mb._ // scalastyle:ignore
       branchKeys.values.toSeq.sorted.foreach { id =>
         putStatic(thisType, field(id), classOf[BranchKey].asType,
-          pushObject(mb)(BranchKey)
+          pushObject(BranchKey)
             .invokeV("apply", classOf[BranchKey].asType, ldc(id)))
       }
     }

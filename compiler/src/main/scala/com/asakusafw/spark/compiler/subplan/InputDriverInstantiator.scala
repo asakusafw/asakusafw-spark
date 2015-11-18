@@ -29,10 +29,10 @@ object InputDriverInstantiator extends Instantiator {
   override def newInstance(
     driverType: Type,
     subplan: SubPlan)(
-      mb: MethodBuilder,
       vars: Instantiator.Vars,
       nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var = {
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var = {
     import mb._ // scalastyle:ignore
 
     val inputDriver = pushNew(driverType)

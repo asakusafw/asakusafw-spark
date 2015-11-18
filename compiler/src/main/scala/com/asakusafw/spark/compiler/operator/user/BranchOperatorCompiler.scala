@@ -84,9 +84,9 @@ private class BranchOperatorFragmentClassBuilder(
     operator.implementationClass.asType,
     operator.outputs) {
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
-    val branch = getOperatorField(mb)
+    val branch = getOperatorField()
       .invokeV(
         operator.methodDesc.name,
         operator.methodDesc.asType.getReturnType,
@@ -104,7 +104,7 @@ private class BranchOperatorFragmentClassBuilder(
             operator.methodDesc.asType.getReturnType,
             enum.name,
             operator.methodDesc.asType.getReturnType)) {
-            getOutputField(mb, output)
+            getOutputField(output)
               .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
             `return`()
           }

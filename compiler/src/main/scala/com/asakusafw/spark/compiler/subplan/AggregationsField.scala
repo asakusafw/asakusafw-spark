@@ -74,23 +74,23 @@ trait AggregationsField extends ClassBuilder {
               }
           }
         }
-        .build()) { mb =>
+        .build()) { implicit mb =>
         import mb._ // scalastyle:ignore
         thisVar.push().getField("aggregations", classOf[Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("aggregations", classOf[Map[_, _]].asType, initAggregations(mb))
+          thisVar.push().putField("aggregations", classOf[Map[_, _]].asType, initAggregations())
         }
         `return`(thisVar.push().getField("aggregations", classOf[Map[_, _]].asType))
       }
   }
 
-  def getAggregationsField(mb: MethodBuilder): Stack = {
+  def getAggregationsField()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
   }
 
-  private def initAggregations(mb: MethodBuilder): Stack = {
+  private def initAggregations()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    buildMap(mb) { builder =>
+    buildMap { builder =>
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
@@ -99,7 +99,7 @@ trait AggregationsField extends ClassBuilder {
         if (AggregationCompiler.support(operator)(context.aggregationCompilerContext))
       } {
         builder += (
-          context.branchKeys.getField(mb, output.getOperator),
+          context.branchKeys.getField(output.getOperator),
           pushNew0(
             AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)))
       }

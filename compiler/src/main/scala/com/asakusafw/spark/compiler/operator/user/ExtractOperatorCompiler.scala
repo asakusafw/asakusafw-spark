@@ -80,14 +80,14 @@ private class ExtractOperatorFragmentClassBuilder(
     operator.implementationClass.asType,
     operator.outputs) {
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
-    getOperatorField(mb)
+    getOperatorField()
       .invokeV(
         operator.methodDesc.getName,
         dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
           +: operator.outputs.map { output =>
-            getOutputField(mb, output).asType(classOf[Result[_]].asType)
+            getOutputField(output).asType(classOf[Result[_]].asType)
           }
           ++: operator.arguments.map { argument =>
             ldc(argument.value)(ClassTag(argument.resolveClass))

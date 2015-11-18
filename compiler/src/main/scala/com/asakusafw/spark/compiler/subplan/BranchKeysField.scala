@@ -56,25 +56,25 @@ trait BranchKeysField extends ClassBuilder {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
           }
         }
-        .build()) { mb =>
+        .build()) { implicit mb =>
         import mb._ // scalastyle:ignore
         thisVar.push().getField("branchKeys", classOf[Set[_]].asType).unlessNotNull {
-          thisVar.push().putField("branchKeys", classOf[Set[_]].asType, initBranchKeys(mb))
+          thisVar.push().putField("branchKeys", classOf[Set[_]].asType, initBranchKeys())
         }
         `return`(thisVar.push().getField("branchKeys", classOf[Set[_]].asType))
       }
   }
 
-  def getBranchKeysField(mb: MethodBuilder): Stack = {
+  def getBranchKeysField()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     thisVar.push().invokeV("branchKeys", classOf[Set[_]].asType)
   }
 
-  private def initBranchKeys(mb: MethodBuilder): Stack = {
+  private def initBranchKeys()(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    buildSet(mb) { builder =>
+    buildSet { builder =>
       subplanOutputs.map(_.getOperator).sortBy(_.getSerialNumber).foreach { marker =>
-        builder += context.branchKeys.getField(mb, marker)
+        builder += context.branchKeys.getField(marker)
       }
     }
   }

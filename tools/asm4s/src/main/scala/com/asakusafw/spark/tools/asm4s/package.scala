@@ -26,20 +26,20 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 package object asm4s {
 
-  def pushObject(mb: MethodBuilder)(obj: Any): Stack = {
+  def pushObject(obj: Any)(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
     getStatic(obj.getClass.asType, "MODULE$", obj.getClass.asType)
   }
 
-  def option(mb: MethodBuilder)(value: => Stack): Stack = {
+  def option(value: => Stack)(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    pushObject(mb)(Option)
+    pushObject(Option)
       .invokeV("apply", classOf[Option[_]].asType, value.asType(classOf[AnyRef].asType))
   }
 
-  def tuple2(mb: MethodBuilder)(_1: => Stack, _2: => Stack): Stack = {
+  def tuple2(_1: => Stack, _2: => Stack)(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    pushObject(mb)(Tuple2)
+    pushObject(Tuple2)
       .invokeV(
         "apply",
         classOf[(_, _)].asType,
@@ -47,53 +47,53 @@ package object asm4s {
         _2.asType(classOf[AnyRef].asType))
   }
 
-  def classTag(mb: MethodBuilder, t: Type): Stack = {
+  def classTag(t: Type)(implicit mb: MethodBuilder): Stack = {
     import mb._ // scalastyle:ignore
-    pushObject(mb)(ClassTag)
+    pushObject(ClassTag)
       .invokeV("apply", classOf[ClassTag[_]].asType, ldc(t).asType(classOf[Class[_]].asType))
   }
 
-  def buildArray(mb: MethodBuilder, t: Type)(block: ArrayBuilder => Unit): Stack = {
-    val builder = new ArrayBuilder(mb, t)
+  def buildArray(t: Type)(block: ArrayBuilder => Unit)(implicit mb: MethodBuilder): Stack = {
+    val builder = new ArrayBuilder(t)
     block(builder)
     builder.result
   }
 
-  def buildSeq(mb: MethodBuilder)(block: SeqBuilder => Unit): Stack = {
-    val builder = new SeqBuilder(mb)
+  def buildSeq(block: SeqBuilder => Unit)(implicit mb: MethodBuilder): Stack = {
+    val builder = new SeqBuilder()
     block(builder)
     builder.result
   }
 
-  def buildMap(mb: MethodBuilder)(block: MapBuilder => Unit): Stack = {
-    val builder = new MapBuilder(mb)
+  def buildMap(block: MapBuilder => Unit)(implicit mb: MethodBuilder): Stack = {
+    val builder = new MapBuilder()
     block(builder)
     builder.result
   }
 
-  def buildSet(mb: MethodBuilder)(block: SetBuilder => Unit): Stack = {
-    val builder = new SetBuilder(mb)
+  def buildSet(block: SetBuilder => Unit)(implicit mb: MethodBuilder): Stack = {
+    val builder = new SetBuilder()
     block(builder)
     builder.result
   }
 
-  def applySeq(mb: MethodBuilder)(seq: => Stack, i: => Stack): Stack = {
+  def applySeq(seq: => Stack, i: => Stack)(implicit mb: MethodBuilder): Stack = {
     seq.invokeI("apply", classOf[AnyRef].asType, i)
   }
 
-  def applyMap(mb: MethodBuilder)(map: => Stack, key: => Stack): Stack = {
+  def applyMap(map: => Stack, key: => Stack)(implicit mb: MethodBuilder): Stack = {
     map.invokeI("apply", classOf[AnyRef].asType, key.asType(classOf[AnyRef].asType))
   }
 
-  def addToMap(mb: MethodBuilder)(map: => Stack, key: => Stack, value: => Stack): Unit = {
+  def addToMap(map: => Stack, key: => Stack, value: => Stack)(implicit mb: MethodBuilder): Unit = {
     map.invokeI(
       NameTransformer.encode("+="),
       classOf[Growable[_]].asType,
-      tuple2(mb)(key, value).asType(classOf[AnyRef].asType))
+      tuple2(key, value).asType(classOf[AnyRef].asType))
       .pop()
   }
 
-  def addTraversableToMap(mb: MethodBuilder)(map: => Stack, traversable: => Stack): Unit = {
+  def addTraversableToMap(map: => Stack, traversable: => Stack)(implicit mb: MethodBuilder): Unit = {
     map.invokeI(
       NameTransformer.encode("++="),
       classOf[Growable[_]].asType,
@@ -101,7 +101,7 @@ package object asm4s {
       .pop()
   }
 
-  class ArrayBuilder private[asm4s] (mb: MethodBuilder, t: Type) {
+  class ArrayBuilder private[asm4s] (t: Type)(implicit mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -128,28 +128,28 @@ package object asm4s {
       import mb._ // scalastyle:ignore
       t.getSort() match {
         case Type.BOOLEAN =>
-          pushObject(mb)(Array).invokeV("emptyBooleanArray", classOf[Array[Boolean]].asType)
+          pushObject(Array).invokeV("emptyBooleanArray", classOf[Array[Boolean]].asType)
         case Type.CHAR =>
-          pushObject(mb)(Array).invokeV("emptyCharArray", classOf[Array[Char]].asType)
+          pushObject(Array).invokeV("emptyCharArray", classOf[Array[Char]].asType)
         case Type.BYTE =>
-          pushObject(mb)(Array).invokeV("emptyByteArray", classOf[Array[Byte]].asType)
+          pushObject(Array).invokeV("emptyByteArray", classOf[Array[Byte]].asType)
         case Type.SHORT =>
-          pushObject(mb)(Array).invokeV("emptyShortArray", classOf[Array[Short]].asType)
+          pushObject(Array).invokeV("emptyShortArray", classOf[Array[Short]].asType)
         case Type.INT =>
-          pushObject(mb)(Array).invokeV("emptyIntArray", classOf[Array[Int]].asType)
+          pushObject(Array).invokeV("emptyIntArray", classOf[Array[Int]].asType)
         case Type.LONG =>
-          pushObject(mb)(Array).invokeV("emptyLongArray", classOf[Array[Long]].asType)
+          pushObject(Array).invokeV("emptyLongArray", classOf[Array[Long]].asType)
         case Type.FLOAT =>
-          pushObject(mb)(Array).invokeV("emptyFloatArray", classOf[Array[Float]].asType)
+          pushObject(Array).invokeV("emptyFloatArray", classOf[Array[Float]].asType)
         case Type.DOUBLE =>
-          pushObject(mb)(Array).invokeV("emptyDoubleArray", classOf[Array[Double]].asType)
+          pushObject(Array).invokeV("emptyDoubleArray", classOf[Array[Double]].asType)
         case _ =>
           pushNewArray(t, 0)
       }
     }
   }
 
-  class SeqBuilder private[asm4s] (mb: MethodBuilder) {
+  class SeqBuilder private[asm4s] (implicit mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -159,9 +159,9 @@ package object asm4s {
 
     private[asm4s] def result: Stack = {
       if (values.isEmpty) {
-        pushObject(mb)(Seq).invokeV("empty", classOf[Seq[_]].asType)
+        pushObject(Seq).invokeV("empty", classOf[Seq[_]].asType)
       } else {
-        val builder = pushObject(mb)(Seq)
+        val builder = pushObject(Seq)
           .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
         for {
           value <- values
@@ -176,7 +176,7 @@ package object asm4s {
     }
   }
 
-  class MapBuilder private[asm4s] (mb: MethodBuilder) {
+  class MapBuilder private[asm4s] (implicit mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[(() => Stack, () => Stack)]
 
@@ -186,9 +186,9 @@ package object asm4s {
 
     private[asm4s] def result: Stack = {
       if (values.isEmpty) {
-        pushObject(mb)(Map).invokeV("empty", classOf[Map[_, _]].asType)
+        pushObject(Map).invokeV("empty", classOf[Map[_, _]].asType)
       } else {
-        val builder = pushObject(mb)(Map)
+        val builder = pushObject(Map)
           .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
         for {
           (key, value) <- values
@@ -196,14 +196,14 @@ package object asm4s {
           builder.invokeI(
             NameTransformer.encode("+="),
             classOf[mutable.Builder[_, _]].asType,
-            tuple2(mb)(key(), value()).asType(classOf[AnyRef].asType))
+            tuple2(key(), value()).asType(classOf[AnyRef].asType))
         }
         builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Map[_, _]].asType)
       }
     }
   }
 
-  class SetBuilder private[asm4s] (mb: MethodBuilder) {
+  class SetBuilder private[asm4s] (implicit mb: MethodBuilder) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -213,9 +213,9 @@ package object asm4s {
 
     private[asm4s] def result: Stack = {
       if (values.isEmpty) {
-        pushObject(mb)(Set).invokeV("empty", classOf[Set[_]].asType)
+        pushObject(Set).invokeV("empty", classOf[Set[_]].asType)
       } else {
-        val builder = pushObject(mb)(Set)
+        val builder = pushObject(Set)
           .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
         for {
           value <- values

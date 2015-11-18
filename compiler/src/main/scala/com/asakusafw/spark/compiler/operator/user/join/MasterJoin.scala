@@ -47,8 +47,8 @@ trait MasterJoin
       operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
     import mb._ // scalastyle:ignore
     thisVar.push().putField(
@@ -57,11 +57,11 @@ trait MasterJoin
       pushNew0(operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType))
   }
 
-  override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
+  override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     block { ctrl =>
       masterVar.push().unlessNotNull {
-        getOutputField(mb, operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED))
+        getOutputField(operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED))
           .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
         ctrl.break()
       }
@@ -90,7 +90,7 @@ trait MasterJoin
           "The source and destination types should be the same: "
             + s"(${srcProperty.getType}, ${destProperty.getType}) [${operator}]")
 
-        pushObject(mb)(ValueOptionOps)
+        pushObject(ValueOptionOps)
           .invokeV(
             "copy",
             srcVar.push()
@@ -102,7 +102,7 @@ trait MasterJoin
               .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
       }
 
-      getOutputField(mb, operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED))
+      getOutputField(operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED))
         .invokeV("add",
           thisVar.push()
             .getField(

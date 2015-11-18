@@ -95,7 +95,7 @@ class OutputDriverClassBuilder(
           }
         }
         .newVoidReturnType()
-        .build()) { mb =>
+        .build()) { implicit mb =>
         import mb._ // scalastyle:ignore
         val scVar =
           `var`(classOf[SparkContext].asType, thisVar.nextLocal)
@@ -112,7 +112,7 @@ class OutputDriverClassBuilder(
           hadoopConfVar.push(),
           prevsVar.push(),
           terminatorsVar.push(),
-          classTag(mb, operator.getDataType.asType))
+          classTag(operator.getDataType.asType))
       }
   }
 

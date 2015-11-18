@@ -106,12 +106,12 @@ private class CoGroupOperatorFragmentClassBuilder(
         .build())
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
     import mb._ // scalastyle:ignore
     thisVar.push().putField("buffers", classOf[Array[ListBuffer[_]]].asType,
-      buildArray(mb, classOf[ListBuffer[_]].asType) { builder =>
+      buildArray(classOf[ListBuffer[_]].asType) { builder =>
         for {
           input <- operator.inputs
         } {
@@ -124,14 +124,14 @@ private class CoGroupOperatorFragmentClassBuilder(
       })
   }
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     val nextLocal = new AtomicInteger(dataModelVar.nextLocal)
 
     val bufferVars = operator.inputs.zipWithIndex.map {
       case (input, i) =>
         val iter =
-          applySeq(mb)(dataModelVar.push(), ldc(i))
+          applySeq(dataModelVar.push(), ldc(i))
             .cast(classOf[Iterator[_]].asType)
         val iterVar = iter.store(nextLocal.getAndAdd(iter.size))
         val buffer = thisVar.push()
@@ -157,12 +157,12 @@ private class CoGroupOperatorFragmentClassBuilder(
         bufferVar
     }
 
-    getOperatorField(mb)
+    getOperatorField()
       .invokeV(
         operator.methodDesc.getName,
         bufferVars.map(_.push().asType(classOf[JList[_]].asType))
           ++ operator.outputs.map { output =>
-            getOutputField(mb, output).asType(classOf[Result[_]].asType)
+            getOutputField(output).asType(classOf[Result[_]].asType)
           }
           ++ operator.arguments.map { argument =>
             ldc(argument.value)(ClassTag(argument.resolveClass))

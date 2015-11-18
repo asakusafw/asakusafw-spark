@@ -186,7 +186,7 @@ class AggregateDriverClassBuilder(
               }
           }
         }
-        .build()) { mb =>
+        .build()) { implicit mb =>
         import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
@@ -195,12 +195,12 @@ class AggregateDriverClassBuilder(
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
-            context.operatorCompilerContext)
+            broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            implicitly, context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
+        `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
 
     methodDef.newMethod("aggregation", classOf[Aggregation[_, _, _]].asType, Seq.empty,

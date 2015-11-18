@@ -75,8 +75,8 @@ private class SplitOperatorFragmentClassBuilder(
     fieldDef.newField("rightDataModel", operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType)
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
     import mb._ // scalastyle:ignore
     thisVar.push().putField(
@@ -89,7 +89,7 @@ private class SplitOperatorFragmentClassBuilder(
       pushNew0(operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType))
   }
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
 
     val leftVar = thisVar.push()
@@ -119,7 +119,7 @@ private class SplitOperatorFragmentClassBuilder(
         "The source and destination types should be the same: "
           + s"(${srcProperty.getType}, ${destProperty.getType}) [${operator}]")
 
-      pushObject(mb)(ValueOptionOps)
+      pushObject(ValueOptionOps)
         .invokeV(
           "copy",
           dataModelVar.push()
@@ -128,9 +128,9 @@ private class SplitOperatorFragmentClassBuilder(
             .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
     }
 
-    getOutputField(mb, operator.outputs(Split.ID_OUTPUT_LEFT))
+    getOutputField(operator.outputs(Split.ID_OUTPUT_LEFT))
       .invokeV("add", leftVar.push().asType(classOf[AnyRef].asType))
-    getOutputField(mb, operator.outputs(Split.ID_OUTPUT_RIGHT))
+    getOutputField(operator.outputs(Split.ID_OUTPUT_RIGHT))
       .invokeV("add", rightVar.push().asType(classOf[AnyRef].asType))
 
     `return`()

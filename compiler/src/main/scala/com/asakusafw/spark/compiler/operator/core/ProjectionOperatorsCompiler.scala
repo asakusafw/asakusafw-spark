@@ -71,7 +71,7 @@ private class ProjectionOperatorsFragmentClassBuilder(
     ProjectionOperatorUtil.getPropertyMappings(context.dataModelLoader, operator)
       .toSeq
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
 
     thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
@@ -85,7 +85,7 @@ private class ProjectionOperatorsFragmentClassBuilder(
         "The source and destination types should be the same: " +
           s"(${srcProperty.getType}, ${destProperty.getType} [${operator}]")
 
-      pushObject(mb)(ValueOptionOps)
+      pushObject(ValueOptionOps)
         .invokeV(
           "copy",
           dataModelVar.push()

@@ -36,17 +36,17 @@ object ExtractDriverInstantiator extends Instantiator {
   override def newInstance(
     driverType: Type,
     subplan: SubPlan)(
-      mb: MethodBuilder,
       vars: Instantiator.Vars,
       nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var = {
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var = {
     import mb._ // scalastyle:ignore
 
     val extractDriver = pushNew(driverType)
     extractDriver.dup().invokeInit(
       vars.sc.push(),
       vars.hadoopConf.push(),
-      buildSeq(mb) { builder =>
+      buildSeq { builder =>
         for {
           subPlanInput <- subplan.getInputs.toSet[SubPlan.Input]
           inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
@@ -55,9 +55,9 @@ object ExtractDriverInstantiator extends Instantiator {
           marker = prevSubPlanOutput.getOperator
         } {
           builder +=
-            applyMap(mb)(
+            applyMap(
               vars.rdds.push(),
-              context.branchKeys.getField(mb, marker))
+              context.branchKeys.getField(marker))
             .cast(classOf[Future[RDD[(_, _)]]].asType)
         }
       },

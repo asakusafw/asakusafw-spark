@@ -32,11 +32,11 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
 class FragmentGraphBuilder(
-  mb: MethodBuilder,
   broadcastsVar: Var,
   fragmentBufferSizeVar: Var,
   nextLocal: AtomicInteger)(
-    implicit context: OperatorCompiler.Context) {
+    implicit mb: MethodBuilder,
+    context: OperatorCompiler.Context) {
   import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty
@@ -73,7 +73,7 @@ class FragmentGraphBuilder(
   def build(output: OperatorOutput): Var = {
     if (output.getOpposites.size == 0) {
       vars.getOrElseUpdate(-1L, {
-        val fragment = pushObject(mb)(StopFragment)
+        val fragment = pushObject(StopFragment)
         fragment.store(nextLocal.getAndAdd(fragment.size))
       })
     } else if (output.getOpposites.size > 1) {
@@ -85,7 +85,7 @@ class FragmentGraphBuilder(
           output.getDataType.asType,
           EdgeFragmentClassBuilder.getOrCompile(output.getDataType.asType)))
       fragment.dup().invokeInit(
-        buildArray(mb, classOf[Fragment[_]].asType) { builder =>
+        buildArray(classOf[Fragment[_]].asType) { builder =>
           for {
             opposite <- opposites
           } {
@@ -100,12 +100,12 @@ class FragmentGraphBuilder(
   }
 
   def buildOutputsVar(outputs: Seq[SubPlan.Output]): Var = {
-    val map = buildMap(mb) { builder =>
+    val map = buildMap { builder =>
       for {
         op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
       } {
         builder += (
-          context.branchKeys.getField(mb, op),
+          context.branchKeys.getField(op),
           vars(op.getOriginalSerialNumber).push())
       }
     }

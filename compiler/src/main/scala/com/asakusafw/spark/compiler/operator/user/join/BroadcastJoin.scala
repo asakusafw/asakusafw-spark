@@ -64,8 +64,8 @@ trait BroadcastJoin
         .build())
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
     import mb._ // scalastyle:ignore
     val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
@@ -92,17 +92,17 @@ trait BroadcastJoin
       "masters",
       classOf[Map[_, _]].asType,
       marker.map { marker =>
-        applyMap(mb)(
-          broadcastsVar.push(), context.broadcastIds.getField(mb, marker))
+        applyMap(
+          broadcastsVar.push(), context.broadcastIds.getField(marker))
           .cast(classOf[Broadcast[_]].asType)
           .invokeV("value", classOf[AnyRef].asType)
           .cast(classOf[Map[_, _]].asType)
       }.getOrElse {
-        buildMap(mb)(_ => ())
+        buildMap(_ => ())
       })
   }
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     val keyVar = {
       val dataModelRef = txInput.dataModelRef
@@ -111,11 +111,11 @@ trait BroadcastJoin
       val shuffleKey = pushNew(classOf[ShuffleKey].asType)
       shuffleKey.dup().invokeInit(
         if (group.getGrouping.isEmpty) {
-          buildArray(mb, Type.BYTE_TYPE)(_ => ())
+          buildArray(Type.BYTE_TYPE)(_ => ())
         } else {
-          pushObject(mb)(WritableSerDe)
+          pushObject(WritableSerDe)
             .invokeV("serialize", classOf[Array[Byte]].asType,
-              buildSeq(mb) { builder =>
+              buildSeq { builder =>
                 for {
                   propertyName <- group.getGrouping
                   property = dataModelRef.findProperty(propertyName)
@@ -126,7 +126,7 @@ trait BroadcastJoin
                 }
               })
         },
-        buildArray(mb, Type.BYTE_TYPE)(_ => ()))
+        buildArray(Type.BYTE_TYPE)(_ => ()))
       shuffleKey.store(dataModelVar.nextLocal)
     }
 
@@ -134,9 +134,9 @@ trait BroadcastJoin
       thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType)
         .invokeI("contains", Type.BOOLEAN_TYPE, keyVar.push().asType(classOf[AnyRef].asType))
         .ifTrue({
-          pushObject(mb)(JavaConversions)
+          pushObject(JavaConversions)
             .invokeV("seqAsJavaList", classOf[JList[_]].asType,
-              applyMap(mb)(
+              applyMap(
                 thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType),
                 keyVar.push())
                 .cast(classOf[Seq[_]].asType))
@@ -147,7 +147,7 @@ trait BroadcastJoin
 
     val selectedVar = (masterSelection match {
       case Some((name, t)) =>
-        getOperatorField(mb)
+        getOperatorField()
           .invokeV(
             name,
             t.getReturnType(),
@@ -159,7 +159,7 @@ trait BroadcastJoin
                 case (s, t) => s().asType(t)
               }: _*)
       case None =>
-        pushObject(mb)(DefaultMasterSelection)
+        pushObject(DefaultMasterSelection)
           .invokeV(
             "select",
             classOf[AnyRef].asType,
@@ -168,7 +168,7 @@ trait BroadcastJoin
           .cast(masterType)
     }).store(mastersVar.nextLocal)
 
-    join(mb, selectedVar, dataModelVar)
+    join(selectedVar, dataModelVar)
 
     `return`()
   }

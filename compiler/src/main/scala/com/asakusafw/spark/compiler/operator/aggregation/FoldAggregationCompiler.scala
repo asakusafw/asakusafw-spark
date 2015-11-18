@@ -92,7 +92,7 @@ private class FoldAggregationClassBuilder(
     }
   }
 
-  override def defMapSideCombine(mb: MethodBuilder): Unit = {
+  override def defMapSideCombine()(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     val partialAggregation =
       operator.annotationDesc.elements("partialAggregation")
@@ -100,22 +100,22 @@ private class FoldAggregationClassBuilder(
     `return`(ldc(partialAggregation == PartialAggregation.PARTIAL))
   }
 
-  override def defNewCombiner(mb: MethodBuilder): Unit = {
+  override def defNewCombiner()(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     `return`(pushNew0(combinerType))
   }
 
   override def defInitCombinerByValue(
-    mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
+    combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     combinerVar.push().invokeV("copyFrom", valueVar.push())
     `return`(combinerVar.push())
   }
 
   override def defMergeValue(
-    mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
+    combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
-    getOperatorField(mb).invokeV(
+    getOperatorField().invokeV(
       operator.methodDesc.getName,
       combinerVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
         +: valueVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
@@ -126,14 +126,14 @@ private class FoldAggregationClassBuilder(
   }
 
   override def defInitCombinerByCombiner(
-    mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
+    comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     comb1Var.push().invokeV("copyFrom", comb2Var.push())
     `return`(comb1Var.push())
   }
 
   override def defMergeCombiners(
-    mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
+    comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit = {
     import mb._ // scalastyle:ignore
     `return`(
       thisVar.push().invokeV("mergeValue", combinerType, comb1Var.push(), comb2Var.push()))
