@@ -16,8 +16,6 @@
 package com.asakusafw.spark.compiler
 package operator
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
@@ -33,8 +31,7 @@ import com.asakusafw.spark.tools.asm4s._
 
 class FragmentGraphBuilder(
   broadcastsVar: Var,
-  fragmentBufferSizeVar: Var,
-  nextLocal: AtomicInteger)(
+  fragmentBufferSizeVar: Var)(
     implicit mb: MethodBuilder,
     context: OperatorCompiler.Context) {
 
@@ -53,7 +50,7 @@ class FragmentGraphBuilder(
             OperatorCompiler.compile(operator, OperatorType.ExtractType)
         }
       })
-    val fragment = operator match {
+    (operator match {
       case marker: MarkerOperator =>
         val fragment = pushNew(t)
         fragment.dup().invokeInit(fragmentBufferSizeVar.push())
@@ -65,15 +62,13 @@ class FragmentGraphBuilder(
           broadcastsVar.push()
             +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
         fragment
-    }
-    fragment.store(nextLocal.getAndAdd(fragment.size))
+    }).store()
   }
 
   def build(output: OperatorOutput): Var = {
     if (output.getOpposites.size == 0) {
       vars.getOrElseUpdate(-1L, {
-        val fragment = pushObject(StopFragment)
-        fragment.store(nextLocal.getAndAdd(fragment.size))
+        pushObject(StopFragment).store()
       })
     } else if (output.getOpposites.size > 1) {
       val opposites = output.getOpposites.toSeq.map(_.getOwner).map { operator =>
@@ -91,7 +86,7 @@ class FragmentGraphBuilder(
             builder += opposite.push()
           }
         })
-      fragment.store(nextLocal.getAndAdd(fragment.size))
+      fragment.store()
     } else {
       val operator = output.getOpposites.head.getOwner
       vars.getOrElseUpdate(operator.getOriginalSerialNumber, build(operator))
@@ -99,7 +94,7 @@ class FragmentGraphBuilder(
   }
 
   def buildOutputsVar(outputs: Seq[SubPlan.Output]): Var = {
-    val map = buildMap { builder =>
+    (buildMap { builder =>
       for {
         op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
       } {
@@ -107,7 +102,6 @@ class FragmentGraphBuilder(
           context.branchKeys.getField(op),
           vars(op.getOriginalSerialNumber).push())
       }
-    }
-    map.store(nextLocal.getAndAdd(map.size))
+    }).store()
   }
 }

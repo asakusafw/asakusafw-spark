@@ -97,14 +97,7 @@ class OutputDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { implicit mb =>
-        val scVar =
-          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar =
-          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val prevsVar =
-          `var`(classOf[Seq[Future[RDD[(_, _)]]]].asType, hadoopConfVar.nextLocal)
-        val terminatorsVar =
-          `var`(classOf[mutable.Set[Future[Unit]]].asType, prevsVar.nextLocal)
+        val thisVar :: scVar :: hadoopConfVar :: prevsVar :: terminatorsVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,

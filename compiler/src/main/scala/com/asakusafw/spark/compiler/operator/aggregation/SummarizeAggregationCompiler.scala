@@ -77,6 +77,8 @@ private class SummarizeAggregationClassBuilder(
   override def defInitCombinerByValue(
     combinerVar: Var, valueVar: Var)(
       implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
+
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val valuePropertyRef =
@@ -179,8 +181,7 @@ private class SummarizeAggregationClassBuilder(
   }
 
   override def defMergeCombiners(
-    comb1Var: Var, comb2Var: Var)(
-      implicit mb: MethodBuilder): Unit = {
+    comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit = {
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val combinerPropertyRef =

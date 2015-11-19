@@ -46,8 +46,7 @@ trait PreparingKey extends ClassBuilder {
 
     methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
       Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { implicit mb =>
-        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
-        val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
+        val thisVar :: branchVar :: valueVar :: _ = mb.argVars
 
         for {
           (output, i) <- subplanOutputs.sortBy(_.getOperator.getSerialNumber).zipWithIndex
@@ -89,7 +88,7 @@ trait PreparingKey extends ClassBuilder {
     dataModelRef: DataModelReference,
     partitionInfo: Group)(
       implicit mb: MethodBuilder): Unit = {
-    val dataModelVar = `var`(dataModelRef.getDeclaration.asType, thisVar.nextLocal)
+    val thisVar :: dataModelVar :: _ = mb.argVars
 
     val shuffleKey = pushNew(classOf[ShuffleKey].asType)
     shuffleKey.dup().invokeInit(

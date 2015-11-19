@@ -16,10 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
-import scala.collection.mutable
-
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning._
@@ -31,8 +27,7 @@ trait Instantiator {
   def newInstance(
     driverType: Type,
     subplan: SubPlan)(
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
+      vars: Instantiator.Vars)(
         implicit mb: MethodBuilder,
         context: Instantiator.Context): Var
 }

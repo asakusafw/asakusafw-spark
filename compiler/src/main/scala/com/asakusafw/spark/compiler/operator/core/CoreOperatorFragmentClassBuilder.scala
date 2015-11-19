@@ -62,8 +62,7 @@ abstract class CoreOperatorFragmentClassBuilder(
         }
         .newVoidReturnType()
         .build()) { implicit mb =>
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val childVar = `var`(classOf[Fragment[_]].asType, broadcastsVar.nextLocal)
+        val thisVar :: broadcastsVar :: childVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(superType)
         thisVar.push().putField("child", classOf[Fragment[_]].asType, childVar.push())
@@ -73,6 +72,7 @@ abstract class CoreOperatorFragmentClassBuilder(
   }
 
   override def defReset()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
     unlessReset {
       thisVar.push().getField("child", classOf[Fragment[_]].asType).invokeV("reset")
     }

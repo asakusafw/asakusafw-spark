@@ -115,6 +115,7 @@ class TestClassBuilder
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
       thisVar.push().invokeInit(superType)
       thisVar.push().putField("char", Type.CHAR_TYPE, ldc('0'))
     }
@@ -128,7 +129,8 @@ class TestClassBuilder
     super.defMethods(methodDef)
 
     methodDef.newMethod("testLoop", Type.INT_TYPE, Seq.empty) { implicit mb =>
-      val iVar = ldc(0).store(thisVar.nextLocal)
+      val thisVar :: _ = mb.argVars
+      val iVar = ldc(0).store()
       loop { ctrl =>
         iVar.push().unlessLessThan(ldc(10))(ctrl.break())
         iVar.push().add(ldc(1)).store(iVar.local)
@@ -137,7 +139,8 @@ class TestClassBuilder
     }
 
     methodDef.newMethod("testWhileLoop", Type.INT_TYPE, Seq.empty) { implicit mb =>
-      val iVar = ldc(0).store(thisVar.nextLocal)
+      val thisVar :: _ = mb.argVars
+      val iVar = ldc(0).store()
       whileLoop(iVar.push().isLessThan(ldc(10))) { _ =>
         iVar.push().add(ldc(1)).store(iVar.local)
       }
@@ -145,7 +148,8 @@ class TestClassBuilder
     }
 
     methodDef.newMethod("testDoWhile", Type.INT_TYPE, Seq.empty) { implicit mb =>
-      val iVar = ldc(10).store(thisVar.nextLocal)
+      val thisVar :: _ = mb.argVars
+      val iVar = ldc(10).store()
       doWhile { _ =>
         iVar.push().add(ldc(2)).store(iVar.local)
       }(iVar.push().isLessThan(ldc(10)))
@@ -153,7 +157,8 @@ class TestClassBuilder
     }
 
     methodDef.newMethod("testTryCatch", Type.INT_TYPE, Seq.empty) { implicit mb =>
-      val iVar = ldc(0).store(thisVar.nextLocal)
+      val thisVar :: _ = mb.argVars
+      val iVar = ldc(0).store()
       tryCatch({
         invokeStatic(classOf[Integer].asType, "parseInt", Type.INT_TYPE, ldc("abc")).store(iVar.local)
       }, (classOf[NumberFormatException].asType, { e =>

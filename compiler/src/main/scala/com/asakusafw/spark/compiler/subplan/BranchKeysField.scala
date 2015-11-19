@@ -57,6 +57,7 @@ trait BranchKeysField extends ClassBuilder {
           }
         }
         .build()) { implicit mb =>
+        val thisVar :: _ = mb.argVars
         thisVar.push().getField("branchKeys", classOf[Set[_]].asType).unlessNotNull {
           thisVar.push().putField("branchKeys", classOf[Set[_]].asType, initBranchKeys())
         }
@@ -65,6 +66,7 @@ trait BranchKeysField extends ClassBuilder {
   }
 
   def getBranchKeysField()(implicit mb: MethodBuilder): Stack = {
+    val thisVar :: _ = mb.argVars
     thisVar.push().invokeV("branchKeys", classOf[Set[_]].asType)
   }
 

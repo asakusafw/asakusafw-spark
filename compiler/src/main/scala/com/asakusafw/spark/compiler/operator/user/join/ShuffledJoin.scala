@@ -57,6 +57,8 @@ trait ShuffledJoin
   override def initFields()(implicit mb: MethodBuilder): Unit = {
     super.initFields()
 
+    val thisVar :: _ = mb.argVars
+
     thisVar.push()
       .putField(
         "masters",
@@ -65,13 +67,13 @@ trait ShuffledJoin
   }
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
+
     val mastersVar = {
-      val iter =
-        applySeq(dataModelVar.push(), ldc(0))
-          .cast(classOf[Iterator[_]].asType)
-      val iterVar = iter.store(dataModelVar.nextLocal)
-      val masters = thisVar.push().getField("masters", classOf[ListBuffer[_]].asType)
-      val mastersVar = masters.store(iterVar.nextLocal)
+      val iterVar = applySeq(dataModelVar.push(), ldc(0))
+        .cast(classOf[Iterator[_]].asType)
+        .store()
+      val mastersVar = thisVar.push().getField("masters", classOf[ListBuffer[_]].asType).store()
       mastersVar.push().invokeI("begin")
 
       whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
@@ -93,10 +95,10 @@ trait ShuffledJoin
     val txIterVar =
       applySeq(dataModelVar.push(), ldc(1))
         .cast(classOf[Iterator[_]].asType)
-        .store(mastersVar.nextLocal)
+        .store()
     whileLoop(txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
       val txVar = txIterVar.push().invokeI("next", classOf[AnyRef].asType)
-        .cast(txType).store(txIterVar.nextLocal)
+        .cast(txType).store()
       val selectedVar = (masterSelection match {
         case Some((name, t)) =>
           getOperatorField()
@@ -118,7 +120,7 @@ trait ShuffledJoin
               mastersVar.push().asType(classOf[JList[_]].asType),
               txVar.push().asType(classOf[AnyRef].asType))
             .cast(masterType)
-      }).store(txVar.nextLocal)
+      }).store()
       join(selectedVar, txVar)
     }
 

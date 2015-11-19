@@ -29,6 +29,7 @@ import java.lang.invoke.CallSite
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
 import java.util.Arrays
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.reflect.ClassTag
 
@@ -38,22 +39,23 @@ import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes._
 import org.objectweb.asm.Type
 
-class MethodBuilder(
-  private[MethodBuilder] val thisType: Type,
-  private[MethodBuilder] val mv: MethodVisitor) {
+case class MethodBuilder private[asm] (
+  thisType: Type, acc: Int, name: String, methodType: Type, argVars: List[MethodBuilder.Var])(
+    private[MethodBuilder] val mv: MethodVisitor,
+    private[MethodBuilder] val nextLocal: AtomicInteger) {
 
-  import MethodBuilder._ // scalastyle:ignore
+  def isPublic: Boolean = (acc & ACC_PUBLIC) != 0
+
+  def isProtected: Boolean = (acc & ACC_PROTECTED) != 0
+
+  def isPrivate: Boolean = (acc & ACC_PRIVATE) != 0
+
+  def isStatic: Boolean = (acc & ACC_STATIC) != 0
+
+  def isFinal: Boolean = (acc & ACC_FINAL) != 0
 }
 
 object MethodBuilder {
-
-  def thisVar(implicit mb: MethodBuilder): Var = {
-    new Var(mb.thisType, 0)
-  }
-
-  def `var`(`type`: Type, local: Int): Var = { // scalastyle:ignore
-    new Var(`type`, local)
-  }
 
   def `return`(stack: Stack)(implicit mb: MethodBuilder): Unit = { // scalastyle:ignore
     mb.mv.visitInsn(stack.`type`.getOpcode(IRETURN))
@@ -69,7 +71,7 @@ object MethodBuilder {
 
   def pushNew(`type`: Type)(implicit mb: MethodBuilder): Stack = {
     mb.mv.visitTypeInsn(NEW, `type`.getInternalName())
-    new Stack(`type`)
+    Stack(`type`)
   }
 
   def pushNew0(`type`: Type)(implicit mb: MethodBuilder): Stack = {
@@ -103,7 +105,7 @@ object MethodBuilder {
       case _ =>
         mb.mv.visitTypeInsn(ANEWARRAY, `type`.getInternalName())
     }
-    new Stack(Type.getType("[" + `type`.getDescriptor()))
+    Stack(Type.getType("[" + `type`.getDescriptor()))
   }
 
   def pushNewMultiArray(
@@ -120,12 +122,12 @@ object MethodBuilder {
     sizes: Stack*)(
       implicit mb: MethodBuilder): Stack = {
     mb.mv.visitMultiANewArrayInsn(`type`.getInternalName(), sizes.size + 1)
-    new Stack(Type.getType(("[" * (sizes.size + 1)) + `type`.getDescriptor()))
+    Stack(Type.getType(("[" * (sizes.size + 1)) + `type`.getDescriptor()))
   }
 
   def pushNull(`type`: Type)(implicit mb: MethodBuilder): Stack = {
     mb.mv.visitInsn(ACONST_NULL)
-    new Stack(`type`.boxed)
+    Stack(`type`.boxed)
   }
 
   def ldc[A <: Any: ClassTag](value: A)(implicit mb: MethodBuilder): Stack = {
@@ -149,7 +151,7 @@ object MethodBuilder {
         ldc(value.asInstanceOf[Double])
       case _ =>
         mb.mv.visitLdcInsn(value)
-        new Stack(`type`)
+        Stack(`type`)
     }
   }
 
@@ -159,7 +161,7 @@ object MethodBuilder {
     } else {
       mb.mv.visitInsn(ICONST_0)
     }
-    new Stack(Type.BOOLEAN_TYPE)
+    Stack(Type.BOOLEAN_TYPE)
   }
 
   def ldc(c: Char)(implicit mb: MethodBuilder): Stack = {
@@ -172,7 +174,7 @@ object MethodBuilder {
     } else {
       mb.mv.visitLdcInsn(c)
     }
-    new Stack(Type.CHAR_TYPE)
+    Stack(Type.CHAR_TYPE)
   }
 
   def ldc(b: Byte)(implicit mb: MethodBuilder): Stack = {
@@ -181,7 +183,7 @@ object MethodBuilder {
     } else {
       mb.mv.visitIntInsn(BIPUSH, b)
     }
-    new Stack(Type.BYTE_TYPE)
+    Stack(Type.BYTE_TYPE)
   }
 
   def ldc(s: Short)(implicit mb: MethodBuilder): Stack = {
@@ -192,7 +194,7 @@ object MethodBuilder {
     } else {
       mb.mv.visitIntInsn(SIPUSH, s)
     }
-    new Stack(Type.SHORT_TYPE)
+    Stack(Type.SHORT_TYPE)
   }
 
   def ldc(i: Int)(implicit mb: MethodBuilder): Stack = {
@@ -205,7 +207,7 @@ object MethodBuilder {
     } else {
       mb.mv.visitLdcInsn(i)
     }
-    new Stack(Type.INT_TYPE)
+    Stack(Type.INT_TYPE)
   }
 
   def ldc(j: Long)(implicit mb: MethodBuilder): Stack = {
@@ -216,7 +218,7 @@ object MethodBuilder {
     } else {
       mb.mv.visitLdcInsn(j)
     }
-    new Stack(Type.LONG_TYPE)
+    Stack(Type.LONG_TYPE)
   }
 
   def ldc(f: Float)(implicit mb: MethodBuilder): Stack = {
@@ -229,7 +231,7 @@ object MethodBuilder {
     } else {
       mb.mv.visitLdcInsn(f)
     }
-    new Stack(Type.FLOAT_TYPE)
+    Stack(Type.FLOAT_TYPE)
   }
 
   def ldc(d: Double)(implicit mb: MethodBuilder): Stack = {
@@ -240,7 +242,7 @@ object MethodBuilder {
     } else {
       mb.mv.visitLdcInsn(d)
     }
-    new Stack(Type.DOUBLE_TYPE)
+    Stack(Type.DOUBLE_TYPE)
   }
 
   def invokeDynamic(
@@ -270,7 +272,7 @@ object MethodBuilder {
         arguments.map(_.`type`): _*),
       bootstrap,
       bootstrapArguments.map(_._2): _*)
-    new Stack(retType)
+    Stack(retType)
   }
 
   def getStatic(
@@ -279,7 +281,7 @@ object MethodBuilder {
     fieldType: Type)(
       implicit mb: MethodBuilder): Stack = {
     mb.mv.visitFieldInsn(GETSTATIC, owner.getInternalName(), name, fieldType.getDescriptor())
-    new Stack(fieldType)
+    Stack(fieldType)
   }
 
   def putStatic(
@@ -336,7 +338,7 @@ object MethodBuilder {
       Type.getMethodDescriptor(retType, arguments.map(_.`type`): _*),
       itf)
     if (retType != Type.VOID_TYPE) {
-      Some(new Stack(retType))
+      Some(Stack(retType))
     } else {
       None
     }
@@ -407,7 +409,7 @@ object MethodBuilder {
       case (t, c) =>
         val handler = new Label()
         mb.mv.visitLabel(handler)
-        c(new Stack(t))
+        c(Stack(t))
         mb.mv.visitJumpInsn(GOTO, next)
         mb.mv.visitTryCatchBlock(start, end, handler, t.getInternalName())
     }
@@ -425,7 +427,7 @@ object MethodBuilder {
     }
   }
 
-  sealed abstract class Value(val `type`: Type) {
+  sealed abstract class Value(`type`: Type) {
 
     lazy val size: Int = `type`.getSize()
 
@@ -448,11 +450,16 @@ object MethodBuilder {
     lazy val isArray: Boolean = `type`.isArray
   }
 
-  class Stack private[MethodBuilder] (`type`: Type) extends Value(`type`) {
+  case class Stack private[MethodBuilder] (`type`: Type) extends Value(`type`) {
+
+    def store()(implicit mb: MethodBuilder): Var = {
+      store(mb.nextLocal.getAndAdd(size))
+    }
 
     def store(local: Int)(implicit mb: MethodBuilder): Var = {
+      assert(local < mb.nextLocal.get)
       mb.mv.visitVarInsn(`type`.getOpcode(ISTORE), local)
-      new Var(`type`, local)
+      Var(`type`, local)
     }
 
     def getField(name: String, fieldType: Type)(implicit mb: MethodBuilder): Stack = {
@@ -461,7 +468,7 @@ object MethodBuilder {
 
     def getField(owner: Type, name: String, fieldType: Type)(implicit mb: MethodBuilder): Stack = {
       mb.mv.visitFieldInsn(GETFIELD, owner.getInternalName(), name, fieldType.getDescriptor())
-      new Stack(fieldType)
+      Stack(fieldType)
     }
 
     def putField(name: String, fieldType: Type, value: Stack)(implicit mb: MethodBuilder): Unit = {
@@ -605,20 +612,20 @@ object MethodBuilder {
       if (this.`type` == `type`) {
         this
       } else {
-        new Stack(`type`)
+        Stack(`type`)
       }
     }
 
     def cast(cast: Type)(implicit mb: MethodBuilder): Stack = {
       assert(!isPrimitive)
       mb.mv.visitTypeInsn(CHECKCAST, cast.getInternalName())
-      new Stack(cast)
+      Stack(cast)
     }
 
     def isInstanceOf(`type`: Type)(implicit mb: MethodBuilder): Stack = {
       assert(!isPrimitive)
       mb.mv.visitTypeInsn(INSTANCEOF, `type`.getInternalName())
-      new Stack(Type.BOOLEAN_TYPE)
+      Stack(Type.BOOLEAN_TYPE)
     }
 
     def dup()(implicit mb: MethodBuilder): Stack = {
@@ -635,12 +642,12 @@ object MethodBuilder {
 
     def aload(idx: Stack)(implicit mb: MethodBuilder): Stack = {
       mb.mv.visitInsn(`type`.getOpcode(IALOAD))
-      new Stack(Type.getType(`type`.getDescriptor().drop(1)))
+      Stack(Type.getType(`type`.getDescriptor().drop(1)))
     }
 
     def arraylength()(implicit mb: MethodBuilder): Stack = {
       mb.mv.visitInsn(ARRAYLENGTH)
-      new Stack(Type.INT_TYPE)
+      Stack(Type.INT_TYPE)
     }
 
     def pop()(implicit mb: MethodBuilder): Unit = {
@@ -698,7 +705,7 @@ object MethodBuilder {
           this
         case Type.BYTE | Type.SHORT =>
           mb.mv.visitInsn(IAND)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(LAND)
           this
@@ -714,7 +721,7 @@ object MethodBuilder {
           this
         case Type.BYTE | Type.SHORT =>
           mb.mv.visitInsn(IOR)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(LOR)
           this
@@ -730,7 +737,7 @@ object MethodBuilder {
           this
         case Type.BYTE | Type.SHORT =>
           mb.mv.visitInsn(IXOR)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(LXOR)
           this
@@ -762,7 +769,7 @@ object MethodBuilder {
           this
         case Type.BYTE | Type.SHORT =>
           mb.mv.visitInsn(ISHL)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(LSHL)
           this
@@ -778,7 +785,7 @@ object MethodBuilder {
           this
         case Type.BYTE | Type.SHORT =>
           mb.mv.visitInsn(ISHR)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(LSHR)
           this
@@ -794,7 +801,7 @@ object MethodBuilder {
           this
         case Type.BYTE | Type.SHORT =>
           mb.mv.visitInsn(IUSHR)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(LUSHR)
           this
@@ -1448,19 +1455,19 @@ object MethodBuilder {
         case Type.CHAR => this
         case Type.BYTE | Type.SHORT | Type.INT =>
           mb.mv.visitInsn(I2C)
-          new Stack(Type.CHAR_TYPE)
+          Stack(Type.CHAR_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(L2I)
           mb.mv.visitInsn(I2C)
-          new Stack(Type.CHAR_TYPE)
+          Stack(Type.CHAR_TYPE)
         case Type.FLOAT =>
           mb.mv.visitInsn(F2I)
           mb.mv.visitInsn(I2C)
-          new Stack(Type.CHAR_TYPE)
+          Stack(Type.CHAR_TYPE)
         case Type.DOUBLE =>
           mb.mv.visitInsn(D2I)
           mb.mv.visitInsn(I2C)
-          new Stack(Type.CHAR_TYPE)
+          Stack(Type.CHAR_TYPE)
       }
     }
 
@@ -1470,19 +1477,19 @@ object MethodBuilder {
         case Type.BYTE => this
         case Type.CHAR | Type.SHORT | Type.INT =>
           mb.mv.visitInsn(I2B)
-          new Stack(Type.BYTE_TYPE)
+          Stack(Type.BYTE_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(L2I)
           mb.mv.visitInsn(I2B)
-          new Stack(Type.BYTE_TYPE)
+          Stack(Type.BYTE_TYPE)
         case Type.FLOAT =>
           mb.mv.visitInsn(F2I)
           mb.mv.visitInsn(I2B)
-          new Stack(Type.BYTE_TYPE)
+          Stack(Type.BYTE_TYPE)
         case Type.DOUBLE =>
           mb.mv.visitInsn(D2I)
           mb.mv.visitInsn(I2B)
-          new Stack(Type.BYTE_TYPE)
+          Stack(Type.BYTE_TYPE)
       }
     }
 
@@ -1492,19 +1499,19 @@ object MethodBuilder {
         case Type.SHORT => this
         case Type.CHAR | Type.BYTE | Type.INT =>
           mb.mv.visitInsn(I2S)
-          new Stack(Type.SHORT_TYPE)
+          Stack(Type.SHORT_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(L2I)
           mb.mv.visitInsn(I2S)
-          new Stack(Type.SHORT_TYPE)
+          Stack(Type.SHORT_TYPE)
         case Type.FLOAT =>
           mb.mv.visitInsn(F2I)
           mb.mv.visitInsn(I2S)
-          new Stack(Type.SHORT_TYPE)
+          Stack(Type.SHORT_TYPE)
         case Type.DOUBLE =>
           mb.mv.visitInsn(D2I)
           mb.mv.visitInsn(I2S)
-          new Stack(Type.SHORT_TYPE)
+          Stack(Type.SHORT_TYPE)
       }
     }
 
@@ -1512,17 +1519,17 @@ object MethodBuilder {
       assert(isBoolean || isChar || isNumber)
       `type`.getSort() match {
         case Type.BOOLEAN | Type.CHAR | Type.BYTE | Type.SHORT =>
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.INT => this
         case Type.LONG =>
           mb.mv.visitInsn(L2I)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.FLOAT =>
           mb.mv.visitInsn(F2I)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
         case Type.DOUBLE =>
           mb.mv.visitInsn(D2I)
-          new Stack(Type.INT_TYPE)
+          Stack(Type.INT_TYPE)
       }
     }
 
@@ -1531,15 +1538,15 @@ object MethodBuilder {
       `type`.getSort() match {
         case Type.CHAR | Type.BYTE | Type.SHORT | Type.INT =>
           mb.mv.visitInsn(I2L)
-          new Stack(Type.LONG_TYPE)
+          Stack(Type.LONG_TYPE)
         case Type.LONG =>
           this
         case Type.FLOAT =>
           mb.mv.visitInsn(F2L)
-          new Stack(Type.LONG_TYPE)
+          Stack(Type.LONG_TYPE)
         case Type.DOUBLE =>
           mb.mv.visitInsn(D2L)
-          new Stack(Type.LONG_TYPE)
+          Stack(Type.LONG_TYPE)
       }
     }
 
@@ -1548,15 +1555,15 @@ object MethodBuilder {
       `type`.getSort() match {
         case Type.CHAR | Type.BYTE | Type.SHORT | Type.INT =>
           mb.mv.visitInsn(I2F)
-          new Stack(Type.FLOAT_TYPE)
+          Stack(Type.FLOAT_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(L2F)
-          new Stack(Type.FLOAT_TYPE)
+          Stack(Type.FLOAT_TYPE)
         case Type.FLOAT =>
           this
         case Type.DOUBLE =>
           mb.mv.visitInsn(D2F)
-          new Stack(Type.FLOAT_TYPE)
+          Stack(Type.FLOAT_TYPE)
       }
     }
 
@@ -1565,34 +1572,30 @@ object MethodBuilder {
       `type`.getSort() match {
         case Type.CHAR | Type.BYTE | Type.SHORT | Type.INT =>
           mb.mv.visitInsn(I2D)
-          new Stack(Type.DOUBLE_TYPE)
+          Stack(Type.DOUBLE_TYPE)
         case Type.LONG =>
           mb.mv.visitInsn(L2D)
-          new Stack(Type.DOUBLE_TYPE)
+          Stack(Type.DOUBLE_TYPE)
         case Type.FLOAT =>
           mb.mv.visitInsn(F2D)
-          new Stack(Type.DOUBLE_TYPE)
+          Stack(Type.DOUBLE_TYPE)
         case Type.DOUBLE =>
           this
       }
     }
   }
 
-  class Var private[MethodBuilder] (`type`: Type, val local: Int) extends Value(`type`) {
+  case class Var private[asm] (`type`: Type, local: Int) extends Value(`type`) {
 
     def push()(implicit mb: MethodBuilder): Stack = {
       mb.mv.visitVarInsn(`type`.getOpcode(ILOAD), local)
-      new Stack(`type`)
+      Stack(`type`)
     }
 
     def inc(increment: Int)(implicit mb: MethodBuilder): Var = {
       assert(isInteger)
       mb.mv.visitIincInsn(local, increment)
       this
-    }
-
-    lazy val nextLocal: Int = {
-      local + size
     }
   }
 }

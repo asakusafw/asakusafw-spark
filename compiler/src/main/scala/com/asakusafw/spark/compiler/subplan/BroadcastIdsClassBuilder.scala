@@ -71,7 +71,7 @@ class BroadcastIdsClassBuilder(flowId: String)
 
     methodDef.newStaticMethod(
       "valueOf", classOf[BroadcastId].asType, Seq(Type.INT_TYPE)) { implicit mb =>
-        val idVar = `var`(Type.INT_TYPE, 0)
+        val idVar :: _ = mb.argVars
 
         def bs(min: Int, max: Int): Unit = {
           if (min < max) {

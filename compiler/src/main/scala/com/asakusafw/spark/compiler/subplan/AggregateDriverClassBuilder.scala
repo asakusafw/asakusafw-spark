@@ -16,7 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
@@ -124,18 +124,8 @@ class AggregateDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { implicit mb =>
-        val scVar =
-          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar =
-          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val prevsVar =
-          `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, hadoopConfVar.nextLocal)
-        val sortVar =
-          `var`(classOf[Option[Ordering[ShuffleKey]]].asType, prevsVar.nextLocal)
-        val partVar =
-          `var`(classOf[Partitioner].asType, sortVar.nextLocal)
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, partVar.nextLocal)
+        val (thisVar :: scVar :: hadoopConfVar
+          :: prevsVar :: sortVar :: partVar :: broadcastsVar :: _) = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -187,14 +177,11 @@ class AggregateDriverClassBuilder(
           }
         }
         .build()) { implicit mb =>
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
-        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
+        val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            broadcastsVar, fragmentBufferSizeVar)(
             implicitly, context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)

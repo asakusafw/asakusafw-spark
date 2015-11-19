@@ -16,7 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
@@ -126,20 +126,8 @@ class CoGroupDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { implicit mb =>
-        val scVar =
-          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar =
-          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val inputsVar =
-          `var`(
-            classOf[Seq[(Seq[Future[RDD[(ShuffleKey, _)]]], Option[Ordering[ShuffleKey]])]].asType,
-            hadoopConfVar.nextLocal)
-        val groupingVar =
-          `var`(classOf[Ordering[ShuffleKey]].asType, inputsVar.nextLocal)
-        val partVar =
-          `var`(classOf[Partitioner].asType, groupingVar.nextLocal)
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, partVar.nextLocal)
+        val (thisVar :: scVar :: hadoopConfVar
+          :: inputsVar :: groupingVar :: partVar :: broadcastsVar :: _) = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -199,14 +187,11 @@ class CoGroupDriverClassBuilder(
           }
         }
         .build()) { implicit mb =>
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
-        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
+        val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            broadcastsVar, fragmentBufferSizeVar)(
             implicitly, context.operatorCompilerContext)
         val fragmentVar = {
           val t =
@@ -218,7 +203,7 @@ class CoGroupDriverClassBuilder(
           fragment.dup().invokeInit(
             broadcastsVar.push()
               +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
-          fragment.store(nextLocal.getAndAdd(fragment.size))
+          fragment.store()
         }
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 

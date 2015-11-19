@@ -75,6 +75,7 @@ trait AggregationsField extends ClassBuilder {
           }
         }
         .build()) { implicit mb =>
+        val thisVar :: _ = mb.argVars
         thisVar.push().getField("aggregations", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("aggregations", classOf[Map[_, _]].asType, initAggregations())
         }
@@ -83,6 +84,7 @@ trait AggregationsField extends ClassBuilder {
   }
 
   def getAggregationsField()(implicit mb: MethodBuilder): Stack = {
+    val thisVar :: _ = mb.argVars
     thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
   }
 

@@ -16,8 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
@@ -39,8 +37,7 @@ object AggregateDriverInstantiator extends Instantiator {
   override def newInstance(
     driverType: Type,
     subplan: SubPlan)(
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
+      vars: Instantiator.Vars)(
         implicit mb: MethodBuilder,
         context: Instantiator.Context): Var = {
 
@@ -82,6 +79,6 @@ object AggregateDriverInstantiator extends Instantiator {
             subplan.findInput(input.getOpposites.head.getOwner)))
       }),
       vars.broadcasts.push())
-    aggregateDriver.store(nextLocal.getAndAdd(aggregateDriver.size))
+    aggregateDriver.store()
   }
 }

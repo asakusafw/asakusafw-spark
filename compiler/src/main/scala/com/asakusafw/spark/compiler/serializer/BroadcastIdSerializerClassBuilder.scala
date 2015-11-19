@@ -52,9 +52,8 @@ class BroadcastIdSerializerClassBuilder(
     methodDef.newMethod(
       "write",
       Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[AnyRef].asType)) { implicit mb =>
-        val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
-        val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
-        val objVar = `var`(classOf[AnyRef].asType, outputVar.nextLocal)
+        val thisVar :: kryoVar :: outputVar :: objVar :: _ = mb.argVars
+
         thisVar.push()
           .invokeV(
             "write",
@@ -69,9 +68,8 @@ class BroadcastIdSerializerClassBuilder(
         classOf[Kryo].asType,
         classOf[Output].asType,
         classOf[BroadcastId].asType)) { implicit mb =>
-        val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
-        val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
-        val broadcastIdVar = `var`(classOf[BroadcastId].asType, outputVar.nextLocal)
+        val thisVar :: kryoVar :: outputVar :: broadcastIdVar :: _ = mb.argVars
+
         outputVar.push().invokeV("writeInt", Type.INT_TYPE,
           broadcastIdVar.push().invokeV("id", Type.INT_TYPE), ldc(true))
           .pop()
@@ -82,9 +80,8 @@ class BroadcastIdSerializerClassBuilder(
       "read",
       classOf[AnyRef].asType,
       Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { implicit mb =>
-        val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
-        val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
-        val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
+        val thisVar :: kryoVar :: inputVar :: classVar :: _ = mb.argVars
+
         `return`(
           thisVar.push().invokeV(
             "read",
@@ -98,9 +95,8 @@ class BroadcastIdSerializerClassBuilder(
       "read",
       classOf[BroadcastId].asType,
       Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { implicit mb =>
-        val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
-        val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
-        val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
+        val thisVar :: kryoVar :: inputVar :: classVar :: _ = mb.argVars
+
         `return`(
           invokeStatic(broadcastIdsType, "valueOf", classOf[BroadcastId].asType,
             inputVar.push().invokeV("readInt", Type.INT_TYPE, ldc(true))))

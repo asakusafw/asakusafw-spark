@@ -16,8 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
@@ -39,8 +37,7 @@ object CoGroupDriverInstantiator extends Instantiator {
   override def newInstance(
     driverType: Type,
     subplan: SubPlan)(
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
+      vars: Instantiator.Vars)(
         implicit mb: MethodBuilder,
         context: Instantiator.Context): Var = {
 
@@ -95,6 +92,6 @@ object CoGroupDriverInstantiator extends Instantiator {
             subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner)))
       },
       vars.broadcasts.push())
-    cogroupDriver.store(nextLocal.getAndAdd(cogroupDriver.size))
+    cogroupDriver.store()
   }
 }

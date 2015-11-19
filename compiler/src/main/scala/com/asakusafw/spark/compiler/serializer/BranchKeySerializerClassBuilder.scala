@@ -52,9 +52,8 @@ class BranchKeySerializerClassBuilder(
     methodDef.newMethod(
       "write",
       Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[AnyRef].asType)) { implicit mb =>
-        val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
-        val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
-        val objVar = `var`(classOf[AnyRef].asType, outputVar.nextLocal)
+        val thisVar :: kryoVar :: outputVar :: objVar :: _ = mb.argVars
+
         thisVar.push()
           .invokeV(
             "write",
@@ -67,9 +66,8 @@ class BranchKeySerializerClassBuilder(
     methodDef.newMethod(
       "write",
       Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[BranchKey].asType)) { implicit mb =>
-        val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
-        val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
-        val branchKeyVar = `var`(classOf[BranchKey].asType, outputVar.nextLocal)
+        val thisVar :: kryoVar :: outputVar :: branchKeyVar :: _ = mb.argVars
+
         outputVar.push().invokeV("writeInt", Type.INT_TYPE,
           branchKeyVar.push().invokeV("id", Type.INT_TYPE), ldc(true))
           .pop()
@@ -80,9 +78,8 @@ class BranchKeySerializerClassBuilder(
       "read",
       classOf[AnyRef].asType,
       Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { implicit mb =>
-        val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
-        val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
-        val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
+        val thisVar :: kryoVar :: inputVar :: classVar :: _ = mb.argVars
+
         `return`(
           thisVar.push()
             .invokeV(
@@ -97,9 +94,8 @@ class BranchKeySerializerClassBuilder(
       "read",
       classOf[BranchKey].asType,
       Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { implicit mb =>
-        val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
-        val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
-        val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
+        val thisVar :: kryoVar :: inputVar :: classVar :: _ = mb.argVars
+
         `return`(
           invokeStatic(branchKeysType, "valueOf", classOf[BranchKey].asType,
             inputVar.push().invokeV("readInt", Type.INT_TYPE, ldc(true))))

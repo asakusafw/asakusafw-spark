@@ -61,7 +61,8 @@ private class KryoRegistratorClassBuilder(
     super.defMethods(methodDef)
 
     methodDef.newMethod("registerClasses", Seq(classOf[Kryo].asType)) { implicit mb =>
-      val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
+      val thisVar :: kryoVar :: _ = mb.argVars
+
       thisVar.push().invokeS(classOf[KryoRegistrator].asType, "registerClasses", kryoVar.push())
 
       serializers.foreach {

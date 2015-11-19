@@ -48,7 +48,7 @@ class OutputFragmentClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(Type.INT_TYPE)) { implicit mb =>
-      val bufferSizeVar = `var`(Type.INT_TYPE, thisVar.nextLocal)
+      val thisVar :: bufferSizeVar :: _ = mb.argVars
       thisVar.push().invokeInit(superType, bufferSizeVar.push())
     }
   }
@@ -61,6 +61,7 @@ class OutputFragmentClassBuilder(
     }
 
     methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
       `return`(thisVar.push().invokeV("newDataModel", dataModelType))
     }
   }

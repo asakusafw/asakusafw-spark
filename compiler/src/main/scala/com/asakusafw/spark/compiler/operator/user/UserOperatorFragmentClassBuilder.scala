@@ -63,12 +63,11 @@ abstract class UserOperatorFragmentClassBuilder(
         })
         .newVoidReturnType()
         .build()) { implicit mb =>
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+        val thisVar :: broadcastsVar :: tailVars = mb.argVars
 
         thisVar.push().invokeInit(superType)
         initReset()
-        initOutputFields(broadcastsVar.nextLocal)
+        initOutputFields(tailVars)
         initFields()
       }
   }

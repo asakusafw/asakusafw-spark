@@ -49,7 +49,7 @@ class EdgeFragmentClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(classOf[Array[Fragment[_]]].asType)) { implicit mb =>
-      val childrenVar = `var`(classOf[Array[Fragment[_]]].asType, thisVar.nextLocal)
+      val thisVar :: childrenVar :: _ = mb.argVars
       thisVar.push().invokeInit(superType, childrenVar.push())
     }
   }
@@ -62,6 +62,7 @@ class EdgeFragmentClassBuilder(
     }
 
     methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
       `return`(thisVar.push().invokeV("newDataModel", dataModelType))
     }
   }

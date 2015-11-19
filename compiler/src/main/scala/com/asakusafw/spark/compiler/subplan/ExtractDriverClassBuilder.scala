@@ -16,7 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.concurrent.Future
 
@@ -105,14 +105,7 @@ class ExtractDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { implicit mb =>
-        val scVar =
-          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar =
-          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val inputsVar =
-          `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, hadoopConfVar.nextLocal)
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, inputsVar.nextLocal)
+        val thisVar :: scVar :: hadoopConfVar :: inputsVar :: broadcastsVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -166,14 +159,11 @@ class ExtractDriverClassBuilder(
           }
         }
         .build()) { implicit mb =>
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
-        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
+        val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            broadcastsVar, fragmentBufferSizeVar, nextLocal)(
+            broadcastsVar, fragmentBufferSizeVar)(
             implicitly, context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(marker.getOutput)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)

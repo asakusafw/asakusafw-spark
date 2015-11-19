@@ -68,7 +68,7 @@ trait BroadcastJoin
   override def initFields()(implicit mb: MethodBuilder): Unit = {
     super.initFields()
 
-    val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+    val thisVar :: broadcastsVar :: _ = mb.argVars
 
     val marker: Option[MarkerOperator] = {
       val opposites = masterInput.getOpposites
@@ -103,6 +103,8 @@ trait BroadcastJoin
   }
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
+
     val keyVar = {
       val dataModelRef = txInput.dataModelRef
       val group = txInput.getGroup
@@ -126,7 +128,7 @@ trait BroadcastJoin
               })
         },
         buildArray(Type.BYTE_TYPE)(_ => ()))
-      shuffleKey.store(dataModelVar.nextLocal)
+      shuffleKey.store()
     }
 
     val mastersVar =
@@ -142,7 +144,7 @@ trait BroadcastJoin
         }, {
           pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
         })
-        .store(keyVar.nextLocal)
+        .store()
 
     val selectedVar = (masterSelection match {
       case Some((name, t)) =>
@@ -165,7 +167,7 @@ trait BroadcastJoin
             mastersVar.push(),
             dataModelVar.push().asType(classOf[AnyRef].asType))
           .cast(masterType)
-    }).store(mastersVar.nextLocal)
+    }).store()
 
     join(selectedVar, dataModelVar)
 

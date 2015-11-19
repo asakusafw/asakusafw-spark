@@ -87,6 +87,7 @@ private class FoldAggregationClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
       thisVar.push().invokeInit(superType)
     }
   }
@@ -128,6 +129,7 @@ private class FoldAggregationClassBuilder(
 
   override def defMergeCombiners(
     comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
     `return`(
       thisVar.push().invokeV("mergeValue", combinerType, comb1Var.push(), comb2Var.push()))
   }

@@ -55,8 +55,8 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("serialize", classOf[Array[Byte]].asType,
       Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { implicit mb =>
-        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
-        val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
+        val thisVar :: branchVar :: valueVar :: _ = mb.argVars
+
         `return`(
           thisVar.push()
             .invokeV("serialize", classOf[Array[Byte]].asType,
@@ -66,8 +66,8 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("serialize", classOf[Array[Byte]].asType,
       Seq(classOf[BranchKey].asType, classOf[Writable].asType)) { implicit mb =>
-        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
-        val valueVar = `var`(classOf[Writable].asType, branchVar.nextLocal)
+        val thisVar :: branchVar :: valueVar :: _ = mb.argVars
+
         `return`(
           pushObject(WritableSerDe)
             .invokeV("serialize", classOf[Array[Byte]].asType, valueVar.push()))
@@ -75,8 +75,8 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("deserialize", classOf[AnyRef].asType,
       Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { implicit mb =>
-        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
-        val valueVar = `var`(classOf[Array[Byte]].asType, branchVar.nextLocal)
+        val thisVar :: branchVar :: valueVar :: _ = mb.argVars
+
         `return`(
           thisVar.push()
             .invokeV("deserialize", classOf[Writable].asType,
@@ -86,11 +86,11 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("deserialize", classOf[Writable].asType,
       Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { implicit mb =>
-        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
-        val sliceVar = `var`(classOf[Array[Byte]].asType, branchVar.nextLocal)
+        val thisVar :: branchVar :: sliceVar :: _ = mb.argVars
+
         val valueVar =
           thisVar.push().invokeV("value", classOf[Writable].asType, branchVar.push())
-            .store(sliceVar.nextLocal)
+            .store()
         pushObject(WritableSerDe)
           .invokeV(
             "deserialize",
@@ -101,7 +101,8 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod(
       "value", classOf[Writable].asType, Seq(classOf[BranchKey].asType)) { implicit mb =>
-        val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
+        val thisVar :: branchVar :: _ = mb.argVars
+
         for {
           (output, i) <- subplanOutputs.zipWithIndex
         } {

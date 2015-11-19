@@ -15,8 +15,6 @@
  */
 package com.asakusafw.spark.compiler
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, Awaitable, ExecutionContext, Future }
@@ -145,9 +143,7 @@ class SparkClientClassBuilder(
         .newParameterType(classOf[ExecutionContext].asType)
         .newReturnType(Type.INT_TYPE)
         .build()) { implicit mb =>
-        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val ecVar = `var`(classOf[ExecutionContext].asType, hadoopConfVar.nextLocal)
+        val thisVar :: scVar :: hadoopConfVar :: ecVar :: _ = mb.argVars
         thisVar.push()
           .putField("sc", classOf[SparkContext].asType, scVar.push())
         thisVar.push()
@@ -184,7 +180,7 @@ class SparkClientClassBuilder(
         val iterVar = thisVar.push()
           .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
           .invokeI("iterator", classOf[Iterator[Future[Unit]]].asType)
-          .store(hadoopConfVar.nextLocal)
+          .store()
         whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
           pushObject(Await)
             .invokeV("result", classOf[AnyRef].asType,
@@ -204,6 +200,8 @@ class SparkClientClassBuilder(
     subplans.foreach {
       case (subplan, i) =>
         methodDef.newMethod(s"execute${i}", Seq.empty) { implicit mb =>
+          val thisVar :: _ = mb.argVars
+
           val compiler =
             SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
               context.subplanCompilerContext)
@@ -211,19 +209,19 @@ class SparkClientClassBuilder(
 
           val scVar = thisVar.push()
             .getField("sc", classOf[SparkContext].asType)
-            .store(thisVar.nextLocal)
+            .store()
           val hadoopConfVar = thisVar.push()
             .getField("hadoopConf", classOf[Broadcast[Configuration]].asType)
-            .store(scVar.nextLocal)
+            .store()
           val ecVar = thisVar.push()
             .getField("ec", classOf[ExecutionContext].asType)
-            .store(hadoopConfVar.nextLocal)
+            .store()
           val rddsVar = thisVar.push()
             .getField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType)
-            .store(ecVar.nextLocal)
+            .store()
           val terminatorsVar = thisVar.push()
             .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
-            .store(rddsVar.nextLocal)
+            .store()
 
           val broadcastsVar =
             buildMap { builder =>
@@ -247,23 +245,20 @@ class SparkClientClassBuilder(
                     context.broadcastIds.getField(prevSubPlanOperator))
                   .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
               }
-            }.store(terminatorsVar.nextLocal)
-
-          val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
+            }.store()
 
           val instantiator = compiler.instantiator
           val driverVar = instantiator.newInstance(
             driverType,
             subplan)(
-              Instantiator.Vars(scVar, hadoopConfVar, rddsVar, terminatorsVar, broadcastsVar),
-              nextLocal)(
+              Instantiator.Vars(scVar, hadoopConfVar, rddsVar, terminatorsVar, broadcastsVar))(
                 implicitly, context.instantiatorCompilerContext)
-          val rdds = driverVar.push()
+          val resultVar = driverVar.push()
             .invokeV(
               "execute",
               classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType,
               ecVar.push())
-          val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
+            .store()
 
           for {
             subPlanOutput <- subplan.getOutputs

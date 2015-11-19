@@ -49,6 +49,7 @@ abstract class FragmentClassBuilder(
   }
 
   protected def initReset()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
     thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))
   }
 
@@ -56,14 +57,15 @@ abstract class FragmentClassBuilder(
     super.defMethods(methodDef)
 
     methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { implicit mb =>
-      val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
+      val thisVar :: resultVar :: _ = mb.argVars
       thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
       `return`()
     }
 
     methodDef.newMethod("add", Seq(dataModelType)) { implicit mb =>
+      val thisVar :: dataModelVar :: _ = mb.argVars
       thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(false))
-      defAddMethod(`var`(dataModelType, thisVar.nextLocal))
+      defAddMethod(dataModelVar)
     }
 
     methodDef.newMethod("reset", Seq.empty)(defReset()(_))
@@ -73,6 +75,7 @@ abstract class FragmentClassBuilder(
   def defReset()(implicit mb: MethodBuilder): Unit
 
   protected def unlessReset(b: => Unit)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
     thisVar.push().getField("reset", Type.BOOLEAN_TYPE).unlessTrue {
       b
       thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))

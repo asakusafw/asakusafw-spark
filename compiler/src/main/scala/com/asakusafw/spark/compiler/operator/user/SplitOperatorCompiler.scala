@@ -78,6 +78,8 @@ private class SplitOperatorFragmentClassBuilder(
   override def initFields()(implicit mb: MethodBuilder): Unit = {
     super.initFields()
 
+    val thisVar :: _ = mb.argVars
+
     thisVar.push().putField(
       "leftDataModel",
       operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType,
@@ -89,13 +91,14 @@ private class SplitOperatorFragmentClassBuilder(
   }
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
 
     val leftVar = thisVar.push()
       .getField("leftDataModel", operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType)
-      .store(dataModelVar.nextLocal)
+      .store()
     val rightVar = thisVar.push()
       .getField("rightDataModel", operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType)
-      .store(leftVar.nextLocal)
+      .store()
     leftVar.push().invokeV("reset")
     rightVar.push().invokeV("reset")
 

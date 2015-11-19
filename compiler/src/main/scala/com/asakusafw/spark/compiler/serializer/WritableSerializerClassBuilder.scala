@@ -53,6 +53,7 @@ class WritableSerializerClassBuilder(
     }
 
     methodDef.newMethod("newInstance", classOf[Writable].asType, Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
       `return`(thisVar.push().invokeV("newInstance", writableType))
     }
   }
