@@ -36,7 +36,7 @@ trait OperatorField extends ClassBuilder {
     methodDef.newMethod("operator", operatorType, Seq.empty) { implicit mb =>
       val thisVar :: _ = mb.argVars
       thisVar.push().getField("operator", operatorType).unlessNotNull {
-        thisVar.push().putField("operator", operatorType, pushNew0(operatorType))
+        thisVar.push().putField("operator", pushNew0(operatorType))
       }
       `return`(thisVar.push().getField("operator", operatorType))
     }

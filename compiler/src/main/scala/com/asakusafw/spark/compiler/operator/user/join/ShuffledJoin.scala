@@ -62,8 +62,7 @@ trait ShuffledJoin
     thisVar.push()
       .putField(
         "masters",
-        classOf[ListBuffer[_]].asType,
-        pushNew0(classOf[ArrayListBuffer[_]].asType))
+        pushNew0(classOf[ArrayListBuffer[_]].asType).asType(classOf[ListBuffer[_]].asType))
   }
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {

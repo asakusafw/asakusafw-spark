@@ -110,7 +110,7 @@ private class CoGroupOperatorFragmentClassBuilder(
 
     val thisVar :: _ = mb.argVars
 
-    thisVar.push().putField("buffers", classOf[Array[ListBuffer[_]]].asType,
+    thisVar.push().putField("buffers",
       buildArray(classOf[ListBuffer[_]].asType) { builder =>
         for {
           input <- operator.inputs

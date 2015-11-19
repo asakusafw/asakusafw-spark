@@ -144,31 +144,23 @@ class SparkClientClassBuilder(
         .newReturnType(Type.INT_TYPE)
         .build()) { implicit mb =>
         val thisVar :: scVar :: hadoopConfVar :: ecVar :: _ = mb.argVars
+        thisVar.push().putField("sc", scVar.push())
+        thisVar.push().putField("hadoopConf", hadoopConfVar.push())
+        thisVar.push().putField("ec", ecVar.push())
         thisVar.push()
-          .putField("sc", classOf[SparkContext].asType, scVar.push())
-        thisVar.push()
-          .putField(
-            "hadoopConf",
-            classOf[Broadcast[Configuration]].asType,
-            hadoopConfVar.push())
-        thisVar.push()
-          .putField("ec", classOf[ExecutionContext].asType, ecVar.push())
-        thisVar.push()
-          .putField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType,
+          .putField("rdds",
             pushObject(mutable.Map)
               .invokeV("empty", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType))
         thisVar.push()
           .putField(
             "broadcasts",
-            classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
-              .asType,
             pushObject(mutable.Map)
               .invokeV(
                 "empty",
                 classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
                   .asType))
         thisVar.push()
-          .putField("terminators", classOf[mutable.Set[Future[Unit]]].asType,
+          .putField("terminators",
             pushObject(mutable.Set)
               .invokeV("empty", classOf[mutable.Set[Future[Unit]]].asType))
 

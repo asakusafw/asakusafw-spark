@@ -113,7 +113,7 @@ trait Serializing extends ClassBuilder {
               `return`(pushNew0(t))
             } else {
               thisVar.push().getField(s"value${i}", t).unlessNotNull {
-                thisVar.push().putField(s"value${i}", t, pushNew0(t))
+                thisVar.push().putField(s"value${i}", pushNew0(t))
               }
               `return`(thisVar.push().getField(s"value${i}", t))
             }

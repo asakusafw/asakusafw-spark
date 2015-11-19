@@ -75,7 +75,7 @@ trait OrderingsField extends ClassBuilder {
         .build()) { implicit mb =>
         val thisVar :: _ = mb.argVars
         thisVar.push().getField("orderings", classOf[Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("orderings", classOf[Map[_, _]].asType, initOrderings())
+          thisVar.push().putField("orderings", initOrderings())
         }
         `return`(thisVar.push().getField("orderings", classOf[Map[_, _]].asType))
       }

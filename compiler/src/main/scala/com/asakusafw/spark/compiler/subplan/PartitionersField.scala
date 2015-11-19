@@ -75,7 +75,7 @@ trait PartitionersField extends ClassBuilder {
         build ()) { implicit mb =>
         val thisVar :: _ = mb.argVars
         thisVar.push().getField("partitioners", classOf[Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners())
+          thisVar.push().putField("partitioners", initPartitioners())
         }
         `return`(thisVar.push().getField("partitioners", classOf[Map[_, _]].asType))
       }

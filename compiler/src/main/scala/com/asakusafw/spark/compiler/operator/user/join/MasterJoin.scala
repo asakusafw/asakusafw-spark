@@ -54,7 +54,6 @@ trait MasterJoin
 
     thisVar.push().putField(
       "joinedDataModel",
-      operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType,
       pushNew0(operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType))
   }
 

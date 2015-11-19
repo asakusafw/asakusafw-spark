@@ -65,8 +65,8 @@ abstract class CoreOperatorFragmentClassBuilder(
         val thisVar :: broadcastsVar :: childVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(superType)
-        thisVar.push().putField("child", classOf[Fragment[_]].asType, childVar.push())
-        thisVar.push().putField("childDataModel", childDataModelType, pushNew0(childDataModelType))
+        thisVar.push().putField("child", childVar.push())
+        thisVar.push().putField("childDataModel", pushNew0(childDataModelType))
         initReset()
       }
   }

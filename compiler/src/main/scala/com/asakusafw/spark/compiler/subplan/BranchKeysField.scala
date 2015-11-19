@@ -59,7 +59,7 @@ trait BranchKeysField extends ClassBuilder {
         .build()) { implicit mb =>
         val thisVar :: _ = mb.argVars
         thisVar.push().getField("branchKeys", classOf[Set[_]].asType).unlessNotNull {
-          thisVar.push().putField("branchKeys", classOf[Set[_]].asType, initBranchKeys())
+          thisVar.push().putField("branchKeys", initBranchKeys())
         }
         `return`(thisVar.push().getField("branchKeys", classOf[Set[_]].asType))
       }

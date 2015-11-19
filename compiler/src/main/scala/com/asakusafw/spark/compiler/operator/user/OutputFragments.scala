@@ -46,7 +46,7 @@ trait OutputFragments extends FragmentClassBuilder {
     vars.zip(operatorOutputs).foreach {
       case (childVar, output) =>
         assert(childVar.`type` == classOf[Fragment[_]].asType)
-        thisVar.push().putField(output.getName, classOf[Fragment[_]].asType, childVar.push())
+        thisVar.push().putField(output.getName, childVar.push())
     }
   }
 

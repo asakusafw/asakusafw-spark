@@ -117,7 +117,7 @@ class TestClassBuilder
     ctorDef.newInit(Seq.empty) { implicit mb =>
       val thisVar :: _ = mb.argVars
       thisVar.push().invokeInit(superType)
-      thisVar.push().putField("char", Type.CHAR_TYPE, ldc('0'))
+      thisVar.push().putField("char", ldc('0'))
     }
 
     ctorDef.newStaticInit { implicit mb =>

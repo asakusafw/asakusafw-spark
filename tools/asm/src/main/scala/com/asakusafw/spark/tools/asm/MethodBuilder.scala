@@ -471,14 +471,12 @@ object MethodBuilder {
       Stack(fieldType)
     }
 
-    def putField(name: String, fieldType: Type, value: Stack)(implicit mb: MethodBuilder): Unit = {
-      putField(`type`, name, fieldType, value)
+    def putField(name: String, value: Stack)(implicit mb: MethodBuilder): Unit = {
+      putField(`type`, name, value)
     }
 
-    def putField(
-      owner: Type, name: String, fieldType: Type, value: Stack)(
-        implicit mb: MethodBuilder): Unit = {
-      mb.mv.visitFieldInsn(PUTFIELD, owner.getInternalName(), name, fieldType.getDescriptor())
+    def putField(owner: Type, name: String, value: Stack)(implicit mb: MethodBuilder): Unit = {
+      mb.mv.visitFieldInsn(PUTFIELD, owner.getInternalName(), name, value.`type`.getDescriptor())
     }
 
     def invokeV(

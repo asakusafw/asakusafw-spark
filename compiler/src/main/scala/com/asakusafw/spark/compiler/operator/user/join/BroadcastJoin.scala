@@ -90,7 +90,6 @@ trait BroadcastJoin
 
     thisVar.push().putField(
       "masters",
-      classOf[Map[_, _]].asType,
       marker.map { marker =>
         applyMap(
           broadcastsVar.push(), context.broadcastIds.getField(marker))

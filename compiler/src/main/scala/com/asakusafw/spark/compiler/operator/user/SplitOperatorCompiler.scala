@@ -82,11 +82,9 @@ private class SplitOperatorFragmentClassBuilder(
 
     thisVar.push().putField(
       "leftDataModel",
-      operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType,
       pushNew0(operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType))
     thisVar.push().putField(
       "rightDataModel",
-      operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType,
       pushNew0(operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType))
   }
 
