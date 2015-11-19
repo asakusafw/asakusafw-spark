@@ -16,8 +16,6 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package flow
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
@@ -27,10 +25,10 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.subplan.NumPartitions._
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 object AggregateInstantiator extends Instantiator {
 
@@ -38,11 +36,9 @@ object AggregateInstantiator extends Instantiator {
     nodeType: Type,
     subplan: SubPlan,
     subplanToIdx: Map[SubPlan, Int])(
-      mb: MethodBuilder,
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var = {
-    import mb._ // scalastyle:ignore
+      vars: Instantiator.Vars)(
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var = {
 
     val primaryOperator =
       subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
@@ -53,7 +49,7 @@ object AggregateInstantiator extends Instantiator {
 
     val aggregate = pushNew(nodeType)
     aggregate.dup().invokeInit(
-      buildSeq(mb) { builder =>
+      buildSeq { builder =>
         for {
           subPlanInput <- subplan.getInputs
           inputInfo = subPlanInput.getAttribute(classOf[SubPlanInputInfo])
@@ -63,24 +59,24 @@ object AggregateInstantiator extends Instantiator {
           val prevSubPlan = prevSubPlanOutput.getOwner
           val marker = prevSubPlanOutput.getOperator
           builder +=
-            tuple2(mb)(
+            tuple2(
               vars.nodes.push().aload(ldc(subplanToIdx(prevSubPlan))),
-              context.branchKeys.getField(mb, marker))
+              context.branchKeys.getField(marker))
         }
       },
-      option(mb)(
-        sortOrdering(mb)(
+      option(
+        sortOrdering(
           input.dataModelRef.groupingTypes(input.getGroup.getGrouping),
           input.dataModelRef.orderingTypes(input.getGroup.getOrdering))),
       (if (input.getGroup.getGrouping.isEmpty) {
-        partitioner(mb)(ldc(1))
+        partitioner(ldc(1))
       } else {
-        partitioner(mb)(
-          numPartitions(mb)(vars.sc.push())(
+        partitioner(
+          numPartitions(vars.sc.push())(
             subplan.findInput(input.getOpposites.head.getOwner)))
       }),
       vars.broadcasts.push(),
       vars.sc.push())
-    aggregate.store(nextLocal.getAndAdd(aggregate.size))
+    aggregate.store()
   }
 }

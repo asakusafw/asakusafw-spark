@@ -26,10 +26,11 @@ import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.subplan.LabelField
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.TemporaryOutputClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -73,15 +74,14 @@ class TemporaryOutputClassBuilder(
         }
         .newParameterType(classOf[SparkContext].asType)
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val prevsVar = `var`(classOf[Seq[(Source, BranchKey)]].asType, thisVar.nextLocal)
-        val scVar = `var`(classOf[SparkContext].asType, prevsVar.nextLocal)
+        .build()) { implicit mb =>
+
+        val thisVar :: prevsVar :: scVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           prevsVar.push(),
-          classTag(mb, operator.getDataType.asType),
+          classTag(operator.getDataType.asType),
           scVar.push())
       }
   }
@@ -89,8 +89,7 @@ class TemporaryOutputClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("path", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(context.options.getRuntimeWorkingPath(operator.getName)))
     }
   }

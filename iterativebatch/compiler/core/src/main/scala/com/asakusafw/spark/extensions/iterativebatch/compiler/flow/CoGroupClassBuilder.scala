@@ -16,7 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package flow
 
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.JavaConversions._
 
@@ -32,11 +32,12 @@ import com.asakusafw.spark.compiler.GeneratedClassPackageInternalName
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.CoGroupClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -58,8 +59,7 @@ class CoGroupClassBuilder(
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/flow/CoGroup$$${nextId};"),
-    classOf[CoGroup].asType,
-    computeStrategy.traitType)
+    classOf[CoGroup].asType)
   with Branching
   with LabelField
   with Mixing {
@@ -116,16 +116,10 @@ class CoGroupClassBuilder(
         }
         .newParameterType(classOf[SparkContext].asType)
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val prevsVar =
-          `var`(
-            classOf[Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])]].asType,
-            thisVar.nextLocal)
-        val groupingVar = `var`(classOf[GroupOrdering].asType, prevsVar.nextLocal)
-        val partVar = `var`(classOf[Partitioner].asType, groupingVar.nextLocal)
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast]].asType, partVar.nextLocal)
-        val scVar = `var`(classOf[SparkContext].asType, broadcastsVar.nextLocal)
+        .build()) { implicit mb =>
+
+        val (thisVar :: prevsVar :: groupingVar :: partVar :: broadcastsVar
+          :: scVar :: _) = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -134,7 +128,7 @@ class CoGroupClassBuilder(
           partVar.push(),
           broadcastsVar.push(),
           scVar.push())
-        initMixIns(mb)
+        initMixIns()
       }
   }
 
@@ -184,17 +178,14 @@ class CoGroupClassBuilder(
               }
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcasted[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
-        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
+        .build()) { implicit mb =>
+
+        val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
-            context.operatorCompilerContext)
+            broadcastsVar, fragmentBufferSizeVar)(
+            implicitly, context.operatorCompilerContext)
         val fragmentVar = {
           val t =
             OperatorCompiler.compile(
@@ -205,11 +196,11 @@ class CoGroupClassBuilder(
           fragment.dup().invokeInit(
             broadcastsVar.push()
               +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
-          fragment.store(nextLocal.getAndAdd(fragment.size))
+          fragment.store()
         }
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
+        `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

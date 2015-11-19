@@ -16,7 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package flow
 
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.concurrent.Future
 
@@ -32,11 +32,12 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.ExtractClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -63,8 +64,7 @@ class ExtractClassBuilder(
         }
       }
       .build(),
-    classOf[Extract[_]].asType,
-    computeStrategy.traitType)
+    classOf[Extract[_]].asType)
   with Branching
   with LabelField
   with Mixing {
@@ -95,18 +95,15 @@ class ExtractClassBuilder(
         }
         .newParameterType(classOf[SparkContext].asType)
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val inputsVar = `var`(classOf[Seq[(Source, BranchKey)]].asType, thisVar.nextLocal)
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast]].asType, inputsVar.nextLocal)
-        val scVar = `var`(classOf[SparkContext].asType, broadcastsVar.nextLocal)
+        .build()) { implicit mb =>
 
+        val thisVar :: inputsVar :: broadcastsVar :: scVar :: _ = mb.argVars
         thisVar.push().invokeInit(
           superType,
           inputsVar.push(),
           broadcastsVar.push(),
           scVar.push())
-        initMixIns(mb)
+        initMixIns()
       }
   }
 
@@ -152,21 +149,18 @@ class ExtractClassBuilder(
               }
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcasted[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
-        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
+        .build()) { implicit mb =>
+
+        val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
-            context.operatorCompilerContext)
+            broadcastsVar, fragmentBufferSizeVar)(
+            implicitly, context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(marker.getOutput)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
+        `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

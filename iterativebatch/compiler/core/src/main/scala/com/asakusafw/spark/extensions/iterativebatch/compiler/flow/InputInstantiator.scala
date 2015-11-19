@@ -16,8 +16,6 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package flow
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
@@ -30,16 +28,14 @@ object InputInstantiator extends Instantiator {
     nodeType: Type,
     subplan: SubPlan,
     subplanToIdx: Map[SubPlan, Int])(
-      mb: MethodBuilder,
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var = {
-    import mb._ // scalastyle:ignore
+      vars: Instantiator.Vars)(
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var = {
 
     val input = pushNew(nodeType)
     input.dup().invokeInit(
       vars.broadcasts.push(),
       vars.sc.push())
-    input.store(nextLocal.getAndAdd(input.size))
+    input.store()
   }
 }

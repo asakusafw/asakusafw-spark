@@ -16,8 +16,6 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package flow
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
@@ -36,10 +34,9 @@ trait Instantiator {
     nodeType: Type,
     subplan: SubPlan,
     subplanToIdx: Map[SubPlan, Int])(
-      mb: MethodBuilder,
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var
+      vars: Instantiator.Vars)(
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var
 }
 
 object Instantiator {

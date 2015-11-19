@@ -26,9 +26,10 @@ import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.GeneratedClassPackageInternalName
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.TemporaryInputClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -73,17 +74,16 @@ class TemporaryInputClassBuilder(
         }
         .newParameterType(classOf[SparkContext].asType)
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast]].asType, thisVar.nextLocal)
-        val scVar = `var`(classOf[SparkContext].asType, broadcastsVar.nextLocal)
+        .build()) { implicit mb =>
+
+        val thisVar :: broadcastsVar :: scVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           broadcastsVar.push(),
-          classTag(mb, valueType),
+          classTag(valueType),
           scVar.push())
-        initMixIns(mb)
+        initMixIns()
       }
   }
 
@@ -97,11 +97,10 @@ class TemporaryInputClassBuilder(
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
+        .build()) { implicit mb =>
 
         `return`(
-          buildSet(mb) { builder =>
+          buildSet { builder =>
             for {
               path <- paths
             } {

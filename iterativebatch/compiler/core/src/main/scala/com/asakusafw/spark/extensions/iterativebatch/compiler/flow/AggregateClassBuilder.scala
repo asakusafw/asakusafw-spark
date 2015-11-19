@@ -16,7 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package flow
 
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
@@ -32,12 +32,13 @@ import com.asakusafw.spark.compiler.GeneratedClassPackageInternalName
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.AggregateClassBuilder._
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
@@ -69,8 +70,7 @@ class AggregateClassBuilder(
         }
       }
       .build(),
-    classOf[Aggregate[_, _]].asType,
-    computeStrategy.traitType)
+    classOf[Aggregate[_, _]].asType)
   with Branching
   with LabelField
   with Mixing {
@@ -113,13 +113,9 @@ class AggregateClassBuilder(
         }
         .newParameterType(classOf[SparkContext].asType)
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val prevsVar = `var`(classOf[Seq[(Source, BranchKey)]].asType, thisVar.nextLocal)
-        val sortVar = `var`(classOf[Option[SortOrdering]].asType, prevsVar.nextLocal)
-        val partVar = `var`(classOf[Partitioner].asType, sortVar.nextLocal)
-        val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast]].asType, partVar.nextLocal)
-        val scVar = `var`(classOf[SparkContext].asType, broadcastsVar.nextLocal)
+        .build()) { implicit mb =>
+
+        val thisVar :: prevsVar :: sortVar :: partVar :: broadcastsVar :: scVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -128,7 +124,7 @@ class AggregateClassBuilder(
           partVar.push(),
           broadcastsVar.push(),
           scVar.push())
-        initMixIns(mb)
+        initMixIns()
       }
   }
 
@@ -170,21 +166,18 @@ class AggregateClassBuilder(
               }
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcasted[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
-        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
+        .build()) { implicit mb =>
+
+        val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
-            context.operatorCompilerContext)
+            broadcastsVar, fragmentBufferSizeVar)(
+            implicitly, context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(operator.getOutputs.head)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
+        `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
 
     methodDef.newMethod("aggregation", classOf[Aggregation[_, _, _]].asType, Seq.empty,
@@ -196,8 +189,8 @@ class AggregateClassBuilder(
               .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
+        .build()) { implicit mb =>
+
         val aggregationType =
           AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)
         `return`(pushNew0(aggregationType))

@@ -50,6 +50,10 @@ trait Mixing extends ClassBuilder {
 
   def mixins: Seq[MixIn]
 
+  override def interfaceTypes: Seq[Type] = {
+    super.interfaceTypes ++ mixins.map(_.traitType)
+  }
+
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
 
@@ -64,9 +68,8 @@ trait Mixing extends ClassBuilder {
     }
   }
 
-  def initMixIns(mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
-
+  def initMixIns()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
     for {
       mixin <- mixins
     } {
@@ -86,15 +89,14 @@ trait Mixing extends ClassBuilder {
       for {
         FieldDef(_, field, t) <- mixin.fields
       } {
-        methodDef.newMethod(fieldName(mixin.traitType, field), t, Seq.empty) { mb =>
-          import mb._ // scalastyle:ignore
+        methodDef.newMethod(fieldName(mixin.traitType, field), t, Seq.empty) { implicit mb =>
+          val thisVar :: _ = mb.argVars
           `return`(thisVar.push().getField(fieldName(mixin.traitType, field), t))
         }
 
-        methodDef.newMethod(fieldSetterName(mixin.traitType, field), Seq(t)) { mb =>
-          import mb._ // scalastyle:ignore
-          val valueVar = `var`(t, thisVar.nextLocal)
-          thisVar.push().putField(fieldName(mixin.traitType, field), t, valueVar.push())
+        methodDef.newMethod(fieldSetterName(mixin.traitType, field), Seq(t)) { implicit mb =>
+          val thisVar :: valueVar :: _ = mb.argVars
+          thisVar.push().putField(fieldName(mixin.traitType, field), valueVar.push())
           `return`()
         }
       }
@@ -102,25 +104,15 @@ trait Mixing extends ClassBuilder {
       for {
         MethodDef(method, t) <- mixin.methods
       } {
-        methodDef.newMethod(method, t) { mb =>
-          import mb._ // scalastyle:ignore
-          val vars = {
-            val builder = Seq.newBuilder[Var]
-            var nextLocal = thisVar.nextLocal
-            t.getArgumentTypes.foreach { t =>
-              val vVar = `var`(t, nextLocal)
-              builder += vVar
-              nextLocal = vVar.nextLocal
-            }
-            builder.result
-          }
+        methodDef.newMethod(method, t) { implicit mb =>
+          val thisVar :: argVars = mb.argVars
 
           `return`(
             invokeStatic(
               traitClassType(mixin.traitType),
               method,
               t.getReturnType,
-              thisVar.push().asType(mixin.traitType) +: vars.map(_.push()): _*))
+              thisVar.push().asType(mixin.traitType) +: argVars.map(_.push()): _*))
         }
       }
     }

@@ -16,17 +16,15 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package flow
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanInputInfo
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 object OutputInstantiator extends Instantiator {
 
@@ -34,15 +32,13 @@ object OutputInstantiator extends Instantiator {
     nodeType: Type,
     subplan: SubPlan,
     subplanToIdx: Map[SubPlan, Int])(
-      mb: MethodBuilder,
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var = {
-    import mb._ // scalastyle:ignore
+      vars: Instantiator.Vars)(
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var = {
 
     val output = pushNew(nodeType)
     output.dup().invokeInit(
-      buildSeq(mb) { builder =>
+      buildSeq { builder =>
         for {
           subPlanInput <- subplan.getInputs
           inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
@@ -52,12 +48,12 @@ object OutputInstantiator extends Instantiator {
           val prevSubPlan = prevSubPlanOutput.getOwner
           val marker = prevSubPlanOutput.getOperator
           builder +=
-            tuple2(mb)(
+            tuple2(
               vars.nodes.push().aload(ldc(subplanToIdx(prevSubPlan))),
-              context.branchKeys.getField(mb, marker))
+              context.branchKeys.getField(marker))
         }
       },
       vars.sc.push())
-    output.store(nextLocal.getAndAdd(output.size))
+    output.store()
   }
 }

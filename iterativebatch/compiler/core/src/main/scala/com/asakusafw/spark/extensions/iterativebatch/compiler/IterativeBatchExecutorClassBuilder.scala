@@ -15,8 +15,6 @@
  */
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -32,10 +30,11 @@ import com.asakusafw.spark.compiler.planning.{
   SubPlanInputInfo,
   SubPlanOutputInfo
 }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.utils.graph.Graphs
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.Instantiator
@@ -70,11 +69,9 @@ class IterativeBatchExecutorClassBuilder(
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[ExecutionContext].asType,
-      classOf[SparkContext].asType)) { mb =>
-      import mb._ // scalastyle:ignore
+      classOf[SparkContext].asType)) { implicit mb =>
 
-      val ecVar = `var`(classOf[ExecutionContext].asType, thisVar.nextLocal)
-      val scVar = `var`(classOf[SparkContext].asType, ecVar.nextLocal)
+      val thisVar :: ecVar :: scVar :: _ = mb.argVars
 
       thisVar.push().invokeInit(ldc(Int.MaxValue), ecVar.push(), scVar.push())
     }
@@ -82,15 +79,12 @@ class IterativeBatchExecutorClassBuilder(
     ctorDef.newInit(Seq(
       Type.INT_TYPE,
       classOf[ExecutionContext].asType,
-      classOf[SparkContext].asType)) { mb =>
-      import mb._ // scalastyle:ignore
+      classOf[SparkContext].asType)) { implicit mb =>
 
-      val numSlotsVar = `var`(Type.INT_TYPE, thisVar.nextLocal)
-      val ecVar = `var`(classOf[ExecutionContext].asType, numSlotsVar.nextLocal)
-      val scVar = `var`(classOf[SparkContext].asType, ecVar.nextLocal)
+      val thisVar :: numSlotsVar :: ecVar :: scVar :: _ = mb.argVars
 
       thisVar.push().invokeInit(superType, numSlotsVar.push(), ecVar.push())
-      thisVar.push().putField("sc", classOf[SparkContext].asType, scVar.push())
+      thisVar.push().putField("sc", scVar.push())
     }
   }
 
@@ -103,16 +97,16 @@ class IterativeBatchExecutorClassBuilder(
     methodDef.newMethod(
       "terminator",
       classOf[Terminator].asType,
-      Seq.empty) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq.empty) { implicit mb =>
+
+        val thisVar :: _ = mb.argVars
 
         thisVar.push().getField("terminator", classOf[Terminator].asType).unlessNotNull {
-          thisVar.push().putField("terminator", classOf[Terminator].asType, {
-            val nodesVar = pushNewArray(classOf[Node].asType, ldc(subplans.size))
-              .store(thisVar.nextLocal)
-            val broadcastsVar = pushObject(mb)(mutable.Map)
+          thisVar.push().putField("terminator", {
+            val nodesVar = pushNewArray(classOf[Node].asType, ldc(subplans.size)).store()
+            val broadcastsVar = pushObject(mutable.Map)
               .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast]].asType)
-              .store(nodesVar.nextLocal)
+              .store()
 
             subplans.foreach {
               case (_, i) =>
@@ -121,7 +115,7 @@ class IterativeBatchExecutorClassBuilder(
 
             val terminator = pushNew(classOf[Terminator].asType)
             terminator.dup().invokeInit(
-              buildSeq(mb) { builder =>
+              buildSeq { builder =>
                 subplans.filter {
                   case (subplan, _) =>
                     subplan.getAttribute(classOf[SubPlanInfo]).getDriverType ==
@@ -146,19 +140,14 @@ class IterativeBatchExecutorClassBuilder(
 
         methodDef.newMethod(Opcodes.ACC_PRIVATE, s"node${i}", Seq(
           classOf[Array[Node]].asType,
-          classOf[mutable.Map[BroadcastId, Broadcast]].asType)) { mb =>
-          import mb._ // scalastyle:ignore
+          classOf[mutable.Map[BroadcastId, Broadcast]].asType)) { implicit mb =>
 
-          val nodesVar =
-            `var`(classOf[Array[Node]].asType, thisVar.nextLocal)
-          val allBroadcastsVar =
-            `var`(classOf[mutable.Map[BroadcastId, Broadcast]].asType, nodesVar.nextLocal)
+          val thisVar :: nodesVar :: allBroadcastsVar :: _ = mb.argVars
 
-          val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType)
-            .store(allBroadcastsVar.nextLocal)
+          val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType).store()
 
           val broadcastsVar =
-            buildMap(mb) { builder =>
+            buildMap { builder =>
               for {
                 subPlanInput <- subplan.getInputs
                 inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
@@ -170,25 +159,21 @@ class IterativeBatchExecutorClassBuilder(
                 val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
 
                 builder += (
-                  context.broadcastIds.getField(mb, subPlanInput.getOperator),
-                  applyMap(mb)(
+                  context.broadcastIds.getField(subPlanInput.getOperator),
+                  applyMap(
                     allBroadcastsVar.push(),
-                    context.broadcastIds.getField(mb, prevSubPlanOperator))
+                    context.broadcastIds.getField(prevSubPlanOperator))
                   .cast(classOf[Broadcast].asType))
               }
-            }.store(scVar.nextLocal)
-
-          val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
+            }.store()
 
           val instantiator = compiler.instantiator
           val nodeVar = instantiator.newInstance(
             nodeType,
             subplan,
             subplanToIdx)(
-              mb,
-              Instantiator.Vars(scVar, nodesVar, broadcastsVar),
-              nextLocal)(
-                context.instantiatorCompilerContext)
+              Instantiator.Vars(scVar, nodesVar, broadcastsVar))(
+                implicitly, context.instantiatorCompilerContext)
           nodesVar.push().astore(ldc(i), nodeVar.push())
 
           for {
@@ -200,20 +185,20 @@ class IterativeBatchExecutorClassBuilder(
             val dataModelRef = subPlanOutput.getOperator.getInput.dataModelRef
             val group = broadcastInfo.getFormatInfo
 
-            addToMap(mb)(
+            addToMap(
               allBroadcastsVar.push(),
-              context.broadcastIds.getField(mb, subPlanOutput.getOperator), {
+              context.broadcastIds.getField(subPlanOutput.getOperator), {
                 // TODO switch broadcast type
                 val broadcast = pushNew(classOf[MapBroadcastAlways].asType)
                 broadcast.dup().invokeInit(
                   nodeVar.push().asType(classOf[Source].asType),
-                  context.branchKeys.getField(mb, subPlanOutput.getOperator),
-                  option(mb)(
-                    sortOrdering(mb)(
+                  context.branchKeys.getField(subPlanOutput.getOperator),
+                  option(
+                    sortOrdering(
                       dataModelRef.groupingTypes(group.getGrouping),
                       dataModelRef.orderingTypes(group.getOrdering))),
-                  groupingOrdering(mb)(dataModelRef.groupingTypes(group.getGrouping)),
-                  partitioner(mb)(ldc(1)),
+                  groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
+                  partitioner(ldc(1)),
                   ldc(broadcastInfo.getLabel),
                   scVar.push())
                 broadcast

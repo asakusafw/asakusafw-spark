@@ -33,6 +33,7 @@ import com.asakusafw.spark.compiler.serializer.{
   KryoRegistratorCompiler
 }
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.SparkClient
@@ -54,12 +55,12 @@ class SparkClientClassBuilder(
     methodDef.newMethod(
       "newIterativeBatchExecutor",
       classOf[IterativeBatchExecutor].asType,
-      Seq(Type.INT_TYPE, classOf[ExecutionContext].asType, classOf[SparkContext].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(
+        Type.INT_TYPE,
+        classOf[ExecutionContext].asType,
+        classOf[SparkContext].asType)) { implicit mb =>
 
-        val numSlotsVar = `var`(Type.INT_TYPE, thisVar.nextLocal)
-        val ecVar = `var`(classOf[ExecutionContext].asType, numSlotsVar.nextLocal)
-        val scVar = `var`(classOf[SparkContext].asType, ecVar.nextLocal)
+        val thisVar :: numSlotsVar :: ecVar :: scVar :: _ = mb.argVars
 
         val t = IterativeBatchExecutorCompiler.compile(plan)(
           context.iterativeBatchExecutorCompilerContext)
@@ -79,8 +80,7 @@ class SparkClientClassBuilder(
       context.addClass(new BranchKeySerializerClassBuilder(branchKeysType)),
       context.addClass(new BroadcastIdSerializerClassBuilder(broadcastIdsType)))
 
-    methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(registrator.getClassName))
     }
   }
