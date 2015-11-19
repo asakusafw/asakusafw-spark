@@ -29,6 +29,8 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.util.TraceClassVisitor
 import org.slf4j.LoggerFactory
 
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+
 abstract class ClassBuilder(
   val thisType: Type,
   val signature: Option[String],
@@ -86,8 +88,7 @@ abstract class ClassBuilder(
   def defFields(fieldDef: FieldDef): Unit = {
   }
   def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    ctorDef.newInit(Seq.empty) { implicit mb =>
       thisVar.push().invokeInit(superType)
     }
   }
@@ -228,20 +229,22 @@ abstract class ClassBuilder(
       argumentTypes: Seq[Type],
       signature: Option[String],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      methodDef.newMethod(access, "<init>", argumentTypes, signature, exceptionTypes: _*) { mb =>
-        block(mb)
-        mb.`return`()
-      }
+      methodDef.newMethod(
+        access, "<init>", argumentTypes, signature, exceptionTypes: _*) { implicit mb =>
+          block(mb)
+          `return`()
+        }
     }
 
     var staticInitialized = false
 
     final def newStaticInit(block: MethodBuilder => Unit): Unit = {
       assert(!staticInitialized, "Static initializer should be defined only once.")
-      methodDef.newMethod(ACC_STATIC, "<clinit>", Type.VOID_TYPE, Array.empty[Type]) { mb =>
-        block(mb)
-        mb.`return`()
-      }
+      methodDef.newMethod(
+        ACC_STATIC, "<clinit>", Type.VOID_TYPE, Array.empty[Type]) { implicit mb =>
+          block(mb)
+          `return`()
+        }
       staticInitialized = true
     }
   }
@@ -542,8 +545,7 @@ abstract class ClassBuilder(
   }
 
   private final def defToString0(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("toString", classOf[String].asType, Seq.empty[Type]) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("toString", classOf[String].asType, Seq.empty[Type]) { implicit mb =>
       val builder = pushNew0(classOf[StringBuilder].asType)
 
       val className = ldc(
@@ -601,8 +603,7 @@ abstract class ClassBuilder(
   }
 
   private final def defHashCode0(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("hashCode", Type.INT_TYPE, Seq.empty[Type]) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("hashCode", Type.INT_TYPE, Seq.empty[Type]) { implicit mb =>
       val Prime = 31
       val result = ldc(1)
       fields.foreach {
@@ -646,8 +647,7 @@ abstract class ClassBuilder(
   }
 
   private final def defEquals0(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("equals", Type.BOOLEAN_TYPE, Seq(classOf[AnyRef].asType)) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("equals", Type.BOOLEAN_TYPE, Seq(classOf[AnyRef].asType)) { implicit mb =>
       val otherVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
 
       val result = thisVar.push().ifEq(otherVar.push())(ldc(true), {

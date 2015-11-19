@@ -32,6 +32,7 @@ import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
 trait PreparingKey extends ClassBuilder {
@@ -45,7 +46,6 @@ trait PreparingKey extends ClassBuilder {
 
     methodDef.newMethod("shuffleKey", classOf[ShuffleKey].asType,
       Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
 
@@ -89,7 +89,6 @@ trait PreparingKey extends ClassBuilder {
     dataModelRef: DataModelReference,
     partitionInfo: Group)(
       implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     val dataModelVar = `var`(dataModelRef.getDeclaration.asType, thisVar.nextLocal)
 
     val shuffleKey = pushNew(classOf[ShuffleKey].asType)

@@ -26,6 +26,7 @@ import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
 trait Serializing extends ClassBuilder {
@@ -53,8 +54,7 @@ trait Serializing extends ClassBuilder {
     super.defMethods(methodDef)
 
     methodDef.newMethod("serialize", classOf[Array[Byte]].asType,
-      Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[BranchKey].asType, classOf[AnyRef].asType)) { implicit mb =>
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[AnyRef].asType, branchVar.nextLocal)
         `return`(
@@ -66,7 +66,6 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("serialize", classOf[Array[Byte]].asType,
       Seq(classOf[BranchKey].asType, classOf[Writable].asType)) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[Writable].asType, branchVar.nextLocal)
         `return`(
@@ -75,8 +74,7 @@ trait Serializing extends ClassBuilder {
       }
 
     methodDef.newMethod("deserialize", classOf[AnyRef].asType,
-      Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { implicit mb =>
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val valueVar = `var`(classOf[Array[Byte]].asType, branchVar.nextLocal)
         `return`(
@@ -88,7 +86,6 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod("deserialize", classOf[Writable].asType,
       Seq(classOf[BranchKey].asType, classOf[Array[Byte]].asType)) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         val sliceVar = `var`(classOf[Array[Byte]].asType, branchVar.nextLocal)
         val valueVar =
@@ -104,7 +101,6 @@ trait Serializing extends ClassBuilder {
 
     methodDef.newMethod(
       "value", classOf[Writable].asType, Seq(classOf[BranchKey].asType)) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val branchVar = `var`(classOf[BranchKey].asType, thisVar.nextLocal)
         for {
           (output, i) <- subplanOutputs.zipWithIndex

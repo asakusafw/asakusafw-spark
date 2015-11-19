@@ -78,7 +78,6 @@ private class ConvertOperatorFragmentClassBuilder(
     operator.outputs) {
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     getOutputField(operator.outputs(Convert.ID_OUTPUT_ORIGINAL))
       .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
     getOutputField(operator.outputs(Convert.ID_OUTPUT_CONVERTED))
@@ -89,7 +88,7 @@ private class ConvertOperatorFragmentClassBuilder(
             operator.outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
             dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
               +: operator.arguments.map { argument =>
-                ldc(argument.value)(ClassTag(argument.resolveClass))
+                ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
               }: _*)
           .asType(classOf[AnyRef].asType))
     `return`()

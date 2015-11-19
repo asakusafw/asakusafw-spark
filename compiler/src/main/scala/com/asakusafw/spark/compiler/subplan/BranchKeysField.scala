@@ -57,7 +57,6 @@ trait BranchKeysField extends ClassBuilder {
           }
         }
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         thisVar.push().getField("branchKeys", classOf[Set[_]].asType).unlessNotNull {
           thisVar.push().putField("branchKeys", classOf[Set[_]].asType, initBranchKeys())
         }
@@ -66,12 +65,10 @@ trait BranchKeysField extends ClassBuilder {
   }
 
   def getBranchKeysField()(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("branchKeys", classOf[Set[_]].asType)
   }
 
   private def initBranchKeys()(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     buildSet { builder =>
       subplanOutputs.map(_.getOperator).sortBy(_.getSerialNumber).foreach { marker =>
         builder += context.branchKeys.getField(marker)

@@ -36,6 +36,7 @@ import com.asakusafw.spark.runtime.driver.{ BroadcastId, ExtractDriver, ShuffleK
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
 class ExtractDriverClassBuilder(
@@ -103,8 +104,7 @@ class ExtractDriverClassBuilder(
           }
         }
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
+        .build()) { implicit mb =>
         val scVar =
           `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar =
@@ -166,7 +166,6 @@ class ExtractDriverClassBuilder(
           }
         }
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
         val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)

@@ -109,7 +109,6 @@ private class CoGroupOperatorFragmentClassBuilder(
   override def initFields()(implicit mb: MethodBuilder): Unit = {
     super.initFields()
 
-    import mb._ // scalastyle:ignore
     thisVar.push().putField("buffers", classOf[Array[ListBuffer[_]]].asType,
       buildArray(classOf[ListBuffer[_]].asType) { builder =>
         for {
@@ -125,7 +124,6 @@ private class CoGroupOperatorFragmentClassBuilder(
   }
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     val nextLocal = new AtomicInteger(dataModelVar.nextLocal)
 
     val bufferVars = operator.inputs.zipWithIndex.map {
@@ -165,7 +163,7 @@ private class CoGroupOperatorFragmentClassBuilder(
             getOutputField(output).asType(classOf[Result[_]].asType)
           }
           ++ operator.arguments.map { argument =>
-            ldc(argument.value)(ClassTag(argument.resolveClass))
+            ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
           }: _*)
 
     val i = ldc(0)

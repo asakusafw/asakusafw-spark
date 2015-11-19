@@ -37,7 +37,6 @@ class FragmentGraphBuilder(
   nextLocal: AtomicInteger)(
     implicit mb: MethodBuilder,
     context: OperatorCompiler.Context) {
-  import mb._ // scalastyle:ignore
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty
   val edgeFragmentTypes: mutable.Map[Type, Type] = mutable.Map.empty

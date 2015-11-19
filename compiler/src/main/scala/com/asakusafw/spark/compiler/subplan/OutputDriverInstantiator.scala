@@ -39,7 +39,6 @@ object OutputDriverInstantiator extends Instantiator {
       nextLocal: AtomicInteger)(
         implicit mb: MethodBuilder,
         context: Instantiator.Context): Var = {
-    import mb._ // scalastyle:ignore
 
     val outputDriver = pushNew(driverType)
     outputDriver.dup().invokeInit(

@@ -24,6 +24,7 @@ import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.serializer.KryoRegistrator
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 object KryoRegistratorCompiler {
 
@@ -59,8 +60,7 @@ private class KryoRegistratorClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("registerClasses", Seq(classOf[Kryo].asType)) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("registerClasses", Seq(classOf[Kryo].asType)) { implicit mb =>
       val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
       thisVar.push().invokeS(classOf[KryoRegistrator].asType, "registerClasses", kryoVar.push())
 

@@ -51,6 +51,7 @@ import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.SparkClient
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.utils.graph.Graphs
 
@@ -144,7 +145,6 @@ class SparkClientClassBuilder(
         .newParameterType(classOf[ExecutionContext].asType)
         .newReturnType(Type.INT_TYPE)
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
         val ecVar = `var`(classOf[ExecutionContext].asType, hadoopConfVar.nextLocal)
@@ -204,7 +204,6 @@ class SparkClientClassBuilder(
     subplans.foreach {
       case (subplan, i) =>
         methodDef.newMethod(s"execute${i}", Seq.empty) { implicit mb =>
-          import mb._ // scalastyle:ignore
           val compiler =
             SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
               context.subplanCompilerContext)
@@ -316,8 +315,7 @@ class SparkClientClassBuilder(
       context.addClass(new BranchKeySerializerClassBuilder(branchKeysType)),
       context.addClass(new BroadcastIdSerializerClassBuilder(broadcastIdsType)))
 
-    methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(registrator.getClassName))
     }
   }

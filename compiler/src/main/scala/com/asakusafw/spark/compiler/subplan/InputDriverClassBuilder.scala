@@ -35,6 +35,7 @@ import com.asakusafw.spark.runtime.driver.{ BroadcastId, InputDriver }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
 class InputDriverClassBuilder(
@@ -91,7 +92,6 @@ class InputDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val scVar =
           `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar =
@@ -125,7 +125,6 @@ class InputDriverClassBuilder(
           }
         }
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         `return`(
           paths match {
             case Some(paths) =>
@@ -151,7 +150,6 @@ class InputDriverClassBuilder(
           }
         }
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         `return`(
           buildMap { builder =>
             extraConfigurations.foreach {
@@ -200,7 +198,6 @@ class InputDriverClassBuilder(
           }
         }
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val broadcastsVar =
           `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
         val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)

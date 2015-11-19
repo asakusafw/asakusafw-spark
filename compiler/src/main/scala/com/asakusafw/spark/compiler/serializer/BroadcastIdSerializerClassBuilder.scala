@@ -29,6 +29,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class BroadcastIdSerializerClassBuilder(
   broadcastIdsType: Type)(
@@ -50,8 +51,7 @@ class BroadcastIdSerializerClassBuilder(
 
     methodDef.newMethod(
       "write",
-      Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[AnyRef].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[AnyRef].asType)) { implicit mb =>
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
         val objVar = `var`(classOf[AnyRef].asType, outputVar.nextLocal)
@@ -65,9 +65,10 @@ class BroadcastIdSerializerClassBuilder(
       }
 
     methodDef.newMethod(
-      "write",
-      Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[BroadcastId].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      "write", Seq(
+        classOf[Kryo].asType,
+        classOf[Output].asType,
+        classOf[BroadcastId].asType)) { implicit mb =>
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
         val broadcastIdVar = `var`(classOf[BroadcastId].asType, outputVar.nextLocal)
@@ -80,8 +81,7 @@ class BroadcastIdSerializerClassBuilder(
     methodDef.newMethod(
       "read",
       classOf[AnyRef].asType,
-      Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { implicit mb =>
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
         val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
@@ -97,8 +97,7 @@ class BroadcastIdSerializerClassBuilder(
     methodDef.newMethod(
       "read",
       classOf[BroadcastId].asType,
-      Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { implicit mb =>
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
         val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)

@@ -30,7 +30,6 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 object SparkIdioms {
 
   def partitioner(numPartitions: => Stack)(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     val partitioner = pushNew(classOf[HashPartitioner].asType)
     partitioner.dup().invokeInit(numPartitions)
     partitioner.asType(classOf[Partitioner].asType)
@@ -40,7 +39,6 @@ object SparkIdioms {
     groupingTypes: Seq[Type])(
       implicit mb: MethodBuilder,
       context: CompilerContext): Stack = {
-    import mb._ // scalastyle:ignore
     pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupingTypes))
       .asType(classOf[Ordering[ShuffleKey]].asType)
   }
@@ -50,7 +48,6 @@ object SparkIdioms {
     orderingTypes: Seq[(Type, Boolean)])(
       implicit mb: MethodBuilder,
       context: CompilerContext): Stack = {
-    import mb._ // scalastyle:ignore
     pushNew0(SortOrderingClassBuilder.getOrCompile(groupingTypes, orderingTypes))
       .asType(classOf[Ordering[ShuffleKey]].asType)
   }

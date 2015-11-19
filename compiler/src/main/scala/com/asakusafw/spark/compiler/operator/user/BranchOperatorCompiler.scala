@@ -85,14 +85,13 @@ private class BranchOperatorFragmentClassBuilder(
     operator.outputs) {
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     val branch = getOperatorField()
       .invokeV(
         operator.methodDesc.name,
         operator.methodDesc.asType.getReturnType,
         dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
           +: operator.arguments.map { argument =>
-            ldc(argument.value)(ClassTag(argument.resolveClass))
+            ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
           }: _*)
     branch.dup().unlessNotNull {
       `throw`(pushNew0(classOf[NullPointerException].asType))

@@ -42,7 +42,6 @@ trait OutputFragments extends FragmentClassBuilder {
   }
 
   def initOutputFields(nextLocal: Int)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     (nextLocal /: operatorOutputs) {
       case (local, output) =>
         val childVar = `var`(classOf[Fragment[_]].asType, local)
@@ -52,12 +51,10 @@ trait OutputFragments extends FragmentClassBuilder {
   }
 
   def getOutputField(output: OperatorOutput)(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     thisVar.push().getField(output.getName, classOf[Fragment[_]].asType)
   }
 
   def defReset()(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     unlessReset {
       operatorOutputs.foreach { output =>
         thisVar.push().getField(output.getName, classOf[Fragment[_]].asType).invokeV("reset")

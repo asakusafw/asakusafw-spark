@@ -32,7 +32,6 @@ trait MasterCheck extends JoinOperatorFragmentClassBuilder {
   def operator: UserOperator
 
   override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     masterVar.push().ifNull({
       getOutputField(operator.outputs(MasterCheckOp.ID_OUTPUT_MISSED))
     }, {

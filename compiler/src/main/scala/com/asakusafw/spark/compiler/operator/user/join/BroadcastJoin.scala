@@ -51,6 +51,7 @@ trait BroadcastJoin
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
+
     fieldDef.newField("masters", classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
@@ -67,7 +68,6 @@ trait BroadcastJoin
   override def initFields()(implicit mb: MethodBuilder): Unit = {
     super.initFields()
 
-    import mb._ // scalastyle:ignore
     val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
 
     val marker: Option[MarkerOperator] = {
@@ -103,7 +103,6 @@ trait BroadcastJoin
   }
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     val keyVar = {
       val dataModelRef = txInput.dataModelRef
       val group = txInput.getGroup
@@ -154,7 +153,7 @@ trait BroadcastJoin
             ({ () => mastersVar.push() } +:
               { () => dataModelVar.push() } +:
               operator.arguments.map { argument =>
-                () => ldc(argument.value)(ClassTag(argument.resolveClass))
+                () => ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
               }).zip(t.getArgumentTypes()).map {
                 case (s, t) => s().asType(t)
               }: _*)

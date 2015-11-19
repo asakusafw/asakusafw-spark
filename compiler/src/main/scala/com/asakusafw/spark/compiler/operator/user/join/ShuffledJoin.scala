@@ -57,7 +57,6 @@ trait ShuffledJoin
   override def initFields()(implicit mb: MethodBuilder): Unit = {
     super.initFields()
 
-    import mb._ // scalastyle:ignore
     thisVar.push()
       .putField(
         "masters",
@@ -66,7 +65,6 @@ trait ShuffledJoin
   }
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     val mastersVar = {
       val iter =
         applySeq(dataModelVar.push(), ldc(0))
@@ -108,7 +106,7 @@ trait ShuffledJoin
               ({ () => mastersVar.push() } +:
                 { () => txVar.push() } +:
                 operator.arguments.map { argument =>
-                  () => ldc(argument.value)(ClassTag(argument.resolveClass))
+                  () => ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
                 }).zip(t.getArgumentTypes()).map {
                   case (s, t) => s().asType(t)
                 }: _*)

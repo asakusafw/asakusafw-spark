@@ -43,8 +43,7 @@ class SortOrderingClassBuilder(
     methodDef.newMethod(
       "compare",
       Type.INT_TYPE,
-      Seq(classOf[ShuffleKey].asType, classOf[ShuffleKey].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[ShuffleKey].asType, classOf[ShuffleKey].asType)) { implicit mb =>
         val xVar = `var`(classOf[ShuffleKey].asType, thisVar.nextLocal)
         val yVar = `var`(classOf[ShuffleKey].asType, xVar.nextLocal)
 

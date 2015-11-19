@@ -82,7 +82,6 @@ private class LoggingOperatorFragmentClassBuilder(
     .map(_.value.asInstanceOf[Logging.Level]).getOrElse(Logging.Level.getDefault)
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     invokeStatic(
       classOf[Report].asType,
       level.name.toLowerCase,
@@ -92,7 +91,7 @@ private class LoggingOperatorFragmentClassBuilder(
           classOf[String].asType,
           dataModelVar.push()
             +: operator.arguments.map { argument =>
-              ldc(argument.value)(ClassTag(argument.resolveClass))
+              ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
             }: _*))
     getOutputField(operator.outputs(Logging.ID_OUTPUT))
       .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))

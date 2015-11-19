@@ -28,6 +28,7 @@ import com.asakusafw.spark.compiler.operator.EdgeFragmentClassBuilder._
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class EdgeFragmentClassBuilder(
   dataModelType: Type)(
@@ -47,8 +48,7 @@ class EdgeFragmentClassBuilder(
     classOf[EdgeFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(classOf[Array[Fragment[_]]].asType)) { mb =>
-      import mb._ // scalastyle:ignore
+    ctorDef.newInit(Seq(classOf[Array[Fragment[_]]].asType)) { implicit mb =>
       val childrenVar = `var`(classOf[Array[Fragment[_]]].asType, thisVar.nextLocal)
       thisVar.push().invokeInit(superType, childrenVar.push())
     }
@@ -57,13 +57,11 @@ class EdgeFragmentClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { implicit mb =>
       `return`(pushNew0(dataModelType))
     }
 
-    methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { implicit mb =>
       `return`(thisVar.push().invokeV("newDataModel", dataModelType))
     }
   }

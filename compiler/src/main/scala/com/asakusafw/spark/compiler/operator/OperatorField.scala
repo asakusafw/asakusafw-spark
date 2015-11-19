@@ -33,8 +33,7 @@ trait OperatorField extends ClassBuilder {
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("operator", operatorType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("operator", operatorType, Seq.empty) { implicit mb =>
       thisVar.push().getField("operator", operatorType).unlessNotNull {
         thisVar.push().putField("operator", operatorType, pushNew0(operatorType))
       }
@@ -43,7 +42,6 @@ trait OperatorField extends ClassBuilder {
   }
 
   def getOperatorField()(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("operator", operatorType)
   }
 }

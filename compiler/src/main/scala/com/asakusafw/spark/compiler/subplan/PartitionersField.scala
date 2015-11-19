@@ -73,7 +73,6 @@ trait PartitionersField extends ClassBuilder {
           }
         }
         build ()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         thisVar.push().getField("partitioners", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("partitioners", classOf[Map[_, _]].asType, initPartitioners())
         }
@@ -82,12 +81,10 @@ trait PartitionersField extends ClassBuilder {
   }
 
   def getPartitionersField()(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("partitioners", classOf[Map[_, _]].asType)
   }
 
   private def initPartitioners()(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     buildMap { builder =>
       val np = numPartitions(thisVar.push().invokeV("sc", classOf[SparkContext].asType)) _
       for {

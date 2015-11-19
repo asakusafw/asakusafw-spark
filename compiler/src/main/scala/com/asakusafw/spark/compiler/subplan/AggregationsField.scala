@@ -75,7 +75,6 @@ trait AggregationsField extends ClassBuilder {
           }
         }
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         thisVar.push().getField("aggregations", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("aggregations", classOf[Map[_, _]].asType, initAggregations())
         }
@@ -84,12 +83,10 @@ trait AggregationsField extends ClassBuilder {
   }
 
   def getAggregationsField()(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
   }
 
   private def initAggregations()(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     buildMap { builder =>
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)

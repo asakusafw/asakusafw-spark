@@ -27,18 +27,15 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 package object asm4s {
 
   def pushObject(obj: Any)(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     getStatic(obj.getClass.asType, "MODULE$", obj.getClass.asType)
   }
 
   def option(value: => Stack)(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     pushObject(Option)
       .invokeV("apply", classOf[Option[_]].asType, value.asType(classOf[AnyRef].asType))
   }
 
   def tuple2(_1: => Stack, _2: => Stack)(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     pushObject(Tuple2)
       .invokeV(
         "apply",
@@ -48,7 +45,6 @@ package object asm4s {
   }
 
   def classTag(t: Type)(implicit mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
     pushObject(ClassTag)
       .invokeV("apply", classOf[ClassTag[_]].asType, ldc(t).asType(classOf[Class[_]].asType))
   }
@@ -102,7 +98,7 @@ package object asm4s {
       .pop()
   }
 
-  class ArrayBuilder private[asm4s] (t: Type)(implicit mb: MethodBuilder) {
+  class ArrayBuilder private[asm4s] (t: Type) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -110,8 +106,7 @@ package object asm4s {
       values += { () => value }
     }
 
-    private[asm4s] def result: Stack = {
-      import mb._ // scalastyle:ignore
+    private[asm4s] def result(implicit mb: MethodBuilder): Stack = {
       if (values.isEmpty) {
         pushEmptyArray()
       } else {
@@ -125,8 +120,7 @@ package object asm4s {
       }
     }
 
-    private def pushEmptyArray(): Stack = {
-      import mb._ // scalastyle:ignore
+    private def pushEmptyArray()(implicit mb: MethodBuilder): Stack = {
       t.getSort() match {
         case Type.BOOLEAN =>
           pushObject(Array).invokeV("emptyBooleanArray", classOf[Array[Boolean]].asType)
@@ -150,7 +144,7 @@ package object asm4s {
     }
   }
 
-  class SeqBuilder private[asm4s] (implicit mb: MethodBuilder) {
+  class SeqBuilder private[asm4s] {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -158,7 +152,7 @@ package object asm4s {
       values += { () => value }
     }
 
-    private[asm4s] def result: Stack = {
+    private[asm4s] def result(implicit mb: MethodBuilder): Stack = {
       if (values.isEmpty) {
         pushObject(Seq).invokeV("empty", classOf[Seq[_]].asType)
       } else {
@@ -177,7 +171,7 @@ package object asm4s {
     }
   }
 
-  class MapBuilder private[asm4s] (implicit mb: MethodBuilder) {
+  class MapBuilder private[asm4s] {
 
     private val values = mutable.Buffer.empty[(() => Stack, () => Stack)]
 
@@ -185,7 +179,7 @@ package object asm4s {
       values += { (() => key, () => value) }
     }
 
-    private[asm4s] def result: Stack = {
+    private[asm4s] def result(implicit mb: MethodBuilder): Stack = {
       if (values.isEmpty) {
         pushObject(Map).invokeV("empty", classOf[Map[_, _]].asType)
       } else {
@@ -204,7 +198,7 @@ package object asm4s {
     }
   }
 
-  class SetBuilder private[asm4s] (implicit mb: MethodBuilder) {
+  class SetBuilder private[asm4s] {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -212,7 +206,7 @@ package object asm4s {
       values += { () => value }
     }
 
-    private[asm4s] def result: Stack = {
+    private[asm4s] def result(implicit mb: MethodBuilder): Stack = {
       if (values.isEmpty) {
         pushObject(Set).invokeV("empty", classOf[Set[_]].asType)
       } else {

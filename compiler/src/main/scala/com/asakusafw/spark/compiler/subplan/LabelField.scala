@@ -17,6 +17,7 @@ package com.asakusafw.spark.compiler.subplan
 
 import com.asakusafw.lang.compiler.model.graph.Operator
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 trait LabelField extends ClassBuilder {
 
@@ -25,8 +26,7 @@ trait LabelField extends ClassBuilder {
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("label", classOf[String].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("label", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(label))
     }
   }

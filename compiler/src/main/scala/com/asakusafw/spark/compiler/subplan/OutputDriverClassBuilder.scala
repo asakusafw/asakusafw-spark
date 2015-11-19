@@ -33,6 +33,7 @@ import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.OutputDriverClassBuilder._
 import com.asakusafw.spark.runtime.driver.OutputDriver
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
 class OutputDriverClassBuilder(
@@ -96,7 +97,6 @@ class OutputDriverClassBuilder(
         }
         .newVoidReturnType()
         .build()) { implicit mb =>
-        import mb._ // scalastyle:ignore
         val scVar =
           `var`(classOf[SparkContext].asType, thisVar.nextLocal)
         val hadoopConfVar =
@@ -119,8 +119,7 @@ class OutputDriverClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("path", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(context.options.getRuntimeWorkingPath(operator.getName)))
     }
   }

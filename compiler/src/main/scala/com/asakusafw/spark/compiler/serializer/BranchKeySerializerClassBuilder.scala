@@ -29,6 +29,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class BranchKeySerializerClassBuilder(
   branchKeysType: Type)(
@@ -50,8 +51,7 @@ class BranchKeySerializerClassBuilder(
 
     methodDef.newMethod(
       "write",
-      Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[AnyRef].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[AnyRef].asType)) { implicit mb =>
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
         val objVar = `var`(classOf[AnyRef].asType, outputVar.nextLocal)
@@ -66,8 +66,7 @@ class BranchKeySerializerClassBuilder(
 
     methodDef.newMethod(
       "write",
-      Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[BranchKey].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[Kryo].asType, classOf[Output].asType, classOf[BranchKey].asType)) { implicit mb =>
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val outputVar = `var`(classOf[Output].asType, kryoVar.nextLocal)
         val branchKeyVar = `var`(classOf[BranchKey].asType, outputVar.nextLocal)
@@ -80,8 +79,7 @@ class BranchKeySerializerClassBuilder(
     methodDef.newMethod(
       "read",
       classOf[AnyRef].asType,
-      Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { implicit mb =>
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
         val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)
@@ -98,8 +96,7 @@ class BranchKeySerializerClassBuilder(
     methodDef.newMethod(
       "read",
       classOf[BranchKey].asType,
-      Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { mb =>
-        import mb._ // scalastyle:ignore
+      Seq(classOf[Kryo].asType, classOf[Input].asType, classOf[Class[_]].asType)) { implicit mb =>
         val kryoVar = `var`(classOf[Kryo].asType, thisVar.nextLocal)
         val inputVar = `var`(classOf[Input].asType, kryoVar.nextLocal)
         val classVar = `var`(classOf[Class[_]].asType, inputVar.nextLocal)

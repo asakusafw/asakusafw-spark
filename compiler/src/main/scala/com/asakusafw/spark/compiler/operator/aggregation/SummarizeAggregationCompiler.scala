@@ -64,7 +64,6 @@ private class SummarizeAggregationClassBuilder(
     SummarizedModelUtil.getPropertyFoldings(context.classLoader, operator).toSeq
 
   override def defMapSideCombine()(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     val partialAggregation =
       operator.annotationDesc.elements("partialAggregation")
         .value.asInstanceOf[PartialAggregation]
@@ -72,14 +71,12 @@ private class SummarizeAggregationClassBuilder(
   }
 
   override def defNewCombiner()(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     `return`(pushNew0(combinerType))
   }
 
   override def defInitCombinerByValue(
     combinerVar: Var, valueVar: Var)(
       implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val valuePropertyRef =
@@ -123,7 +120,6 @@ private class SummarizeAggregationClassBuilder(
   override def defMergeValue(
     combinerVar: Var, valueVar: Var)(
       implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val valuePropertyRef =
@@ -178,7 +174,6 @@ private class SummarizeAggregationClassBuilder(
 
   override def defInitCombinerByCombiner(
     comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     comb1Var.push().invokeV("copyFrom", comb2Var.push())
     `return`(comb1Var.push())
   }
@@ -186,7 +181,6 @@ private class SummarizeAggregationClassBuilder(
   override def defMergeCombiners(
     comb1Var: Var, comb2Var: Var)(
       implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val combinerPropertyRef =

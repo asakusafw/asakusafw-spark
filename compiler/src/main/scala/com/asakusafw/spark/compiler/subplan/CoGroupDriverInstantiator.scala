@@ -43,7 +43,6 @@ object CoGroupDriverInstantiator extends Instantiator {
       nextLocal: AtomicInteger)(
         implicit mb: MethodBuilder,
         context: Instantiator.Context): Var = {
-    import mb._ // scalastyle:ignore
 
     val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 

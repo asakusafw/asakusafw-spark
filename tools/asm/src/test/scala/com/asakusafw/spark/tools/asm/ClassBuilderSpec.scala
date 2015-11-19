@@ -24,6 +24,8 @@ import java.util.Arrays
 import org.objectweb.asm.Opcodes._
 import org.objectweb.asm.Type
 
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+
 @RunWith(classOf[JUnitRunner])
 class ClassBuilderSpecTest extends ClassBuilderSpec
 
@@ -71,7 +73,7 @@ class ClassBuilderSpec extends FlatSpec with LoadClassSugar {
 }
 
 class TestClassBuilder
-    extends ClassBuilder(Type.getType("Lsparktest/query/asm/TestClass;"), classOf[AnyRef].asType) {
+  extends ClassBuilder(Type.getType("Lsparktest/query/asm/TestClass;"), classOf[AnyRef].asType) {
 
   defToString()
   defHashCode()
@@ -112,14 +114,12 @@ class TestClassBuilder
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    ctorDef.newInit(Seq.empty) { implicit mb =>
       thisVar.push().invokeInit(superType)
       thisVar.push().putField("char", Type.CHAR_TYPE, ldc('0'))
     }
 
-    ctorDef.newStaticInit { mb =>
-      import mb._ // scalastyle:ignore
+    ctorDef.newStaticInit { implicit mb =>
       putStatic(thisType, "BOOLEAN", Type.BOOLEAN_TYPE, ldc(true))
     }
   }
@@ -127,8 +127,7 @@ class TestClassBuilder
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("testLoop", Type.INT_TYPE, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("testLoop", Type.INT_TYPE, Seq.empty) { implicit mb =>
       val iVar = ldc(0).store(thisVar.nextLocal)
       loop { ctrl =>
         iVar.push().unlessLessThan(ldc(10))(ctrl.break())
@@ -137,8 +136,7 @@ class TestClassBuilder
       `return`(iVar.push())
     }
 
-    methodDef.newMethod("testWhileLoop", Type.INT_TYPE, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("testWhileLoop", Type.INT_TYPE, Seq.empty) { implicit mb =>
       val iVar = ldc(0).store(thisVar.nextLocal)
       whileLoop(iVar.push().isLessThan(ldc(10))) { _ =>
         iVar.push().add(ldc(1)).store(iVar.local)
@@ -146,8 +144,7 @@ class TestClassBuilder
       `return`(iVar.push())
     }
 
-    methodDef.newMethod("testDoWhile", Type.INT_TYPE, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("testDoWhile", Type.INT_TYPE, Seq.empty) { implicit mb =>
       val iVar = ldc(10).store(thisVar.nextLocal)
       doWhile { _ =>
         iVar.push().add(ldc(2)).store(iVar.local)
@@ -155,8 +152,7 @@ class TestClassBuilder
       `return`(iVar.push())
     }
 
-    methodDef.newMethod("testTryCatch", Type.INT_TYPE, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("testTryCatch", Type.INT_TYPE, Seq.empty) { implicit mb =>
       val iVar = ldc(0).store(thisVar.nextLocal)
       tryCatch({
         invokeStatic(classOf[Integer].asType, "parseInt", Type.INT_TYPE, ldc("abc")).store(iVar.local)

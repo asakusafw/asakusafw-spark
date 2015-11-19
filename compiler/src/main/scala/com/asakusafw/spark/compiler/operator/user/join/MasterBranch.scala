@@ -35,7 +35,6 @@ trait MasterBranch extends JoinOperatorFragmentClassBuilder {
   def operator: UserOperator
 
   override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     block { ctrl =>
       val branch = getOperatorField()
         .invokeV(
@@ -44,7 +43,7 @@ trait MasterBranch extends JoinOperatorFragmentClassBuilder {
           masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
             +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
             +: operator.arguments.map { argument =>
-              ldc(argument.value)(ClassTag(argument.resolveClass))
+              ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
             }: _*)
       branch.dup().unlessNotNull {
         branch.pop()

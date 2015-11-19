@@ -50,7 +50,6 @@ trait MasterJoin
   override def initFields()(implicit mb: MethodBuilder): Unit = {
     super.initFields()
 
-    import mb._ // scalastyle:ignore
     thisVar.push().putField(
       "joinedDataModel",
       operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType,
@@ -58,7 +57,6 @@ trait MasterJoin
   }
 
   override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     block { ctrl =>
       masterVar.push().unlessNotNull {
         getOutputField(operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED))

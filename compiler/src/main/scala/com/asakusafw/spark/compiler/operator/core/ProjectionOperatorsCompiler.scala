@@ -72,7 +72,6 @@ private class ProjectionOperatorsFragmentClassBuilder(
       .toSeq
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
 
     thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
 

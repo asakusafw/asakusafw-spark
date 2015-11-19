@@ -35,7 +35,6 @@ trait MasterJoinUpdate extends JoinOperatorFragmentClassBuilder {
   def operator: UserOperator
 
   override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     masterVar.push().ifNull({
       getOutputField(operator.outputs(MasterJoinUpdateOp.ID_OUTPUT_MISSED))
     }, {
@@ -45,7 +44,7 @@ trait MasterJoinUpdate extends JoinOperatorFragmentClassBuilder {
           masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
             +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
             +: operator.arguments.map { argument =>
-              ldc(argument.value)(ClassTag(argument.resolveClass))
+              ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
             }: _*)
       getOutputField(operator.outputs(MasterJoinUpdateOp.ID_OUTPUT_UPDATED))
     }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))

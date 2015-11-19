@@ -28,6 +28,7 @@ import com.asakusafw.spark.compiler.operator.OutputFragmentClassBuilder._
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.fragment.OutputFragment
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
 class OutputFragmentClassBuilder(
@@ -46,8 +47,7 @@ class OutputFragmentClassBuilder(
     classOf[OutputFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(Type.INT_TYPE)) { mb =>
-      import mb._ // scalastyle:ignore
+    ctorDef.newInit(Seq(Type.INT_TYPE)) { implicit mb =>
       val bufferSizeVar = `var`(Type.INT_TYPE, thisVar.nextLocal)
       thisVar.push().invokeInit(superType, bufferSizeVar.push())
     }
@@ -56,13 +56,11 @@ class OutputFragmentClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { implicit mb =>
       `return`(pushNew0(dataModelType))
     }
 
-    methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { implicit mb =>
       `return`(thisVar.push().invokeV("newDataModel", dataModelType))
     }
   }

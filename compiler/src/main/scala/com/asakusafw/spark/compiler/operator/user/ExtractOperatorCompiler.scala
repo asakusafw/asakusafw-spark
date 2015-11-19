@@ -81,7 +81,6 @@ private class ExtractOperatorFragmentClassBuilder(
     operator.outputs) {
 
   override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
     getOperatorField()
       .invokeV(
         operator.methodDesc.getName,
@@ -90,7 +89,7 @@ private class ExtractOperatorFragmentClassBuilder(
             getOutputField(output).asType(classOf[Result[_]].asType)
           }
           ++: operator.arguments.map { argument =>
-            ldc(argument.value)(ClassTag(argument.resolveClass))
+            ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
           }: _*)
     `return`()
   }
