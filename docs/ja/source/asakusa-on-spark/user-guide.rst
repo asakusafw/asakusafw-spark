@@ -57,6 +57,8 @@ Asakusa DSL
 ..  hint::
     Asakusa on Sparkを利用する場合Hadoopクラスタ上でMapReduceとSparkのリソースをまとめて管理できるYARNの利用を推奨しています。
 
+..  _target-platform:
+
 対応プラットフォーム
 ====================
 

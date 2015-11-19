@@ -2,12 +2,68 @@
 Changelogs
 ==========
 
+Release 0.2.1
+=============
+
+Nov 19, 2015
+
+asakusafw-compiler
+------------------
+
+* [ :pr-compiler:`15` ] - Fix typo.
+* [ :pr-compiler:`16` ] - Remove redundant entries in pom.xml.
+* [ :pr-compiler:`17` ] - Bump up Asakusa Framework version to 0.7.5.
+
+asakusafw-spark
+---------------
+
+* [ :pr-spark:`47` ] - Extract zipBroadcasts() method to UsingBroadcasts trait and some refactoring.
+* [ :pr-spark:`48` ] - Use Context traits for each compilers instead of SparkClientCompiler.Context.
+* [ :pr-spark:`49` ] - Add mvnw files.
+* [ :pr-spark:`50` ] - Refactor FragmentGraphBuilder not to depend on SubPlanDriver.
+* [ :pr-spark:`51` ] - Ruese SparkContext in each specs.
+* [ :pr-spark:`52` ] - Bump Spark version to 1.5.1.
+* [ :pr-spark:`53` ] - Add some files to ignore.
+* [ :pr-spark:`54` ] - Refactor specs.
+* [ :pr-spark:`55` ] - Use provided ExecutionContext.
+* [ :pr-spark:`56` ] - Refactor specs.
+* [ :pr-spark:`57` ] - Refactor specs.
+* [ :pr-spark:`58` ] - Refactor Branching not to depend on SubPlanDriver.
+* [ :pr-spark:`59` ] - Rename DriverLabel to LabelField.
+* [ :pr-spark:`60` ] - Fix a test for AggregateDriverClassBuilder with empty grouping.
+* [ :pr-spark:`61` ] - Refactor ShuffleKey to use val not var.
+* [ :pr-spark:`62` ] - Fix zipPartitions / confluent / smcogroup to handle empty rdds.
+* [ :pr-spark:`63` ] - Refactor tests to simplify functions.
+* [ :pr-spark:`64` ] - Use sc.union() instead of UnionRDD directly.
+* [ :pr-spark:`65` ] - Split tests for Input/Output and some refactoring.
+* [ :pr-spark:`66` ] - Fix broadcast-joins to be able to handle core.empty master.
+* [ :pr-spark:`67` ] - Revise assertions of compiler project.
+* [ :pr-spark:`68` ] - Bump Spark version to 1.5.2.
+* [ :pr-spark:`69` ] - Fix call-site for InputDriver.
+* [ :pr-spark:`70` ] - Add a configuration `spark.kryo.referenceTracking` to SparkForAll.
+* [ :pr-spark:`71` ] - Make idioms utility objects.
+* [ :pr-spark:`72` ] - Initialize operator instance layzily.
+* [ :pr-spark:`73` ] - Refine @transient.
+* [ :pr-spark:`74` ] - Fix behavior of Iterator from OutputFragment.iterator.
+* [ :pr-spark:`75` ] - Bump Scala version to 2.10.6.
+* [ :pr-spark:`76` ] - Add eclipse preference file for Scala IDE.
+* [ :pr-spark:`77` ] - Add scala-2.11 profile.
+* [ :pr-spark:`78` ] - Modify ClassBuilder.interfaceTypes to be able to be overridden.
+* [ :pr-spark:`79` ] - Bump up Asakusa Framework version to 0.7.5.
+
 Release 0.2.0
 =============
 
 Sep 15, 2015
 
+asakusafw-compiler
+------------------
+
 * [ :pr-compiler:`13` ] - Fix typo in documentation comments.
+
+asakusafw-spark
+---------------
+
 * [ :pr-spark:`39` ] - Use value-class for implicit conversion.
 * [ :pr-spark:`40` ] - Bump Spark version to 1.5.0.
 * [ :pr-spark:`41` ] - Avoid deprecated method.
