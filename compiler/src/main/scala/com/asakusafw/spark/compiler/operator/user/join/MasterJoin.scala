@@ -25,10 +25,10 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.analyzer.util.PropertyMapping
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
 trait MasterJoin
@@ -47,21 +47,22 @@ trait MasterJoin
       operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
-    import mb._ // scalastyle:ignore
+    val thisVar :: _ = mb.argVars
+
     thisVar.push().putField(
       "joinedDataModel",
-      operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType,
       pushNew0(operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType))
   }
 
-  override def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
+  override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
+
     block { ctrl =>
       masterVar.push().unlessNotNull {
-        getOutputField(mb, operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED))
+        getOutputField(operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED))
           .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
         ctrl.break()
       }
@@ -90,7 +91,7 @@ trait MasterJoin
           "The source and destination types should be the same: "
             + s"(${srcProperty.getType}, ${destProperty.getType}) [${operator}]")
 
-        pushObject(mb)(ValueOptionOps)
+        pushObject(ValueOptionOps)
           .invokeV(
             "copy",
             srcVar.push()
@@ -102,7 +103,7 @@ trait MasterJoin
               .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
       }
 
-      getOutputField(mb, operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED))
+      getOutputField(operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED))
         .invokeV("add",
           thisVar.push()
             .getField(

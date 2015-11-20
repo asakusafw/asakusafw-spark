@@ -24,12 +24,12 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, SubPlanCompiler }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 trait AggregationsField extends ClassBuilder {
 
@@ -74,23 +74,22 @@ trait AggregationsField extends ClassBuilder {
               }
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
+        .build()) { implicit mb =>
+        val thisVar :: _ = mb.argVars
         thisVar.push().getField("aggregations", classOf[Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("aggregations", classOf[Map[_, _]].asType, initAggregations(mb))
+          thisVar.push().putField("aggregations", initAggregations())
         }
         `return`(thisVar.push().getField("aggregations", classOf[Map[_, _]].asType))
       }
   }
 
-  def getAggregationsField(mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
+  def getAggregationsField()(implicit mb: MethodBuilder): Stack = {
+    val thisVar :: _ = mb.argVars
     thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
   }
 
-  private def initAggregations(mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
-    buildMap(mb) { builder =>
+  private def initAggregations()(implicit mb: MethodBuilder): Stack = {
+    buildMap { builder =>
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
@@ -99,7 +98,7 @@ trait AggregationsField extends ClassBuilder {
         if (AggregationCompiler.support(operator)(context.aggregationCompilerContext))
       } {
         builder += (
-          context.branchKeys.getField(mb, output.getOperator),
+          context.branchKeys.getField(output.getOperator),
           pushNew0(
             AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)))
       }

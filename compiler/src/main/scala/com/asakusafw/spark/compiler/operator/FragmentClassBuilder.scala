@@ -48,38 +48,37 @@ abstract class FragmentClassBuilder(
     fieldDef.newField(Opcodes.ACC_PRIVATE, "reset", Type.BOOLEAN_TYPE)
   }
 
-  protected def initReset(mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
-    thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))
+  protected def initReset()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
+    thisVar.push().putField("reset", ldc(true))
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { mb =>
-      import mb._ // scalastyle:ignore
-      val resultVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
+    methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { implicit mb =>
+      val thisVar :: resultVar :: _ = mb.argVars
       thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
       `return`()
     }
 
-    methodDef.newMethod("add", Seq(dataModelType)) { mb =>
-      import mb._ // scalastyle:ignore
-      thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(false))
-      defAddMethod(mb, `var`(dataModelType, thisVar.nextLocal))
+    methodDef.newMethod("add", Seq(dataModelType)) { implicit mb =>
+      val thisVar :: dataModelVar :: _ = mb.argVars
+      thisVar.push().putField("reset", ldc(false))
+      defAddMethod(dataModelVar)
     }
 
-    methodDef.newMethod("reset", Seq.empty)(defReset)
+    methodDef.newMethod("reset", Seq.empty)(defReset()(_))
   }
 
-  def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit
-  def defReset(mb: MethodBuilder): Unit
+  def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit
+  def defReset()(implicit mb: MethodBuilder): Unit
 
-  protected def unlessReset(mb: MethodBuilder)(b: => Unit): Unit = {
-    import mb._ // scalastyle:ignore
+  protected def unlessReset(b: => Unit)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
     thisVar.push().getField("reset", Type.BOOLEAN_TYPE).unlessTrue {
       b
-      thisVar.push().putField("reset", Type.BOOLEAN_TYPE, ldc(true))
+      thisVar.push().putField("reset", ldc(true))
     }
   }
 }

@@ -25,12 +25,12 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 trait OrderingsField extends ClassBuilder {
 
@@ -72,23 +72,22 @@ trait OrderingsField extends ClassBuilder {
               }
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
+        .build()) { implicit mb =>
+        val thisVar :: _ = mb.argVars
         thisVar.push().getField("orderings", classOf[Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("orderings", classOf[Map[_, _]].asType, initOrderings(mb))
+          thisVar.push().putField("orderings", initOrderings())
         }
         `return`(thisVar.push().getField("orderings", classOf[Map[_, _]].asType))
       }
   }
 
-  def getOrderingsField(mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
+  def getOrderingsField()(implicit mb: MethodBuilder): Stack = {
+    val thisVar :: _ = mb.argVars
     thisVar.push().invokeV("orderings", classOf[Map[_, _]].asType)
   }
 
-  private def initOrderings(mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
-    buildMap(mb) { builder =>
+  private def initOrderings()(implicit mb: MethodBuilder): Stack = {
+    buildMap { builder =>
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
@@ -102,8 +101,8 @@ trait OrderingsField extends ClassBuilder {
       } {
         val dataModelRef = output.getOperator.getInput.dataModelRef
         builder += (
-          context.branchKeys.getField(mb, output.getOperator),
-          sortOrdering(mb)(
+          context.branchKeys.getField(output.getOperator),
+          sortOrdering(
             dataModelRef.groupingTypes(partitionInfo.getGrouping),
             dataModelRef.orderingTypes(partitionInfo.getOrdering)))
       }

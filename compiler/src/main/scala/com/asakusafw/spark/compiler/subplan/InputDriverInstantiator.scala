@@ -16,8 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
@@ -29,17 +27,15 @@ object InputDriverInstantiator extends Instantiator {
   override def newInstance(
     driverType: Type,
     subplan: SubPlan)(
-      mb: MethodBuilder,
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var = {
-    import mb._ // scalastyle:ignore
+      vars: Instantiator.Vars)(
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var = {
 
     val inputDriver = pushNew(driverType)
     inputDriver.dup().invokeInit(
       vars.sc.push(),
       vars.hadoopConf.push(),
       vars.broadcasts.push())
-    inputDriver.store(nextLocal.getAndAdd(inputDriver.size))
+    inputDriver.store()
   }
 }

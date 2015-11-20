@@ -23,16 +23,15 @@ import scala.collection.mutable
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 trait BroadcastIds {
   this: BroadcastIdsClassBuilder =>
 
-  def getField(mb: MethodBuilder, marker: MarkerOperator): Stack = {
-    import mb._ // scalastyle:ignore
+  def getField(marker: MarkerOperator)(implicit mb: MethodBuilder): Stack = {
     getStatic(thisType, getField(marker.getOriginalSerialNumber), classOf[BroadcastId].asType)
   }
 }
@@ -58,11 +57,10 @@ class BroadcastIdsClassBuilder(flowId: String)
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newStaticInit { mb =>
-      import mb._ // scalastyle:ignore
+    ctorDef.newStaticInit { implicit mb =>
       broadcastIds.values.toSeq.sorted.foreach { id =>
         putStatic(thisType, field(id), classOf[BroadcastId].asType,
-          pushObject(mb)(BroadcastId)
+          pushObject(BroadcastId)
             .invokeV("apply", classOf[BroadcastId].asType, ldc(id)))
       }
     }
@@ -71,38 +69,38 @@ class BroadcastIdsClassBuilder(flowId: String)
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newStaticMethod("valueOf", classOf[BroadcastId].asType, Seq(Type.INT_TYPE)) { mb =>
-      import mb._ // scalastyle:ignore
-      val idVar = `var`(Type.INT_TYPE, 0)
+    methodDef.newStaticMethod(
+      "valueOf", classOf[BroadcastId].asType, Seq(Type.INT_TYPE)) { implicit mb =>
+        val idVar :: _ = mb.argVars
 
-      def bs(min: Int, max: Int): Unit = {
-        if (min < max) {
-          val id = (max - min) / 2 + min
-          idVar.push().unlessNe(ldc(id)) {
-            `return`(getStatic(thisType, field(id), classOf[BroadcastId].asType))
-          }
-          if (id + 1 < max) {
-            idVar.push().unlessLessThanOrEqual(ldc(id)) {
-              bs(id + 1, max)
+        def bs(min: Int, max: Int): Unit = {
+          if (min < max) {
+            val id = (max - min) / 2 + min
+            idVar.push().unlessNe(ldc(id)) {
+              `return`(getStatic(thisType, field(id), classOf[BroadcastId].asType))
             }
+            if (id + 1 < max) {
+              idVar.push().unlessLessThanOrEqual(ldc(id)) {
+                bs(id + 1, max)
+              }
+            }
+            bs(min, id)
           }
-          bs(min, id)
+        }
+        bs(0, curId.get)
+
+        `throw` {
+          val error = pushNew(classOf[IllegalArgumentException].asType)
+          error.dup().invokeInit({
+            val builder = pushNew0(classOf[StringBuilder].asType)
+            builder.invokeV("append", classOf[StringBuilder].asType,
+              ldc("No BroadcastId constant for value ["))
+            builder.invokeV("append", classOf[StringBuilder].asType, idVar.push())
+            builder.invokeV("append", classOf[StringBuilder].asType, ldc("]."))
+            builder.invokeV("toString", classOf[String].asType)
+          })
+          error
         }
       }
-      bs(0, curId.get)
-
-      `throw` {
-        val error = pushNew(classOf[IllegalArgumentException].asType)
-        error.dup().invokeInit({
-          val builder = pushNew0(classOf[StringBuilder].asType)
-          builder.invokeV("append", classOf[StringBuilder].asType,
-            ldc("No BroadcastId constant for value ["))
-          builder.invokeV("append", classOf[StringBuilder].asType, idVar.push())
-          builder.invokeV("append", classOf[StringBuilder].asType, ldc("]."))
-          builder.invokeV("toString", classOf[String].asType)
-        })
-        error
-      }
-    }
   }
 }

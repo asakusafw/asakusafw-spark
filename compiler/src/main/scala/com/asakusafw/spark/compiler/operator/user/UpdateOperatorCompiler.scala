@@ -85,17 +85,16 @@ private class UpdateOperatorFragmentClassBuilder(
     operator.implementationClass.asType,
     operator.outputs) {
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
-    getOperatorField(mb)
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
+    getOperatorField()
       .invokeV(
         operator.methodDesc.getName,
         dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
           +: operator.arguments.map { argument =>
-            ldc(argument.value)(ClassTag(argument.resolveClass))
+            ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
           }: _*)
 
-    getOutputField(mb, operator.outputs.head)
+    getOutputField(operator.outputs.head)
       .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
 
     `return`()

@@ -15,8 +15,6 @@
  */
 package com.asakusafw.spark.compiler
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.mutable
 import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, Awaitable, ExecutionContext, Future }
@@ -46,13 +44,13 @@ import com.asakusafw.spark.compiler.serializer.{
 }
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.Instantiator
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.SparkClient
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.utils.graph.Graphs
 
 class SparkClientClassBuilder(
@@ -144,37 +142,26 @@ class SparkClientClassBuilder(
         }
         .newParameterType(classOf[ExecutionContext].asType)
         .newReturnType(Type.INT_TYPE)
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val scVar = `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar = `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val ecVar = `var`(classOf[ExecutionContext].asType, hadoopConfVar.nextLocal)
+        .build()) { implicit mb =>
+        val thisVar :: scVar :: hadoopConfVar :: ecVar :: _ = mb.argVars
+        thisVar.push().putField("sc", scVar.push())
+        thisVar.push().putField("hadoopConf", hadoopConfVar.push())
+        thisVar.push().putField("ec", ecVar.push())
         thisVar.push()
-          .putField("sc", classOf[SparkContext].asType, scVar.push())
-        thisVar.push()
-          .putField(
-            "hadoopConf",
-            classOf[Broadcast[Configuration]].asType,
-            hadoopConfVar.push())
-        thisVar.push()
-          .putField("ec", classOf[ExecutionContext].asType, ecVar.push())
-        thisVar.push()
-          .putField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType,
-            pushObject(mb)(mutable.Map)
+          .putField("rdds",
+            pushObject(mutable.Map)
               .invokeV("empty", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType))
         thisVar.push()
           .putField(
             "broadcasts",
-            classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
-              .asType,
-            pushObject(mb)(mutable.Map)
+            pushObject(mutable.Map)
               .invokeV(
                 "empty",
                 classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
                   .asType))
         thisVar.push()
-          .putField("terminators", classOf[mutable.Set[Future[Unit]]].asType,
-            pushObject(mb)(mutable.Set)
+          .putField("terminators",
+            pushObject(mutable.Set)
               .invokeV("empty", classOf[mutable.Set[Future[Unit]]].asType))
 
         subplans.foreach {
@@ -185,15 +172,15 @@ class SparkClientClassBuilder(
         val iterVar = thisVar.push()
           .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
           .invokeI("iterator", classOf[Iterator[Future[Unit]]].asType)
-          .store(hadoopConfVar.nextLocal)
+          .store()
         whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
-          pushObject(mb)(Await)
+          pushObject(Await)
             .invokeV("result", classOf[AnyRef].asType,
               iterVar.push()
                 .invokeI("next", classOf[AnyRef].asType)
                 .cast(classOf[Future[Unit]].asType)
                 .asType(classOf[Awaitable[_]].asType),
-              pushObject(mb)(Duration)
+              pushObject(Duration)
                 .invokeV("Inf", classOf[Duration.Infinite].asType)
                 .asType(classOf[Duration].asType))
             .pop()
@@ -204,8 +191,9 @@ class SparkClientClassBuilder(
 
     subplans.foreach {
       case (subplan, i) =>
-        methodDef.newMethod(s"execute${i}", Seq.empty) { mb =>
-          import mb._ // scalastyle:ignore
+        methodDef.newMethod(s"execute${i}", Seq.empty) { implicit mb =>
+          val thisVar :: _ = mb.argVars
+
           val compiler =
             SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
               context.subplanCompilerContext)
@@ -213,22 +201,22 @@ class SparkClientClassBuilder(
 
           val scVar = thisVar.push()
             .getField("sc", classOf[SparkContext].asType)
-            .store(thisVar.nextLocal)
+            .store()
           val hadoopConfVar = thisVar.push()
             .getField("hadoopConf", classOf[Broadcast[Configuration]].asType)
-            .store(scVar.nextLocal)
+            .store()
           val ecVar = thisVar.push()
             .getField("ec", classOf[ExecutionContext].asType)
-            .store(hadoopConfVar.nextLocal)
+            .store()
           val rddsVar = thisVar.push()
             .getField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType)
-            .store(ecVar.nextLocal)
+            .store()
           val terminatorsVar = thisVar.push()
             .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
-            .store(rddsVar.nextLocal)
+            .store()
 
           val broadcastsVar =
-            buildMap(mb) { builder =>
+            buildMap { builder =>
               for {
                 subPlanInput <- subplan.getInputs
                 inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
@@ -240,33 +228,29 @@ class SparkClientClassBuilder(
                 val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
 
                 builder += (
-                  context.broadcastIds.getField(mb, subPlanInput.getOperator),
-                  applyMap(mb)(
+                  context.broadcastIds.getField(subPlanInput.getOperator),
+                  applyMap(
                     thisVar.push().getField(
                       "broadcasts",
                       classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
                         .asType),
-                    context.broadcastIds.getField(mb, prevSubPlanOperator))
+                    context.broadcastIds.getField(prevSubPlanOperator))
                   .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
               }
-            }.store(terminatorsVar.nextLocal)
-
-          val nextLocal = new AtomicInteger(broadcastsVar.nextLocal)
+            }.store()
 
           val instantiator = compiler.instantiator
           val driverVar = instantiator.newInstance(
             driverType,
             subplan)(
-              mb,
-              Instantiator.Vars(scVar, hadoopConfVar, rddsVar, terminatorsVar, broadcastsVar),
-              nextLocal)(
-                context.instantiatorCompilerContext)
-          val rdds = driverVar.push()
+              Instantiator.Vars(scVar, hadoopConfVar, rddsVar, terminatorsVar, broadcastsVar))(
+                implicitly, context.instantiatorCompilerContext)
+          val resultVar = driverVar.push()
             .invokeV(
               "execute",
               classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType,
               ecVar.push())
-          val resultVar = rdds.store(nextLocal.getAndAdd(rdds.size))
+            .store()
 
           for {
             subPlanOutput <- subplan.getOutputs
@@ -277,31 +261,31 @@ class SparkClientClassBuilder(
             val dataModelRef = subPlanOutput.getOperator.getInput.dataModelRef
             val group = broadcastInfo.getFormatInfo
 
-            addToMap(mb)(
+            addToMap(
               thisVar.push().getField(
                 "broadcasts",
                 classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
                   .asType),
-              context.broadcastIds.getField(mb, subPlanOutput.getOperator),
+              context.broadcastIds.getField(subPlanOutput.getOperator),
               thisVar.push().invokeV(
                 "broadcastAsHash",
                 classOf[Future[Broadcast[_]]].asType,
                 scVar.push(),
                 ldc(broadcastInfo.getLabel),
-                applyMap(mb)(
+                applyMap(
                   resultVar.push(),
-                  context.branchKeys.getField(mb, subPlanOutput.getOperator))
+                  context.branchKeys.getField(subPlanOutput.getOperator))
                   .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
-                option(mb)(
-                  sortOrdering(mb)(
+                option(
+                  sortOrdering(
                     dataModelRef.groupingTypes(group.getGrouping),
                     dataModelRef.orderingTypes(group.getOrdering))),
-                groupingOrdering(mb)(dataModelRef.groupingTypes(group.getGrouping)),
-                partitioner(mb)(ldc(1)),
+                groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
+                partitioner(ldc(1)),
                 ecVar.push()))
           }
 
-          addTraversableToMap(mb)(rddsVar.push(), resultVar.push())
+          addTraversableToMap(rddsVar.push(), resultVar.push())
 
           `return`()
         }
@@ -318,8 +302,7 @@ class SparkClientClassBuilder(
       context.addClass(new BranchKeySerializerClassBuilder(branchKeysType)),
       context.addClass(new BroadcastIdSerializerClassBuilder(broadcastIdsType)))
 
-    methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(registrator.getClassName))
     }
   }

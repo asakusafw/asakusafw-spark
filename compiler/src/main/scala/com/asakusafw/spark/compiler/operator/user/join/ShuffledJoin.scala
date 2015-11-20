@@ -28,10 +28,10 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.{ OperatorOutput, UserOperator }
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, ListBuffer }
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 trait ShuffledJoin
   extends JoinOperatorFragmentClassBuilder {
@@ -54,26 +54,25 @@ trait ShuffledJoin
         .build())
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
-    import mb._ // scalastyle:ignore
+    val thisVar :: _ = mb.argVars
+
     thisVar.push()
       .putField(
         "masters",
-        classOf[ListBuffer[_]].asType,
-        pushNew0(classOf[ArrayListBuffer[_]].asType))
+        pushNew0(classOf[ArrayListBuffer[_]].asType).asType(classOf[ListBuffer[_]].asType))
   }
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
+
     val mastersVar = {
-      val iter =
-        applySeq(mb)(dataModelVar.push(), ldc(0))
-          .cast(classOf[Iterator[_]].asType)
-      val iterVar = iter.store(dataModelVar.nextLocal)
-      val masters = thisVar.push().getField("masters", classOf[ListBuffer[_]].asType)
-      val mastersVar = masters.store(iterVar.nextLocal)
+      val iterVar = applySeq(dataModelVar.push(), ldc(0))
+        .cast(classOf[Iterator[_]].asType)
+        .store()
+      val mastersVar = thisVar.push().getField("masters", classOf[ListBuffer[_]].asType).store()
       mastersVar.push().invokeI("begin")
 
       whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
@@ -93,35 +92,35 @@ trait ShuffledJoin
     }
 
     val txIterVar =
-      applySeq(mb)(dataModelVar.push(), ldc(1))
+      applySeq(dataModelVar.push(), ldc(1))
         .cast(classOf[Iterator[_]].asType)
-        .store(mastersVar.nextLocal)
+        .store()
     whileLoop(txIterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
       val txVar = txIterVar.push().invokeI("next", classOf[AnyRef].asType)
-        .cast(txType).store(txIterVar.nextLocal)
+        .cast(txType).store()
       val selectedVar = (masterSelection match {
         case Some((name, t)) =>
-          getOperatorField(mb)
+          getOperatorField()
             .invokeV(
               name,
               t.getReturnType(),
               ({ () => mastersVar.push() } +:
                 { () => txVar.push() } +:
                 operator.arguments.map { argument =>
-                  () => ldc(argument.value)(ClassTag(argument.resolveClass))
+                  () => ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
                 }).zip(t.getArgumentTypes()).map {
                   case (s, t) => s().asType(t)
                 }: _*)
         case None =>
-          pushObject(mb)(DefaultMasterSelection)
+          pushObject(DefaultMasterSelection)
             .invokeV(
               "select",
               classOf[AnyRef].asType,
               mastersVar.push().asType(classOf[JList[_]].asType),
               txVar.push().asType(classOf[AnyRef].asType))
             .cast(masterType)
-      }).store(txVar.nextLocal)
-      join(mb, selectedVar, txVar)
+      }).store()
+      join(selectedVar, txVar)
     }
 
     mastersVar.push().invokeI("shrink")

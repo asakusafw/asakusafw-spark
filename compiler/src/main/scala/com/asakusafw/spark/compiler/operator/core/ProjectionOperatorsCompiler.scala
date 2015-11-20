@@ -25,11 +25,11 @@ import com.asakusafw.lang.compiler.analyzer.util.ProjectionOperatorUtil
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 class ProjectionOperatorsCompiler extends CoreOperatorCompiler {
 
@@ -71,8 +71,8 @@ private class ProjectionOperatorsFragmentClassBuilder(
     ProjectionOperatorUtil.getPropertyMappings(context.dataModelLoader, operator)
       .toSeq
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
 
     thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
 
@@ -85,7 +85,7 @@ private class ProjectionOperatorsFragmentClassBuilder(
         "The source and destination types should be the same: " +
           s"(${srcProperty.getType}, ${destProperty.getType} [${operator}]")
 
-      pushObject(mb)(ValueOptionOps)
+      pushObject(ValueOptionOps)
         .invokeV(
           "copy",
           dataModelVar.push()

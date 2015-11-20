@@ -28,6 +28,7 @@ import com.asakusafw.spark.compiler.serializer.WritableSerializerClassBuilder._
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.serializer.WritableSerializer
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class WritableSerializerClassBuilder(
   writableType: Type)(
@@ -47,13 +48,12 @@ class WritableSerializerClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("newInstance", writableType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("newInstance", writableType, Seq.empty) { implicit mb =>
       `return`(pushNew0(writableType))
     }
 
-    methodDef.newMethod("newInstance", classOf[Writable].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("newInstance", classOf[Writable].asType, Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
       `return`(thisVar.push().invokeV("newInstance", writableType))
     }
   }

@@ -43,10 +43,8 @@ class SortOrderingClassBuilder(
     methodDef.newMethod(
       "compare",
       Type.INT_TYPE,
-      Seq(classOf[ShuffleKey].asType, classOf[ShuffleKey].asType)) { mb =>
-        import mb._ // scalastyle:ignore
-        val xVar = `var`(classOf[ShuffleKey].asType, thisVar.nextLocal)
-        val yVar = `var`(classOf[ShuffleKey].asType, xVar.nextLocal)
+      Seq(classOf[ShuffleKey].asType, classOf[ShuffleKey].asType)) { implicit mb =>
+        val thisVar :: xVar :: yVar :: _ = mb.argVars
 
         val cmp = thisVar.push()
           .invokeS(groupingOrderingType, "compare", Type.INT_TYPE, xVar.push(), yVar.push())
@@ -56,14 +54,14 @@ class SortOrderingClassBuilder(
             cmp.pop()
             val xOrderingVar = xVar.push()
               .invokeV("ordering", classOf[Array[Byte]].asType)
-              .store(yVar.nextLocal)
+              .store()
             val yOrderingVar = yVar.push()
               .invokeV("ordering", classOf[Array[Byte]].asType)
-              .store(xOrderingVar.nextLocal)
-            val xOffsetVar = ldc(0).store(yOrderingVar.nextLocal)
-            val yOffsetVar = ldc(0).store(xOffsetVar.nextLocal)
-            val xLengthVar = xOrderingVar.push().arraylength().store(yOffsetVar.nextLocal)
-            val yLengthVar = yOrderingVar.push().arraylength().store(xLengthVar.nextLocal)
+              .store()
+            val xOffsetVar = ldc(0).store()
+            val yOffsetVar = ldc(0).store()
+            val xLengthVar = xOrderingVar.push().arraylength().store()
+            val yLengthVar = yOrderingVar.push().arraylength().store()
             def compare(head: (Type, Boolean), tail: Seq[(Type, Boolean)]): Stack = {
               val (t, asc) = head
               val cmp = invokeStatic(

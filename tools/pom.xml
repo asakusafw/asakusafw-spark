@@ -16,6 +16,7 @@
 
   <modules>
     <module>asm</module>
+    <module>asm4s</module>
   </modules>
 
 </project>

@@ -16,8 +16,6 @@
 package com.asakusafw.spark.compiler
 package operator
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
@@ -26,18 +24,16 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, Operator, OperatorOutput }
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.fragment.{ Fragment, StopFragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 class FragmentGraphBuilder(
-  mb: MethodBuilder,
   broadcastsVar: Var,
-  fragmentBufferSizeVar: Var,
-  nextLocal: AtomicInteger)(
-    implicit context: OperatorCompiler.Context) {
-  import mb._ // scalastyle:ignore
+  fragmentBufferSizeVar: Var)(
+    implicit mb: MethodBuilder,
+    context: OperatorCompiler.Context) {
 
   val operatorFragmentTypes: mutable.Map[Long, Type] = mutable.Map.empty
   val edgeFragmentTypes: mutable.Map[Type, Type] = mutable.Map.empty
@@ -54,7 +50,7 @@ class FragmentGraphBuilder(
             OperatorCompiler.compile(operator, OperatorType.ExtractType)
         }
       })
-    val fragment = operator match {
+    (operator match {
       case marker: MarkerOperator =>
         val fragment = pushNew(t)
         fragment.dup().invokeInit(fragmentBufferSizeVar.push())
@@ -66,15 +62,13 @@ class FragmentGraphBuilder(
           broadcastsVar.push()
             +: outputs.map(_.push().asType(classOf[Fragment[_]].asType)): _*)
         fragment
-    }
-    fragment.store(nextLocal.getAndAdd(fragment.size))
+    }).store()
   }
 
   def build(output: OperatorOutput): Var = {
     if (output.getOpposites.size == 0) {
       vars.getOrElseUpdate(-1L, {
-        val fragment = pushObject(mb)(StopFragment)
-        fragment.store(nextLocal.getAndAdd(fragment.size))
+        pushObject(StopFragment).store()
       })
     } else if (output.getOpposites.size > 1) {
       val opposites = output.getOpposites.toSeq.map(_.getOwner).map { operator =>
@@ -85,14 +79,14 @@ class FragmentGraphBuilder(
           output.getDataType.asType,
           EdgeFragmentClassBuilder.getOrCompile(output.getDataType.asType)))
       fragment.dup().invokeInit(
-        buildArray(mb, classOf[Fragment[_]].asType) { builder =>
+        buildArray(classOf[Fragment[_]].asType) { builder =>
           for {
             opposite <- opposites
           } {
             builder += opposite.push()
           }
         })
-      fragment.store(nextLocal.getAndAdd(fragment.size))
+      fragment.store()
     } else {
       val operator = output.getOpposites.head.getOwner
       vars.getOrElseUpdate(operator.getOriginalSerialNumber, build(operator))
@@ -100,15 +94,14 @@ class FragmentGraphBuilder(
   }
 
   def buildOutputsVar(outputs: Seq[SubPlan.Output]): Var = {
-    val map = buildMap(mb) { builder =>
+    (buildMap { builder =>
       for {
         op <- outputs.map(_.getOperator).sortBy(_.getSerialNumber)
       } {
         builder += (
-          context.branchKeys.getField(mb, op),
+          context.branchKeys.getField(op),
           vars(op.getOriginalSerialNumber).push())
       }
-    }
-    map.store(nextLocal.getAndAdd(map.size))
+    }).store()
   }
 }

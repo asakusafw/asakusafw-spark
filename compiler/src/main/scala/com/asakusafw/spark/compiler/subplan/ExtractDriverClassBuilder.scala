@@ -16,7 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.concurrent.Future
 
@@ -32,12 +32,12 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, SubPlanCompiler }
 import com.asakusafw.spark.compiler.subplan.ExtractDriverClassBuilder._
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ExtractDriver, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 class ExtractDriverClassBuilder(
   val marker: MarkerOperator)(
@@ -104,16 +104,8 @@ class ExtractDriverClassBuilder(
           }
         }
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val scVar =
-          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar =
-          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val inputsVar =
-          `var`(classOf[Seq[Future[RDD[(ShuffleKey, _)]]]].asType, hadoopConfVar.nextLocal)
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, inputsVar.nextLocal)
+        .build()) { implicit mb =>
+        val thisVar :: scVar :: hadoopConfVar :: inputsVar :: broadcastsVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -166,21 +158,17 @@ class ExtractDriverClassBuilder(
               }
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
-        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
+        .build()) { implicit mb =>
+        val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
-            context.operatorCompilerContext)
+            broadcastsVar, fragmentBufferSizeVar)(
+            implicitly, context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(marker.getOutput)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
+        `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

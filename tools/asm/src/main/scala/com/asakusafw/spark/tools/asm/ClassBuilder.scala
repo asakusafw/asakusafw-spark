@@ -18,6 +18,7 @@ package com.asakusafw.spark.tools.asm
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.Arrays
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable
 
@@ -28,6 +29,8 @@ import org.objectweb.asm.Opcodes._
 import org.objectweb.asm.Type
 import org.objectweb.asm.util.TraceClassVisitor
 import org.slf4j.LoggerFactory
+
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class ClassBuilder(
   val thisType: Type,
@@ -86,8 +89,8 @@ abstract class ClassBuilder(
   def defFields(fieldDef: FieldDef): Unit = {
   }
   def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    ctorDef.newInit(Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
       thisVar.push().invokeInit(superType)
     }
   }
@@ -228,20 +231,22 @@ abstract class ClassBuilder(
       argumentTypes: Seq[Type],
       signature: Option[String],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
-      methodDef.newMethod(access, "<init>", argumentTypes, signature, exceptionTypes: _*) { mb =>
-        block(mb)
-        mb.`return`()
-      }
+      methodDef.newMethod(
+        access, "<init>", argumentTypes, signature, exceptionTypes: _*) { implicit mb =>
+          block(mb)
+          `return`()
+        }
     }
 
     var staticInitialized = false
 
     final def newStaticInit(block: MethodBuilder => Unit): Unit = {
       assert(!staticInitialized, "Static initializer should be defined only once.")
-      methodDef.newMethod(ACC_STATIC, "<clinit>", Type.VOID_TYPE, Array.empty[Type]) { mb =>
-        block(mb)
-        mb.`return`()
-      }
+      methodDef.newMethod(
+        ACC_STATIC, "<clinit>", Type.VOID_TYPE, Array.empty[Type]) { implicit mb =>
+          block(mb)
+          `return`()
+        }
       staticInitialized = true
     }
   }
@@ -519,7 +524,15 @@ abstract class ClassBuilder(
         exceptionTypes.map(_.getInternalName()).toArray)
       mv.visitCode()
       try {
-        block(new MethodBuilder(thisType, mv))
+        val nextLocal = new AtomicInteger(0)
+        val argVars = (if ((access & ACC_STATIC) == 0) {
+          List(Var(thisType, nextLocal.getAndAdd(thisType.getSize)))
+        } else {
+          List.empty[Var]
+        }) ++ methodType.getArgumentTypes.map { t =>
+          Var(t, nextLocal.getAndAdd(t.getSize))
+        }
+        block(MethodBuilder(thisType, access, name, methodType, argVars)(mv, nextLocal))
         mv.visitMaxs(0, 0)
       } finally {
         mv.visitEnd()
@@ -542,8 +555,9 @@ abstract class ClassBuilder(
   }
 
   private final def defToString0(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("toString", classOf[String].asType, Seq.empty[Type]) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("toString", classOf[String].asType, Seq.empty[Type]) { implicit mb =>
+      val thisVar :: _ = mb.argVars
+
       val builder = pushNew0(classOf[StringBuilder].asType)
 
       val className = ldc(
@@ -601,8 +615,8 @@ abstract class ClassBuilder(
   }
 
   private final def defHashCode0(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("hashCode", Type.INT_TYPE, Seq.empty[Type]) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("hashCode", Type.INT_TYPE, Seq.empty[Type]) { implicit mb =>
+      val thisVar :: _ = mb.argVars
       val Prime = 31
       val result = ldc(1)
       fields.foreach {
@@ -646,9 +660,8 @@ abstract class ClassBuilder(
   }
 
   private final def defEquals0(methodDef: MethodDef): Unit = {
-    methodDef.newMethod("equals", Type.BOOLEAN_TYPE, Seq(classOf[AnyRef].asType)) { mb =>
-      import mb._ // scalastyle:ignore
-      val otherVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
+    methodDef.newMethod("equals", Type.BOOLEAN_TYPE, Seq(classOf[AnyRef].asType)) { implicit mb =>
+      val thisVar :: otherVar :: _ = mb.argVars
 
       val result = thisVar.push().ifEq(otherVar.push())(ldc(true), {
         otherVar.push().ifNull(ldc(false), {
@@ -658,7 +671,7 @@ abstract class ClassBuilder(
             if (fields.isEmpty) {
               ldc(true)
             } else {
-              val objVar = otherVar.push().cast(thisVar.`type`).store(otherVar.nextLocal)
+              val objVar = otherVar.push().cast(thisVar.`type`).store()
 
               def equals0(head: (String, Type), tail: Seq[(String, Type)]): MethodBuilder.Stack = {
                 val fieldValue = thisVar.push().getField(head._1, head._2)

@@ -37,5 +37,5 @@ abstract class JoinOperatorFragmentClassBuilder(
   def txType: Type
   def masterSelection: Option[(String, Type)]
 
-  def join(mb: MethodBuilder, masterVar: Var, txVar: Var): Unit
+  def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit
 }

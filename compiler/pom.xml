@@ -126,6 +126,11 @@ target=jvm-1.7
       <artifactId>asakusa-spark-tools-asm</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.asakusafw.spark</groupId>
+      <artifactId>asakusa-spark-tools-asm4s</artifactId>
+      <version>${project.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>org.apache.spark</groupId>

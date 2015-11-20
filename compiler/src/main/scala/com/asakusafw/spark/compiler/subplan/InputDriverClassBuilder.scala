@@ -16,7 +16,7 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.{ AtomicInteger, AtomicLong }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.concurrent.Future
 
@@ -31,12 +31,12 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.subplan.InputDriverClassBuilder._
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, SubPlanCompiler }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, InputDriver }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 class InputDriverClassBuilder(
   val operator: ExternalInput,
@@ -91,23 +91,17 @@ class InputDriverClassBuilder(
           }
         }
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val scVar =
-          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar =
-          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType, hadoopConfVar.nextLocal)
+        .build()) { implicit mb =>
+        val thisVar :: scVar :: hadoopConfVar :: broadcastsVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           scVar.push(),
           hadoopConfVar.push(),
           broadcastsVar.push(),
-          classTag(mb, inputFormatType),
-          classTag(mb, keyType),
-          classTag(mb, valueType))
+          classTag(inputFormatType),
+          classTag(keyType),
+          classTag(valueType))
       }
   }
 
@@ -125,13 +119,12 @@ class InputDriverClassBuilder(
             }
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
+        .build()) { implicit mb =>
         `return`(
           paths match {
             case Some(paths) =>
-              option(mb)(
-                buildSet(mb) { builder =>
+              option(
+                buildSet { builder =>
                   for {
                     path <- paths
                   } {
@@ -139,7 +132,7 @@ class InputDriverClassBuilder(
                   }
                 })
             case None =>
-              pushObject(mb)(None)
+              pushObject(None)
           })
       }
 
@@ -151,10 +144,9 @@ class InputDriverClassBuilder(
               .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
+        .build()) { implicit mb =>
         `return`(
-          buildMap(mb) { builder =>
+          buildMap { builder =>
             extraConfigurations.foreach {
               for {
                 (k, v) <- _
@@ -200,21 +192,17 @@ class InputDriverClassBuilder(
               }
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
-        val fragmentBufferSizeVar = `var`(Type.INT_TYPE, broadcastsVar.nextLocal)
-        val nextLocal = new AtomicInteger(fragmentBufferSizeVar.nextLocal)
+        .build()) { implicit mb =>
+        val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
         val fragmentBuilder =
           new FragmentGraphBuilder(
-            mb, broadcastsVar, fragmentBufferSizeVar, nextLocal)(
-            context.operatorCompilerContext)
+            broadcastsVar, fragmentBufferSizeVar)(
+            implicitly, context.operatorCompilerContext)
         val fragmentVar = fragmentBuilder.build(operator.getOperatorPort)
         val outputsVar = fragmentBuilder.buildOutputsVar(subplanOutputs)
 
-        `return`(tuple2(mb)(fragmentVar.push(), outputsVar.push()))
+        `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
   }
 }

@@ -31,13 +31,13 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput, UserOperator }
 import com.asakusafw.lang.compiler.planning.PlanMarker
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 trait BroadcastJoin
   extends JoinOperatorFragmentClassBuilder {
@@ -51,6 +51,7 @@ trait BroadcastJoin
 
   override def defFields(fieldDef: FieldDef): Unit = {
     super.defFields(fieldDef)
+
     fieldDef.newField("masters", classOf[Map[_, _]].asType,
       new TypeSignatureBuilder()
         .newClassType(classOf[Map[_, _]].asType) {
@@ -64,11 +65,10 @@ trait BroadcastJoin
         .build())
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
-    import mb._ // scalastyle:ignore
-    val broadcastsVar = `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+    val thisVar :: broadcastsVar :: _ = mb.argVars
 
     val marker: Option[MarkerOperator] = {
       val opposites = masterInput.getOpposites
@@ -90,20 +90,20 @@ trait BroadcastJoin
 
     thisVar.push().putField(
       "masters",
-      classOf[Map[_, _]].asType,
       marker.map { marker =>
-        applyMap(mb)(
-          broadcastsVar.push(), context.broadcastIds.getField(mb, marker))
+        applyMap(
+          broadcastsVar.push(), context.broadcastIds.getField(marker))
           .cast(classOf[Broadcast[_]].asType)
           .invokeV("value", classOf[AnyRef].asType)
           .cast(classOf[Map[_, _]].asType)
       }.getOrElse {
-        buildMap(mb)(_ => ())
+        buildMap(_ => ())
       })
   }
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
+
     val keyVar = {
       val dataModelRef = txInput.dataModelRef
       val group = txInput.getGroup
@@ -111,11 +111,11 @@ trait BroadcastJoin
       val shuffleKey = pushNew(classOf[ShuffleKey].asType)
       shuffleKey.dup().invokeInit(
         if (group.getGrouping.isEmpty) {
-          buildArray(mb, Type.BYTE_TYPE)(_ => ())
+          buildArray(Type.BYTE_TYPE)(_ => ())
         } else {
-          pushObject(mb)(WritableSerDe)
+          pushObject(WritableSerDe)
             .invokeV("serialize", classOf[Array[Byte]].asType,
-              buildSeq(mb) { builder =>
+              buildSeq { builder =>
                 for {
                   propertyName <- group.getGrouping
                   property = dataModelRef.findProperty(propertyName)
@@ -126,49 +126,49 @@ trait BroadcastJoin
                 }
               })
         },
-        buildArray(mb, Type.BYTE_TYPE)(_ => ()))
-      shuffleKey.store(dataModelVar.nextLocal)
+        buildArray(Type.BYTE_TYPE)(_ => ()))
+      shuffleKey.store()
     }
 
     val mastersVar =
       thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType)
         .invokeI("contains", Type.BOOLEAN_TYPE, keyVar.push().asType(classOf[AnyRef].asType))
         .ifTrue({
-          pushObject(mb)(JavaConversions)
+          pushObject(JavaConversions)
             .invokeV("seqAsJavaList", classOf[JList[_]].asType,
-              applyMap(mb)(
+              applyMap(
                 thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType),
                 keyVar.push())
                 .cast(classOf[Seq[_]].asType))
         }, {
           pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
         })
-        .store(keyVar.nextLocal)
+        .store()
 
     val selectedVar = (masterSelection match {
       case Some((name, t)) =>
-        getOperatorField(mb)
+        getOperatorField()
           .invokeV(
             name,
             t.getReturnType(),
             ({ () => mastersVar.push() } +:
               { () => dataModelVar.push() } +:
               operator.arguments.map { argument =>
-                () => ldc(argument.value)(ClassTag(argument.resolveClass))
+                () => ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
               }).zip(t.getArgumentTypes()).map {
                 case (s, t) => s().asType(t)
               }: _*)
       case None =>
-        pushObject(mb)(DefaultMasterSelection)
+        pushObject(DefaultMasterSelection)
           .invokeV(
             "select",
             classOf[AnyRef].asType,
             mastersVar.push(),
             dataModelVar.push().asType(classOf[AnyRef].asType))
           .cast(masterType)
-    }).store(mastersVar.nextLocal)
+    }).store()
 
-    join(mb, selectedVar, dataModelVar)
+    join(selectedVar, dataModelVar)
 
     `return`()
   }

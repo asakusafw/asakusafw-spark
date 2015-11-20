@@ -24,10 +24,10 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.analyzer.util.{ PropertyFolding, SummarizedModelUtil }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator.Summarize
 
@@ -63,22 +63,22 @@ private class SummarizeAggregationClassBuilder(
   val propertyFoldings =
     SummarizedModelUtil.getPropertyFoldings(context.classLoader, operator).toSeq
 
-  override def defMapSideCombine(mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
+  override def defMapSideCombine()(implicit mb: MethodBuilder): Unit = {
     val partialAggregation =
       operator.annotationDesc.elements("partialAggregation")
         .value.asInstanceOf[PartialAggregation]
     `return`(ldc(partialAggregation != PartialAggregation.TOTAL))
   }
 
-  override def defNewCombiner(mb: MethodBuilder): Unit = {
-    import mb._ // scalastyle:ignore
+  override def defNewCombiner()(implicit mb: MethodBuilder): Unit = {
     `return`(pushNew0(combinerType))
   }
 
   override def defInitCombinerByValue(
-    mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
+    combinerVar: Var, valueVar: Var)(
+      implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
+
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val valuePropertyRef =
@@ -89,7 +89,7 @@ private class SummarizeAggregationClassBuilder(
           .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.ANY =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("copy",
               valueVar.push().invokeV(
                 valuePropertyRef.getDeclaration.getName,
@@ -99,14 +99,14 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.SUM =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("setZero",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.COUNT =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("setZero",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -120,8 +120,8 @@ private class SummarizeAggregationClassBuilder(
   }
 
   override def defMergeValue(
-    mb: MethodBuilder, combinerVar: Var, valueVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
+    combinerVar: Var, valueVar: Var)(
+      implicit mb: MethodBuilder): Unit = {
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val valuePropertyRef =
@@ -132,7 +132,7 @@ private class SummarizeAggregationClassBuilder(
           .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.SUM =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("add",
               valueVar.push().invokeV(
                 valuePropertyRef.getDeclaration.getName,
@@ -142,7 +142,7 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.MAX =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("max",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -152,7 +152,7 @@ private class SummarizeAggregationClassBuilder(
                 valuePropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.MIN =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("min",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -162,7 +162,7 @@ private class SummarizeAggregationClassBuilder(
                 valuePropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.COUNT =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("inc",
               combinerVar.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -175,15 +175,13 @@ private class SummarizeAggregationClassBuilder(
   }
 
   override def defInitCombinerByCombiner(
-    mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
-    import mb._ // scalastyle:ignore
+    comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit = {
     comb1Var.push().invokeV("copyFrom", comb2Var.push())
     `return`(comb1Var.push())
   }
 
   override def defMergeCombiners(
-    mb: MethodBuilder, comb1Var: Var, comb2Var: Var): Unit = {
-    import mb._ // scalastyle:ignore
+    comb1Var: Var, comb2Var: Var)(implicit mb: MethodBuilder): Unit = {
     propertyFoldings.foreach { folding =>
       val mapping = folding.getMapping
       val combinerPropertyRef =
@@ -191,7 +189,7 @@ private class SummarizeAggregationClassBuilder(
           .dataModelRef.findProperty(mapping.getDestinationProperty)
       folding.getAggregation match {
         case PropertyFolding.Aggregation.SUM =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("add",
               comb2Var.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -201,7 +199,7 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.MAX =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("max",
               comb1Var.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -211,7 +209,7 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.MIN =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("min",
               comb1Var.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,
@@ -221,7 +219,7 @@ private class SummarizeAggregationClassBuilder(
                 combinerPropertyRef.getType.asType))
 
         case PropertyFolding.Aggregation.COUNT =>
-          pushObject(mb)(ValueOptionOps)
+          pushObject(ValueOptionOps)
             .invokeV("add",
               comb2Var.push().invokeV(
                 combinerPropertyRef.getDeclaration.getName,

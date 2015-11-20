@@ -16,8 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
@@ -26,26 +24,24 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanInputInfo
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 object OutputDriverInstantiator extends Instantiator {
 
   override def newInstance(
     driverType: Type,
     subplan: SubPlan)(
-      mb: MethodBuilder,
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var = {
-    import mb._ // scalastyle:ignore
+      vars: Instantiator.Vars)(
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var = {
 
     val outputDriver = pushNew(driverType)
     outputDriver.dup().invokeInit(
       vars.sc.push(),
       vars.hadoopConf.push(),
-      buildSeq(mb) { builder =>
+      buildSeq { builder =>
         for {
           subPlanInput <- subplan.getInputs
           inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
@@ -54,13 +50,13 @@ object OutputDriverInstantiator extends Instantiator {
           marker = prevSubPlanOutput.getOperator
         } {
           builder +=
-            applyMap(mb)(
+            applyMap(
               vars.rdds.push(),
-              context.branchKeys.getField(mb, marker))
+              context.branchKeys.getField(marker))
             .cast(classOf[Future[RDD[(_, _)]]].asType)
         }
       },
       vars.terminators.push())
-    outputDriver.store(nextLocal.getAndAdd(outputDriver.size))
+    outputDriver.store()
   }
 }

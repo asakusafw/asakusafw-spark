@@ -21,10 +21,10 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 trait BranchKeysField extends ClassBuilder {
 
@@ -56,25 +56,24 @@ trait BranchKeysField extends ClassBuilder {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
           }
         }
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
+        .build()) { implicit mb =>
+        val thisVar :: _ = mb.argVars
         thisVar.push().getField("branchKeys", classOf[Set[_]].asType).unlessNotNull {
-          thisVar.push().putField("branchKeys", classOf[Set[_]].asType, initBranchKeys(mb))
+          thisVar.push().putField("branchKeys", initBranchKeys())
         }
         `return`(thisVar.push().getField("branchKeys", classOf[Set[_]].asType))
       }
   }
 
-  def getBranchKeysField(mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
+  def getBranchKeysField()(implicit mb: MethodBuilder): Stack = {
+    val thisVar :: _ = mb.argVars
     thisVar.push().invokeV("branchKeys", classOf[Set[_]].asType)
   }
 
-  private def initBranchKeys(mb: MethodBuilder): Stack = {
-    import mb._ // scalastyle:ignore
-    buildSet(mb) { builder =>
+  private def initBranchKeys()(implicit mb: MethodBuilder): Stack = {
+    buildSet { builder =>
       subplanOutputs.map(_.getOperator).sortBy(_.getSerialNumber).foreach { marker =>
-        builder += context.branchKeys.getField(mb, marker)
+        builder += context.branchKeys.getField(marker)
       }
     }
   }

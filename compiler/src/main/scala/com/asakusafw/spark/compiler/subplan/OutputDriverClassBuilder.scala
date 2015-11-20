@@ -31,10 +31,10 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.OutputDriverClassBuilder._
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.runtime.driver.OutputDriver
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 class OutputDriverClassBuilder(
   val operator: ExternalOutput)(
@@ -96,16 +96,8 @@ class OutputDriverClassBuilder(
           }
         }
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val scVar =
-          `var`(classOf[SparkContext].asType, thisVar.nextLocal)
-        val hadoopConfVar =
-          `var`(classOf[Broadcast[Configuration]].asType, scVar.nextLocal)
-        val prevsVar =
-          `var`(classOf[Seq[Future[RDD[(_, _)]]]].asType, hadoopConfVar.nextLocal)
-        val terminatorsVar =
-          `var`(classOf[mutable.Set[Future[Unit]]].asType, prevsVar.nextLocal)
+        .build()) { implicit mb =>
+        val thisVar :: scVar :: hadoopConfVar :: prevsVar :: terminatorsVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -113,15 +105,14 @@ class OutputDriverClassBuilder(
           hadoopConfVar.push(),
           prevsVar.push(),
           terminatorsVar.push(),
-          classTag(mb, operator.getDataType.asType))
+          classTag(operator.getDataType.asType))
       }
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("path", classOf[String].asType, Seq.empty) { mb =>
-      import mb._ // scalastyle:ignore
+    methodDef.newMethod("path", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(context.options.getRuntimeWorkingPath(operator.getName)))
     }
   }

@@ -16,8 +16,6 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
@@ -28,22 +26,20 @@ import com.asakusafw.lang.compiler.model.graph.OperatorOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanInputInfo }
 import com.asakusafw.spark.compiler.subplan.NumPartitions._
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 object CoGroupDriverInstantiator extends Instantiator {
 
   override def newInstance(
     driverType: Type,
     subplan: SubPlan)(
-      mb: MethodBuilder,
-      vars: Instantiator.Vars,
-      nextLocal: AtomicInteger)(
-        implicit context: Instantiator.Context): Var = {
-    import mb._ // scalastyle:ignore
+      vars: Instantiator.Vars)(
+        implicit mb: MethodBuilder,
+        context: Instantiator.Context): Var = {
 
     val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
@@ -59,13 +55,13 @@ object CoGroupDriverInstantiator extends Instantiator {
     cogroupDriver.dup().invokeInit(
       vars.sc.push(),
       vars.hadoopConf.push(),
-      buildSeq(mb) { builder =>
+      buildSeq { builder =>
         for {
           input <- primaryOperator.getInputs
         } {
           builder +=
-            tuple2(mb)(
-              buildSeq(mb) { builder =>
+            tuple2(
+              buildSeq { builder =>
                 for {
                   opposite <- input.getOpposites.toSet[OperatorOutput]
                   subPlanInput <- Option(subplan.findInput(opposite.getOwner))
@@ -75,27 +71,27 @@ object CoGroupDriverInstantiator extends Instantiator {
                   marker = prevSubPlanOutput.getOperator
                 } {
                   builder +=
-                    applyMap(mb)(
+                    applyMap(
                       vars.rdds.push(),
-                      context.branchKeys.getField(mb, marker))
+                      context.branchKeys.getField(marker))
                     .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType)
                 }
               },
-              option(mb)(
-                sortOrdering(mb)(
+              option(
+                sortOrdering(
                   input.dataModelRef.groupingTypes(input.getGroup.getGrouping),
                   input.dataModelRef.orderingTypes(input.getGroup.getOrdering))))
         }
       },
-      groupingOrdering(mb)(properties.head),
+      groupingOrdering(properties.head),
       if (properties.head.isEmpty) {
-        partitioner(mb)(ldc(1))
+        partitioner(ldc(1))
       } else {
-        partitioner(mb)(
-          numPartitions(mb)(vars.sc.push())(
+        partitioner(
+          numPartitions(vars.sc.push())(
             subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner)))
       },
       vars.broadcasts.push())
-    cogroupDriver.store(nextLocal.getAndAdd(cogroupDriver.size))
+    cogroupDriver.store()
   }
 }

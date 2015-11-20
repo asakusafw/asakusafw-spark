@@ -50,10 +50,9 @@ class GroupingOrderingClassBuilder(
     methodDef.newMethod(
       "compare",
       Type.INT_TYPE,
-      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { mb =>
-        import mb._ // scalastyle:ignore
-        val xVar = `var`(classOf[AnyRef].asType, thisVar.nextLocal)
-        val yVar = `var`(classOf[AnyRef].asType, xVar.nextLocal)
+      Seq(classOf[AnyRef].asType, classOf[AnyRef].asType)) { implicit mb =>
+        val thisVar :: xVar :: yVar :: _ = mb.argVars
+
         `return`(
           thisVar.push()
             .invokeV("compare", Type.INT_TYPE,
@@ -64,10 +63,8 @@ class GroupingOrderingClassBuilder(
     methodDef.newMethod(
       "compare",
       Type.INT_TYPE,
-      Seq(classOf[ShuffleKey].asType, classOf[ShuffleKey].asType)) { mb =>
-        import mb._ // scalastyle:ignore
-        val xVar = `var`(classOf[ShuffleKey].asType, thisVar.nextLocal)
-        val yVar = `var`(classOf[ShuffleKey].asType, xVar.nextLocal)
+      Seq(classOf[ShuffleKey].asType, classOf[ShuffleKey].asType)) { implicit mb =>
+        val thisVar :: xVar :: yVar :: _ = mb.argVars
 
         `return`(
           if (groupingTypes.isEmpty) {
@@ -75,14 +72,14 @@ class GroupingOrderingClassBuilder(
           } else {
             val xGroupingVar = xVar.push()
               .invokeV("grouping", classOf[Array[Byte]].asType)
-              .store(yVar.nextLocal)
+              .store()
             val yGroupingVar = yVar.push()
               .invokeV("grouping", classOf[Array[Byte]].asType)
-              .store(xGroupingVar.nextLocal)
-            val xOffsetVar = ldc(0).store(yGroupingVar.nextLocal)
-            val yOffsetVar = ldc(0).store(xOffsetVar.nextLocal)
-            val xLengthVar = xGroupingVar.push().arraylength().store(yOffsetVar.nextLocal)
-            val yLengthVar = yGroupingVar.push().arraylength().store(xLengthVar.nextLocal)
+              .store()
+            val xOffsetVar = ldc(0).store()
+            val yOffsetVar = ldc(0).store()
+            val xLengthVar = xGroupingVar.push().arraylength().store()
+            val yLengthVar = yGroupingVar.push().arraylength().store()
             def compare(t: Type, tail: Seq[Type]): Stack = {
               val cmp = invokeStatic(
                 t,

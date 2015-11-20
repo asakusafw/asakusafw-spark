@@ -18,7 +18,6 @@ package operator
 package user
 
 import java.util.{ List => JList }
-import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
@@ -29,9 +28,9 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.compiler.util.ScalaIdioms._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.vocabulary.flow.processor.InputBuffer
 import com.asakusafw.vocabulary.operator.{ CoGroup, GroupSort }
 
@@ -106,12 +105,13 @@ private class CoGroupOperatorFragmentClassBuilder(
         .build())
   }
 
-  override def initFields(mb: MethodBuilder): Unit = {
-    super.initFields(mb)
+  override def initFields()(implicit mb: MethodBuilder): Unit = {
+    super.initFields()
 
-    import mb._ // scalastyle:ignore
-    thisVar.push().putField("buffers", classOf[Array[ListBuffer[_]]].asType,
-      buildArray(mb, classOf[ListBuffer[_]].asType) { builder =>
+    val thisVar :: _ = mb.argVars
+
+    thisVar.push().putField("buffers",
+      buildArray(classOf[ListBuffer[_]].asType) { builder =>
         for {
           input <- operator.inputs
         } {
@@ -124,20 +124,18 @@ private class CoGroupOperatorFragmentClassBuilder(
       })
   }
 
-  override def defAddMethod(mb: MethodBuilder, dataModelVar: Var): Unit = {
-    import mb._ // scalastyle:ignore
-    val nextLocal = new AtomicInteger(dataModelVar.nextLocal)
+  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ = mb.argVars
 
     val bufferVars = operator.inputs.zipWithIndex.map {
       case (input, i) =>
-        val iter =
-          applySeq(mb)(dataModelVar.push(), ldc(i))
-            .cast(classOf[Iterator[_]].asType)
-        val iterVar = iter.store(nextLocal.getAndAdd(iter.size))
-        val buffer = thisVar.push()
+        val iterVar = applySeq(dataModelVar.push(), ldc(i))
+          .cast(classOf[Iterator[_]].asType)
+          .store()
+        val bufferVar = thisVar.push()
           .getField("buffers", classOf[Array[ListBuffer[_]]].asType)
           .aload(ldc(i))
-        val bufferVar = buffer.store(nextLocal.getAndAdd(buffer.size))
+          .store()
         bufferVar.push().invokeI("begin")
 
         whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
@@ -157,19 +155,18 @@ private class CoGroupOperatorFragmentClassBuilder(
         bufferVar
     }
 
-    getOperatorField(mb)
+    getOperatorField()
       .invokeV(
         operator.methodDesc.getName,
         bufferVars.map(_.push().asType(classOf[JList[_]].asType))
           ++ operator.outputs.map { output =>
-            getOutputField(mb, output).asType(classOf[Result[_]].asType)
+            getOutputField(output).asType(classOf[Result[_]].asType)
           }
           ++ operator.arguments.map { argument =>
-            ldc(argument.value)(ClassTag(argument.resolveClass))
+            ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
           }: _*)
 
-    val i = ldc(0)
-    val iVar = i.store(nextLocal.getAndAdd(i.size))
+    val iVar = ldc(0).store()
     loop { ctrl =>
       iVar.push().unlessLessThan(ldc(operator.inputs.size))(ctrl.break())
       thisVar.push()

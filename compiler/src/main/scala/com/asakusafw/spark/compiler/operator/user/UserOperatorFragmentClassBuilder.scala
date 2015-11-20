@@ -28,6 +28,7 @@ import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class UserOperatorFragmentClassBuilder(
   dataModelType: Type,
@@ -61,17 +62,15 @@ abstract class UserOperatorFragmentClassBuilder(
             }
         })
         .newVoidReturnType()
-        .build()) { mb =>
-        import mb._ // scalastyle:ignore
-        val broadcastsVar =
-          `var`(classOf[Map[BroadcastId, Broadcast[_]]].asType, thisVar.nextLocal)
+        .build()) { implicit mb =>
+        val thisVar :: broadcastsVar :: tailVars = mb.argVars
 
         thisVar.push().invokeInit(superType)
-        initReset(mb)
-        initOutputFields(mb, broadcastsVar.nextLocal)
-        initFields(mb)
+        initReset()
+        initOutputFields(tailVars)
+        initFields()
       }
   }
 
-  def initFields(mb: MethodBuilder): Unit = {}
+  def initFields()(implicit mb: MethodBuilder): Unit = {}
 }
