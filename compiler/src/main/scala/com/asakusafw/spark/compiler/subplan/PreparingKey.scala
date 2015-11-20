@@ -18,16 +18,12 @@ package subplan
 
 import scala.collection.JavaConversions._
 
-import org.objectweb.asm.{ Opcodes, Type }
-import org.objectweb.asm.signature.SignatureVisitor
+import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
-import com.asakusafw.lang.compiler.model.PropertyName
-import com.asakusafw.lang.compiler.model.graph.{ Group, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph.Group
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
-import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.BranchKey

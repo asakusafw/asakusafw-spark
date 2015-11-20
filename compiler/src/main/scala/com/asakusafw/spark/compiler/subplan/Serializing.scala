@@ -22,9 +22,8 @@ import org.objectweb.asm.{ Opcodes, Type }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
-import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._

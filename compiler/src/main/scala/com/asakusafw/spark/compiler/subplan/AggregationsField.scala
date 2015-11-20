@@ -16,14 +16,14 @@
 package com.asakusafw.spark.compiler
 package subplan
 
-import org.objectweb.asm.{ Opcodes, Type }
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, SubPlanCompiler }
+import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey

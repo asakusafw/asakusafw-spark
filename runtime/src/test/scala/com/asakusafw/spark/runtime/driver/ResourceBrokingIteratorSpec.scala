@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package driver
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.fixture.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -27,7 +27,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.io.Writable
+import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
@@ -36,35 +36,32 @@ import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
+import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
+import com.asakusafw.spark.runtime.graph.{ ComputeOnce, Extract, ParallelCollectionSource, Source }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 @RunWith(classOf[JUnitRunner])
 class ResourceBrokingIteratorSpecTest extends ResourceBrokingIteratorSpec
 
-class ResourceBrokingIteratorSpec extends FlatSpec with SparkForAll with HadoopConfForEach {
+class ResourceBrokingIteratorSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
   import ResourceBrokingIteratorSpec._
 
   behavior of classOf[ResourceBrokingIterator[_]].getSimpleName
 
-  it should "broke resources" in {
-    val foos = sc.parallelize(0 until 10).map {
+  it should "broke resources" in { implicit sc =>
 
-      lazy val foo = new Foo()
+    val source =
+      new ParallelCollectionSource(Input, (0 until 10))("input")
+        .map(Input)(Foo.intToFoo)
 
-      { i =>
-        foo.id.modify(i)
-        ((), foo)
-      }
-    }.asInstanceOf[RDD[(_, Foo)]]
+    val extract = new TestExtract((source, Input))("")
 
-    val driver = new TestDriver(sc, hadoopConf, Future.successful(foos))
-
-    val outputs = driver.execute()
+    val rc = newRoundContext(batchArguments = Map("batcharg" -> "test"))
 
     val result = Await.result(
-      outputs(Result).map {
+      extract.getOrCompute(rc).apply(Result).map {
         _.map {
           case (_, foo: Foo) => (foo.id.get, foo.str.getAsString)
         }.collect.toSeq
@@ -100,15 +97,33 @@ object ResourceBrokingIteratorSpec {
     }
   }
 
-  val Result = BranchKey(0)
+  object Foo {
 
-  class TestDriver(
-    sc: SparkContext,
-    hadoopConf: Broadcast[Configuration],
-    prev: Future[RDD[(_, Foo)]])
-    extends ExtractDriver[Foo](sc, hadoopConf)(Seq(prev))(Map.empty) {
+    def intToFoo: Int => (_, Foo) = {
 
-    override def label = "TestMap"
+      lazy val foo = new Foo()
+
+      { i =>
+        foo.id.modify(i)
+        (NullWritable.get, foo)
+      }
+    }
+  }
+
+  val Input = BranchKey(0)
+  val Result = BranchKey(1)
+
+  class TestExtract(
+    prevs: Seq[(Source, BranchKey)])(
+      val label: String)(
+        implicit sc: SparkContext)
+    extends Extract[Foo](prevs)(Map.empty)
+    with ComputeOnce {
+
+    def this(
+      prev: (Source, BranchKey))(
+        label: String)(
+          implicit sc: SparkContext) = this(Seq(prev))(label)
 
     override def branchKeys: Set[BranchKey] = Set(Result)
 

@@ -15,15 +15,14 @@
  */
 package com.asakusafw.spark.runtime
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ Await, ExecutionContext }
+import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark._
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
+import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
-import com.asakusafw.spark.runtime.driver.ShuffleKey
-import com.asakusafw.spark.runtime.rdd._
+import com.asakusafw.spark.runtime.graph.Job
 
 abstract class SparkClient {
 
@@ -34,47 +33,26 @@ abstract class SparkClient {
 
     val sc = new SparkContext(conf)
     try {
+      val job = newJob(sc)
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
-      execute(sc, hadoopConf)(SparkClient.executionContext)
+      val context = SparkClient.Context(hadoopConf)
+      Await.result(job.execute(context)(SparkClient.ec), Duration.Inf)
+      0
     } finally {
       sc.stop()
     }
   }
 
-  def execute(
-    sc: SparkContext,
-    hadoopConf: Broadcast[Configuration])(
-      implicit ec: ExecutionContext): Int
+  def newJob(sc: SparkContext): Job
 
   def kryoRegistrator: String
-
-  def broadcastAsHash[V](
-    sc: SparkContext,
-    label: String,
-    prev: Future[RDD[(ShuffleKey, V)]],
-    sort: Option[Ordering[ShuffleKey]],
-    grouping: Ordering[ShuffleKey],
-    part: Partitioner)(
-      implicit ec: ExecutionContext): Future[Broadcast[Map[ShuffleKey, Seq[V]]]] = {
-
-    prev.map { p =>
-      sc.clearCallSite()
-      sc.setCallSite(label)
-
-      val results = sc.smcogroup(
-        Seq((p.asInstanceOf[RDD[(ShuffleKey, _)]], sort)),
-        part,
-        grouping)
-        .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[V]]) }
-        .collect()
-        .toMap
-
-      sc.broadcast(results)
-    }
-  }
 }
 
 object SparkClient {
 
-  implicit lazy val executionContext: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
+  case class Context(
+    hadoopConf: Broadcasted[Configuration])
+    extends RoundContext
+
+  lazy val ec: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
 }

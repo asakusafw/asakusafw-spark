@@ -18,16 +18,15 @@ package subplan
 
 import scala.collection.JavaConversions._
 
-import org.apache.spark.{ Partitioner, SparkConf, SparkContext }
-import org.objectweb.asm.{ Opcodes, Type }
+import org.apache.spark.{ Partitioner, SparkContext }
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.planning.{ PlanMarker, SubPlan }
+import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
-import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.subplan.NumPartitions._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
-import com.asakusafw.spark.runtime.rdd.{ BranchKey, IdentityPartitioner }
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._

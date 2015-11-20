@@ -18,13 +18,11 @@ package subplan
 
 import scala.collection.JavaConversions._
 
-import org.apache.spark.Partitioner
-import org.objectweb.asm.{ Opcodes, Type }
+import org.objectweb.asm.Opcodes
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
-import com.asakusafw.spark.compiler.spi.SubPlanCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.rdd.BranchKey
