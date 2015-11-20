@@ -22,7 +22,6 @@ import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.Props
-import com.asakusafw.spark.runtime.driver.{ Branching, BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroup(

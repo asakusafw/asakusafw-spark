@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package util
 
 import org.apache.spark.SparkConf
 import org.objectweb.asm.Type

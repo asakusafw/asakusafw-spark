@@ -23,10 +23,8 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
-import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.graph.TemporaryOutputClassBuilder._
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.compiler.subplan.LabelField
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   Source,

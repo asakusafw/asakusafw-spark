@@ -23,7 +23,7 @@ import com.asakusafw.spark.compiler.ordering.{
   GroupingOrderingClassBuilder,
   SortOrderingClassBuilder
 }
-import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

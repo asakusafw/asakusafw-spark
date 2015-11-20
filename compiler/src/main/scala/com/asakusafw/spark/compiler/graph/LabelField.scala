@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler.subplan
+package com.asakusafw.spark.compiler
+package graph
 
 import com.asakusafw.lang.compiler.model.graph.Operator
 import com.asakusafw.spark.tools.asm._

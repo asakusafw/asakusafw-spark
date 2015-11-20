@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package graph
+package branching
 
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.tools.asm.ClassBuilder

@@ -19,7 +19,7 @@ package graph
 import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.hadoop.io.NullWritable
-import org.apache.hadoop.mapreduce.Job
+import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
@@ -33,7 +33,7 @@ abstract class NewHadoopOutput(
 
   private[this] val Logger = LoggerFactory.getLogger(getClass())
 
-  def newJob(rc: RoundContext): Job
+  def newJob(rc: RoundContext): MRJob
 
   override def submitJob(
     rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {

@@ -15,7 +15,7 @@
  */
 package com.asakusafw.spark.runtime
 
-import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 
 package object graph {
 

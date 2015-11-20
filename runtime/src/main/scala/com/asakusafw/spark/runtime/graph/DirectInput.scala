@@ -18,11 +18,11 @@ package graph
 
 import scala.reflect.ClassTag
 
-import org.apache.hadoop.mapreduce.{ InputFormat, Job }
+import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.spark.SparkContext
 
 import com.asakusafw.runtime.compatibility.JobCompatibility
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 
 abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: ClassTag](
   @transient val broadcasts: Map[BroadcastId, Broadcast])(
@@ -31,7 +31,7 @@ abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: Cl
 
   def extraConfigurations: Map[String, String]
 
-  override def newJob(rc: RoundContext): Job = {
+  override def newJob(rc: RoundContext): MRJob = {
     val job = JobCompatibility.newJob(rc.hadoopConf.value)
     extraConfigurations.foreach {
       case (k, v) => job.getConfiguration.set(k, v)

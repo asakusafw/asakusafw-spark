@@ -19,12 +19,11 @@ package graph
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.{ classTag, ClassTag }
 
-import org.apache.hadoop.mapreduce.{ InputFormat, Job }
+import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.Props
-import com.asakusafw.spark.runtime.driver.Branching
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
@@ -36,7 +35,7 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
   with UsingBroadcasts
   with Branching[V] {
 
-  def newJob(rc: RoundContext): Job
+  def newJob(rc: RoundContext): MRJob
 
   override def compute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {

@@ -40,9 +40,9 @@ import com.asakusafw.spark.compiler.serializer.{
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.SparkClient
-import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
+  BroadcastId,
   Job,
   MapBroadcastOnce,
   Node,

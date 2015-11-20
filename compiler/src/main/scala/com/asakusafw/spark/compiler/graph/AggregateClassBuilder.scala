@@ -29,20 +29,20 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.graph.AggregateClassBuilder._
+import com.asakusafw.spark.compiler.graph.branching.Branching
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.graph.{
   Aggregate,
   Broadcast,
+  BroadcastId,
   SortOrdering,
   Source
 }
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._

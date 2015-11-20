@@ -46,9 +46,9 @@ import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar, TempDirForEach }
-import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
+  BroadcastId,
   ParallelCollectionSource,
   Source,
   TemporaryOutput

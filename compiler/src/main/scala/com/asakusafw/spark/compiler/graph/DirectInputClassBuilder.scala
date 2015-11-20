@@ -26,8 +26,7 @@ import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.graph.DirectInputClassBuilder._
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.runtime.driver.BroadcastId
-import com.asakusafw.spark.runtime.graph.{ Broadcast, DirectInput }
+import com.asakusafw.spark.runtime.graph.{ Broadcast, BroadcastId, DirectInput }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._

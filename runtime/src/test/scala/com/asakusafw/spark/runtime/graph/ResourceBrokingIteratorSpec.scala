@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime
-package driver
+package graph
 
 import org.junit.runner.RunWith
 import org.scalatest.fixture.FlatSpec
@@ -22,15 +22,13 @@ import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
 
-import scala.concurrent.{ Await, Future }
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.{ Partitioner, SparkContext }
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.runtime.model.DataModel
@@ -38,8 +36,7 @@ import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
-import com.asakusafw.spark.runtime.graph.{ ComputeOnce, Extract, ParallelCollectionSource, Source }
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 @RunWith(classOf[JUnitRunner])
 class ResourceBrokingIteratorSpecTest extends ResourceBrokingIteratorSpec
@@ -144,7 +141,7 @@ object ResourceBrokingIteratorSpec {
     }
 
     override def fragments(
-      broadcasts: Map[BroadcastId, Broadcast[_]])(
+      broadcasts: Map[BroadcastId, Broadcasted[_]])(
         fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         Result -> new GenericOutputFragment[Foo](fragmentBufferSize))

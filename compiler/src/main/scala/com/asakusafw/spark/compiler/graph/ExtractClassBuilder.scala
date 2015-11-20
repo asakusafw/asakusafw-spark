@@ -32,15 +32,15 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.graph.ExtractClassBuilder._
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.compiler.subplan.{ Branching, LabelField }
+import com.asakusafw.spark.compiler.graph.branching.Branching
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
+  BroadcastId,
   Extract,
   Source
 }
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._

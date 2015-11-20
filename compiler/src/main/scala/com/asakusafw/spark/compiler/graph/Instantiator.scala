@@ -19,7 +19,6 @@ package graph
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.subplan.BranchKeys
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

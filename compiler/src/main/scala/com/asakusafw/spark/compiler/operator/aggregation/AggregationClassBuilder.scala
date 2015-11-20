@@ -27,7 +27,7 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder._
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

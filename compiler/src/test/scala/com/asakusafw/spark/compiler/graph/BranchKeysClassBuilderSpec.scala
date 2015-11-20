@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package graph
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec

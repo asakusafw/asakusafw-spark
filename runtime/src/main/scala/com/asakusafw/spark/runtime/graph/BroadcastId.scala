@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime.driver
+package com.asakusafw.spark.runtime
+package graph
 
 case class BroadcastId(id: Int)

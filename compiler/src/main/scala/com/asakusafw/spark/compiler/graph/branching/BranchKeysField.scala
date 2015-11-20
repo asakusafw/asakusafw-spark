@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package graph
+package branching
 
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.signature.SignatureVisitor

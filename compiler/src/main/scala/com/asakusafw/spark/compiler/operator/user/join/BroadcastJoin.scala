@@ -31,10 +31,11 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput, UserOperator }
 import com.asakusafw.lang.compiler.planning.PlanMarker
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.Fragment
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._

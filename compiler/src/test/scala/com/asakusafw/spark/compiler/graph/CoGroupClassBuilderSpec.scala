@@ -45,9 +45,9 @@ import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
+  BroadcastId,
   CoGroup,
   GroupOrdering,
   ParallelCollectionSource,
@@ -55,7 +55,7 @@ import com.asakusafw.spark.runtime.graph.{
   Source
 }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.InputBuffer
 import com.asakusafw.vocabulary.operator.{ CoGroup => CoGroupOp }

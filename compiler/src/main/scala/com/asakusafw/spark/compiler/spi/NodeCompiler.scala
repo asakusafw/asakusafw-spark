@@ -32,8 +32,8 @@ import com.asakusafw.spark.compiler.{
   CompilerContext,
   DataModelLoaderProvider
 }
-import com.asakusafw.spark.compiler.graph.Instantiator
-import com.asakusafw.spark.compiler.subplan.{ Branching, BranchKeys }
+import com.asakusafw.spark.compiler.graph.{ BranchKeys, Instantiator }
+import com.asakusafw.spark.compiler.graph.branching.Branching
 
 trait NodeCompiler {
 

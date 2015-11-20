@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package graph
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -38,7 +38,7 @@ trait BranchKeys {
 
 class BranchKeysClassBuilder(flowId: String)
   extends ClassBuilder(
-    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/driver/BranchKeys;"),
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${flowId}/graph/BranchKeys;"),
     classOf[AnyRef].asType)
   with BranchKeys {
 

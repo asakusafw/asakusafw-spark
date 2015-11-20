@@ -26,8 +26,7 @@ import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.graph.TemporaryInputClassBuilder._
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.runtime.driver.BroadcastId
-import com.asakusafw.spark.runtime.graph.{ Broadcast, TemporaryInput }
+import com.asakusafw.spark.runtime.graph.{ Broadcast, BroadcastId, TemporaryInput }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._

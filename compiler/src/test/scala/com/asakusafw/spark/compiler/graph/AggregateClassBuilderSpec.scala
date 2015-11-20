@@ -44,16 +44,16 @@ import com.asakusafw.spark.compiler.graph.AggregateClassBuilderSpec._
 import com.asakusafw.spark.compiler.planning.{ PartitionGroupInfo, SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime.{ Props, RoundContext, RoundContextSugar }
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
+  BroadcastId,
   Aggregate,
   ParallelCollectionSource,
   SortOrdering,
   Source
 }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator.Fold
 

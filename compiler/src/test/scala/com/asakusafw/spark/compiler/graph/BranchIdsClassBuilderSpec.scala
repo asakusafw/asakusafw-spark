@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package graph
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -24,7 +24,7 @@ import java.lang.reflect.InvocationTargetException
 
 import scala.collection.mutable
 
-import com.asakusafw.spark.runtime.driver.BroadcastId
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])

@@ -20,7 +20,6 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
-import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.rdd._
 
 trait UsingBroadcasts {

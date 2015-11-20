@@ -20,7 +20,7 @@ import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.NullWritable
-import org.apache.hadoop.mapreduce.Job
+import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.spark.SparkContext
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -35,7 +35,7 @@ abstract class TemporaryOutput[T: ClassTag](
 
   def path: String
 
-  override def newJob(rc: RoundContext): Job = {
+  override def newJob(rc: RoundContext): MRJob = {
     val job = JobCompatibility.newJob(rc.hadoopConf.value)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])

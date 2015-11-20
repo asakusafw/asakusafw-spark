@@ -44,14 +44,14 @@ import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
+  BroadcastId,
   Extract,
   ParallelCollectionSource,
   Source
 }
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.vocabulary.operator.{ Extract => ExtractOp }
 
 @RunWith(classOf[JUnitRunner])

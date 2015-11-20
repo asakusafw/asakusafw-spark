@@ -27,14 +27,14 @@ import com.asakusafw.lang.compiler.api.testing.MockDataModelLoader
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
+import com.asakusafw.spark.compiler.graph.{
+  BranchKeysClassBuilder,
+  BroadcastIdsClassBuilder
+}
 import com.asakusafw.spark.compiler.spi.{
   AggregationCompiler,
   NodeCompiler,
   OperatorCompiler
-}
-import com.asakusafw.spark.compiler.subplan.{
-  BranchKeysClassBuilder,
-  BroadcastIdsClassBuilder
 }
 import com.asakusafw.spark.tools.asm.{ ClassBuilder, SimpleClassLoader }
 

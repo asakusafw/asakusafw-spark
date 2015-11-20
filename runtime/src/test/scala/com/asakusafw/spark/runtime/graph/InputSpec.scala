@@ -40,10 +40,9 @@ import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.TempDirForEach
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 abstract class InputSpec extends FlatSpec with SparkForAll {
 

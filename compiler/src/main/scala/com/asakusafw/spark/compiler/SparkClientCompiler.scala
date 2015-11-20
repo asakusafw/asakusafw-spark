@@ -40,13 +40,13 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.Jobflow
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.Plan
-import com.asakusafw.spark.compiler.graph.Instantiator
+import com.asakusafw.spark.compiler.graph.{
+  BranchKeysClassBuilder,
+  BroadcastIdsClassBuilder,
+  Instantiator
+}
 import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, NodeCompiler, OperatorCompiler }
-import com.asakusafw.spark.compiler.subplan.{
-  BranchKeysClassBuilder,
-  BroadcastIdsClassBuilder
-}
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 import resource._

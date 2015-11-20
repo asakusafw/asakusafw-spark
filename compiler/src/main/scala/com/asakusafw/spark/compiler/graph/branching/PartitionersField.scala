@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package graph
+package branching
 
 import scala.collection.JavaConversions._
 
@@ -24,7 +25,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
-import com.asakusafw.spark.compiler.subplan.NumPartitions._
+import com.asakusafw.spark.compiler.util.NumPartitions._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._

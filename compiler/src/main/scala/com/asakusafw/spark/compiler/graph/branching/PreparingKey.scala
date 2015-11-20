@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package subplan
+package graph
+package branching
 
 import scala.collection.JavaConversions._
 
@@ -24,9 +25,8 @@ import com.asakusafw.lang.compiler.api.reference.DataModelReference
 import com.asakusafw.lang.compiler.model.graph.Group
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.{ BroadcastInfo, SubPlanOutputInfo }
-import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._

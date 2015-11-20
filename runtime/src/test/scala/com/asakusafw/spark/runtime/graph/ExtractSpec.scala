@@ -34,11 +34,10 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.rdd._
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 @RunWith(classOf[JUnitRunner])
 class ExtractSpecTest extends ExtractSpec

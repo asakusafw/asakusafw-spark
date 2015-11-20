@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime
-package driver
+package graph
 
 import scala.collection.mutable
 import scala.concurrent.{ Await, Future }
@@ -22,13 +22,12 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ Partitioner, SparkContext }
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fragment._
-import com.asakusafw.spark.runtime.io._
+import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd._
 
 trait Branching[T] {
@@ -50,13 +49,13 @@ trait Branching[T] {
   def deserialize(branch: BranchKey, value: Array[Byte]): Any
 
   def fragments(
-    broadcasts: Map[BroadcastId, Broadcast[_]])(
+    broadcasts: Map[BroadcastId, Broadcasted[_]])(
       fragmentBufferSize: Int): (Fragment[T], Map[BranchKey, OutputFragment[_]])
 
   def branch(
     rdd: RDD[(_, T)],
-    broadcasts: Map[BroadcastId, Broadcast[_]],
-    hadoopConf: Broadcast[Configuration])(
+    broadcasts: Map[BroadcastId, Broadcasted[_]],
+    hadoopConf: Broadcasted[Configuration])(
       fragmentBufferSize: Int): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
@@ -121,8 +120,8 @@ trait Branching[T] {
 
   private def iterateFragments(
     iter: Iterator[(_, T)],
-    broadcasts: Map[BroadcastId, Broadcast[_]],
-    hadoopConf: Broadcast[Configuration])(
+    broadcasts: Map[BroadcastId, Broadcasted[_]],
+    hadoopConf: Broadcasted[Configuration])(
       fragmentBufferSize: Int): Iterator[(Branch[ShuffleKey], _)] = {
     val (fragment, outputs) = fragments(broadcasts)(fragmentBufferSize)
     assert(outputs.keys.toSet == branchKeys,

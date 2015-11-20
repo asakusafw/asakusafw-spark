@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime
-package driver
+package graph
 
 import org.apache.hadoop.conf.Configuration
 
