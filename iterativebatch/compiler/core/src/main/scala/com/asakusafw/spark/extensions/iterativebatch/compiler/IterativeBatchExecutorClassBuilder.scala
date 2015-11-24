@@ -31,23 +31,24 @@ import com.asakusafw.spark.compiler.planning.{
   SubPlanOutputInfo
 }
 import com.asakusafw.spark.compiler.util.SparkIdioms._
-import com.asakusafw.spark.runtime.driver.BroadcastId
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.utils.graph.Graphs
 
-import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.Instantiator
-import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
-import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
-import com.asakusafw.spark.extensions.iterativebatch.runtime.flow.{
+import com.asakusafw.spark.compiler.graph.Instantiator
+import com.asakusafw.spark.runtime.graph.{
   Broadcast,
-  MapBroadcastAlways,
+  Job,
   Node,
   Sink,
-  Source,
-  Terminator
+  Source
 }
+
+import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
+import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
+import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.MapBroadcastAlways
 
 class IterativeBatchExecutorClassBuilder(
   plan: Plan)(
@@ -62,8 +63,8 @@ class IterativeBatchExecutorClassBuilder(
       classOf[SparkContext].asType)
     fieldDef.newField(
       Opcodes.ACC_PRIVATE,
-      "terminator",
-      classOf[Terminator].asType)
+      "job",
+      classOf[Job]asType)
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -95,14 +96,14 @@ class IterativeBatchExecutorClassBuilder(
     val subplanToIdx = subplans.toMap
 
     methodDef.newMethod(
-      "terminator",
-      classOf[Terminator].asType,
+      "job",
+      classOf[Job].asType,
       Seq.empty) { implicit mb =>
 
         val thisVar :: _ = mb.argVars
 
-        thisVar.push().getField("terminator", classOf[Terminator].asType).unlessNotNull {
-          thisVar.push().putField("terminator", {
+        thisVar.push().getField("job", classOf[Job].asType).unlessNotNull {
+          thisVar.push().putField("job", {
             val nodesVar = pushNewArray(classOf[Node].asType, ldc(subplans.size)).store()
             val broadcastsVar = pushObject(mutable.Map)
               .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast]].asType)
@@ -113,8 +114,8 @@ class IterativeBatchExecutorClassBuilder(
                 thisVar.push().invokeV(s"node${i}", nodesVar.push(), broadcastsVar.push())
             }
 
-            val terminator = pushNew(classOf[Terminator].asType)
-            terminator.dup().invokeInit(
+            val job = pushNew(classOf[Job].asType)
+            job.dup().invokeInit(
               buildSeq { builder =>
                 subplans.filter {
                   case (subplan, _) =>
@@ -125,17 +126,16 @@ class IterativeBatchExecutorClassBuilder(
                     builder +=
                       nodesVar.push().aload(ldc(i)).cast(classOf[Sink].asType)
                 }
-              },
-              thisVar.push().getField("sc", classOf[SparkContext].asType))
-            terminator
+              })
+            job
           })
         }
-        `return`(thisVar.push().getField("terminator", classOf[Terminator].asType))
+        `return`(thisVar.push().getField("job", classOf[Job].asType))
       }
 
     subplans.foreach {
       case (subplan, i) =>
-        val compiler = NodeCompiler.get(subplan)(context.nodeCompilerContext)
+        val compiler = RoundAwareNodeCompiler.get(subplan)(context.nodeCompilerContext)
         val nodeType = compiler.compile(subplan)(context.nodeCompilerContext)
 
         methodDef.newMethod(Opcodes.ACC_PRIVATE, s"node${i}", Seq(
