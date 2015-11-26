@@ -22,8 +22,7 @@ import org.slf4j.LoggerFactory
 import com.esotericsoftware.kryo.Kryo
 
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.runtime.driver.ShuffleKey
-import com.asakusafw.spark.runtime.rdd.Branch
+import com.asakusafw.spark.runtime.rdd.{ Branch, ShuffleKey }
 
 class KryoRegistrator extends SparkKryoRegistrator {
 

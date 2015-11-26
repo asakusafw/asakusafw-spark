@@ -15,17 +15,11 @@
  */
 package com.asakusafw.spark.compiler
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
-import scala.concurrent.{ Await, Awaitable, ExecutionContext, Future }
-import scala.concurrent.duration.Duration
+import scala.collection.mutable
 
-import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkContext
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.rdd.RDD
-import org.objectweb.asm.Type
-import org.objectweb.asm.signature.SignatureVisitor
+import org.objectweb.asm.{ Opcodes, Type }
 
 import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
 import com.asakusafw.lang.compiler.model.description.TypeDescription
@@ -37,17 +31,24 @@ import com.asakusafw.spark.compiler.planning.{
   SubPlanInputInfo,
   SubPlanOutputInfo
 }
+import com.asakusafw.spark.compiler.graph.Instantiator
 import com.asakusafw.spark.compiler.serializer.{
   BranchKeySerializerClassBuilder,
   BroadcastIdSerializerClassBuilder,
   KryoRegistratorCompiler
 }
-import com.asakusafw.spark.compiler.spi.SubPlanCompiler
-import com.asakusafw.spark.compiler.subplan.Instantiator
+import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.SparkClient
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.graph.{
+  Broadcast,
+  BroadcastId,
+  Job,
+  MapBroadcastOnce,
+  Node,
+  Sink,
+  Source
+}
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
@@ -60,160 +61,52 @@ class SparkClientClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/SparkClient;"),
     classOf[SparkClient].asType) {
 
-  override def defFields(fieldDef: FieldDef): Unit = {
-    fieldDef.newField("sc", classOf[SparkContext].asType)
-    fieldDef.newField("hadoopConf", classOf[Broadcast[Configuration]].asType,
-      new TypeSignatureBuilder()
-        .newClassType(classOf[Broadcast[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
-        }
-        .build())
-    fieldDef.newField("ec", classOf[ExecutionContext].asType)
-    fieldDef.newField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType,
-      new TypeSignatureBuilder()
-        .newClassType(classOf[mutable.Map[_, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(classOf[Future[_]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                  _.newClassType(classOf[RDD[_]].asType) {
-                    _.newTypeArgument()
-                  }
-                }
-              }
-            }
-        }
-        .build())
-    fieldDef.newField(
-      "broadcasts",
-      classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]].asType,
-      new TypeSignatureBuilder()
-        .newClassType(classOf[mutable.Map[_, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(classOf[Future[_]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                  _.newClassType(classOf[Broadcast[_]].asType) {
-                    _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                      _.newClassType(classOf[Map[_, _]].asType) {
-                        _.newTypeArgument(
-                          SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-                          .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                            _.newClassType(classOf[Seq[_]].asType) {
-                              _.newTypeArgument()
-                            }
-                          }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-        }
-        .build())
-    fieldDef.newField("terminators", classOf[mutable.Set[Future[Unit]]].asType,
-      new TypeSignatureBuilder()
-        .newClassType(classOf[mutable.Set[Future[Unit]]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-            _.newClassType(classOf[Future[Unit]].asType) {
-              _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Unit].asType)
-            }
-          }
-        }
-        .build())
-  }
-
   override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
     val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
+    val subplanToIdx = subplans.toMap
 
     methodDef.newMethod(
-      "execute",
-      Type.INT_TYPE,
-      Seq(
-        classOf[SparkContext].asType,
-        classOf[Broadcast[Configuration]].asType,
-        classOf[ExecutionContext].asType),
-      new MethodSignatureBuilder()
-        .newParameterType(classOf[SparkContext].asType)
-        .newParameterType {
-          _.newClassType(classOf[Broadcast[_]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Configuration].asType)
-          }
-        }
-        .newParameterType(classOf[ExecutionContext].asType)
-        .newReturnType(Type.INT_TYPE)
-        .build()) { implicit mb =>
-        val thisVar :: scVar :: hadoopConfVar :: ecVar :: _ = mb.argVars
-        thisVar.push().putField("sc", scVar.push())
-        thisVar.push().putField("hadoopConf", hadoopConfVar.push())
-        thisVar.push().putField("ec", ecVar.push())
-        thisVar.push()
-          .putField("rdds",
-            pushObject(mutable.Map)
-              .invokeV("empty", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType))
-        thisVar.push()
-          .putField(
-            "broadcasts",
-            pushObject(mutable.Map)
-              .invokeV(
-                "empty",
-                classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
-                  .asType))
-        thisVar.push()
-          .putField("terminators",
-            pushObject(mutable.Set)
-              .invokeV("empty", classOf[mutable.Set[Future[Unit]]].asType))
+      "newJob",
+      classOf[Job].asType,
+      Seq(classOf[SparkContext].asType)) { implicit mb =>
+
+        val thisVar :: scVar :: _ = mb.argVars
+
+        val nodesVar = pushNewArray(classOf[Node].asType, ldc(subplans.size)).store()
+        val broadcastsVar = pushObject(mutable.Map)
+          .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast]].asType)
+          .store()
 
         subplans.foreach {
           case (_, i) =>
-            thisVar.push().invokeV(s"execute${i}")
+            thisVar.push().invokeV(
+              s"node${i}", nodesVar.push(), broadcastsVar.push(), scVar.push())
         }
 
-        val iterVar = thisVar.push()
-          .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
-          .invokeI("iterator", classOf[Iterator[Future[Unit]]].asType)
-          .store()
-        whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
-          pushObject(Await)
-            .invokeV("result", classOf[AnyRef].asType,
-              iterVar.push()
-                .invokeI("next", classOf[AnyRef].asType)
-                .cast(classOf[Future[Unit]].asType)
-                .asType(classOf[Awaitable[_]].asType),
-              pushObject(Duration)
-                .invokeV("Inf", classOf[Duration.Infinite].asType)
-                .asType(classOf[Duration].asType))
-            .pop()
-        }
-
-        `return`(ldc(0))
+        val job = pushNew(classOf[Job].asType)
+        job.dup().invokeInit(
+          pushObject(Predef)
+            .invokeV(
+              "wrapRefArray",
+              classOf[mutable.WrappedArray[_]].asType,
+              nodesVar.push().asType(classOf[Array[AnyRef]].asType))
+            .asType(classOf[Seq[_]].asType))
+        `return`(job)
       }
 
     subplans.foreach {
       case (subplan, i) =>
-        methodDef.newMethod(s"execute${i}", Seq.empty) { implicit mb =>
-          val thisVar :: _ = mb.argVars
+        val compiler = NodeCompiler.get(subplan)(context.nodeCompilerContext)
+        val nodeType = compiler.compile(subplan)(context.nodeCompilerContext)
 
-          val compiler =
-            SubPlanCompiler(subplan.getAttribute(classOf[SubPlanInfo]).getDriverType)(
-              context.subplanCompilerContext)
-          val driverType = compiler.compile(subplan)(context.subplanCompilerContext)
+        methodDef.newMethod(Opcodes.ACC_PRIVATE, s"node${i}", Seq(
+          classOf[Array[Node]].asType,
+          classOf[mutable.Map[BroadcastId, Broadcast]].asType,
+          classOf[SparkContext].asType)) { implicit mb =>
 
-          val scVar = thisVar.push()
-            .getField("sc", classOf[SparkContext].asType)
-            .store()
-          val hadoopConfVar = thisVar.push()
-            .getField("hadoopConf", classOf[Broadcast[Configuration]].asType)
-            .store()
-          val ecVar = thisVar.push()
-            .getField("ec", classOf[ExecutionContext].asType)
-            .store()
-          val rddsVar = thisVar.push()
-            .getField("rdds", classOf[mutable.Map[BranchKey, Future[RDD[_]]]].asType)
-            .store()
-          val terminatorsVar = thisVar.push()
-            .getField("terminators", classOf[mutable.Set[Future[Unit]]].asType)
-            .store()
+          val thisVar :: nodesVar :: allBroadcastsVar :: scVar :: _ = mb.argVars
 
           val broadcastsVar =
             buildMap { builder =>
@@ -230,27 +123,20 @@ class SparkClientClassBuilder(
                 builder += (
                   context.broadcastIds.getField(subPlanInput.getOperator),
                   applyMap(
-                    thisVar.push().getField(
-                      "broadcasts",
-                      classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
-                        .asType),
+                    allBroadcastsVar.push(),
                     context.broadcastIds.getField(prevSubPlanOperator))
-                  .cast(classOf[Future[Broadcast[Map[ShuffleKey, Seq[_]]]]].asType))
+                  .cast(classOf[Broadcast].asType))
               }
             }.store()
 
           val instantiator = compiler.instantiator
-          val driverVar = instantiator.newInstance(
-            driverType,
-            subplan)(
-              Instantiator.Vars(scVar, hadoopConfVar, rddsVar, terminatorsVar, broadcastsVar))(
+          val nodeVar = instantiator.newInstance(
+            nodeType,
+            subplan,
+            subplanToIdx)(
+              Instantiator.Vars(scVar, nodesVar, broadcastsVar))(
                 implicitly, context.instantiatorCompilerContext)
-          val resultVar = driverVar.push()
-            .invokeV(
-              "execute",
-              classOf[Map[BranchKey, Future[RDD[(ShuffleKey, _)]]]].asType,
-              ecVar.push())
-            .store()
+          nodesVar.push().astore(ldc(i), nodeVar.push())
 
           for {
             subPlanOutput <- subplan.getOutputs
@@ -262,31 +148,23 @@ class SparkClientClassBuilder(
             val group = broadcastInfo.getFormatInfo
 
             addToMap(
-              thisVar.push().getField(
-                "broadcasts",
-                classOf[mutable.Map[BroadcastId, Future[Broadcast[Map[ShuffleKey, Seq[_]]]]]]
-                  .asType),
-              context.broadcastIds.getField(subPlanOutput.getOperator),
-              thisVar.push().invokeV(
-                "broadcastAsHash",
-                classOf[Future[Broadcast[_]]].asType,
-                scVar.push(),
-                ldc(broadcastInfo.getLabel),
-                applyMap(
-                  resultVar.push(),
-                  context.branchKeys.getField(subPlanOutput.getOperator))
-                  .cast(classOf[Future[RDD[(ShuffleKey, _)]]].asType),
-                option(
-                  sortOrdering(
-                    dataModelRef.groupingTypes(group.getGrouping),
-                    dataModelRef.orderingTypes(group.getOrdering))),
-                groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
-                partitioner(ldc(1)),
-                ecVar.push()))
+              allBroadcastsVar.push(),
+              context.broadcastIds.getField(subPlanOutput.getOperator), {
+                val broadcast = pushNew(classOf[MapBroadcastOnce].asType)
+                broadcast.dup().invokeInit(
+                  nodeVar.push().asType(classOf[Source].asType),
+                  context.branchKeys.getField(subPlanOutput.getOperator),
+                  option(
+                    sortOrdering(
+                      dataModelRef.groupingTypes(group.getGrouping),
+                      dataModelRef.orderingTypes(group.getOrdering))),
+                  groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
+                  partitioner(ldc(1)),
+                  ldc(broadcastInfo.getLabel),
+                  scVar.push())
+                broadcast
+              })
           }
-
-          addTraversableToMap(rddsVar.push(), resultVar.push())
-
           `return`()
         }
     }

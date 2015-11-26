@@ -1,5 +1,0 @@
-com.asakusafw.spark.compiler.subplan.InputSubPlanCompiler
-com.asakusafw.spark.compiler.subplan.OutputSubPlanCompiler
-com.asakusafw.spark.compiler.subplan.ExtractSubPlanCompiler
-com.asakusafw.spark.compiler.subplan.AggregateSubPlanCompiler
-com.asakusafw.spark.compiler.subplan.CoGroupSubPlanCompiler

@@ -19,7 +19,7 @@ import com.esotericsoftware.kryo._
 import com.esotericsoftware.kryo.io._
 
 import com.asakusafw.runtime.value.ValueOption
-import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 
 class ShuffleKeySerializer extends Serializer[ShuffleKey](false, false) {
 

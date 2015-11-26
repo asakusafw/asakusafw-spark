@@ -27,7 +27,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.spark.runtime.driver.BroadcastId
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

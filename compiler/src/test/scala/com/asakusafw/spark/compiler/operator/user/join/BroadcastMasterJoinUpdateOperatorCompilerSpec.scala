@@ -37,9 +37,10 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.broadcast.MockBroadcast
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.runtime.driver.{ BroadcastId, ShuffleKey }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.runtime.io.WritableSerDe
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateOp, MasterSelection }
 

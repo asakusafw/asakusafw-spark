@@ -22,8 +22,8 @@ import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
-import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment.Fragment
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

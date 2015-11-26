@@ -35,8 +35,8 @@ import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.runtime.driver.BroadcastId
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.model.{ Joined, Key }
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp, MasterSelection }

@@ -34,19 +34,19 @@ import com.asakusafw.lang.compiler.api.reference.{
   TaskReference
 }
 import com.asakusafw.lang.compiler.common.Location
-import com.asakusafw.lang.compiler.inspection.InspectionExtension
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
+import com.asakusafw.lang.compiler.inspection.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.Jobflow
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.Plan
-import com.asakusafw.spark.compiler.planning.SparkPlanning
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, SubPlanCompiler }
-import com.asakusafw.spark.compiler.subplan.{
+import com.asakusafw.spark.compiler.graph.{
   BranchKeysClassBuilder,
   BroadcastIdsClassBuilder,
   Instantiator
 }
+import com.asakusafw.spark.compiler.planning.SparkPlanning
+import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, NodeCompiler, OperatorCompiler }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 import resource._
@@ -123,18 +123,18 @@ object SparkClientCompiler {
     def branchKeys: BranchKeysClassBuilder
     def broadcastIds: BroadcastIdsClassBuilder
 
-    def subplanCompilerContext: SubPlanCompiler.Context
+    def nodeCompilerContext: NodeCompiler.Context
     def instantiatorCompilerContext: Instantiator.Context
   }
 
   class DefaultContext(val flowId: String)(jpContext: JPContext)
     extends Context
-    with SubPlanCompiler.Context
+    with NodeCompiler.Context
     with Instantiator.Context
     with OperatorCompiler.Context
     with AggregationCompiler.Context {
 
-    override def subplanCompilerContext: SubPlanCompiler.Context = this
+    override def nodeCompilerContext: NodeCompiler.Context = this
     override def instantiatorCompilerContext: Instantiator.Context = this
     override def operatorCompilerContext: OperatorCompiler.Context = this
     override def aggregationCompilerContext: AggregationCompiler.Context = this

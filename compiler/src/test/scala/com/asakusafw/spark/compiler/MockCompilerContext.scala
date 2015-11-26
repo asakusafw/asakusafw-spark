@@ -15,8 +15,8 @@
  */
 package com.asakusafw.spark.compiler
 
-import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 import org.objectweb.asm.Type
 
@@ -27,10 +27,14 @@ import com.asakusafw.lang.compiler.api.testing.MockDataModelLoader
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler, SubPlanCompiler }
-import com.asakusafw.spark.compiler.subplan.{
+import com.asakusafw.spark.compiler.graph.{
   BranchKeysClassBuilder,
   BroadcastIdsClassBuilder
+}
+import com.asakusafw.spark.compiler.spi.{
+  AggregationCompiler,
+  NodeCompiler,
+  OperatorCompiler
 }
 import com.asakusafw.spark.tools.asm.{ ClassBuilder, SimpleClassLoader }
 
@@ -51,8 +55,8 @@ class MockCompilerContext(val flowId: String)
 
 object MockCompilerContext {
 
-  class SubPlanCompiler(val flowId: String)(jpContext: JPContext)
-    extends SubPlanCompiler.Context
+  class NodeCompiler(val flowId: String)(jpContext: JPContext)
+    extends NodeCompiler.Context
     with OperatorCompiler.Context
     with AggregationCompiler.Context {
 

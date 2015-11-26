@@ -24,7 +24,7 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder._
-import com.asakusafw.spark.runtime.driver.ShuffleKey
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 

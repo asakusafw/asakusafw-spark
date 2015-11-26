@@ -21,8 +21,8 @@ import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import com.asakusafw.runtime.value.{ IntOption, LongOption }
-import com.asakusafw.spark.runtime.driver.ShuffleKey
 import com.asakusafw.spark.runtime.io.WritableSerDe
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 
 @RunWith(classOf[JUnitRunner])

@@ -29,10 +29,8 @@ trait UsingCompilerContext {
     new MockCompilerContext(flowId)
   }
 
-  def newSubPlanCompilerContext(
-    flowId: String,
-    outputDir: File): MockCompilerContext.SubPlanCompiler = {
-    newSubPlanCompilerContext(
+  def newNodeCompilerContext(flowId: String, outputDir: File): MockCompilerContext.NodeCompiler = {
+    newNodeCompilerContext(
       flowId,
       new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
@@ -40,10 +38,10 @@ trait UsingCompilerContext {
         outputDir))
   }
 
-  def newSubPlanCompilerContext(
+  def newNodeCompilerContext(
     flowId: String,
-    jpContext: JPContext): MockCompilerContext.SubPlanCompiler = {
-    new MockCompilerContext.SubPlanCompiler(flowId)(jpContext)
+    jpContext: JPContext): MockCompilerContext.NodeCompiler = {
+    new MockCompilerContext.NodeCompiler(flowId)(jpContext)
   }
 
   def newOperatorCompilerContext(flowId: String): MockCompilerContext.OperatorCompiler = {
