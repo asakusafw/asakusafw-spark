@@ -26,24 +26,27 @@ import com.asakusafw.lang.compiler.api.reference.ExternalInputReference
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, OperatorCompiler }
-import com.asakusafw.spark.compiler.subplan.{
+import com.asakusafw.spark.compiler.graph.{
   BranchKeysClassBuilder,
-  BroadcastIdsClassBuilder
+  BroadcastIdsClassBuilder,
+  Instantiator
 }
+import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, NodeCompiler, OperatorCompiler }
 import com.asakusafw.spark.tools.asm.ClassBuilder
-
-import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.Instantiator
-import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
 
 import resource._
 
 object MockCompilerContext {
 
-  class NodeCompiler(val flowId: String)(jpContext: JPContext)
-    extends NodeCompiler.Context
+  class IterativeBatchExecutorCompiler(val flowId: String)(jpContext: JPContext)
+    extends IterativeBatchExecutorCompiler.Context
+    with NodeCompiler.Context
+    with Instantiator.Context
     with OperatorCompiler.Context
     with AggregationCompiler.Context {
+
+    override def nodeCompilerContext: NodeCompiler.Context = this
+    override def instantiatorCompilerContext: Instantiator.Context = this
 
     override def operatorCompilerContext: OperatorCompiler.Context = this
     override def aggregationCompilerContext: AggregationCompiler.Context = this
@@ -86,14 +89,5 @@ object MockCompilerContext {
       }
       builder.thisType
     }
-  }
-
-  class IterativeBatchExecutorCompiler(flowId: String)(jpContext: JPContext)
-    extends NodeCompiler(flowId)(jpContext)
-    with IterativeBatchExecutorCompiler.Context
-    with Instantiator.Context {
-
-    override def nodeCompilerContext: NodeCompiler.Context = this
-    override def instantiatorCompilerContext: Instantiator.Context = this
   }
 }

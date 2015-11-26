@@ -24,7 +24,7 @@ import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.spark.runtime.Props
+import com.asakusafw.spark.runtime.{ Props, RoundContext }
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.SparkClient._
 

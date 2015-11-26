@@ -23,10 +23,8 @@ import com.asakusafw.spark.compiler.{
   CompilerContext,
   DataModelLoaderProvider
 }
-import com.asakusafw.spark.compiler.subplan.{ BranchKeys, BroadcastIds }
-
-import com.asakusafw.spark.extensions.iterativebatch.compiler.flow.Instantiator
-import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.NodeCompiler
+import com.asakusafw.spark.compiler.graph.{ BranchKeys, BroadcastIds, Instantiator }
+import com.asakusafw.spark.compiler.spi.NodeCompiler
 
 object IterativeBatchExecutorCompiler {
 

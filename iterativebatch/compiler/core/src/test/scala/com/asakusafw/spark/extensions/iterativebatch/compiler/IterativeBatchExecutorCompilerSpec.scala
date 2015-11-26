@@ -51,6 +51,8 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.{ FlowIdForEach, UsingCompilerContext }
+import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
@@ -58,8 +60,7 @@ import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.model.{ Key, Joined, Summarized }
 import com.asakusafw.vocabulary.operator._
 
-import com.asakusafw.spark.extensions.iterativebatch.compiler.fixture.SparkWithClassServerForAll
-import com.asakusafw.spark.extensions.iterativebatch.runtime.{ IterativeBatchExecutor, RoundContextSugar }
+import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
 
 @RunWith(classOf[JUnitRunner])
 class IterativeBatchExecutorCompilerSpecTest extends IterativeBatchExecutorCompilerSpec
