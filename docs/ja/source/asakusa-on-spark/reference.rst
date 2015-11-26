@@ -173,6 +173,49 @@ Asakusa on Spark Gradle Plugin は Framework Organizer Plugin に対して Asaku
 
 ..  [#] これらのプロパティは規約オブジェクト :asakusa-spark-gradle-groovydoc:`com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension` が提供します。
 
+コマンドラインオプション
+------------------------
+
+:program:`sparkCompileBatchapps` タスクを指定して :program:`gradlew` コマンドを実行する際に、 ``sparkCompileBatchapps --update <バッチクラス名>`` と指定することで、指定したバッチクラス名のみをバッチコンパイルすることができます。
+
+また、バッチクラス名の文字列には ``*`` をワイルドカードとして使用することもできます。
+
+以下の例では、パッケージ名に ``com.example.target.batch`` を含むバッチクラスのみをバッチコンパイルしてデプロイメントアーカイブを作成しています。
+
+..  code-block:: sh
+
+    ./gradlew sparkCompileBatchapps --update com.example.target.batch.* assemble
+
+そのほか、 :program:`sparkCompileBatchapps` タスクは :program:`gradlew` コマンド実行時に以下のコマンドライン引数を指定することができます。
+
+..  program:: sparkCompileBatchapps
+
+..  option:: --compiler-properties <k1=v1[,k2=v2[,...]]>
+
+    追加のコンパイラプロパティを指定する。
+
+    規約プロパティ ``asakusafw.spark.compilerProperties`` で設定したものと同じキーを指定した場合、それらを上書きする。
+
+..  option:: --batch-id-prefix <prefix.>
+
+    生成するバッチアプリケーションに、指定のバッチID接頭辞を付与する。
+
+    規約プロパティ ``asakusafw.spark.batchIdPrefix`` の設定を上書きする。
+
+..  option:: --fail-on-error <"true"|"false">
+
+    コンパイルエラー発生時に即座にコンパイル処理を停止するかどうか。
+
+    規約プロパティ ``asakusafw.spark.failOnError`` の設定を上書きする。
+
+..  option:: --update <batch-class-name-pattern>
+
+    指定のバッチクラスだけをコンパイルする (指定したもの以外はそのまま残る)。
+
+    規約プロパティ ``asakusafw.spark.{in,ex}clude`` と同様にワイルドカードを利用可能。
+
+    このオプションが設定された場合、規約プロパティ ``asakusafw.spark.{in,ex}clude`` の設定は無視する。
+
 Asakusa DSL Compiler for Spark リファレンス
 ===========================================
 
