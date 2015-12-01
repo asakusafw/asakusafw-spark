@@ -43,13 +43,13 @@ class AggregateCompiler extends NodeCompiler {
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
     assert(primaryOperator.isInstanceOf[UserOperator],
-      s"The primary operator should be user operator: ${primaryOperator}")
+      s"The primary operator should be user operator: ${primaryOperator} [${subplan}]")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
     assert(operator.inputs.size == 1,
-      s"The size of inputs should be 1: ${operator.inputs.size}")
+      s"The size of inputs should be 1: ${operator.inputs.size} [${subplan}]")
     assert(operator.outputs.size == 1,
-      s"The size of outputs should be 1: ${operator.outputs.size}")
+      s"The size of outputs should be 1: ${operator.outputs.size} [${subplan}]")
 
     val builder =
       new AggregateClassBuilder(
