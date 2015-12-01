@@ -54,6 +54,9 @@ class DirectInputCompiler extends NodeCompiler {
 
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
     val primaryOperator = subPlanInfo.getPrimaryOperator
+
+    assert(primaryOperator.isInstanceOf[ExternalInput],
+      s"The primary operator should be external input: ${primaryOperator} [${subplan}]")
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
     val inputFormatInfo = context.getInputFormatInfo(operator.getName, operator.getInfo).get
