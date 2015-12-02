@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.extensions.iterativebatch.runtime
+package com.asakusafw.spark.extensions.iterativebatch
 
 import com.asakusafw.spark.runtime.{ AsakusafwConfPrefix, Props }
 
-package object iterative {
+package object runtime {
 
   val IterativeBatchPropsPrefix = s"${AsakusafwConfPrefix}.iterativebatch"
 
