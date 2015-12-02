@@ -36,7 +36,7 @@
     <artifact.version>${project.version}</artifact.version>
     <artifact.id>${artifact.name}-${artifact.version}</artifact.id>
 
-    <asakusafw.version>0.7.5-hadoop2</asakusafw.version>
+    <asakusafw.version>0.7.6-hadoop2</asakusafw.version>
     <asakusafw-lang.version>0.2.1</asakusafw-lang.version>
 
     <scala.compat.version>2.10</scala.compat.version>
