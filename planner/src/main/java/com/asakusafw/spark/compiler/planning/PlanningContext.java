@@ -119,6 +119,8 @@ public class PlanningContext {
 
     /**
      * Represents an option for planning.
+     * @since 0.1.0
+     * @version 0.3.0
      */
     public enum Option {
 
@@ -151,6 +153,12 @@ public class PlanningContext {
          * Enables {@link PlanStatistics}.
          */
         PLAN_STATISTICS(true),
+
+        /**
+         * Enables {@link IterativeInfo}.
+         * @since 0.3.0
+         */
+        ITERATIVE_EXTENSION(true),
         ;
 
         private String symbol;

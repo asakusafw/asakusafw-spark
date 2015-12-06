@@ -71,13 +71,26 @@ import com.asakusafw.utils.graph.Graph;
  * Utilities for execution planning on Spark compiler.
  * The elements in the created plan will have the following {@link AttributeContainer#getAttribute(Class) attributes}:
  * <ul>
- * <li> {@link SubPlanInfo} - for {@link SubPlan} </li>
- * <li> {@link SubPlanInputInfo} - for {@link com.asakusafw.lang.compiler.planning.SubPlan.Input} </li>
- * <li> {@link SubPlanOutputInfo} - for {@link com.asakusafw.lang.compiler.planning.SubPlan.Output} </li>
+ * <li> {@link SubPlanInfo} -
+ *      for {@link SubPlan}
+ * </li>
+ * <li> {@link SubPlanInputInfo} -
+ *      for {@link com.asakusafw.lang.compiler.planning.SubPlan.Input SubPlan.Input}
+ * </li>
+ * <li> {@link SubPlanOutputInfo} -
+ *      for {@link com.asakusafw.lang.compiler.planning.SubPlan.Output SubPlan.Input}
+ * </li>
  * <li> {@link BroadcastInfo} -
- *      for {@link com.asakusafw.lang.compiler.planning.SubPlan.Port} ({@code BROADCAST} ports only)
+ *      for {@link com.asakusafw.lang.compiler.planning.SubPlan.Port SubPlan.(Input|Output)}
+ *      ({@code BROADCAST} ports only)
+ * </li>
+ * <li> {@link IterativeInfo} -
+ *      for {@link Plan}, {@link SubPlan}, and
+ *      {@link com.asakusafw.lang.compiler.planning.SubPlan.Port SubPlan.(Input|Output)}
  * </li>
  * </ul>
+ * @since 0.1.0
+ * @version 0.3.0
  */
 public final class SparkPlanning {
 
@@ -285,7 +298,7 @@ public final class SparkPlanning {
     }
 
     static PlanDetail createPlan(PlanningContext context, OperatorGraph normalized) {
-        PlanDetail primitive = createPrimitivePlan(normalized);
+        PlanDetail primitive = createPrimitivePlan(context, normalized);
         PlanDetail unified = unifySubPlans(context, primitive);
 
         SubPlanAnalyzer analyzer = SubPlanAnalyzer.newInstance(context, unified, normalized);
@@ -293,8 +306,9 @@ public final class SparkPlanning {
         return unified;
     }
 
-    private static PlanDetail createPrimitivePlan(OperatorGraph graph) {
-        return Planning.createPrimitivePlan(graph);
+    private static PlanDetail createPrimitivePlan(PlanningContext context, OperatorGraph graph) {
+        PlanDetail primitive = Planning.createPrimitivePlan(graph);
+        return primitive;
     }
 
     private static PlanDetail unifySubPlans(PlanningContext context, PlanDetail primitive) {
@@ -304,9 +318,11 @@ public final class SparkPlanning {
                 .withDuplicateCheckpointElimination(true)
                 .withUnionPushDown(true)
                 .withSortResult(true);
+        OperatorEquivalence equivalence = PlanAssembler.DEFAULT_EQUIVALENCE;
         if (context.getOptions().contains(Option.UNIFY_SUBPLAN_IO)) {
-            assembler.withCustomEquivalence(new CustomEquivalence());
+            equivalence = new CustomEquivalence();
         }
+        assembler.withCustomEquivalence(equivalence);
         Collection<SubPlanGroup> groups = classify(primitive);
         for (SubPlanGroup group : groups) {
             assembler.add(group.elements);
@@ -412,6 +428,9 @@ public final class SparkPlanning {
         }
         if (context.getOptions().contains(Option.PLAN_STATISTICS)) {
             attachPlanStatistics(plan);
+        }
+        if (context.getOptions().contains(Option.ITERATIVE_EXTENSION)) {
+            IterativeOperationAnalyzer.attach(plan);
         }
     }
 

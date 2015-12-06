@@ -26,6 +26,10 @@
       <artifactId>asakusa-compiler-optimizer</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.asakusafw.iterative</groupId>
+      <artifactId>asakusa-compiler-model-iterative</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.asakusafw</groupId>
       <artifactId>simple-graph</artifactId>
     </dependency>

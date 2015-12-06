@@ -500,6 +500,11 @@ encoding/<project>=UTF-8
         <artifactId>asakusa-bridge-runtime</artifactId>
         <version>${asakusafw-lang.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.asakusafw.iterative</groupId>
+        <artifactId>asakusa-compiler-model-iterative</artifactId>
+        <version>${asakusafw-lang.version}</version>
+      </dependency>
 
       <dependency>
         <groupId>org.apache.spark</groupId>
