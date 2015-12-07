@@ -60,6 +60,7 @@
     <module>planner</module>
     <module>runtime</module>
     <module>tools</module>
+    <module>extensions</module>
     <module>assembly</module>
   </modules>
 
