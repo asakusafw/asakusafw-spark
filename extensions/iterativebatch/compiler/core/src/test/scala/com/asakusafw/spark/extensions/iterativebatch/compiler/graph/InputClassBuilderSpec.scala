@@ -48,7 +48,7 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.FlowIdForEach
 import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.graph._
-import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
+import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.runtime.{ RoundContextSugar, TempDirForEach }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
@@ -92,87 +92,98 @@ class TemporaryInputClassBuilderSpec
 
   behavior of classOf[TemporaryInputClassBuilder].getSimpleName
 
-  it should "build TemporaryInput class" in { implicit sc =>
-    val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
+  for {
+    iterativeInfo <- Seq(
+      IterativeInfo.always(),
+      IterativeInfo.never(),
+      IterativeInfo.parameter("round"))
+  } {
+    val conf = s"IterativeInfo: ${iterativeInfo}"
 
-    val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
-    val inputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+    it should s"build TemporaryInput class: [${conf}]" in { implicit sc =>
+      val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
 
-    val inputOperator = ExternalInput.builder("foos_${round}/part-*",
-      new ExternalInputInfo.Basic(
-        ClassDescription.of(classOf[Foo]),
-        "test",
-        ClassDescription.of(classOf[Foo]),
-        ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo])).build()
-    inputOperator.findOutput(ExternalInput.PORT_NAME).connect(inputMarker.getInput)
+      val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
+      val inputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
-    val plan = PlanBuilder.from(Seq(inputOperator))
-      .add(
-        Seq(beginMarker),
-        Seq(inputMarker)).build().getPlan()
-    assert(plan.getElements.size === 1)
+      val inputOperator = ExternalInput.builder("foos_${round}/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "test",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+        .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
+        .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo])).build()
+      inputOperator.findOutput(ExternalInput.PORT_NAME).connect(inputMarker.getInput)
 
-    val subplan = plan.getElements.head
-    subplan.putAttr(
-      new SubPlanInfo(_,
-        SubPlanInfo.DriverType.INPUT,
-        Seq.empty[SubPlanInfo.DriverOption],
-        inputOperator))
+      val plan = PlanBuilder.from(Seq(inputOperator))
+        .add(
+          Seq(beginMarker),
+          Seq(inputMarker)).build().getPlan()
+      assert(plan.getElements.size === 1)
 
-    subplan.findOut(inputMarker)
-      .putAttr(
-        new SubPlanOutputInfo(_,
-          SubPlanOutputInfo.OutputType.DONT_CARE,
-          Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      val subplan = plan.getElements.head
+      subplan.putAttr(
+        new SubPlanInfo(_,
+          SubPlanInfo.DriverType.INPUT,
+          Seq.empty[SubPlanInfo.DriverOption],
+          inputOperator))
+      subplan.putAttr(_ => iterativeInfo)
 
-    val jpContext = new MockJobflowProcessorContext(
-      new CompilerOptions("buildid", tmpDir, Map.empty[String, String]),
-      Thread.currentThread.getContextClassLoader,
-      classServer.root.toFile)
+      subplan.findOut(inputMarker)
+        .putAttr(
+          new SubPlanOutputInfo(_,
+            SubPlanOutputInfo.OutputType.DONT_CARE,
+            Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-    implicit val context = newNodeCompilerContext(flowId, jpContext)
+      val jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", tmpDir, Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classServer.root.toFile)
 
-    val compiler = RoundAwareNodeCompiler.get(subplan)
-    val thisType = compiler.compile(subplan)
-    context.addClass(context.branchKeys)
-    context.addClass(context.broadcastIds)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[TemporaryInput[Foo]])
+      implicit val context = newNodeCompilerContext(flowId, jpContext)
 
-    val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
-    def getBranchKey(marker: MarkerOperator): BranchKey = {
-      val sn = subplan.getOperators.toSet
-        .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
-      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
-    }
+      val compiler = RoundAwareNodeCompiler.get(subplan)
+      val thisType = compiler.compile(subplan)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
+      val cls = classServer.loadClass(thisType).asSubclass(classOf[TemporaryInput[Foo]])
 
-    val input = cls.getConstructor(
-      classOf[Map[BroadcastId, Broadcast]],
-      classOf[SparkContext])
-      .newInstance(
-        Map.empty,
-        sc)
+      val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+      def getBranchKey(marker: MarkerOperator): BranchKey = {
+        val sn = subplan.getOperators.toSet
+          .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
+        branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+      }
 
-    assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
+      val input = cls.getConstructor(
+        classOf[Map[BroadcastId, Broadcast]],
+        classOf[SparkContext])
+        .newInstance(
+          Map.empty,
+          sc)
 
-    for {
-      round <- 0 to 1
-    } {
-      prepareRound(new File(tmpDir, "external/input").getAbsolutePath, 0 until 100, round)
+      assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
 
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+      for {
+        round <- 0 to 1
+      } {
+        prepareRound(new File(tmpDir, "external/input").getAbsolutePath, 0 until 100, round)
 
-      val result = Await.result(
-        input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq.sorted
-        }, Duration.Inf)
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
-      assert(result === (0 until 100).map(i => 100 * round + i))
+        val result = Await.result(
+          input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq.sorted
+          }, Duration.Inf)
+
+        assert(result === (0 until 100).map(i => bias + i))
+      }
     }
   }
 }
@@ -191,101 +202,112 @@ class DirectInputClassBuilderSpec
 
   behavior of classOf[DirectInputClassBuilder].getSimpleName
 
-  it should "build DirectInput class" in { implicit sc =>
-    val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
+  for {
+    iterativeInfo <- Seq(
+      IterativeInfo.always(),
+      IterativeInfo.never(),
+      IterativeInfo.parameter("round"))
+  } {
+    val conf = s"IterativeInfo: ${iterativeInfo}"
 
-    val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
-    val inputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
-      .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
+    it should s"build DirectInput class: [${conf}]" in { implicit sc =>
+      val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
 
-    val inputOperator = ExternalInput.builder( /*"foos_${round}/part-*"*/ "foos_0",
-      new ExternalInputInfo.Basic(
-        ClassDescription.of(classOf[Foo]),
-        "test",
-        ClassDescription.of(classOf[Foo]),
-        ExternalInputInfo.DataSize.UNKNOWN))
-      .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
-      .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo])).build()
-    inputOperator.findOutput(ExternalInput.PORT_NAME).connect(inputMarker.getInput)
+      val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[PlanMarker], PlanMarker.BEGIN).build()
+      val inputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
-    val plan = PlanBuilder.from(Seq(inputOperator))
-      .add(
-        Seq(beginMarker),
-        Seq(inputMarker)).build().getPlan()
-    assert(plan.getElements.size === 1)
+      val inputOperator = ExternalInput.builder( /*"foos_${round}/part-*"*/ "foos_0",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "test",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+        .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
+        .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo])).build()
+      inputOperator.findOutput(ExternalInput.PORT_NAME).connect(inputMarker.getInput)
 
-    val subplan = plan.getElements.head
-    subplan.putAttr(
-      new SubPlanInfo(_,
-        SubPlanInfo.DriverType.INPUT,
-        Seq.empty[SubPlanInfo.DriverOption],
-        inputOperator))
+      val plan = PlanBuilder.from(Seq(inputOperator))
+        .add(
+          Seq(beginMarker),
+          Seq(inputMarker)).build().getPlan()
+      assert(plan.getElements.size === 1)
 
-    subplan.findOut(inputMarker)
-      .putAttr(
-        new SubPlanOutputInfo(_,
-          SubPlanOutputInfo.OutputType.DONT_CARE,
-          Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
+      val subplan = plan.getElements.head
+      subplan.putAttr(
+        new SubPlanInfo(_,
+          SubPlanInfo.DriverType.INPUT,
+          Seq.empty[SubPlanInfo.DriverOption],
+          inputOperator))
+      subplan.putAttr(_ => iterativeInfo)
 
-    val jpContext = new MockJobflowProcessorContext(
-      new CompilerOptions("buildid", tmpDir, Map.empty[String, String]),
-      Thread.currentThread.getContextClassLoader,
-      classServer.root.toFile)
-    jpContext.registerExtension(
-      classOf[InputFormatInfoExtension],
-      new InputFormatInfoExtension {
+      subplan.findOut(inputMarker)
+        .putAttr(
+          new SubPlanOutputInfo(_,
+            SubPlanOutputInfo.OutputType.DONT_CARE,
+            Seq.empty[SubPlanOutputInfo.OutputOption], null, null))
 
-        override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
-          assert(name === /*"foos_${round}"*/ "foos_0")
-          assert(info.getModuleName === "test")
-          new InputFormatInfo(
-            ClassDescription.of(classOf[TemporaryInputFormat[Foo]]),
-            ClassDescription.of(classOf[NullWritable]),
-            ClassDescription.of(classOf[Foo]),
-            mkExtraConfigurations(new File(tmpDir, /*"foos_${round}"*/ "foos_0").getAbsolutePath))
-        }
-      })
+      val jpContext = new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", tmpDir, Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        classServer.root.toFile)
+      jpContext.registerExtension(
+        classOf[InputFormatInfoExtension],
+        new InputFormatInfoExtension {
 
-    implicit val context = newNodeCompilerContext(flowId, jpContext)
+          override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
+            assert(name === /*"foos_${round}"*/ "foos_0")
+            assert(info.getModuleName === "test")
+            new InputFormatInfo(
+              ClassDescription.of(classOf[TemporaryInputFormat[Foo]]),
+              ClassDescription.of(classOf[NullWritable]),
+              ClassDescription.of(classOf[Foo]),
+              mkExtraConfigurations(new File(tmpDir, /*"foos_${round}"*/ "foos_0").getAbsolutePath))
+          }
+        })
 
-    val compiler = RoundAwareNodeCompiler.get(subplan)
-    val thisType = compiler.compile(subplan)
-    context.addClass(context.branchKeys)
-    context.addClass(context.broadcastIds)
-    val cls = classServer.loadClass(thisType).asSubclass(classOf[DirectInput[_, _, _]])
+      implicit val context = newNodeCompilerContext(flowId, jpContext)
 
-    val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
-    def getBranchKey(marker: MarkerOperator): BranchKey = {
-      val sn = subplan.getOperators.toSet
-        .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
-      branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
-    }
+      val compiler = RoundAwareNodeCompiler.get(subplan)
+      val thisType = compiler.compile(subplan)
+      context.addClass(context.branchKeys)
+      context.addClass(context.broadcastIds)
+      val cls = classServer.loadClass(thisType).asSubclass(classOf[DirectInput[_, _, _]])
 
-    val input = cls.getConstructor(
-      classOf[Map[BroadcastId, Broadcast]],
-      classOf[SparkContext])
-      .newInstance(
-        Map.empty,
-        sc)
+      val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+      def getBranchKey(marker: MarkerOperator): BranchKey = {
+        val sn = subplan.getOperators.toSet
+          .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
+        branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+      }
 
-    assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
+      val input = cls.getConstructor(
+        classOf[Map[BroadcastId, Broadcast]],
+        classOf[SparkContext])
+        .newInstance(
+          Map.empty,
+          sc)
 
-    for {
-      round <- 0 to 0 // 1
-    } {
-      prepareRound(tmpDir, 0 until 100, round)
+      assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
 
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+      for {
+        round <- 0 to 0 // 1
+      } {
+        prepareRound(tmpDir, 0 until 100, round)
 
-      val result = Await.result(
-        input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
-          _.map {
-            case (_, foo: Foo) => foo.id.get
-          }.collect.toSeq.sorted
-        }, Duration.Inf)
+        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
-      assert(result === (0 until 100).map(i => 100 * round + i))
+        val result = Await.result(
+          input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
+            _.map {
+              case (_, foo: Foo) => foo.id.get
+            }.collect.toSeq.sorted
+          }, Duration.Inf)
+
+        assert(result === (0 until 100).map(i => bias + i))
+      }
     }
   }
 

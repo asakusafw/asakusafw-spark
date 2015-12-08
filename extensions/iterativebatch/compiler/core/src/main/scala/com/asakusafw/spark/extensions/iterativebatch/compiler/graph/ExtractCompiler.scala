@@ -21,13 +21,14 @@ import scala.collection.JavaConversions._
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
-import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.graph.{
+  ComputeOnce,
   ExtractClassBuilder,
   ExtractInstantiator,
   Instantiator
 }
+import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo }
+import com.asakusafw.spark.compiler.spi.NodeCompiler
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 
@@ -53,12 +54,29 @@ class ExtractCompiler extends RoundAwareNodeCompiler {
 
     val marker = inputs.head.getOperator
 
+    val iterativeInfo = IterativeInfo.get(subplan)
+
     val builder =
-      new ExtractClassBuilder(
-        marker,
-        RoundAwareComputeStrategy.ComputeAlways)( // TODO switch compute strategy
-        subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq)
+      iterativeInfo.getRecomputeKind match {
+        case IterativeInfo.RecomputeKind.ALWAYS =>
+          new ExtractClassBuilder(
+            marker)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeAlways
+        case IterativeInfo.RecomputeKind.PARAMETER =>
+          new ExtractClassBuilder(
+            marker)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeByParameter {
+
+            override val parameters: Set[String] = iterativeInfo.getParameters.toSet
+          }
+        case IterativeInfo.RecomputeKind.NEVER =>
+          new ExtractClassBuilder(
+            marker)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeOnce
+      }
 
     context.addClass(builder)
   }

@@ -43,6 +43,7 @@ import com.asakusafw.lang.compiler.inspection.{ AbstractInspectionExtension, Ins
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
+import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.runtime.compatibility.JobCompatibility
@@ -130,12 +131,14 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val inputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "test",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val outputOperator = ExternalOutput
       .newInstance("output${round}", inputOperator.getOperatorPort)
@@ -169,12 +172,14 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val inputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "test",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val outputOperator = ExternalOutput
       .newInstance("output${round}", inputOperator.getOperatorPort)
@@ -234,12 +239,14 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val inputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "test",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val loggingOperator = OperatorExtractor
       .extract(classOf[Logging], classOf[Ops], "logging")
@@ -279,12 +286,14 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val inputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "test",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val extractOperator = OperatorExtractor
       .extract(classOf[Extract], classOf[Ops], "extract")
@@ -343,12 +352,14 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val inputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "test",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val checkpointOperator = CoreOperator
       .builder(CoreOperator.CoreOperatorKind.CHECKPOINT)
@@ -420,28 +431,34 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val fooInputOperator = ExternalInput
-      .newInstance("foos1${round}/part-*",
+      .newWithAttributes("foos1${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos1",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val foo2InputOperator = ExternalInput
-      .newInstance("foos2${round}/part-*",
+      .newWithAttributes("foos2${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos2",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val barInputOperator = ExternalInput
-      .newInstance("bars${round}/part-*",
+      .newWithAttributes("bars${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Bar]),
           "bars",
           ClassDescription.of(classOf[Bar]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val cogroupOperator = OperatorExtractor
       .extract(classOf[CoGroup], classOf[Ops], "cogroup")
@@ -543,28 +560,34 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val foo1InputOperator = ExternalInput
-      .newInstance("foos1${round}/part-*",
+      .newWithAttributes("foos1${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos1",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val foo2InputOperator = ExternalInput
-      .newInstance("foos2${round}/part-*",
+      .newWithAttributes("foos2${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos2",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val barInputOperator = ExternalInput
-      .newInstance("bars${round}/part-*",
+      .newWithAttributes("bars${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Bar]),
           "bars",
           ClassDescription.of(classOf[Bar]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val cogroupOperator = OperatorExtractor
       .extract(classOf[CoGroup], classOf[Ops], "cogroup")
@@ -663,28 +686,34 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val foo1InputOperator = ExternalInput
-      .newInstance("foos1${round}/part-*",
+      .newWithAttributes("foos1${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos1",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val foo2InputOperator = ExternalInput
-      .newInstance("foos2${round}/part-*",
+      .newWithAttributes("foos2${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos2",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val barInputOperator = ExternalInput
-      .newInstance("bars${round}/part-*",
+      .newWithAttributes("bars${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Bar]),
           "bars",
           ClassDescription.of(classOf[Bar]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val masterCheckOperator = OperatorExtractor
       .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
@@ -752,20 +781,24 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val fooInputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos1",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.TINY))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val barInputOperator = ExternalInput
-      .newInstance("bars${round}/part-*",
+      .newWithAttributes("bars${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Bar]),
           "bars",
           ClassDescription.of(classOf[Bar]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val masterCheckOperator = OperatorExtractor
       .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
@@ -836,28 +869,34 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val foo1InputOperator = ExternalInput
-      .newInstance("foos1${round}/part-*",
+      .newWithAttributes("foos1${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos1",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val foo2InputOperator = ExternalInput
-      .newInstance("foos2${round}/part-*",
+      .newWithAttributes("foos2${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos2",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val barInputOperator = ExternalInput
-      .newInstance("bars${round}/part-*",
+      .newWithAttributes("bars${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Bar]),
           "bars",
           ClassDescription.of(classOf[Bar]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val masterJoinOperator = OperatorExtractor
       .extract(classOf[MasterJoin], classOf[Ops], "masterjoin")
@@ -925,20 +964,24 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val fooInputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos1",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.TINY))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val barInputOperator = ExternalInput
-      .newInstance("bars${round}/part-*",
+      .newWithAttributes("bars${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Bar]),
           "bars",
           ClassDescription.of(classOf[Bar]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val masterJoinOperator = OperatorExtractor
       .extract(classOf[MasterJoin], classOf[Ops], "masterjoin")
@@ -1003,12 +1046,14 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val fooInputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "foos1",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.TINY))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val masterCheckOperator = OperatorExtractor
       .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
@@ -1073,20 +1118,24 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val baz1InputOperator = ExternalInput
-      .newInstance("bazs1${round}/part-*",
+      .newWithAttributes("bazs1${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Baz]),
           "baz1",
           ClassDescription.of(classOf[Baz]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val baz2InputOperator = ExternalInput
-      .newInstance("bazs2${round}/part-*",
+      .newWithAttributes("bazs2${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Baz]),
           "baz2",
           ClassDescription.of(classOf[Baz]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val foldOperator = OperatorExtractor
       .extract(classOf[Fold], classOf[Ops], "fold")
@@ -1140,20 +1189,24 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val baz1InputOperator = ExternalInput
-      .newInstance("bazs1${round}/part-*",
+      .newWithAttributes("bazs1${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Baz]),
           "baz1",
           ClassDescription.of(classOf[Baz]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val baz2InputOperator = ExternalInput
-      .newInstance("bazs2${round}/part-*",
+      .newWithAttributes("bazs2${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Baz]),
           "baz2",
           ClassDescription.of(classOf[Baz]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val foldOperator = OperatorExtractor
       .extract(classOf[Fold], classOf[Ops], "fold")
@@ -1204,20 +1257,24 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val baz1InputOperator = ExternalInput
-      .newInstance("bazs1${round}/part-*",
+      .newWithAttributes("bazs1${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Baz]),
           "baz1",
           ClassDescription.of(classOf[Baz]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val baz2InputOperator = ExternalInput
-      .newInstance("bazs2${round}/part-*",
+      .newWithAttributes("bazs2${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Baz]),
           "baz2",
           ClassDescription.of(classOf[Baz]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val summarizeOperator = OperatorExtractor
       .extract(classOf[Summarize], classOf[Ops], "summarize")
@@ -1277,20 +1334,24 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
 
     val baz1InputOperator = ExternalInput
-      .newInstance("bazs1${round}/part-*",
+      .newWithAttributes("bazs1${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Baz]),
           "baz1",
           ClassDescription.of(classOf[Baz]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val baz2InputOperator = ExternalInput
-      .newInstance("bazs2${round}/part-*",
+      .newWithAttributes("bazs2${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Baz]),
           "baz2",
           ClassDescription.of(classOf[Baz]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val summarizeOperator = OperatorExtractor
       .extract(classOf[Summarize], classOf[Ops], "summarize")

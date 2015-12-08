@@ -43,7 +43,7 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.FlowIdForEach
 import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.graph._
-import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
+import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
@@ -76,8 +76,14 @@ class ExtractClassBuilderSpec
     (outputType, partitioners) <- Seq(
       (SubPlanOutputInfo.OutputType.DONT_CARE, 3),
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 1))
+    iterativeInfo <- Seq(
+      IterativeInfo.always(),
+      IterativeInfo.never(),
+      IterativeInfo.parameter("round"))
   } {
-    it should s"build extract class with OutputType.${outputType}" in { implicit sc =>
+    val conf = s"OutputType: ${outputType}, IterativeInfo: ${iterativeInfo}"
+
+    it should s"build extract class: [${conf}]" in { implicit sc =>
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -115,6 +121,7 @@ class ExtractClassBuilderSpec
           SubPlanInfo.DriverType.EXTRACT,
           Seq.empty[SubPlanInfo.DriverOption],
           operator))
+      subplan.putAttr(_ => iterativeInfo)
 
       val foosInput = subplan.findIn(foosMarker)
 
@@ -174,6 +181,7 @@ class ExtractClassBuilderSpec
         round <- 0 to 1
       } {
         val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
         val results = extract.getOrCompute(rc)
 
@@ -200,9 +208,9 @@ class ExtractClassBuilderSpec
             }, Duration.Inf)
 
         assert(fooResult.size === 10)
-        assert(fooResult === (0 until 10).map(i => 100 * round + i))
+        assert(fooResult === (0 until 10).map(i => bias + i))
 
-        assert(barResult.size === 100 * round * 10 + 45)
+        assert(barResult.size === bias * 10 + 45)
         barResult.groupBy(_._2).foreach {
           case (fooId, bars) =>
             val part = bars.head._1
@@ -220,8 +228,14 @@ class ExtractClassBuilderSpec
     (outputType, partitioners) <- Seq(
       (SubPlanOutputInfo.OutputType.DONT_CARE, 1),
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 0))
+    iterativeInfo <- Seq(
+      IterativeInfo.always(),
+      IterativeInfo.never(),
+      IterativeInfo.parameter("round"))
   } {
-    it should s"build extract class missing port connection with OutputType.${outputType}" in { implicit sc =>
+    val conf = s"OutputType: ${outputType}, IterativeInfo: ${iterativeInfo}"
+
+    it should s"build extract class missing port connection: [${conf}]" in { implicit sc =>
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -250,6 +264,7 @@ class ExtractClassBuilderSpec
           SubPlanInfo.DriverType.EXTRACT,
           Seq.empty[SubPlanInfo.DriverOption],
           operator))
+      subplan.putAttr(_ => iterativeInfo)
 
       val foosInput = subplan.findIn(foosMarker)
 
@@ -296,6 +311,7 @@ class ExtractClassBuilderSpec
         round <- 0 to 1
       } {
         val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
         val results = extract.getOrCompute(rc)
 
@@ -307,7 +323,7 @@ class ExtractClassBuilderSpec
           }, Duration.Inf)
 
         assert(fooResult.size === 10)
-        assert(fooResult === (0 until 10).map(i => 100 * round + i))
+        assert(fooResult === (0 until 10).map(i => bias + i))
       }
     }
   }

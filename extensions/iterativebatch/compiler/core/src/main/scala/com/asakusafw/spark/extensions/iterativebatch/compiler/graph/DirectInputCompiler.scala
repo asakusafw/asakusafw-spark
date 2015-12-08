@@ -22,13 +22,14 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
-import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.graph.{
+  ComputeOnce,
   DirectInputClassBuilder,
   InputInstantiator,
   Instantiator
 }
+import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo }
+import com.asakusafw.spark.compiler.spi.NodeCompiler
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 
@@ -63,16 +64,41 @@ class DirectInputCompiler extends RoundAwareNodeCompiler {
 
     val inputFormatInfo = context.getInputFormatInfo(operator.getName, operator.getInfo).get
 
+    val iterativeInfo = IterativeInfo.get(subplan)
+
     val builder =
-      new DirectInputClassBuilder(
-        operator,
-        inputFormatInfo.getFormatClass.asType,
-        inputFormatInfo.getKeyClass.asType,
-        inputFormatInfo.getValueClass.asType,
-        inputFormatInfo.getExtraConfiguration.toMap,
-        RoundAwareComputeStrategy.ComputeAlways)( // TODO switch compute strategy
-        subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq)
+      iterativeInfo.getRecomputeKind match {
+        case IterativeInfo.RecomputeKind.ALWAYS =>
+          new DirectInputClassBuilder(
+            operator,
+            inputFormatInfo.getFormatClass.asType,
+            inputFormatInfo.getKeyClass.asType,
+            inputFormatInfo.getValueClass.asType,
+            inputFormatInfo.getExtraConfiguration.toMap)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeAlways
+        case IterativeInfo.RecomputeKind.PARAMETER =>
+          new DirectInputClassBuilder(
+            operator,
+            inputFormatInfo.getFormatClass.asType,
+            inputFormatInfo.getKeyClass.asType,
+            inputFormatInfo.getValueClass.asType,
+            inputFormatInfo.getExtraConfiguration.toMap)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeByParameter {
+
+            override val parameters: Set[String] = iterativeInfo.getParameters.toSet
+          }
+        case IterativeInfo.RecomputeKind.NEVER =>
+          new DirectInputClassBuilder(
+            operator,
+            inputFormatInfo.getFormatClass.asType,
+            inputFormatInfo.getKeyClass.asType,
+            inputFormatInfo.getValueClass.asType,
+            inputFormatInfo.getExtraConfiguration.toMap)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeOnce
+      }
 
     context.addClass(builder)
   }

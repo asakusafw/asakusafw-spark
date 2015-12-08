@@ -24,11 +24,17 @@ import com.asakusafw.spark.compiler.{
   DataModelLoaderProvider
 }
 import com.asakusafw.spark.compiler.graph.{ BranchKeys, BroadcastIds, Instantiator }
+import com.asakusafw.spark.compiler.planning.IterativeInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 
 object IterativeBatchExecutorCompiler {
 
+  def support(plan: Plan): Boolean = {
+    IterativeInfo.isIterative(plan)
+  }
+
   def compile(plan: Plan)(implicit context: IterativeBatchExecutorCompiler.Context): Type = {
+    assert(support(plan), s"The plan is not supported.")
     context.addClass(new IterativeBatchExecutorClassBuilder(plan))
   }
 

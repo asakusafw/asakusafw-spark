@@ -44,7 +44,7 @@ import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.compiler.FlowIdForEach
 import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.graph._
-import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
+import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
@@ -82,8 +82,14 @@ class CoGroupClassBuilderSpec
     (outputType, partitioners) <- Seq(
       (SubPlanOutputInfo.OutputType.DONT_CARE, 7),
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 0))
+    iterativeInfo <- Seq(
+      IterativeInfo.always(),
+      IterativeInfo.never(),
+      IterativeInfo.parameter("round"))
   } {
-    it should s"build cogroup class ${method} with OutputType.${outputType}" in { implicit sc =>
+    val conf = s"OutputType: ${outputType}, IterativeInfo: ${iterativeInfo}"
+
+    it should s"build cogroup class ${method}: [${conf}]" in { implicit sc =>
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
       val barsMarker = MarkerOperator.builder(ClassDescription.of(classOf[Bar]))
@@ -150,6 +156,7 @@ class CoGroupClassBuilderSpec
           SubPlanInfo.DriverType.COGROUP,
           Seq.empty[SubPlanInfo.DriverOption],
           operator))
+      subplan.putAttr(_ => iterativeInfo)
 
       val foosInput = subplan.findIn(foosMarker)
       val barsInput = subplan.findIn(barsMarker)
@@ -225,6 +232,7 @@ class CoGroupClassBuilderSpec
         round <- 0 to 1
       } {
         val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
         val results = cogroup.getOrCompute(rc)
 
@@ -273,16 +281,16 @@ class CoGroupClassBuilderSpec
             }, Duration.Inf)
 
         assert(fooResult.size === 1)
-        assert(fooResult.head === 100 * round + 1)
+        assert(fooResult.head === bias + 1)
 
         assert(barResult.size === 1)
-        assert(barResult.head._1 === 100 * round + 0)
-        assert(barResult.head._2 === 100 * round + 1)
+        assert(barResult.head._1 === bias + 0)
+        assert(barResult.head._2 === bias + 1)
 
         assert(fooError.size === 99)
-        assert(fooError.head === 100 * round + 0)
+        assert(fooError.head === bias + 0)
         for (i <- 2 until 10) {
-          assert(fooError(i - 1) === 100 * round + i)
+          assert(fooError(i - 1) === bias + i)
         }
 
         assert(barError.size === 4949)
@@ -290,13 +298,13 @@ class CoGroupClassBuilderSpec
           i <- 2 until 100
           j <- 0 until i
         } {
-          assert(barError((i * (i - 1)) / 2 + j - 1)._1 == 100 * round + j)
-          assert(barError((i * (i - 1)) / 2 + j - 1)._2 == 100 * round + i)
+          assert(barError((i * (i - 1)) / 2 + j - 1)._1 == bias + j)
+          assert(barError((i * (i - 1)) / 2 + j - 1)._2 == bias + i)
         }
 
         assert(fooAll.size === 100)
         for (i <- 0 until 100) {
-          assert(fooAll(i) === 100 * round + i)
+          assert(fooAll(i) === bias + i)
         }
 
         assert(barAll.size === 4950)
@@ -304,8 +312,8 @@ class CoGroupClassBuilderSpec
           i <- 0 until 100
           j <- 0 until i
         } {
-          assert(barAll((i * (i - 1)) / 2 + j)._1 == 100 * round + +j)
-          assert(barAll((i * (i - 1)) / 2 + j)._2 == 100 * round + i)
+          assert(barAll((i * (i - 1)) / 2 + j)._1 == bias + +j)
+          assert(barAll((i * (i - 1)) / 2 + j)._2 == bias + i)
         }
 
         assert(nResult.size === 100)

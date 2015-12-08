@@ -26,9 +26,10 @@ import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.graph.{
   AggregateClassBuilder,
   AggregateInstantiator,
+  ComputeOnce,
   Instantiator
 }
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
+import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
@@ -59,14 +60,38 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
     assert(operator.outputs.size == 1,
       s"The size of outputs should be 1: ${operator.outputs.size}")
 
+    val iterativeInfo = IterativeInfo.get(subplan)
+
+    val valueType = operator.inputs.head.dataModelType
+    val combinerType = operator.outputs.head.dataModelType
+
     val builder =
-      new AggregateClassBuilder(
-        operator.inputs.head.dataModelType,
-        operator.outputs.head.dataModelType,
-        operator,
-        RoundAwareComputeStrategy.ComputeAlways)( // TODO switch compute strategy
-        subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq)
+      iterativeInfo.getRecomputeKind match {
+        case IterativeInfo.RecomputeKind.ALWAYS =>
+          new AggregateClassBuilder(
+            valueType,
+            combinerType,
+            operator)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeAlways
+        case IterativeInfo.RecomputeKind.PARAMETER =>
+          new AggregateClassBuilder(
+            valueType,
+            combinerType,
+            operator)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeByParameter {
+
+            override val parameters: Set[String] = iterativeInfo.getParameters.toSet
+          }
+        case IterativeInfo.RecomputeKind.NEVER =>
+          new AggregateClassBuilder(
+            valueType,
+            combinerType,
+            operator)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeOnce
+      }
 
     context.addClass(builder)
   }

@@ -13,33 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.extensions.iterativebatch.compiler
+package com.asakusafw.spark.compiler
 package graph
 
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
 import org.objectweb.asm.Opcodes
 
 import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.graph.{ ComputeOnce => ComputeOnceTrait }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.spark.tools.asm4s.MixIn._
 
-import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.ComputeAlways
+trait ComputationStrategy extends ClassBuilder with Mixing
 
-object RoundAwareComputeStrategy {
+trait ComputeOnce extends ComputationStrategy {
 
-  val ComputeAlways: MixIn =
-    MixIn(classOf[ComputeAlways].asType,
-      Seq(
-        FieldDef(
-          Opcodes.ACC_FINAL | Opcodes.ACC_TRANSIENT,
-          "generatedRDDs",
-          classOf[mutable.Map[_, _]].asType)),
+  override val mixins = Seq(
+    MixIn(classOf[ComputeOnceTrait].asType,
+      Seq(FieldDef(Opcodes.ACC_TRANSIENT, "generatedRDD", classOf[Map[_, _]].asType)),
       Seq(
         MethodDef("getOrCompute",
           classOf[Map[_, _]].asType,
           classOf[RoundContext].asType,
-          classOf[ExecutionContext].asType)))
+          classOf[ExecutionContext].asType))))
 }

@@ -42,7 +42,12 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.FlowIdForEach
 import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.graph._
-import com.asakusafw.spark.compiler.planning.{ PartitionGroupInfo, SubPlanInfo, SubPlanOutputInfo }
+import com.asakusafw.spark.compiler.planning.{
+  IterativeInfo,
+  PartitionGroupInfo,
+  SubPlanInfo,
+  SubPlanOutputInfo
+}
 import com.asakusafw.spark.runtime.{ Props, RoundContext, RoundContextSugar }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
@@ -86,8 +91,14 @@ class AggregateClassBuilderSpec
       (PartitionGroupInfo.DataSize.REGULAR, 8),
       (PartitionGroupInfo.DataSize.LARGE, 16),
       (PartitionGroupInfo.DataSize.HUGE, 32))
+    iterativeInfo <- Seq(
+      IterativeInfo.always(),
+      IterativeInfo.never(),
+      IterativeInfo.parameter("round"))
   } {
-    it should s"build aggregate class with DataSize.${dataSize}" in { implicit sc =>
+    val conf = s"DataSize: ${dataSize}, IterativeInfo: ${iterativeInfo}"
+
+    it should s"build aggregate class: [${conf}]" in { implicit sc =>
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -114,6 +125,7 @@ class AggregateClassBuilderSpec
           SubPlanInfo.DriverType.AGGREGATE,
           Seq.empty[SubPlanInfo.DriverOption],
           operator))
+      subplan.putAttr(_ => iterativeInfo)
 
       val foosInput = subplan.findIn(foosMarker)
 
@@ -167,6 +179,7 @@ class AggregateClassBuilderSpec
         round <- 0 to 1
       } {
         val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
         val results = aggregate.getOrCompute(rc)
 
@@ -180,12 +193,12 @@ class AggregateClassBuilderSpec
             }, Duration.Inf)
 
         assert(result === Seq(
-          (100 * round + 0, (0 until 10 by 2).map(i => 100 * round + i * 100).sum + 4 * 10),
-          (100 * round + 1, (1 until 10 by 2).map(i => 100 * round + i * 100).sum + 4 * 10)))
+          (bias + 0, (0 until 10 by 2).map(i => bias + i * 100).sum + 4 * 10),
+          (bias + 1, (1 until 10 by 2).map(i => bias + i * 100).sum + 4 * 10)))
       }
     }
 
-    it should s"build aggregate class with DataSize.${dataSize} with grouping is empty" in { implicit sc =>
+    it should s"build aggregate class with grouping is empty: [${conf}]" in { implicit sc =>
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -212,6 +225,7 @@ class AggregateClassBuilderSpec
           SubPlanInfo.DriverType.AGGREGATE,
           Seq.empty[SubPlanInfo.DriverOption],
           operator))
+      subplan.putAttr(_ => iterativeInfo)
 
       val foosInput = subplan.findIn(foosMarker)
 
@@ -269,6 +283,7 @@ class AggregateClassBuilderSpec
         round <- 0 to 1
       } {
         val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
         val results = aggregate.getOrCompute(rc)
 
@@ -282,7 +297,7 @@ class AggregateClassBuilderSpec
             }, Duration.Inf)
 
         assert(result.size === 1)
-        assert(result(0)._2 === (0 until 10).map(i => 100 * round + i * 100).sum + 9 * 10)
+        assert(result(0)._2 === (0 until 10).map(i => bias + i * 100).sum + 9 * 10)
       }
     }
   }

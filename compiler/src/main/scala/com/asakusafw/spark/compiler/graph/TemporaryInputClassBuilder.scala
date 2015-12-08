@@ -31,18 +31,16 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
-class TemporaryInputClassBuilder(
+abstract class TemporaryInputClassBuilder(
   operator: ExternalInput,
   valueType: Type,
-  paths: Seq[String],
-  computeStrategy: MixIn)(
+  paths: Seq[String])(
     label: String,
     subplanOutputs: Seq[SubPlan.Output])(
       implicit context: NodeCompiler.Context)
   extends NewHadoopInputClassBuilder(
     operator,
-    valueType,
-    computeStrategy)(
+    valueType)(
     label,
     subplanOutputs)(
     Type.getType(
@@ -55,6 +53,7 @@ class TemporaryInputClassBuilder(
       }
       .build(),
     classOf[TemporaryInput[_]].asType) {
+  self: ComputationStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

@@ -34,8 +34,7 @@ import com.asakusafw.spark.tools.asm4s._
 
 abstract class NewHadoopInputClassBuilder(
   val operator: ExternalInput,
-  val valueType: Type,
-  computeStrategy: MixIn)(
+  val valueType: Type)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       thisType: Type,
@@ -44,10 +43,8 @@ abstract class NewHadoopInputClassBuilder(
         implicit val context: NodeCompiler.Context)
   extends ClassBuilder(thisType, signature, superType)
   with Branching
-  with LabelField
-  with Mixing {
-
-  override val mixins: Seq[MixIn] = Seq(computeStrategy)
+  with LabelField {
+  self: ComputationStrategy =>
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)

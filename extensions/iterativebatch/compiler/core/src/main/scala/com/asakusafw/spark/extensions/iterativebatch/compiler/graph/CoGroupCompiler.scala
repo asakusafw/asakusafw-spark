@@ -21,13 +21,14 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
-import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.graph.{
   CoGroupClassBuilder,
   CoGroupInstantiator,
+  ComputeOnce,
   Instantiator
 }
+import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo }
+import com.asakusafw.spark.compiler.spi.NodeCompiler
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 
@@ -52,12 +53,29 @@ class CoGroupCompiler extends RoundAwareNodeCompiler {
       s"The primary operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
+    val iterativeInfo = IterativeInfo.get(subplan)
+
     val builder =
-      new CoGroupClassBuilder(
-        operator,
-        RoundAwareComputeStrategy.ComputeAlways)( // TODO switch compute strategy
-        subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq)
+      iterativeInfo.getRecomputeKind match {
+        case IterativeInfo.RecomputeKind.ALWAYS =>
+          new CoGroupClassBuilder(
+            operator)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeAlways
+        case IterativeInfo.RecomputeKind.PARAMETER =>
+          new CoGroupClassBuilder(
+            operator)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeByParameter {
+
+            override val parameters: Set[String] = iterativeInfo.getParameters.toSet
+          }
+        case IterativeInfo.RecomputeKind.NEVER =>
+          new CoGroupClassBuilder(
+            operator)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeOnce
+      }
 
     context.addClass(builder)
   }

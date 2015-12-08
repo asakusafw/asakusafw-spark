@@ -23,14 +23,14 @@ import org.objectweb.asm.Type
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
-import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.graph.{
-  ComputeStrategy,
+  ComputeOnce,
   InputInstantiator,
   Instantiator,
   TemporaryInputClassBuilder
 }
+import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo }
+import com.asakusafw.spark.compiler.spi.NodeCompiler
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 
@@ -64,14 +64,36 @@ class TemporaryInputCompiler extends RoundAwareNodeCompiler {
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
     val inputRef = context.addExternalInput(operator.getName, operator.getInfo)
+
+    val iterativeInfo = IterativeInfo.get(subplan)
+
     val builder =
-      new TemporaryInputClassBuilder(
-        operator,
-        operator.getDataType.asType,
-        inputRef.getPaths.toSeq.sorted,
-        RoundAwareComputeStrategy.ComputeAlways)( // TODO switch compute strategy
-        subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq)
+      iterativeInfo.getRecomputeKind match {
+        case IterativeInfo.RecomputeKind.ALWAYS =>
+          new TemporaryInputClassBuilder(
+            operator,
+            operator.getDataType.asType,
+            inputRef.getPaths.toSeq.sorted)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeAlways
+        case IterativeInfo.RecomputeKind.PARAMETER =>
+          new TemporaryInputClassBuilder(
+            operator,
+            operator.getDataType.asType,
+            inputRef.getPaths.toSeq.sorted)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeByParameter {
+
+            override val parameters: Set[String] = iterativeInfo.getParameters.toSet
+          }
+        case IterativeInfo.RecomputeKind.NEVER =>
+          new TemporaryInputClassBuilder(
+            operator,
+            operator.getDataType.asType,
+            inputRef.getPaths.toSeq.sorted)(
+            subPlanInfo.getLabel,
+            subplan.getOutputs.toSeq) with ComputeOnce
+      }
 
     context.addClass(builder)
   }
