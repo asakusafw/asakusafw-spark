@@ -43,6 +43,7 @@ configurations {
 repositories {
     mavenCentral()
     maven { url 'http://asakusafw.s3.amazonaws.com/maven/releases' }
+    maven { url 'http://asakusafw.s3.amazonaws.com/maven/snapshots' }
 }
 
 dependencies {
