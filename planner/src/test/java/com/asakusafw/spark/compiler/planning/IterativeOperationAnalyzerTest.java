@@ -36,7 +36,7 @@ public class IterativeOperationAnalyzerTest extends PlanningTestRoot {
 <pre>{@code
 in[*] --- out
 ==>
-in[*] --- *C[*] --- out
+in[*] --- *C[*] --- out[*]
 }</pre>
      */
     @Test
@@ -68,7 +68,7 @@ in[*] --- *C[*] --- out
 <pre>{@code
 in[-] --- out
 ==>
-in[-] --- *C[-] --- out
+in[-] --- *C[-] --- out[-]
 }</pre>
      */
     @Test
@@ -87,7 +87,7 @@ in[-] --- *C[-] --- out
 in1[a] ---+ out
 in2[b] --/
 ==>
-in1[a] ---+ *C[a,b] --- out
+in1[a] ---+ *C[a,b] --- out[*]
 in2[b] --/
 }</pre>
      */
@@ -103,7 +103,7 @@ in2[b] --/
         Plan plan = detail.getPlan();
         assertThat(IterativeInfo.isIterative(plan), is(true));
         IterativeInfo info = IterativeInfo.get(plan);
-        assertThat(info, is(IterativeInfo.parameter("a", "b")));
+        assertThat(info, is(IterativeInfo.always()));
 
         MockOperators mock = restore(detail);
         assertThat(plan.getElements(), hasSize(3));
@@ -118,7 +118,7 @@ in2[b] --/
         assertThat(IterativeInfo.get(s1), is(IterativeInfo.parameter("b")));
         assertThat(IterativeInfo.get(output(s1)), is(IterativeInfo.parameter("b")));
 
-        assertThat(IterativeInfo.get(s2), is(IterativeInfo.parameter("a", "b")));
+        assertThat(IterativeInfo.get(s2), is(IterativeInfo.always()));
         assertThat(IterativeInfo.get(input(s2)), is(IterativeInfo.parameter("a", "b")));
     }
     /**
@@ -127,8 +127,8 @@ in2[b] --/
 in1[a] ---+ out
 in2[-] --/
 ==>
-in1[a] ---+ *C[a] --- out
-in2[!] --/
+in1[a] ---+ *C[a] --- out[*]
+in2[-] --/
 }</pre>
      */
     @Test
@@ -143,7 +143,7 @@ in2[!] --/
         Plan plan = detail.getPlan();
         assertThat(IterativeInfo.isIterative(plan), is(true));
         IterativeInfo info = IterativeInfo.get(plan);
-        assertThat(info, is(IterativeInfo.parameter("a")));
+        assertThat(info, is(IterativeInfo.always()));
 
         MockOperators mock = restore(detail);
         assertThat(plan.getElements(), hasSize(3));
@@ -158,7 +158,7 @@ in2[!] --/
         assertThat(IterativeInfo.get(s1), is(IterativeInfo.never()));
         assertThat(IterativeInfo.get(output(s1)), is(IterativeInfo.never()));
 
-        assertThat(IterativeInfo.get(s2), is(IterativeInfo.parameter("a")));
+        assertThat(IterativeInfo.get(s2), is(IterativeInfo.always()));
         assertThat(IterativeInfo.get(input(s2)), is(IterativeInfo.parameter("a")));
     }
 }
