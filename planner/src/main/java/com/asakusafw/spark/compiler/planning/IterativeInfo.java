@@ -133,6 +133,14 @@ public class IterativeInfo implements ComplexAttribute {
     }
 
     /**
+     * Returns this information indicates whether the target is iterative element or not.
+     * @return {@code true} if the target element is iterative, otherwise {@code false}
+     */
+    public boolean isIterative() {
+        return recomputeKind != RecomputeKind.NEVER;
+    }
+
+    /**
      * Returns the re-compute kind for each iteration.
      * @return  the re-compute kind
      */

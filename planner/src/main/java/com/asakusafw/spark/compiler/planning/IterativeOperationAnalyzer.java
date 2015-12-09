@@ -20,6 +20,7 @@ import java.util.Objects;
 
 import com.asakusafw.lang.compiler.common.AttributeContainer;
 import com.asakusafw.lang.compiler.model.graph.Operator;
+import com.asakusafw.lang.compiler.model.graph.Operator.OperatorKind;
 import com.asakusafw.lang.compiler.model.graph.Operators;
 import com.asakusafw.lang.compiler.planning.Plan;
 import com.asakusafw.lang.compiler.planning.Planning;
@@ -48,12 +49,32 @@ public final class IterativeOperationAnalyzer {
     }
 
     private void doAttach(Plan target) {
-        Graph<SubPlan> graph = Planning.toDependencyGraph(target);
-        for (SubPlan element : Graphs.sortPostOrder(graph)) {
-            doAttach(element);
+        boolean iterative = false;
+        for (SubPlan element : target.getElements()) {
+            iterative = isIterative(element);
+            if (iterative) {
+                break;
+            }
         }
-        IterativeInfo info = merge(IterativeInfo.never(), target.getElements());
+        IterativeInfo info = IterativeInfo.never();
+        if (iterative) {
+            Graph<SubPlan> graph = Planning.toDependencyGraph(target);
+            for (SubPlan element : Graphs.sortPostOrder(graph)) {
+                doAttach(element);
+            }
+            info = merge(info, target.getElements());
+        }
         target.putAttribute(IterativeInfo.class, info);
+    }
+
+    private boolean isIterative(SubPlan element) {
+        for (Operator operator : element.getOperators()) {
+            IterativeInfo info = IterativeInfo.getDeclared(operator);
+            if (info.isIterative()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void doAttach(SubPlan target) {
@@ -80,10 +101,13 @@ public final class IterativeOperationAnalyzer {
         IterativeInfo info = IterativeInfo.never();
         for (Operator upstream : Operators.getTransitivePredecessors(target.getOperator().getInputs())) {
             SubPlan.Input source = owner.findInput(upstream);
-            if (source == null) {
-                info = info.merge(IterativeInfo.getDeclared(upstream));
-            } else {
+            if (source != null) {
                 info = info.merge(IterativeInfo.get(source));
+            } else if (upstream.getOperatorKind() == OperatorKind.OUTPUT) {
+                // external output always requires re-computing
+                info = IterativeInfo.always();
+            } else {
+                info = info.merge(IterativeInfo.getDeclared(upstream));
             }
             if (info.getRecomputeKind() == RecomputeKind.ALWAYS) {
                 break;
