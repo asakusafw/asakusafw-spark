@@ -20,14 +20,8 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 import org.objectweb.asm.Type
-import org.slf4j.LoggerFactory
 
-import com.asakusafw.lang.compiler.api.{
-  CompilerOptions,
-  DataModelLoader,
-  Exclusive,
-  JobflowProcessor
-}
+import com.asakusafw.lang.compiler.api.{ CompilerOptions, DataModelLoader }
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.{
   CommandToken,
@@ -36,9 +30,7 @@ import com.asakusafw.lang.compiler.api.reference.{
 }
 import com.asakusafw.lang.compiler.common.Location
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
-import com.asakusafw.lang.compiler.inspection.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.ClassDescription
-import com.asakusafw.lang.compiler.model.graph.Jobflow
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.spark.compiler._
@@ -47,57 +39,45 @@ import com.asakusafw.spark.compiler.graph.{
   BroadcastIdsClassBuilder,
   Instantiator
 }
-import com.asakusafw.spark.compiler.planning.SparkPlanning
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, NodeCompiler, OperatorCompiler }
+import com.asakusafw.spark.compiler.planning.IterativeInfo
+import com.asakusafw.spark.compiler.spi.{
+  AggregationCompiler,
+  ExtensionCompiler,
+  NodeCompiler,
+  OperatorCompiler
+}
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 import resource._
 
-@Exclusive
-class SparkClientCompiler extends JobflowProcessor {
+class IterativeBatchExtensionCompiler extends ExtensionCompiler {
 
-  private val Logger = LoggerFactory.getLogger(getClass)
-
-  override def process(jpContext: JPContext, source: Jobflow): Unit = {
-
-    if (Logger.isDebugEnabled) {
-      Logger.debug("Start Asakusafw Spark compiler.")
-    }
-
-    val plan = preparePlan(jpContext, source)
-
-    InspectionExtension.inspect(
-      jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
-
-    if (!jpContext.getOptions.verifyPlan) {
-
-      val flowId = source.getFlowId
-
-      implicit val context: SparkClientCompiler.Context =
-        new SparkClientCompiler.DefaultContext(flowId)(jpContext)
-
-      val builder = new SparkClientClassBuilder(plan)
-      val client = context.addClass(builder)
-
-      context.addTask(
-        SparkClientCompiler.ModuleName,
-        SparkClientCompiler.ProfileName,
-        SparkClientCompiler.Command,
-        Seq(
-          CommandToken.BATCH_ID,
-          CommandToken.FLOW_ID,
-          CommandToken.EXECUTION_ID,
-          CommandToken.BATCH_ARGUMENTS,
-          CommandToken.of(client.getClassName)))
-    }
+  override def support(plan: Plan)(jpContext: JPContext): Boolean = {
+    IterativeInfo.isIterative(plan)
   }
 
-  def preparePlan(jpContext: JPContext, source: Jobflow): Plan = {
-    SparkPlanning.plan(jpContext, source).getPlan
+  override def compile(plan: Plan)(flowId: String, jpContext: JPContext): Unit = {
+
+    implicit val context: IterativeBatchExtensionCompiler.Context =
+      new IterativeBatchExtensionCompiler.DefaultContext(flowId)(jpContext)
+
+    val builder = new IterativeBatchSparkClientClassBuilder(plan)
+    val client = context.addClass(builder)
+
+    context.addTask(
+      SparkClientCompiler.ModuleName,
+      SparkClientCompiler.ProfileName,
+      SparkClientCompiler.Command,
+      Seq(
+        CommandToken.BATCH_ID,
+        CommandToken.FLOW_ID,
+        CommandToken.EXECUTION_ID,
+        CommandToken.BATCH_ARGUMENTS,
+        CommandToken.of(client.getClassName)))
   }
 }
 
-object SparkClientCompiler {
+object IterativeBatchExtensionCompiler {
 
   val ModuleName: String = "spark"
 

@@ -79,7 +79,7 @@ object NodeCompiler {
     compilers.head
   }
 
-  private[this] val nodeCompilers: mutable.Map[ClassLoader, Seq[NodeCompiler]] = // scalastyle:ignore
+  private[this] val nodeCompilers: mutable.Map[ClassLoader, Seq[NodeCompiler]] =
     mutable.WeakHashMap.empty
 
   private[this] def apply(

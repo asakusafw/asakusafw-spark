@@ -47,19 +47,20 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
+import com.asakusafw.spark.compiler.SparkClientCompiler
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
 
-import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.SparkClient
+import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient
 
 @RunWith(classOf[JUnitRunner])
-class SparkClientCompilerSpecTest extends SparkClientCompilerSpec
+class IterativeBatchExtensionCompilerSpecTest extends IterativeBatchExtensionCompilerSpec
 
-class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirForEach {
+class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar with TempDirForEach {
 
-  import SparkClientCompilerSpec._
+  import IterativeBatchExtensionCompilerSpec._
 
-  behavior of classOf[SparkClientCompiler].getSimpleName
+  behavior of classOf[IterativeBatchExtensionCompiler].getSimpleName
 
   def createTempDirs(): (File, File) = {
     val tmpDir = createTempDirectoryForEach("test-").toFile
@@ -161,7 +162,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
   }
 
   def newJobflow(graph: OperatorGraph): Jobflow = {
-    new Jobflow("flowId", ClassDescription.of(classOf[SparkClientCompilerSpec]), graph)
+    new Jobflow("flowId", ClassDescription.of(classOf[IterativeBatchExtensionCompilerSpec]), graph)
   }
 
   def newCompiler(subplans: Int): SparkClientCompiler = {
@@ -188,8 +189,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     try {
       val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
       Thread.currentThread.setContextClassLoader(classloader)
-      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
-        .asSubclass(classOf[SparkClient])
+      val cls = Class.forName("com.asakusafw.generated.spark.flowId.IterativeBatchSparkClient", true, classloader)
+        .asSubclass(classOf[IterativeBatchSparkClient])
       val instance = cls.newInstance
 
       val conf = new SparkConf()
@@ -204,7 +205,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
           null,
           "executionId",
           Map("round" -> round.toString))
-        SparkClient.RoundConf(stageInfo, Map.empty)
+        IterativeBatchSparkClient.RoundConf(stageInfo, Map.empty)
       }
 
       instance.execute(conf, settings)
@@ -214,7 +215,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
   }
 }
 
-object SparkClientCompilerSpec {
+object IterativeBatchExtensionCompilerSpec {
 
   class Foo extends DataModel[Foo] with Writable {
 

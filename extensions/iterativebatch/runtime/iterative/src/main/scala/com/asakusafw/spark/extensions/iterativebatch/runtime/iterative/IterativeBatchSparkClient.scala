@@ -26,9 +26,9 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.spark.runtime.{ Props, RoundContext }
 
-import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.SparkClient._
+import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient._
 
-abstract class SparkClient {
+abstract class IterativeBatchSparkClient {
 
   def execute(conf: SparkConf, settings: Seq[RoundConf]): Int = {
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
@@ -77,7 +77,7 @@ abstract class SparkClient {
   def kryoRegistrator: String
 }
 
-object SparkClient {
+object IterativeBatchSparkClient {
 
   case class RoundConf(
     stageInfo: StageInfo,
@@ -87,5 +87,5 @@ object SparkClient {
     hadoopConf: Broadcasted[Configuration])
     extends RoundContext
 
-  implicit lazy val executionContext: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
+  implicit lazy val ec: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
 }

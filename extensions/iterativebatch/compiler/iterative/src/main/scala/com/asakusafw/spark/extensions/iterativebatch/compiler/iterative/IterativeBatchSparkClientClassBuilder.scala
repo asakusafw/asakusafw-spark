@@ -36,14 +36,14 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
-import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.SparkClient
+import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient
 
-class SparkClientClassBuilder(
+class IterativeBatchSparkClientClassBuilder(
   plan: Plan)(
-    implicit context: SparkClientCompiler.Context)
+    implicit context: IterativeBatchExtensionCompiler.Context)
   extends ClassBuilder(
-    Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/SparkClient;"),
-    classOf[SparkClient].asType) {
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/IterativeBatchSparkClient;"), // scalastyle:ignore
+    classOf[IterativeBatchSparkClient].asType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {
     fieldDef.newField("executor", classOf[IterativeBatchExecutor].asType)
