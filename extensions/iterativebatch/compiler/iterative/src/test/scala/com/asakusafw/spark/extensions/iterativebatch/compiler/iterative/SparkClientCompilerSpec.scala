@@ -40,6 +40,7 @@ import com.asakusafw.lang.compiler.inspection.{ AbstractInspectionExtension, Ins
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
+import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
@@ -104,12 +105,14 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     }
 
     val inputOperator = ExternalInput
-      .newInstance("foos${round}/part-*",
+      .newWithAttributes("foos${round}/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "test",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+      .attribute(classOf[IterativeExtension], new IterativeExtension())
+      .build()
 
     val outputOperator = ExternalOutput
       .newInstance("output${round}", inputOperator.getOperatorPort)

@@ -16,22 +16,30 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package graph
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
+import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.spark.runtime.RoundContext
 import com.asakusafw.spark.runtime.graph.Broadcast
 
-trait BroadcastAlways {
+trait BroadcastByParameter {
   self: Broadcast =>
 
   @transient
-  private val broadcasted: mutable.Map[RoundContext, Future[Broadcasted[_]]] =
-    mutable.WeakHashMap.empty
+  private val broadcasted: mutable.Map[Seq[String], Future[Broadcasted[_]]] = mutable.Map.empty
 
   def getOrBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
-    synchronized(broadcasted.getOrElseUpdate(rc, broadcast(rc)))
+    synchronized {
+      val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+      val batchArguments = stageInfo.getBatchArguments.toMap
+      broadcasted
+        .getOrElseUpdate(parameters.toSeq.sorted.map(batchArguments), broadcast(rc))
+    }
   }
+
+  def parameters: Set[String]
 }
