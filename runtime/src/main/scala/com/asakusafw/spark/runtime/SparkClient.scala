@@ -22,9 +22,24 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
+import com.asakusafw.bridge.stage.StageInfo
+import com.asakusafw.iterative.launch.IterativeStageInfo
 import com.asakusafw.spark.runtime.graph.Job
 
-abstract class SparkClient {
+trait SparkClient {
+
+  def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int
+}
+
+abstract class DefaultClient extends SparkClient {
+
+  override def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int = {
+    require(!stageInfo.isIterative,
+      s"This client does not support iterative extension.")
+
+    conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.getOrigin.serialize)
+    execute(conf)
+  }
 
   def execute(conf: SparkConf): Int = {
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
@@ -35,8 +50,8 @@ abstract class SparkClient {
     try {
       val job = newJob(sc)
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
-      val context = SparkClient.Context(hadoopConf)
-      Await.result(job.execute(context)(SparkClient.ec), Duration.Inf)
+      val context = DefaultClient.Context(hadoopConf)
+      Await.result(job.execute(context)(DefaultClient.ec), Duration.Inf)
       0
     } finally {
       sc.stop()
@@ -48,7 +63,7 @@ abstract class SparkClient {
   def kryoRegistrator: String
 }
 
-object SparkClient {
+object DefaultClient {
 
   case class Context(
     hadoopConf: Broadcasted[Configuration])

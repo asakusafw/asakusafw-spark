@@ -87,6 +87,10 @@ target=jvm-1.7
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.asakusafw.iterative</groupId>
+      <artifactId>asakusa-iterative-common</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.asakusafw.spark.extensions</groupId>
       <artifactId>asakusa-spark-extensions-iterativebatch-runtime-core</artifactId>
       <version>${project.version}</version>

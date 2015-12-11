@@ -21,6 +21,7 @@ import scala.collection.mutable
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.iterative.common.IterativeExtensions
 import com.asakusafw.lang.compiler.api.{ CompilerOptions, DataModelLoader }
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.reference.{
@@ -73,17 +74,12 @@ class IterativeBatchExtensionCompiler extends ExtensionCompiler {
         CommandToken.FLOW_ID,
         CommandToken.EXECUTION_ID,
         CommandToken.BATCH_ARGUMENTS,
-        CommandToken.of(client.getClassName)))
+        CommandToken.of(client.getClassName)),
+      Seq(IterativeExtensions.EXTENSION_NAME))
   }
 }
 
 object IterativeBatchExtensionCompiler {
-
-  val ModuleName: String = "spark"
-
-  val ProfileName: String = "spark"
-
-  val Command: Location = Location.of("spark/bin/spark-execute.sh")
 
   trait Context
     extends CompilerContext
@@ -95,6 +91,7 @@ object IterativeBatchExtensionCompiler {
       profileName: String,
       command: Location,
       arguments: Seq[CommandToken],
+      extensions: Seq[String],
       blockers: TaskReference*): TaskReference
 
     def branchKeys: BranchKeysClassBuilder
@@ -161,8 +158,9 @@ object IterativeBatchExtensionCompiler {
       profileName: String,
       command: Location,
       arguments: Seq[CommandToken],
+      extensions: Seq[String],
       blockers: TaskReference*): TaskReference = {
-      jpContext.addTask(moduleName, profileName, command, arguments, blockers: _*)
+      jpContext.addTask(moduleName, profileName, command, arguments, extensions, blockers: _*)
     }
   }
 }

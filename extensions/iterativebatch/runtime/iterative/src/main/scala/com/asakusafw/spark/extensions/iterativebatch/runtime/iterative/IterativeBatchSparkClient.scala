@@ -24,13 +24,14 @@ import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.spark.runtime.{ Props, RoundContext }
+import com.asakusafw.iterative.launch.IterativeStageInfo
+import com.asakusafw.spark.runtime.{ Props, RoundContext, SparkClient }
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient._
 
-abstract class IterativeBatchSparkClient {
+abstract class IterativeBatchSparkClient extends SparkClient {
 
-  def execute(conf: SparkConf, settings: Seq[RoundConf]): Int = {
+  override def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int = {
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     conf.set("spark.kryo.registrator", kryoRegistrator)
     conf.set("spark.kryo.referenceTracking", false.toString)
@@ -40,27 +41,25 @@ abstract class IterativeBatchSparkClient {
       val numSlots = conf.getInt(Props.NumSlots, Props.DefaultNumSlots)
       val executor = newIterativeBatchExecutor(numSlots)
 
-      val rcs = settings.map {
-        case RoundConf(stageInfo, extras) =>
-          val conf = new Configuration(sc.hadoopConfiguration)
-          conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
-          extras.foreach {
-            case (key, value) =>
-              conf.set(key, value)
-          }
-          IterativeBatchRoundContext(sc.broadcast(conf))
-      }
-
-      execute(executor, rcs)
+      execute(executor, stageInfo)
     } finally {
       sc.stop()
     }
   }
 
-  def execute(executor: IterativeBatchExecutor, rcs: Seq[IterativeBatchRoundContext]): Int = {
+  def execute(
+    executor: IterativeBatchExecutor,
+    stageInfo: IterativeStageInfo)(
+      implicit sc: SparkContext): Int = {
     executor.start()
     try {
-      executor.submitAll(rcs)
+      val cursor = stageInfo.newCursor()
+      while (cursor.next()) {
+        val conf = new Configuration(sc.hadoopConfiguration)
+        conf.set(StageInfo.KEY_NAME, cursor.get.serialize)
+
+        executor.submit(Context(sc.broadcast(conf)))
+      }
       executor.stop(awaitExecution = true, gracefully = true)
       0
     } catch {
@@ -79,11 +78,7 @@ abstract class IterativeBatchSparkClient {
 
 object IterativeBatchSparkClient {
 
-  case class RoundConf(
-    stageInfo: StageInfo,
-    extraHadoopConfigurations: Map[String, String])
-
-  case class IterativeBatchRoundContext(
+  case class Context(
     hadoopConf: Broadcasted[Configuration])
     extends RoundContext
 

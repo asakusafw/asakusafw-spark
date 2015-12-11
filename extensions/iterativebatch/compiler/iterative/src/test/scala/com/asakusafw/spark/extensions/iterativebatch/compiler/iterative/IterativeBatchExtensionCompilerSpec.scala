@@ -32,6 +32,8 @@ import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
+import com.asakusafw.iterative.common.IterativeExtensions
+import com.asakusafw.iterative.launch.IterativeStageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
@@ -190,25 +192,27 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
       val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
       Thread.currentThread.setContextClassLoader(classloader)
       val cls = Class.forName("com.asakusafw.generated.spark.flowId.IterativeBatchSparkClient", true, classloader)
-        .asSubclass(classOf[IterativeBatchSparkClient])
-      val instance = cls.newInstance
+        .asSubclass(classOf[SparkClient])
+      val instance = cls.newInstance()
 
       val conf = new SparkConf()
       conf.setAppName("AsakusaSparkClient")
       conf.setMaster("local[8]")
 
-      val settings = rounds.map { round =>
-        val stageInfo = new StageInfo(
+      val stageInfo = new IterativeStageInfo(
+        new StageInfo(
           sys.props("user.name"),
           "batchId",
           "flowId",
           null,
           "executionId",
-          Map("round" -> round.toString))
-        IterativeBatchSparkClient.RoundConf(stageInfo, Map.empty)
-      }
+          Map.empty[String, String]),
+        ((IterativeExtensions.builder() /: rounds) {
+          case (builder, round) =>
+            builder.next().put("round", round.toString)
+        }).build())
 
-      instance.execute(conf, settings)
+      instance.execute(conf, stageInfo)
     } finally {
       Thread.currentThread.setContextClassLoader(cl)
     }

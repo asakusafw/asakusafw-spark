@@ -33,6 +33,8 @@ import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
+import com.asakusafw.iterative.common.IterativeExtensions
+import com.asakusafw.iterative.launch.IterativeStageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
@@ -1270,20 +1272,21 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
       Thread.currentThread.setContextClassLoader(classloader)
       val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
         .asSubclass(classOf[SparkClient])
-      val instance = cls.newInstance
+      val instance = cls.newInstance()
 
       val conf = new SparkConf()
       conf.setAppName("AsakusaSparkClient")
       conf.setMaster("local[8]")
       threshold.foreach(i => conf.set("spark.shuffle.sort.bypassMergeThreshold", i.toString))
 
-      val stageInfo = new StageInfo(
-        sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String])
-      conf.setHadoopConf(StageInfo.KEY_NAME, stageInfo.serialize)
-
       parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
 
-      instance.execute(conf)
+      val stageInfo = new IterativeStageInfo(
+        new StageInfo(
+          sys.props("user.name"), "batchId", "flowId", null, "executionId", Map.empty[String, String]),
+        IterativeExtensions.builder().build())
+
+      instance.execute(conf, stageInfo)
     } finally {
       Thread.currentThread.setContextClassLoader(cl)
     }
