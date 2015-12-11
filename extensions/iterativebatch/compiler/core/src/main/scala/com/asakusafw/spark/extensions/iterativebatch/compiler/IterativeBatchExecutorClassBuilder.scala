@@ -120,17 +120,12 @@ class IterativeBatchExecutorClassBuilder(
 
             val job = pushNew(classOf[Job].asType)
             job.dup().invokeInit(
-              buildSeq { builder =>
-                subplans.filter {
-                  case (subplan, _) =>
-                    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType ==
-                      SubPlanInfo.DriverType.OUTPUT
-                }.foreach {
-                  case (_, i) =>
-                    builder +=
-                      nodesVar.push().aload(ldc(i)).cast(classOf[Sink].asType)
-                }
-              })
+              pushObject(Predef)
+                .invokeV(
+                  "wrapRefArray",
+                  classOf[mutable.WrappedArray[_]].asType,
+                  nodesVar.push().asType(classOf[Array[AnyRef]].asType))
+                .asType(classOf[Seq[_]].asType))
             job
           })
         }
