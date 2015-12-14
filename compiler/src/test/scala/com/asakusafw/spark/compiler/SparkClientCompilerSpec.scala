@@ -98,7 +98,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
 
     def readResult[T: ClassTag](name: String, path: File)(implicit sc: SparkContext): RDD[T] = {
       val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-      TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/part-*")))
+      TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/-/part-*")))
       sc.newAPIHadoopRDD(
         job.getConfiguration,
         classOf[TemporaryInputFormat[T]],

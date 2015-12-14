@@ -67,7 +67,9 @@ abstract class OutputClassBuilderSpec extends FlatSpec with SparkWithClassServer
     val job = JobCompatibility.newJob(rc.hadoopConf.value)
 
     val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
-    FileInputFormat.setInputPaths(job, new Path(stageInfo.resolveUserVariables(path + "/part-*")))
+    FileInputFormat.setInputPaths(
+      job,
+      new Path(stageInfo.resolveVariables(s"${path}/${stageInfo.getStageId}/part-*")))
 
     sc.newAPIHadoopRDD(
       job.getConfiguration,
@@ -99,7 +101,7 @@ class TemporaryOutputClassBuilderSpec
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.END).build()
 
-    val outputOperator = ExternalOutput.builder("foos_${round}")
+    val outputOperator = ExternalOutput.builder("foos")
       .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
       .output("end", ClassDescription.of(classOf[Foo]))
       .build()
@@ -156,7 +158,9 @@ class TemporaryOutputClassBuilderSpec
     for {
       round <- 0 to 1
     } {
-      val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+      val rc = newRoundContext(
+        stageId = s"round_${round}",
+        batchArguments = Map("round" -> round.toString))
 
       Await.result(output.submitJob(rc), Duration.Inf)
 

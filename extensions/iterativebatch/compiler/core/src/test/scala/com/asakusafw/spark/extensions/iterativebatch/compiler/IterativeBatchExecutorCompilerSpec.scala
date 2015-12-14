@@ -108,9 +108,11 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
 
-  def readResult[T: ClassTag](name: String, path: File)(implicit sc: SparkContext): RDD[T] = {
+  def readResult[T: ClassTag](name: String, round: Int, path: File)(implicit sc: SparkContext): RDD[T] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-    TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/part-*")))
+    TemporaryInputFormat.setInputPaths(
+      job,
+      Seq(new Path(path.getPath, s"${name}/round_${round}/part-*")))
     sc.newAPIHadoopRDD(
       job.getConfiguration,
       classOf[TemporaryInputFormat[T]],
@@ -148,7 +150,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val outputOperator = ExternalOutput
-        .newInstance("output${round}", inputOperator.getOperatorPort)
+        .newInstance("output", inputOperator.getOperatorPort)
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
@@ -158,7 +160,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       for {
         round <- rounds
       } {
-        val result = readResult[Foo](s"output${round}", path)
+        val result = readResult[Foo](outputOperator.getName, round, path)
           .map { foo =>
             (foo.id.get, foo.foo.getAsString)
           }.collect.toSeq.sortBy(_._1)
@@ -197,7 +199,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val outputOperator = ExternalOutput
-        .newInstance("output${round}", inputOperator.getOperatorPort)
+        .newInstance("output", inputOperator.getOperatorPort)
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
@@ -233,7 +235,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       for {
         round <- rounds
       } {
-        val result = readResult[Foo](s"output${round}", path)
+        val result = readResult[Foo](outputOperator.getName, round, path)
           .map { foo =>
             (foo.id.get, foo.foo.getAsString)
           }.collect.toSeq.sortBy(_._1)
@@ -278,7 +280,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val outputOperator = ExternalOutput
-        .newInstance("output${round}", loggingOperator.findOutput("output"))
+        .newInstance("output", loggingOperator.findOutput("output"))
 
       val graph = new OperatorGraph(Seq(inputOperator, loggingOperator, outputOperator))
 
@@ -288,7 +290,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       for {
         round <- rounds
       } {
-        val result = readResult[Foo](s"output${round}", path)
+        val result = readResult[Foo](outputOperator.getName, round, path)
           .map { foo =>
             (foo.id.get, foo.foo.getAsString)
           }.collect.toSeq.sortBy(_._1)
@@ -334,10 +336,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val evenOutputOperator = ExternalOutput
-        .newInstance("even${round}", extractOperator.findOutput("evenResult"))
+        .newInstance("even", extractOperator.findOutput("evenResult"))
 
       val oddOutputOperator = ExternalOutput
-        .newInstance("odd${round}", extractOperator.findOutput("oddResult"))
+        .newInstance("odd", extractOperator.findOutput("oddResult"))
 
       val graph = new OperatorGraph(Seq(
         inputOperator,
@@ -352,7 +354,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val result = readResult[Foo](s"even${round}", path)
+          val result = readResult[Foo](evenOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -360,7 +362,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (0 until 100).filter(_ % 2 == 0).map(i => (100 * round + i, s"foo${100 * round + i}")))
         }
         {
-          val result = readResult[Foo](s"odd${round}", path)
+          val result = readResult[Foo](oddOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -414,10 +416,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val evenOutputOperator = ExternalOutput
-        .newInstance("even${round}", extractOperator.findOutput("evenResult"))
+        .newInstance("even", extractOperator.findOutput("evenResult"))
 
       val oddOutputOperator = ExternalOutput
-        .newInstance("odd${round}", extractOperator.findOutput("oddResult"))
+        .newInstance("odd", extractOperator.findOutput("oddResult"))
 
       val graph = new OperatorGraph(Seq(
         inputOperator,
@@ -433,7 +435,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val result = readResult[Foo](s"even${round}", path)
+          val result = readResult[Foo](evenOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -441,7 +443,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (0 until 100).filter(_ % 2 == 0).map(i => (100 * round + i, s"foo${100 * round + i}")))
         }
         {
-          val result = readResult[Foo](s"odd${round}", path)
+          val result = readResult[Foo](oddOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -522,16 +524,16 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val fooResultOutputOperator = ExternalOutput
-        .newInstance("fooResult${round}", cogroupOperator.findOutput("fooResult"))
+        .newInstance("fooResult", cogroupOperator.findOutput("fooResult"))
 
       val barResultOutputOperator = ExternalOutput
-        .newInstance("barResult${round}", cogroupOperator.findOutput("barResult"))
+        .newInstance("barResult", cogroupOperator.findOutput("barResult"))
 
       val fooErrorOutputOperator = ExternalOutput
-        .newInstance("fooError${round}", cogroupOperator.findOutput("fooError"))
+        .newInstance("fooError", cogroupOperator.findOutput("fooError"))
 
       val barErrorOutputOperator = ExternalOutput
-        .newInstance("barError${round}", cogroupOperator.findOutput("barError"))
+        .newInstance("barError", cogroupOperator.findOutput("barError"))
 
       val graph = new OperatorGraph(Seq(
         fooInputOperator, foo2InputOperator, barInputOperator,
@@ -545,7 +547,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val fooResult = readResult[Foo](s"fooResult${round}", path)
+          val fooResult = readResult[Foo](fooResultOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -553,7 +555,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           assert(fooResult(0) === (100 * round + 1, s"foo${100 * round + 1}"))
         }
         {
-          val barResult = readResult[Bar](s"barResult${round}", path)
+          val barResult = readResult[Bar](barResultOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -561,7 +563,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           assert(barResult(0) === (100 * round + 10, 100 * round + 1, s"bar${100 * round + 10}"))
         }
         {
-          val fooError = readResult[Foo](s"fooError${round}", path)
+          val fooError = readResult[Foo](fooErrorOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -572,7 +574,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           }
         }
         {
-          val barError = readResult[Bar](s"barError${round}", path)
+          val barError = readResult[Bar](barErrorOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(bar => (bar._2, bar._1))
@@ -659,16 +661,16 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val fooResultOutputOperator = ExternalOutput
-        .newInstance("fooResult${round}", cogroupOperator.findOutput("fooResult"))
+        .newInstance("fooResult", cogroupOperator.findOutput("fooResult"))
 
       val barResultOutputOperator = ExternalOutput
-        .newInstance("barResult${round}", cogroupOperator.findOutput("barResult"))
+        .newInstance("barResult", cogroupOperator.findOutput("barResult"))
 
       val fooErrorOutputOperator = ExternalOutput
-        .newInstance("fooError${round}", cogroupOperator.findOutput("fooError"))
+        .newInstance("fooError", cogroupOperator.findOutput("fooError"))
 
       val barErrorOutputOperator = ExternalOutput
-        .newInstance("barError${round}", cogroupOperator.findOutput("barError"))
+        .newInstance("barError", cogroupOperator.findOutput("barError"))
 
       val graph = new OperatorGraph(Seq(
         foo1InputOperator, foo2InputOperator, barInputOperator,
@@ -682,21 +684,21 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val fooResult = readResult[Foo](s"fooResult${round}", path)
+          val fooResult = readResult[Foo](fooResultOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
           assert(fooResult.size === 0)
         }
         {
-          val barResult = readResult[Bar](s"barResult${round}", path)
+          val barResult = readResult[Bar](barResultOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
           assert(barResult.size === 0)
         }
         {
-          val fooError = readResult[Foo](s"fooError${round}", path)
+          val fooError = readResult[Foo](fooErrorOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -706,7 +708,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           }
         }
         {
-          val barError = readResult[Bar](s"barError${round}", path)
+          val barError = readResult[Bar](barErrorOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(bar => (bar._2, bar._1))
@@ -791,10 +793,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val foundOutputOperator = ExternalOutput
-        .newInstance("found${round}", masterCheckOperator.findOutput("found"))
+        .newInstance("found", masterCheckOperator.findOutput("found"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterCheckOperator.findOutput("missed"))
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         foo1InputOperator, foo2InputOperator, barInputOperator,
@@ -808,7 +810,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[Bar](s"found${round}", path)
+          val found = readResult[Bar](foundOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -817,7 +819,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (5 until 10).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
         }
         {
-          val missed = readResult[Bar](s"missed${round}", path)
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -885,10 +887,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val foundOutputOperator = ExternalOutput
-        .newInstance("found${round}", masterCheckOperator.findOutput("found"))
+        .newInstance("found", masterCheckOperator.findOutput("found"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterCheckOperator.findOutput("missed"))
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         foo1InputOperator, foo2InputOperator, barInputOperator,
@@ -902,7 +904,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[Bar](s"found${round}", path)
+          val found = readResult[Bar](foundOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -911,7 +913,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (5 until 10).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
         }
         {
-          val missed = readResult[Bar](s"missed${round}", path)
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -978,10 +980,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val foundOutputOperator = ExternalOutput
-        .newInstance("found${round}", masterCheckOperator.findOutput("found"))
+        .newInstance("found", masterCheckOperator.findOutput("found"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterCheckOperator.findOutput("missed"))
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         fooInputOperator, barInputOperator,
@@ -995,7 +997,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[Bar](s"found${round}", path)
+          val found = readResult[Bar](foundOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1004,7 +1006,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (5 until 10).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
         }
         {
-          val missed = readResult[Bar](s"missed${round}", path)
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1061,10 +1063,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val foundOutputOperator = ExternalOutput
-        .newInstance("found${round}", masterCheckOperator.findOutput("found"))
+        .newInstance("found", masterCheckOperator.findOutput("found"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterCheckOperator.findOutput("missed"))
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         fooInputOperator, barInputOperator,
@@ -1078,7 +1080,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[Bar](s"found${round}", path)
+          val found = readResult[Bar](foundOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1087,7 +1089,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (5 until 10).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
         }
         {
-          val missed = readResult[Bar](s"missed${round}", path)
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1167,10 +1169,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val joinedOutputOperator = ExternalOutput
-        .newInstance("joined${round}", masterJoinOperator.findOutput("joined"))
+        .newInstance("joined", masterJoinOperator.findOutput("joined"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterJoinOperator.findOutput("missed"))
+        .newInstance("missed", masterJoinOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         foo1InputOperator, foo2InputOperator, barInputOperator,
@@ -1184,7 +1186,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[FooBar](s"joined${round}", path)
+          val found = readResult[FooBar](joinedOutputOperator.getName, round, path)
             .map { foobar =>
               (foobar.id.get, foobar.foo.getAsString, foobar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1193,7 +1195,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (5 until 10).map(i => (100 * round + i, s"foo${100 * round + i}", s"bar${100 * round + 10 + i}")))
         }
         {
-          val missed = readResult[Bar](s"missed${round}", path)
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1261,10 +1263,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val joinedOutputOperator = ExternalOutput
-        .newInstance("joined${round}", masterJoinOperator.findOutput("joined"))
+        .newInstance("joined", masterJoinOperator.findOutput("joined"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterJoinOperator.findOutput("missed"))
+        .newInstance("missed", masterJoinOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         foo1InputOperator, foo2InputOperator, barInputOperator,
@@ -1278,7 +1280,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[FooBar](s"joined${round}", path)
+          val found = readResult[FooBar](joinedOutputOperator.getName, round, path)
             .map { foobar =>
               (foobar.id.get, foobar.foo.getAsString, foobar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1287,7 +1289,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (5 until 10).map(i => (100 * round + i, s"foo${100 * round + i}", s"bar${100 * round + 10 + i}")))
         }
         {
-          val missed = readResult[Bar](s"missed${round}", path)
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1354,10 +1356,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val foundOutputOperator = ExternalOutput
-        .newInstance("joined${round}", masterJoinOperator.findOutput("joined"))
+        .newInstance("joined", masterJoinOperator.findOutput("joined"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterJoinOperator.findOutput("missed"))
+        .newInstance("missed", masterJoinOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         fooInputOperator, barInputOperator,
@@ -1371,7 +1373,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[FooBar](s"joined${round}", path)
+          val found = readResult[FooBar](foundOutputOperator.getName, round, path)
             .map { foobar =>
               (foobar.id.get, foobar.foo.getAsString, foobar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1380,7 +1382,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (5 until 10).map(i => (100 * round + i, s"foo${100 * round + i}", s"bar${100 * round + i + 10}")))
         }
         {
-          val missed = readResult[Bar](s"missed${round}", path)
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1437,10 +1439,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val foundOutputOperator = ExternalOutput
-        .newInstance("joined${round}", masterJoinOperator.findOutput("joined"))
+        .newInstance("joined", masterJoinOperator.findOutput("joined"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterJoinOperator.findOutput("missed"))
+        .newInstance("missed", masterJoinOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         fooInputOperator, barInputOperator,
@@ -1454,7 +1456,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[FooBar](s"joined${round}", path)
+          val found = readResult[FooBar](foundOutputOperator.getName, round, path)
             .map { foobar =>
               (foobar.id.get, foobar.foo.getAsString, foobar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1463,7 +1465,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             (5 until 10).map(i => (100 * round + i, s"foo${100 * round + i}", s"bar${100 * round + i + 10}")))
         }
         {
-          val missed = readResult[Bar](s"missed${round}", path)
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
             .map { bar =>
               (bar.id.get, bar.fooId.get, bar.bar.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1517,10 +1519,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val foundOutputOperator = ExternalOutput
-        .newInstance("found${round}", masterCheckOperator.findOutput("found"))
+        .newInstance("found", masterCheckOperator.findOutput("found"))
 
       val missedOutputOperator = ExternalOutput
-        .newInstance("missed${round}", masterCheckOperator.findOutput("missed"))
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
 
       val graph = new OperatorGraph(Seq(
         fooInputOperator,
@@ -1534,7 +1536,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val found = readResult[Foo](s"found${round}", path)
+          val found = readResult[Foo](foundOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1542,7 +1544,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           assert(found === (0 until 10).map(i => (100 * round + i, s"foo${100 * round + i}")))
         }
         {
-          val missed = readResult[Foo](s"missed${round}", path)
+          val missed = readResult[Foo](missedOutputOperator.getName, round, path)
             .map { foo =>
               (foo.id.get, foo.foo.getAsString)
             }.collect.toSeq.sortBy(_._1)
@@ -1603,7 +1605,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val resultOutputOperator = ExternalOutput
-        .newInstance("result${round}", foldOperator.findOutput("result"))
+        .newInstance("result", foldOperator.findOutput("result"))
 
       val graph = new OperatorGraph(Seq(
         baz1InputOperator, baz2InputOperator,
@@ -1617,7 +1619,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val result = readResult[Baz](s"result${round}", path)
+          val result = readResult[Baz](resultOutputOperator.getName, round, path)
             .map { baz =>
               (baz.id.get, baz.n.get)
             }.collect.toSeq.sortBy(_._1)
@@ -1682,7 +1684,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val resultOutputOperator = ExternalOutput
-        .newInstance("result${round}", foldOperator.findOutput("result"))
+        .newInstance("result", foldOperator.findOutput("result"))
 
       val graph = new OperatorGraph(Seq(
         baz1InputOperator, baz2InputOperator,
@@ -1696,7 +1698,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val result = readResult[Baz](s"result${round}", path)
+          val result = readResult[Baz](resultOutputOperator.getName, round, path)
             .map { baz =>
               (baz.id.get, baz.n.get)
             }.collect.toSeq.sortBy(_._1)
@@ -1758,7 +1760,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val resultOutputOperator = ExternalOutput
-        .newInstance("result${round}", summarizeOperator.findOutput("result"))
+        .newInstance("result", summarizeOperator.findOutput("result"))
 
       val graph = new OperatorGraph(Seq(
         baz1InputOperator, baz2InputOperator,
@@ -1772,7 +1774,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val result = readResult[SummarizedBaz](s"result${round}", path)
+          val result = readResult[SummarizedBaz](resultOutputOperator.getName, round, path)
             .map { baz =>
               (baz.id.get, baz.sum.get, baz.max.get, baz.min.get, baz.count.get)
             }.collect.toSeq.sortBy(_._1)
@@ -1843,7 +1845,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val resultOutputOperator = ExternalOutput
-        .newInstance("result${round}", summarizeOperator.findOutput("result"))
+        .newInstance("result", summarizeOperator.findOutput("result"))
 
       val graph = new OperatorGraph(Seq(
         baz1InputOperator, baz2InputOperator,
@@ -1857,7 +1859,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         round <- rounds
       } {
         {
-          val result = readResult[SummarizedBaz](s"result${round}", path)
+          val result = readResult[SummarizedBaz](resultOutputOperator.getName, round, path)
             .map { baz =>
               (baz.id.get, baz.sum.get, baz.max.get, baz.min.get, baz.count.get)
             }.collect.toSeq.sortBy(_._1)
@@ -1914,7 +1916,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     try {
       executor.start()
       executor.submitAll(rounds.map { round =>
-        newRoundContext(flowId = flowId, batchArguments = Map("round" -> round.toString))
+        newRoundContext(
+          flowId = flowId,
+          stageId = s"round_${round}",
+          batchArguments = Map("round" -> round.toString))
       })
     } finally {
       executor.stop(awaitExecution = true, gracefully = true)

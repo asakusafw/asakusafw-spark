@@ -22,6 +22,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.graph.{
@@ -55,7 +56,8 @@ class TemporaryOutputCompiler extends RoundAwareNodeCompiler {
 
     context.addExternalOutput(
       operator.getName, operator.getInfo,
-      Seq(context.options.getRuntimeWorkingPath(s"${operator.getName}/part-*")))
+      Seq(context.options.getRuntimeWorkingPath(
+        s"${operator.getName}/*/${TemporaryOutputFormat.DEFAULT_FILE_NAME}-*")))
 
     val builder =
       new TemporaryOutputClassBuilder(

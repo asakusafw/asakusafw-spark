@@ -37,11 +37,12 @@ trait RoundContextSugar {
     userName: String = sys.props("user.name"),
     batchId: String = "batchId",
     flowId: String = "flowId",
+    stageId: String = null,
     executionId: String = "executionId",
     batchArguments: Map[String, String] = Map.empty)(
       implicit sc: SparkContext): RoundContext = {
 
-    val stageInfo = new StageInfo(userName, batchId, flowId, null, executionId, batchArguments)
+    val stageInfo = new StageInfo(userName, batchId, flowId, stageId, executionId, batchArguments)
     newRoundContext(stageInfo)
   }
 }

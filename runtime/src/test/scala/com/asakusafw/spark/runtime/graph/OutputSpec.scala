@@ -50,7 +50,7 @@ abstract class OutputSpec extends FlatSpec with SparkForAll {
     val job = JobCompatibility.newJob(rc.hadoopConf.value)
 
     val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
-    FileInputFormat.setInputPaths(job, new Path(stageInfo.resolveUserVariables(path + "/part-*")))
+    FileInputFormat.setInputPaths(job, new Path(stageInfo.resolveUserVariables(path + "/*/part-*")))
 
     sc.newAPIHadoopRDD(
       job.getConfiguration,

@@ -83,9 +83,11 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
 
-  def readResult[T: ClassTag](name: String, path: File)(implicit sc: SparkContext): RDD[T] = {
+  def readResult[T: ClassTag](name: String, round: Int, path: File)(implicit sc: SparkContext): RDD[T] = {
     val job = JobCompatibility.newJob(sc.hadoopConfiguration)
-    TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/part-*")))
+    TemporaryInputFormat.setInputPaths(
+      job,
+      Seq(new Path(path.getPath, s"${name}/round_${round}/part-*")))
     sc.newAPIHadoopRDD(
       job.getConfiguration,
       classOf[TemporaryInputFormat[T]],
@@ -118,7 +120,7 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
       .build()
 
     val outputOperator = ExternalOutput
-      .newInstance("output${round}", inputOperator.getOperatorPort)
+      .newInstance("output", inputOperator.getOperatorPort)
 
     val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
@@ -129,7 +131,7 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
       for {
         round <- rounds
       } {
-        val result = readResult[Foo](s"output${round}", path)
+        val result = readResult[Foo](outputOperator.getName, round, path)
           .map { foo =>
             (foo.id.get, foo.foo.getAsString)
           }.collect.toSeq.sortBy(_._1)

@@ -180,7 +180,9 @@ class ExtractClassBuilderSpec
       for {
         round <- 0 to 1
       } {
-        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val rc = newRoundContext(
+          stageId = s"round_${round}",
+          batchArguments = Map("round" -> round.toString))
         val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
         val results = extract.getOrCompute(rc)
@@ -310,7 +312,9 @@ class ExtractClassBuilderSpec
       for {
         round <- 0 to 1
       } {
-        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
+        val rc = newRoundContext(
+          stageId = s"round_${round}",
+          batchArguments = Map("round" -> round.toString))
         val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
         val results = extract.getOrCompute(rc)
