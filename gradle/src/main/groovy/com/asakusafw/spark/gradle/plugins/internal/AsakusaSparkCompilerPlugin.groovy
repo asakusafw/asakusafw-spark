@@ -128,6 +128,9 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${asakusa.asakusafwVersion}"
 
+                asakusaSparkCompiler "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.compilerProjectVersion}"
+                asakusaSparkCompiler "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.sparkProjectVersion}"
+
                 asakusaSparkCompilerLauncher "com.asakusafw.lang.tool:asakusa-tool-launcher:${base.compilerProjectVersion}"
             }
         }

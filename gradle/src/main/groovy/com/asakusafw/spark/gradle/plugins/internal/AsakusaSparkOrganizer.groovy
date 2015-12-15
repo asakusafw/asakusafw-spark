@@ -51,6 +51,7 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
         createConfigurations('asakusafw', [
             SparkDist : "Contents of Asakusa on Spark modules (${profile.name}).",
             SparkLib : "Libraries of Asakusa on Spark modules (${profile.name}).",
+            YaessIterativePlugin: "Libraries of YAESS Itrative Plugin.",
         ])
     }
 
@@ -62,7 +63,10 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
                 SparkLib : [
                     "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.compilerProjectVersion}:lib@jar",
                     "com.asakusafw.spark:asakusa-spark-runtime:${base.sparkProjectVersion}@jar",
+                    "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.sparkProjectVersion}@jar",
+                    "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.sparkProjectVersion}@jar",
                 ],
+                YaessIterativePlugin : "com.asakusafw.iterative:asakusa-iterative-yaess:${base.compilerProjectVersion}:lib@jar",
             ])
         }
     }
@@ -75,6 +79,9 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
                 }
                 into('spark/lib') {
                     put configuration('asakusafwSparkLib')
+                }
+                into('yaess/plugin') {
+                    put configuration('asakusafwYaessIterativePlugin')
                 }
             },
         ]
