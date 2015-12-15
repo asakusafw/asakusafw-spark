@@ -15,14 +15,13 @@
  */
 package com.asakusafw.spark.extensions.iterativebatch.runtime.util
 
-import java.util.concurrent.{ Executors, TimeUnit }
+import java.util.concurrent.{ Executors, ThreadFactory, TimeUnit }
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder
 
 abstract class MessageQueue[M](name: String, numThreads: Int = 1, numSlots: Int = Int.MaxValue) {
 
@@ -59,11 +58,32 @@ abstract class MessageQueue[M](name: String, numThreads: Int = 1, numSlots: Int 
 
   private val executor =
     Executors.newFixedThreadPool(
-      numThreads,
-      new ThreadFactoryBuilder()
-        .setDaemon(true)
-        .setNameFormat(if (numThreads > 1) s"${name}-%d" else name)
-        .build())
+      numThreads, {
+        if (numThreads > 1) {
+          val group = new ThreadGroup(name)
+          val count = new AtomicLong()
+
+          new ThreadFactory() {
+
+            override def newThread(runnable: Runnable): Thread = {
+              val thread = new Thread(group, runnable)
+              thread.setName(s"${name}-${count.getAndIncrement}")
+              thread.setDaemon(true)
+              thread
+            }
+          }
+        } else {
+          new ThreadFactory() {
+
+            override def newThread(runnable: Runnable): Thread = {
+              val thread = new Thread(runnable)
+              thread.setName(name)
+              thread.setDaemon(true)
+              thread
+            }
+          }
+        }
+      })
 
   private val runnable = new Runnable {
 
