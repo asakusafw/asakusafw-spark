@@ -42,7 +42,10 @@ abstract class TemporaryOutput[T: ClassTag](
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
 
     val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
-    TemporaryOutputFormat.setOutputPath(job, new Path(stageInfo.resolveUserVariables(path)))
+    TemporaryOutputFormat.setOutputPath(
+      job,
+      new Path(stageInfo.resolveUserVariables(
+        s"${path}/${Option(stageInfo.getStageId).getOrElse("-")}")))
 
     job
   }

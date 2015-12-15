@@ -39,7 +39,7 @@ import com.asakusafw.spark.compiler.serializer.{
 }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
-import com.asakusafw.spark.runtime.SparkClient
+import com.asakusafw.spark.runtime.DefaultClient
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -59,7 +59,7 @@ class SparkClientClassBuilder(
     implicit context: SparkClientCompiler.Context)
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/SparkClient;"),
-    classOf[SparkClient].asType) {
+    classOf[DefaultClient].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)

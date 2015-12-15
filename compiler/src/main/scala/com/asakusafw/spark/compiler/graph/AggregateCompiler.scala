@@ -51,14 +51,16 @@ class AggregateCompiler extends NodeCompiler {
     assert(operator.outputs.size == 1,
       s"The size of outputs should be 1: ${operator.outputs.size} [${subplan}]")
 
+    val valueType = operator.inputs.head.dataModelType
+    val combinerType = operator.outputs.head.dataModelType
+
     val builder =
       new AggregateClassBuilder(
-        operator.inputs.head.dataModelType,
-        operator.outputs.head.dataModelType,
-        operator,
-        ComputeStrategy.ComputeOnce)(
+        valueType,
+        combinerType,
+        operator)(
         subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq)
+        subplan.getOutputs.toSeq) with ComputeOnce
 
     context.addClass(builder)
   }

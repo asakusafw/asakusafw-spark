@@ -46,7 +46,12 @@ import com.asakusafw.spark.compiler.graph.{
   Instantiator
 }
 import com.asakusafw.spark.compiler.planning.SparkPlanning
-import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, NodeCompiler, OperatorCompiler }
+import com.asakusafw.spark.compiler.spi.{
+  AggregationCompiler,
+  ExtensionCompiler,
+  NodeCompiler,
+  OperatorCompiler
+}
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 import resource._
@@ -71,22 +76,29 @@ class SparkClientCompiler extends JobflowProcessor {
 
       val flowId = source.getFlowId
 
-      implicit val context: SparkClientCompiler.Context =
-        new SparkClientCompiler.DefaultContext(flowId)(jpContext)
+      ExtensionCompiler.find(plan)(jpContext) match {
+        case Some(compiler) =>
+          compiler.compile(plan)(flowId, jpContext)
 
-      val builder = new SparkClientClassBuilder(plan)
-      val client = context.addClass(builder)
+        case None =>
 
-      context.addTask(
-        SparkClientCompiler.ModuleName,
-        SparkClientCompiler.ProfileName,
-        SparkClientCompiler.Command,
-        Seq(
-          CommandToken.BATCH_ID,
-          CommandToken.FLOW_ID,
-          CommandToken.EXECUTION_ID,
-          CommandToken.BATCH_ARGUMENTS,
-          CommandToken.of(client.getClassName)))
+          implicit val context: SparkClientCompiler.Context =
+            new SparkClientCompiler.DefaultContext(flowId)(jpContext)
+
+          val builder = new SparkClientClassBuilder(plan)
+          val client = context.addClass(builder)
+
+          context.addTask(
+            SparkClientCompiler.ModuleName,
+            SparkClientCompiler.ProfileName,
+            SparkClientCompiler.Command,
+            Seq(
+              CommandToken.BATCH_ID,
+              CommandToken.FLOW_ID,
+              CommandToken.EXECUTION_ID,
+              CommandToken.BATCH_ARGUMENTS,
+              CommandToken.of(client.getClassName)))
+      }
     }
   }
 

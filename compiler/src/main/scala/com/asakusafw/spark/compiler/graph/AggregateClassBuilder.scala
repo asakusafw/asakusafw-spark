@@ -47,11 +47,10 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
-class AggregateClassBuilder(
+abstract class AggregateClassBuilder(
   val valueType: Type,
   val combinerType: Type,
-  val operator: UserOperator,
-  computeStrategy: MixIn)(
+  val operator: UserOperator)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       implicit val context: NodeCompiler.Context)
@@ -69,10 +68,8 @@ class AggregateClassBuilder(
       .build(),
     classOf[Aggregate[_, _]].asType)
   with Branching
-  with LabelField
-  with Mixing {
-
-  override val mixins: Seq[MixIn] = Seq(computeStrategy)
+  with LabelField {
+  self: ComputationStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

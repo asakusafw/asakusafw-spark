@@ -45,9 +45,8 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
-class ExtractClassBuilder(
-  marker: MarkerOperator,
-  computeStrategy: MixIn)(
+abstract class ExtractClassBuilder(
+  marker: MarkerOperator)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       implicit val context: NodeCompiler.Context)
@@ -63,10 +62,8 @@ class ExtractClassBuilder(
       .build(),
     classOf[Extract[_]].asType)
   with Branching
-  with LabelField
-  with Mixing {
-
-  override val mixins: Seq[MixIn] = Seq(computeStrategy)
+  with LabelField {
+  self: ComputationStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

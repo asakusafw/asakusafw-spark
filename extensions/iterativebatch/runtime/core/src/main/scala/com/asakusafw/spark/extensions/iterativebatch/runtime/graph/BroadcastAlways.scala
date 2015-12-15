@@ -13,27 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.compiler
+package com.asakusafw.spark.extensions.iterativebatch.runtime
 package graph
 
-import scala.concurrent.ExecutionContext
+import scala.collection.mutable
+import scala.concurrent.{ ExecutionContext, Future }
 
-import org.objectweb.asm.Opcodes
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.spark.runtime.RoundContext
-import com.asakusafw.spark.runtime.graph.ComputeOnce
-import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm4s._
-import com.asakusafw.spark.tools.asm4s.MixIn._
+import com.asakusafw.spark.runtime.graph.Broadcast
 
-object ComputeStrategy {
+trait BroadcastAlways {
+  self: Broadcast =>
 
-  val ComputeOnce: MixIn =
-    MixIn(classOf[ComputeOnce].asType,
-      Seq(FieldDef(Opcodes.ACC_TRANSIENT, "generatedRDD", classOf[Map[_, _]].asType)),
-      Seq(
-        MethodDef("getOrCompute",
-          classOf[Map[_, _]].asType,
-          classOf[RoundContext].asType,
-          classOf[ExecutionContext].asType)))
+  @transient
+  private val broadcasted: mutable.Map[RoundContext, Future[Broadcasted[_]]] =
+    mutable.WeakHashMap.empty
+
+  def getOrBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
+    synchronized(broadcasted.getOrElseUpdate(rc, broadcast(rc)))
+  }
 }

@@ -60,6 +60,7 @@
     <module>planner</module>
     <module>runtime</module>
     <module>tools</module>
+    <module>extensions</module>
     <module>assembly</module>
   </modules>
 
@@ -503,6 +504,16 @@ encoding/<project>=UTF-8
       <dependency>
         <groupId>com.asakusafw.iterative</groupId>
         <artifactId>asakusa-compiler-model-iterative</artifactId>
+        <version>${asakusafw-lang.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw.iterative</groupId>
+        <artifactId>asakusa-iterative-launch</artifactId>
+        <version>${asakusafw-lang.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw.iterative</groupId>
+        <artifactId>asakusa-iterative-common</artifactId>
         <version>${asakusafw-lang.version}</version>
       </dependency>
 

@@ -48,10 +48,9 @@ class CoGroupCompiler extends NodeCompiler {
 
     val builder =
       new CoGroupClassBuilder(
-        operator,
-        ComputeStrategy.ComputeOnce)(
+        operator)(
         subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq)
+        subplan.getOutputs.toSeq) with ComputeOnce
 
     context.addClass(builder)
   }

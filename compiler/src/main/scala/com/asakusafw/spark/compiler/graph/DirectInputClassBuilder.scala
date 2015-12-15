@@ -31,20 +31,18 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
-class DirectInputClassBuilder(
+abstract class DirectInputClassBuilder(
   operator: ExternalInput,
   inputFormatType: Type,
   keyType: Type,
   valueType: Type,
-  extraConfigurations: Map[String, String],
-  computeStrategy: MixIn)(
+  extraConfigurations: Map[String, String])(
     label: String,
     subplanOutputs: Seq[SubPlan.Output])(
       implicit context: NodeCompiler.Context)
   extends NewHadoopInputClassBuilder(
     operator,
-    valueType,
-    computeStrategy)(
+    valueType)(
     label,
     subplanOutputs)(
     Type.getType(
@@ -64,6 +62,7 @@ class DirectInputClassBuilder(
       }
       .build(),
     classOf[DirectInput[_, _, _]].asType) {
+  self: ComputationStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(

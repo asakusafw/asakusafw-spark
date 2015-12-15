@@ -20,8 +20,7 @@ import scala.collection.JavaConversions._
 import org.apache.spark.SparkConf
 import org.slf4j.LoggerFactory
 
-import com.asakusafw.bridge.launch.LaunchConfiguration
-import com.asakusafw.bridge.stage.StageInfo
+import com.asakusafw.iterative.launch.IterativeLaunchConfiguration
 import com.asakusafw.runtime.core.context.RuntimeContext
 
 object Launcher {
@@ -34,13 +33,11 @@ object Launcher {
 
       RuntimeContext.set(RuntimeContext.DEFAULT.apply(System.getenv))
       RuntimeContext.get.verifyApplication(cl)
-      val conf = LaunchConfiguration.parse(cl, args: _*)
+      val conf = IterativeLaunchConfiguration.parse(cl, args: _*)
 
       val sparkClient = conf.getStageClient.asSubclass(classOf[SparkClient]).newInstance()
 
       val sparkConf = new SparkConf()
-
-      sparkConf.setHadoopConf(StageInfo.KEY_NAME, conf.getStageInfo.serialize)
 
       conf.getHadoopProperties.foreach {
         case (key, value) => sparkConf.setHadoopConf(key, value)
@@ -60,7 +57,7 @@ object Launcher {
       }
 
       if (!RuntimeContext.get.isSimulation) {
-        sparkClient.execute(sparkConf)
+        sparkClient.execute(sparkConf, conf.getStageInfo)
       }
     } catch {
       case t: Throwable =>
