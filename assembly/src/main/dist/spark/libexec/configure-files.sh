@@ -40,6 +40,17 @@ then
     _SPARK_APP_FILES+=("@spark.properties|$ASAKUSA_HOME/spark/conf/spark.properties")
 fi
 
+if [ "$ASAKUSA_EXTENSION_iterative" != "" ]
+then
+    if [ "$_SPARK_FILES_VALUES" != "" ]
+    then
+        _SPARK_FILES_VALUES="$_SPARK_FILES_VALUES,"
+    fi
+    _SPARK_FILES_VALUES="$_SPARK_FILES_VALUES$ASAKUSA_EXTENSION_iterative"
+    _SPARK_APP_FILES+=("--parameter-table")
+    _SPARK_APP_FILES+=("@$(basename "$ASAKUSA_EXTENSION_iterative")|$ASAKUSA_EXTENSION_iterative")
+fi
+
 if [ "$_SPARK_FILES_VALUES" != "" ]
 then
     _SPARK_FILES+=("--files")
