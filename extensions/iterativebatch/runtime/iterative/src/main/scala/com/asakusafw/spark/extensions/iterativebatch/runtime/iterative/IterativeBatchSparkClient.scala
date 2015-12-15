@@ -17,11 +17,13 @@ package com.asakusafw.spark.extensions.iterativebatch.runtime
 package iterative
 
 import scala.concurrent.ExecutionContext
+import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
@@ -40,6 +42,8 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     try {
       val numSlots = conf.getInt(Props.NumSlots, Props.DefaultNumSlots)
       val executor = newIterativeBatchExecutor(numSlots)
+
+      executor.addListener(Logger)
 
       execute(executor, stageInfo)
     } finally {
@@ -81,6 +85,52 @@ object IterativeBatchSparkClient {
   case class Context(
     hadoopConf: Broadcasted[Configuration])
     extends RoundContext
+
+  object Logger extends IterativeBatchExecutor.Listener {
+
+    val Logger = LoggerFactory.getLogger(getClass)
+
+    override def onExecutorStart(): Unit = {
+      if (Logger.isInfoEnabled) {
+        Logger.info("IterativaBatchExecutor started.")
+      }
+    }
+
+    override def onRoundSubmitted(rc: RoundContext): Unit = {
+      if (Logger.isInfoEnabled) {
+        Logger.info(s"Round[${stageInfo(rc)}] is submitted.")
+      }
+    }
+
+    override def onRoundStart(rc: RoundContext): Unit = {
+      if (Logger.isInfoEnabled) {
+        Logger.info(s"Round[${stageInfo(rc)}] started.")
+      }
+    }
+
+    override def onRoundCompleted(rc: RoundContext, result: Try[Unit]): Unit = {
+      result match {
+        case Success(_) =>
+          if (Logger.isInfoEnabled) {
+            Logger.info(s"Round[${stageInfo(rc)}] successfully completed.")
+          }
+        case Failure(t) =>
+          if (Logger.isErrorEnabled) {
+            Logger.error(s"Round[${stageInfo(rc)}] failed.", t)
+          }
+      }
+    }
+
+    override def onExecutorStop(): Unit = {
+      if (Logger.isInfoEnabled) {
+        Logger.info("IterativaBatchExecutor stopped.")
+      }
+    }
+
+    private def stageInfo(rc: RoundContext): StageInfo = {
+      StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+    }
+  }
 
   implicit lazy val ec: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
 }

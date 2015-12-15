@@ -90,8 +90,14 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
     queue.stop(awaitExecution, gracefully)
   }
 
-  def submit(rc: RoundContext): Unit = queue.submit(rc)
-  def submitAll(rcs: Seq[RoundContext]): Unit = queue.submitAll(rcs)
+  def submit(rc: RoundContext): Unit = {
+    queue.submit(rc)
+    listenerBus.post(RoundSubmitted(rc))
+  }
+  def submitAll(rcs: Seq[RoundContext]): Unit = {
+    queue.submitAll(rcs)
+    rcs.foreach(rc => listenerBus.post(RoundSubmitted(rc)))
+  }
 
   def awaitExecution(): Unit =
     queue.awaitExecution()
@@ -112,6 +118,7 @@ object IterativeBatchExecutor {
 
   sealed trait Event
   case object ExecutorStart extends Event
+  case class RoundSubmitted(rc: RoundContext) extends Event
   case class RoundStarted(rc: RoundContext) extends Event
   case class RoundCompleted(rc: RoundContext, result: Try[Unit]) extends Event
   case object ExecutorStop extends Event
@@ -119,6 +126,8 @@ object IterativeBatchExecutor {
   trait Listener {
 
     def onExecutorStart(): Unit = {}
+
+    def onRoundSubmitted(rc: RoundContext): Unit = {}
 
     def onRoundStart(rc: RoundContext): Unit = {}
 
@@ -133,6 +142,7 @@ object IterativeBatchExecutor {
     override def postEvent(listener: Listener, event: Event): Unit = {
       event match {
         case ExecutorStart => listener.onExecutorStart()
+        case RoundSubmitted(rc) => listener.onRoundSubmitted(rc)
         case RoundStarted(rc) => listener.onRoundStart(rc)
         case RoundCompleted(rc, result) => listener.onRoundCompleted(rc, result)
         case ExecutorStop => listener.onExecutorStop()
