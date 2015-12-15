@@ -31,6 +31,7 @@ import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 
+import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.common.IterativeExtensions
 import com.asakusafw.iterative.launch.IterativeStageInfo
@@ -43,6 +44,7 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
+import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
@@ -52,6 +54,7 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.SparkClientCompiler
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.vocabulary.operator.Update
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient
 
@@ -97,34 +100,36 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
 
   it should "compile Spark client from simple plan" in {
     val (path, classpath) = createTempDirs()
-    val rounds = 0 to 1
 
     spark { implicit sc =>
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 100).map(Foo.intToFoo(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 100).map(Foo.intToFoo)
       }
     }
 
     val inputOperator = ExternalInput
-      .newWithAttributes("foos${round}/part-*",
+      .newInstance("foos/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
           "test",
           ClassDescription.of(classOf[Foo]),
           ExternalInputInfo.DataSize.UNKNOWN))
+
+    val roundFoo = OperatorExtractor
+      .extract(classOf[Update], classOf[Ops], "roundFoo")
+      .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+      .output("output", ClassDescription.of(classOf[Foo]))
       .attribute(classOf[IterativeExtension], new IterativeExtension())
       .build()
 
     val outputOperator = ExternalOutput
-      .newInstance("output", inputOperator.getOperatorPort)
+      .newInstance("output", roundFoo.findOutput("output"))
 
     val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
     compile(graph, 2, path, classpath)
+
+    val rounds = 0 to 1
     execute(classpath)(rounds)
 
     spark { implicit sc =>
@@ -251,15 +256,31 @@ object IterativeBatchExtensionCompilerSpec {
 
   object Foo {
 
-    def intToFoo(round: Int): Int => Foo = {
+    def intToFoo: Int => Foo = {
 
       lazy val foo = new Foo()
 
       { i =>
-        foo.id.modify(100 * round + i)
-        foo.foo.modify(s"foo${100 * round + i}")
+        foo.id.modify(i)
+        foo.foo.modify(s"foo${i}")
         foo
       }
+    }
+
+    def round(foo: Foo, round: Int): Foo = {
+      val id = foo.id.get
+      foo.id.modify(100 * round + id)
+      foo.foo.modify(s"foo${100 * round + id}")
+      foo
+    }
+  }
+
+  class Ops {
+
+    @Update
+    def roundFoo(foo: Foo): Unit = {
+      val round = BatchContext.get("round").toInt
+      Foo.round(foo, round)
     }
   }
 }

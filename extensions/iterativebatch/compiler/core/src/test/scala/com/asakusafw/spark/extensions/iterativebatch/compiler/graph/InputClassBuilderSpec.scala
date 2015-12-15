@@ -35,13 +35,16 @@ import org.apache.spark.SparkContext
 
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
+import com.asakusafw.lang.compiler.common.DiagnosticException
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, MarkerOperator }
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
+import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
+import com.asakusafw.runtime.stage.StageConstants
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value.IntOption
@@ -71,7 +74,7 @@ abstract class InputClassBuilderSpec extends FlatSpec with SparkWithClassServerF
     job.setOutputValueClass(classOf[Foo])
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
 
-    TemporaryOutputFormat.setOutputPath(job, new Path(parent, s"foos_${round}"))
+    TemporaryOutputFormat.setOutputPath(job, new Path(parent, s"foos_round_${round}"))
 
     val foos = sc.parallelize(ints).map(Foo.intToFoo(round))
     foos.saveAsNewAPIHadoopDataset(job.getConfiguration)
@@ -93,12 +96,17 @@ class TemporaryInputClassBuilderSpec
   behavior of classOf[TemporaryInputClassBuilder].getSimpleName
 
   for {
-    iterativeInfo <- Seq(
-      IterativeInfo.always(),
-      IterativeInfo.never(),
-      IterativeInfo.parameter("round"))
+    iterativeExtension <- Seq(
+      Some(new IterativeExtension()),
+      Some(new IterativeExtension("round")),
+      None)
+    iterativeInfo <- if (iterativeExtension.isDefined) {
+      Seq(IterativeInfo.never())
+    } else {
+      Seq(IterativeInfo.always(), IterativeInfo.parameter("round"), IterativeInfo.never())
+    }
   } {
-    val conf = s"IterativeInfo: ${iterativeInfo}"
+    val conf = s"IterativeExtension: ${iterativeExtension}, IterativeInfo: ${iterativeInfo}"
 
     it should s"build TemporaryInput class: [${conf}]" in { implicit sc =>
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
@@ -108,14 +116,18 @@ class TemporaryInputClassBuilderSpec
       val inputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
-      val inputOperator = ExternalInput.builder("foos_${round}/part-*",
-        new ExternalInputInfo.Basic(
-          ClassDescription.of(classOf[Foo]),
-          "test",
-          ClassDescription.of(classOf[Foo]),
-          ExternalInputInfo.DataSize.UNKNOWN))
-        .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
-        .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo])).build()
+      val inputOperator = {
+        val op = ExternalInput.builder(s"foos_${StageConstants.EXPR_STAGE_ID}/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "test",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+          .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
+          .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo]))
+        iterativeExtension.foreach(op.attribute(classOf[IterativeExtension], _))
+        op.build()
+      }
       inputOperator.findOutput(ExternalInput.PORT_NAME).connect(inputMarker.getInput)
 
       val plan = PlanBuilder.from(Seq(inputOperator))
@@ -146,45 +158,50 @@ class TemporaryInputClassBuilderSpec
       implicit val context = newNodeCompilerContext(flowId, jpContext)
 
       val compiler = RoundAwareNodeCompiler.get(subplan)
-      val thisType = compiler.compile(subplan)
-      context.addClass(context.branchKeys)
-      context.addClass(context.broadcastIds)
-      val cls = classServer.loadClass(thisType).asSubclass(classOf[TemporaryInput[Foo]])
 
-      val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
-      def getBranchKey(marker: MarkerOperator): BranchKey = {
-        val sn = subplan.getOperators.toSet
-          .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
-        branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
-      }
+      if (iterativeExtension.isDefined) {
+        intercept[DiagnosticException](compiler.compile(subplan))
+      } else {
+        val thisType = compiler.compile(subplan)
+        context.addClass(context.branchKeys)
+        context.addClass(context.broadcastIds)
+        val cls = classServer.loadClass(thisType).asSubclass(classOf[TemporaryInput[Foo]])
 
-      val input = cls.getConstructor(
-        classOf[Map[BroadcastId, Broadcast]],
-        classOf[SparkContext])
-        .newInstance(
-          Map.empty,
-          sc)
+        val branchKeyCls = classServer.loadClass(context.branchKeys.thisType.getClassName)
+        def getBranchKey(marker: MarkerOperator): BranchKey = {
+          val sn = subplan.getOperators.toSet
+            .find(_.getOriginalSerialNumber == marker.getOriginalSerialNumber).get.getSerialNumber
+          branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
+        }
 
-      assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
+        val input = cls.getConstructor(
+          classOf[Map[BroadcastId, Broadcast]],
+          classOf[SparkContext])
+          .newInstance(
+            Map.empty,
+            sc)
 
-      for {
-        round <- 0 to 1
-      } {
-        prepareRound(new File(tmpDir, "external/input").getAbsolutePath, 0 until 100, round)
+        assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
 
-        val rc = newRoundContext(
-          stageId = s"round_${round}",
-          batchArguments = Map("round" -> round.toString))
-        val bias = if (iterativeInfo.isIterative) 100 * round else 0
+        for {
+          round <- 0 to 1
+        } {
+          prepareRound(new File(tmpDir, "external/input").getAbsolutePath, 0 until 100, round)
 
-        val result = Await.result(
-          input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
-            _.map {
-              case (_, foo: Foo) => foo.id.get
-            }.collect.toSeq.sorted
-          }, Duration.Inf)
+          val rc = newRoundContext(
+            stageId = s"round_${round}",
+            batchArguments = Map("round" -> round.toString))
+          val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
-        assert(result === (0 until 100).map(i => bias + i))
+          val result = Await.result(
+            input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
+              _.map {
+                case (_, foo: Foo) => foo.id.get
+              }.collect.toSeq.sorted
+            }, Duration.Inf)
+
+          assert(result === (0 until 100).map(i => bias + i))
+        }
       }
     }
   }
@@ -205,12 +222,12 @@ class DirectInputClassBuilderSpec
   behavior of classOf[DirectInputClassBuilder].getSimpleName
 
   for {
-    iterativeInfo <- Seq(
-      IterativeInfo.always(),
-      IterativeInfo.never(),
-      IterativeInfo.parameter("round"))
+    iterativeExtension <- Seq(
+      Some(new IterativeExtension()),
+      Some(new IterativeExtension("round")),
+      None)
   } {
-    val conf = s"IterativeInfo: ${iterativeInfo}"
+    val conf = s"IterativeExtension: ${iterativeExtension}"
 
     it should s"build DirectInput class: [${conf}]" in { implicit sc =>
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
@@ -220,14 +237,18 @@ class DirectInputClassBuilderSpec
       val inputMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
-      val inputOperator = ExternalInput.builder( /*"foos_${round}/part-*"*/ "foos_0",
-        new ExternalInputInfo.Basic(
-          ClassDescription.of(classOf[Foo]),
-          "test",
-          ClassDescription.of(classOf[Foo]),
-          ExternalInputInfo.DataSize.UNKNOWN))
-        .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
-        .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo])).build()
+      val inputOperator = {
+        val op = ExternalInput.builder( /*"foos_${round}"*/ "foos_0",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "test",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+          .input("begin", ClassDescription.of(classOf[Foo]), beginMarker.getOutput)
+          .output(ExternalInput.PORT_NAME, ClassDescription.of(classOf[Foo]))
+        iterativeExtension.foreach(op.attribute(classOf[IterativeExtension], _))
+        op.build()
+      }
       inputOperator.findOutput(ExternalInput.PORT_NAME).connect(inputMarker.getInput)
 
       val plan = PlanBuilder.from(Seq(inputOperator))
@@ -242,7 +263,7 @@ class DirectInputClassBuilderSpec
           SubPlanInfo.DriverType.INPUT,
           Seq.empty[SubPlanInfo.DriverOption],
           inputOperator))
-      subplan.putAttr(_ => iterativeInfo)
+      subplan.putAttr(_ => IterativeInfo.getDeclared(inputOperator))
 
       subplan.findOut(inputMarker)
         .putAttr(
@@ -265,7 +286,7 @@ class DirectInputClassBuilderSpec
               ClassDescription.of(classOf[TemporaryInputFormat[Foo]]),
               ClassDescription.of(classOf[NullWritable]),
               ClassDescription.of(classOf[Foo]),
-              mkExtraConfigurations(new File(tmpDir, /*"foos_${round}"*/ "foos_0").getAbsolutePath))
+              mkExtraConfigurations(new File(tmpDir, /*"foos_round_${round}"*/ "foos_round_0").getAbsolutePath))
           }
         })
 
@@ -298,8 +319,10 @@ class DirectInputClassBuilderSpec
       } {
         prepareRound(tmpDir, 0 until 100, round)
 
-        val rc = newRoundContext(batchArguments = Map("round" -> round.toString))
-        val bias = if (iterativeInfo.isIterative) 100 * round else 0
+        val rc = newRoundContext(
+          stageId = s"round_${round}",
+          batchArguments = Map("round" -> round.toString))
+        val bias = if (iterativeExtension.isDefined) 100 * round else 0
 
         val result = Await.result(
           input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {

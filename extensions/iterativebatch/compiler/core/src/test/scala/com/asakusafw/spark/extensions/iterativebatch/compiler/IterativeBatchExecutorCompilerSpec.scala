@@ -34,6 +34,7 @@ import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
+import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
@@ -129,32 +130,34 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor from simple plan: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 100).map(Foo.intToFoo(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 100).map(Foo.intToFoo)
       }
 
       val inputOperator = ExternalInput
-        .newWithAttributes("foos${round}/part-*",
+        .newInstance("foos/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "test",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val outputOperator = ExternalOutput
-        .newInstance("output", inputOperator.getOperatorPort)
+        .newInstance("output", roundFoo.findOutput("output"))
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
       val executorType = compile(flowId, graph, 2, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -178,28 +181,28 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor from simple plan with InputFormatInfo: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 0 // 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 100).map(Foo.intToFoo(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 100).map(Foo.intToFoo)
       }
 
       val inputOperator = ExternalInput
-        .newWithAttributes("foos${round}/part-*",
+        .newInstance("foos",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "test",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val outputOperator = ExternalOutput
-        .newInstance("output", inputOperator.getOperatorPort)
+        .newInstance("output", roundFoo.findOutput("output"))
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
@@ -215,8 +218,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
                 ClassDescription.of(classOf[NullWritable]),
                 ClassDescription.of(classOf[Foo]),
                 Map(FileInputFormat.INPUT_DIR ->
-                  /*s"${path.getPath}/${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foos$${round}/part-*"*/
-                  s"${path.getPath}/${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foos0/part-*"))
+                  /*s"${path.getPath}/${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foos/part-*"*/
+                  s"${path.getPath}/${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foos/part-*"))
             }
           })
         val jobflow = newJobflow(flowId, graph)
@@ -230,6 +233,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         executorType
       }
 
+      val rounds = 0 to 0 // 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -253,29 +257,29 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with Logging: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 100).map(Foo.intToFoo(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 100).map(Foo.intToFoo)
       }
 
       val inputOperator = ExternalInput
-        .newWithAttributes("foos${round}/part-*",
+        .newInstance("foos/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "test",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val loggingOperator = OperatorExtractor
         .extract(classOf[Logging], classOf[Ops], "logging")
-        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .input("foo", ClassDescription.of(classOf[Foo]), roundFoo.findOutput("output"))
         .output("output", ClassDescription.of(classOf[Foo]))
         .build()
 
@@ -285,6 +289,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       val graph = new OperatorGraph(Seq(inputOperator, loggingOperator, outputOperator))
 
       val executorType = compile(flowId, graph, 2, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -308,29 +314,29 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with Extract: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 100).map(Foo.intToFoo(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 100).map(Foo.intToFoo)
       }
 
       val inputOperator = ExternalInput
-        .newWithAttributes("foos${round}/part-*",
+        .newInstance("foos/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "test",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val extractOperator = OperatorExtractor
         .extract(classOf[Extract], classOf[Ops], "extract")
-        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .input("foo", ClassDescription.of(classOf[Foo]), roundFoo.findOutput("output"))
         .output("evenResult", ClassDescription.of(classOf[Foo]))
         .output("oddResult", ClassDescription.of(classOf[Foo]))
         .build()
@@ -348,6 +354,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         oddOutputOperator))
 
       val executorType = compile(flowId, graph, 3, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -382,29 +390,29 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with Checkpoint and Extract: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 100).map(Foo.intToFoo(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 100).map(Foo.intToFoo)
       }
 
       val inputOperator = ExternalInput
-        .newWithAttributes("foos${round}/part-*",
+        .newInstance("foos/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "test",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val checkpointOperator = CoreOperator
         .builder(CoreOperator.CoreOperatorKind.CHECKPOINT)
-        .input("input", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .input("input", ClassDescription.of(classOf[Foo]), roundFoo.findOutput("output"))
         .output("output", ClassDescription.of(classOf[Foo]))
         .build()
 
@@ -429,6 +437,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         oddOutputOperator))
 
       val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -463,49 +473,59 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with CoGroup: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos1${round}", path) {
-          sc.parallelize(0 until 5).map(Foo.intToFoo(round))
-        }
-        prepareData(s"foos2${round}", path) {
-          sc.parallelize(5 until 10).map(Foo.intToFoo(round))
-        }
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(0 until 10).flatMap(Bar.intToBars(round))
-        }
+      prepareData("foos1", path) {
+        sc.parallelize(0 until 5).map(Foo.intToFoo)
+      }
+      prepareData("foos2", path) {
+        sc.parallelize(5 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(0 until 10).flatMap(Bar.intToBars)
       }
 
-      val fooInputOperator = ExternalInput
-        .newWithAttributes("foos1${round}/part-*",
+      val foo1InputOperator = ExternalInput
+        .newInstance("foos1/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos1",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), foo1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val foo2InputOperator = ExternalInput
-        .newWithAttributes("foos2${round}/part-*",
+        .newInstance("foos2/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos2",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), foo2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -513,10 +533,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[CoGroup], classOf[Ops], "cogroup")
         .input("foos", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq("id")),
-          fooInputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
+          roundFoo1.findOutput("output"), roundFoo2.findOutput("output"))
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("fooResult", ClassDescription.of(classOf[Foo]))
         .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("fooError", ClassDescription.of(classOf[Foo]))
@@ -536,11 +556,13 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .newInstance("barError", cogroupOperator.findOutput("barError"))
 
       val graph = new OperatorGraph(Seq(
-        fooInputOperator, foo2InputOperator, barInputOperator,
+        foo1InputOperator, foo2InputOperator, barInputOperator,
         cogroupOperator,
         fooResultOutputOperator, barResultOutputOperator, fooErrorOutputOperator, barErrorOutputOperator))
 
       val executorType = compile(flowId, graph, 8, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -600,49 +622,59 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with CoGroup with grouping is empty: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos1${round}", path) {
-          sc.parallelize(0 until 5).map(Foo.intToFoo(round))
-        }
-        prepareData(s"foos2${round}", path) {
-          sc.parallelize(5 until 10).map(Foo.intToFoo(round))
-        }
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(0 until 10).flatMap(Bar.intToBars(round))
-        }
+      prepareData("foos1", path) {
+        sc.parallelize(0 until 5).map(Foo.intToFoo)
+      }
+      prepareData("foos2", path) {
+        sc.parallelize(5 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(0 until 10).flatMap(Bar.intToBars)
       }
 
       val foo1InputOperator = ExternalInput
-        .newWithAttributes("foos1${round}/part-*",
+        .newInstance("foos1/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos1",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), foo1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val foo2InputOperator = ExternalInput
-        .newWithAttributes("foos2${round}/part-*",
+        .newInstance("foos2/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos2",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), foo2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -650,10 +682,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[CoGroup], classOf[Ops], "cogroup")
         .input("foos", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq.empty[String]),
-          foo1InputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
+          roundFoo1.findOutput("output"), roundFoo2.findOutput("output"))
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq.empty[String], Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("fooResult", ClassDescription.of(classOf[Foo]))
         .output("barResult", ClassDescription.of(classOf[Bar]))
         .output("fooError", ClassDescription.of(classOf[Foo]))
@@ -678,6 +710,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         fooResultOutputOperator, barResultOutputOperator, fooErrorOutputOperator, barErrorOutputOperator))
 
       val executorType = compile(flowId, graph, 8, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -734,49 +768,59 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with MasterCheck: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos1${round}", path) {
-          sc.parallelize(0 until 5).map(Foo.intToFoo(round))
-        }
-        prepareData(s"foos2${round}", path) {
-          sc.parallelize(5 until 10).map(Foo.intToFoo(round))
-        }
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(5 until 15).map(Bar.intToBar(round))
-        }
+      prepareData("foos1", path) {
+        sc.parallelize(0 until 5).map(Foo.intToFoo)
+      }
+      prepareData("foos2", path) {
+        sc.parallelize(5 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
       }
 
       val foo1InputOperator = ExternalInput
-        .newWithAttributes("foos1${round}/part-*",
+        .newInstance("foos1/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos1",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), foo1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val foo2InputOperator = ExternalInput
-        .newWithAttributes("foos2${round}/part-*",
+        .newInstance("foos2/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos2",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), foo2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -784,10 +828,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
         .input("foos", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq("id")),
-          foo1InputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
+          roundFoo1.findOutput("output"), roundFoo2.findOutput("output"))
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("found", ClassDescription.of(classOf[Bar]))
         .output("missed", ClassDescription.of(classOf[Bar]))
         .build()
@@ -804,6 +848,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         foundOutputOperator, missedOutputOperator))
 
       val executorType = compile(flowId, graph, 6, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -834,18 +880,22 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
-      prepareData(s"foos1", path) {
-        sc.parallelize(0 until 5).flatMap(i => rounds.map(Foo.intToFoo).map(_(i)))
-      }
-      prepareData(s"foos2", path) {
-        sc.parallelize(5 until 10).flatMap(i => rounds.map(Foo.intToFoo).map(_(i)))
-      }
-      for {
-        round <- rounds
-      } {
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(5 until 15).map(Bar.intToBar(round))
+      prepareData("foos1", path) {
+        sc.parallelize(0 until 5).map(Foo.intToFoo).flatMap { foo =>
+          rounds.iterator.map { round =>
+            Foo.round(foo, round)
+          }
         }
+      }
+      prepareData("foos2", path) {
+        sc.parallelize(5 until 10).map(Foo.intToFoo).flatMap { foo =>
+          rounds.iterator.map { round =>
+            Foo.round(foo, round)
+          }
+        }
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
       }
 
       val foo1InputOperator = ExternalInput
@@ -865,12 +915,17 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             ExternalInputInfo.DataSize.UNKNOWN))
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -881,7 +936,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           foo1InputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("found", ClassDescription.of(classOf[Bar]))
         .output("missed", ClassDescription.of(classOf[Bar]))
         .build()
@@ -934,36 +989,41 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with broadcast MasterCheck: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 10).map(Foo.intToFoo(round))
-        }
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(5 until 15).map(Bar.intToBar(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
       }
 
       val fooInputOperator = ExternalInput
-        .newWithAttributes("foos${round}/part-*",
+        .newInstance("foos/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.TINY))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), fooInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -971,10 +1031,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
         .input("foos", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq("id")),
-          fooInputOperator.getOperatorPort)
+          roundFoo.findOutput("output"))
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("found", ClassDescription.of(classOf[Bar]))
         .output("missed", ClassDescription.of(classOf[Bar]))
         .build()
@@ -991,6 +1051,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         foundOutputOperator, missedOutputOperator))
 
       val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -1021,15 +1083,15 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
-      prepareData(s"foos", path) {
-        sc.parallelize(0 until 10).flatMap(i => rounds.map(Foo.intToFoo).map(_(i)))
-      }
-      for {
-        round <- rounds
-      } {
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(5 until 15).map(Bar.intToBar(round))
+      prepareData("foos", path) {
+        sc.parallelize(0 until 10).map(Foo.intToFoo).flatMap { foo =>
+          rounds.iterator.map { round =>
+            Foo.round(foo, round)
+          }
         }
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
       }
 
       val fooInputOperator = ExternalInput
@@ -1041,12 +1103,17 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             ExternalInputInfo.DataSize.TINY))
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1057,7 +1124,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           fooInputOperator.getOperatorPort)
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("found", ClassDescription.of(classOf[Bar]))
         .output("missed", ClassDescription.of(classOf[Bar]))
         .build()
@@ -1110,49 +1177,59 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with MasterJoin: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos1${round}", path) {
-          sc.parallelize(0 until 5).map(Foo.intToFoo(round))
-        }
-        prepareData(s"foos2${round}", path) {
-          sc.parallelize(5 until 10).map(Foo.intToFoo(round))
-        }
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(5 until 15).map(Bar.intToBar(round))
-        }
+      prepareData("foos1", path) {
+        sc.parallelize(0 until 5).map(Foo.intToFoo)
+      }
+      prepareData("foos2", path) {
+        sc.parallelize(5 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
       }
 
       val foo1InputOperator = ExternalInput
-        .newWithAttributes("foos1${round}/part-*",
+        .newInstance("foos1/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos1",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), foo1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val foo2InputOperator = ExternalInput
-        .newWithAttributes("foos2${round}/part-*",
+        .newInstance("foos2/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos2",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), foo2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1160,10 +1237,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[MasterJoin], classOf[Ops], "masterjoin")
         .input("foos", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq("id")),
-          foo1InputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
+          roundFoo1.findOutput("output"), roundFoo2.findOutput("output"))
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("joined", ClassDescription.of(classOf[FooBar]))
         .output("missed", ClassDescription.of(classOf[Bar]))
         .build()
@@ -1180,6 +1257,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         joinedOutputOperator, missedOutputOperator))
 
       val executorType = compile(flowId, graph, 6, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -1210,18 +1289,22 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
-      prepareData(s"foos1", path) {
-        sc.parallelize(0 until 5).flatMap(i => rounds.map(Foo.intToFoo).map(_(i)))
-      }
-      prepareData(s"foos2", path) {
-        sc.parallelize(5 until 10).flatMap(i => rounds.map(Foo.intToFoo).map(_(i)))
-      }
-      for {
-        round <- rounds
-      } {
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(5 until 15).map(Bar.intToBar(round))
+      prepareData("foos1", path) {
+        sc.parallelize(0 until 5).map(Foo.intToFoo).flatMap { foo =>
+          rounds.iterator.map { round =>
+            Foo.round(foo, round)
+          }
         }
+      }
+      prepareData("foos2", path) {
+        sc.parallelize(5 until 10).map(Foo.intToFoo).flatMap { foo =>
+          rounds.iterator.map { round =>
+            Foo.round(foo, round)
+          }
+        }
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
       }
 
       val foo1InputOperator = ExternalInput
@@ -1241,12 +1324,17 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             ExternalInputInfo.DataSize.UNKNOWN))
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1257,7 +1345,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           foo1InputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("joined", ClassDescription.of(classOf[FooBar]))
         .output("missed", ClassDescription.of(classOf[Bar]))
         .build()
@@ -1310,36 +1398,41 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with broadcast MasterJoin: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 10).map(Foo.intToFoo(round))
-        }
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(5 until 15).map(Bar.intToBar(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
       }
 
       val fooInputOperator = ExternalInput
-        .newWithAttributes("foos${round}/part-*",
+        .newInstance("foos/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.TINY))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), fooInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1347,10 +1440,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[MasterJoin], classOf[Ops], "masterjoin")
         .input("foos", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq("id")),
-          fooInputOperator.getOperatorPort)
+          roundFoo.findOutput("output"))
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("joined", ClassDescription.of(classOf[FooBar]))
         .output("missed", ClassDescription.of(classOf[Bar]))
         .build()
@@ -1367,6 +1460,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         foundOutputOperator, missedOutputOperator))
 
       val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -1398,14 +1493,14 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       val rounds = 0 to 1
 
       prepareData(s"foos", path) {
-        sc.parallelize(0 until 10).flatMap(i => rounds.map(Foo.intToFoo).map(_(i)))
-      }
-      for {
-        round <- rounds
-      } {
-        prepareData(s"bars${round}", path) {
-          sc.parallelize(5 until 15).map(Bar.intToBar(round))
+        sc.parallelize(0 until 10).map(Foo.intToFoo).flatMap { foo =>
+          rounds.iterator.map { round =>
+            Foo.round(foo, round)
+          }
         }
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
       }
 
       val fooInputOperator = ExternalInput
@@ -1417,12 +1512,17 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
             ExternalInputInfo.DataSize.TINY))
 
       val barInputOperator = ExternalInput
-        .newWithAttributes("bars${round}/part-*",
+        .newInstance("bars/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Bar]),
             "bars",
             ClassDescription.of(classOf[Bar]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1433,7 +1533,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
           fooInputOperator.getOperatorPort)
         .input("bars", ClassDescription.of(classOf[Bar]),
           Groups.parse(Seq("fooId"), Seq("+id")),
-          barInputOperator.getOperatorPort)
+          roundBar.findOutput("output"))
         .output("joined", ClassDescription.of(classOf[FooBar]))
         .output("missed", ClassDescription.of(classOf[Bar]))
         .build()
@@ -1486,23 +1586,23 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with broadcast self MasterCheck: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"foos${round}", path) {
-          sc.parallelize(0 until 10).map(Foo.intToFoo(round))
-        }
+      prepareData("foos", path) {
+        sc.parallelize(0 until 10).map(Foo.intToFoo)
       }
 
       val fooInputOperator = ExternalInput
-        .newWithAttributes("foos${round}/part-*",
+        .newInstance("foos/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "foos1",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.TINY))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), fooInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1510,10 +1610,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
         .input("fooms", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq("id")),
-          fooInputOperator.getOperatorPort)
+          roundFoo.findOutput("output"))
         .input("foots", ClassDescription.of(classOf[Foo]),
           Groups.parse(Seq("id")),
-          fooInputOperator.getOperatorPort)
+          roundFoo.findOutput("output"))
         .output("found", ClassDescription.of(classOf[Foo]))
         .output("missed", ClassDescription.of(classOf[Foo]))
         .build()
@@ -1530,6 +1630,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         foundOutputOperator, missedOutputOperator))
 
       val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -1563,36 +1665,41 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with Fold: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"bazs1${round}", path) {
-          sc.parallelize(0 until 50).map(Baz.intToBaz(round))
-        }
-        prepareData(s"bazs2${round}", path) {
-          sc.parallelize(50 until 100).map(Baz.intToBaz(round))
-        }
+      prepareData("bazs1", path) {
+        sc.parallelize(0 until 50).map(Baz.intToBaz)
+      }
+      prepareData("bazs2", path) {
+        sc.parallelize(50 until 100).map(Baz.intToBaz)
       }
 
       val baz1InputOperator = ExternalInput
-        .newWithAttributes("bazs1${round}/part-*",
+        .newInstance("bazs1/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Baz]),
             "baz1",
             ClassDescription.of(classOf[Baz]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), baz1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val baz2InputOperator = ExternalInput
-        .newWithAttributes("bazs2${round}/part-*",
+        .newInstance("bazs2/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Baz]),
             "baz2",
             ClassDescription.of(classOf[Baz]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), baz2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1600,7 +1707,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[Fold], classOf[Ops], "fold")
         .input("bazs", ClassDescription.of(classOf[Baz]),
           Groups.parse(Seq("id")),
-          baz1InputOperator.getOperatorPort, baz2InputOperator.getOperatorPort)
+          roundBaz1.findOutput("output"), roundBaz2.findOutput("output"))
         .output("result", ClassDescription.of(classOf[Baz]))
         .build()
 
@@ -1613,6 +1720,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         resultOutputOperator))
 
       val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -1642,36 +1751,41 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with Fold with grouping is empty: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"bazs1${round}", path) {
-          sc.parallelize(0 until 50).map(Baz.intToBaz(round))
-        }
-        prepareData(s"bazs2${round}", path) {
-          sc.parallelize(50 until 100).map(Baz.intToBaz(round))
-        }
+      prepareData("bazs1", path) {
+        sc.parallelize(0 until 50).map(Baz.intToBaz)
+      }
+      prepareData("bazs2", path) {
+        sc.parallelize(50 until 100).map(Baz.intToBaz)
       }
 
       val baz1InputOperator = ExternalInput
-        .newWithAttributes("bazs1${round}/part-*",
+        .newInstance("bazs1/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Baz]),
             "baz1",
             ClassDescription.of(classOf[Baz]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), baz1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val baz2InputOperator = ExternalInput
-        .newWithAttributes("bazs2${round}/part-*",
+        .newInstance("bazs2/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Baz]),
             "baz2",
             ClassDescription.of(classOf[Baz]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), baz2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1679,7 +1793,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[Fold], classOf[Ops], "fold")
         .input("bazs", ClassDescription.of(classOf[Baz]),
           Groups.parse(Seq.empty[String]),
-          baz1InputOperator.getOperatorPort, baz2InputOperator.getOperatorPort)
+          roundBaz1.findOutput("output"), roundBaz2.findOutput("output"))
         .output("result", ClassDescription.of(classOf[Baz]))
         .build()
 
@@ -1692,6 +1806,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         resultOutputOperator))
 
       val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -1718,36 +1834,41 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with Summarize: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"bazs1${round}", path) {
-          sc.parallelize(0 until 500).map(Baz.intToBaz(round))
-        }
-        prepareData(s"bazs2${round}", path) {
-          sc.parallelize(500 until 1000).map(Baz.intToBaz(round))
-        }
+      prepareData("bazs1", path) {
+        sc.parallelize(0 until 500).map(Baz.intToBaz)
+      }
+      prepareData("bazs2", path) {
+        sc.parallelize(500 until 1000).map(Baz.intToBaz)
       }
 
       val baz1InputOperator = ExternalInput
-        .newWithAttributes("bazs1${round}/part-*",
+        .newInstance("bazs1/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Baz]),
             "baz1",
             ClassDescription.of(classOf[Baz]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), baz1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val baz2InputOperator = ExternalInput
-        .newWithAttributes("bazs2${round}/part-*",
+        .newInstance("bazs2/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Baz]),
             "baz2",
             ClassDescription.of(classOf[Baz]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), baz2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1755,7 +1876,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[Summarize], classOf[Ops], "summarize")
         .input("bazs", ClassDescription.of(classOf[Baz]),
           Groups.parse(Seq("id")),
-          baz1InputOperator.getOperatorPort, baz2InputOperator.getOperatorPort)
+          roundBaz1.findOutput("output"), roundBaz2.findOutput("output"))
         .output("result", ClassDescription.of(classOf[SummarizedBaz]))
         .build()
 
@@ -1768,6 +1889,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         resultOutputOperator))
 
       val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -1803,36 +1926,41 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
     it should s"compile IterativeBatchExecutor with Summarize with grouping is empty: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
-      val rounds = 0 to 1
 
-      for {
-        round <- rounds
-      } {
-        prepareData(s"bazs1${round}", path) {
-          sc.parallelize(0 until 500).map(Baz.intToBaz(round))
-        }
-        prepareData(s"bazs2${round}", path) {
-          sc.parallelize(500 until 1000).map(Baz.intToBaz(round))
-        }
+      prepareData("bazs1", path) {
+        sc.parallelize(0 until 500).map(Baz.intToBaz)
+      }
+      prepareData("bazs2", path) {
+        sc.parallelize(500 until 1000).map(Baz.intToBaz)
       }
 
       val baz1InputOperator = ExternalInput
-        .newWithAttributes("bazs1${round}/part-*",
+        .newInstance("bazs1/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Baz]),
             "baz1",
             ClassDescription.of(classOf[Baz]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), baz1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val baz2InputOperator = ExternalInput
-        .newWithAttributes("bazs2${round}/part-*",
+        .newInstance("bazs2/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Baz]),
             "baz2",
             ClassDescription.of(classOf[Baz]),
             ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), baz2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
@@ -1840,7 +1968,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .extract(classOf[Summarize], classOf[Ops], "summarize")
         .input("bazs", ClassDescription.of(classOf[Baz]),
           Groups.parse(Seq.empty[String]),
-          baz1InputOperator.getOperatorPort, baz2InputOperator.getOperatorPort)
+          roundBaz1.findOutput("output"), roundBaz2.findOutput("output"))
         .output("result", ClassDescription.of(classOf[SummarizedBaz]))
         .build()
 
@@ -1853,6 +1981,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         resultOutputOperator))
 
       val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -1957,15 +2087,22 @@ object IterativeBatchExecutorCompilerSpec {
 
   object Foo {
 
-    def intToFoo(round: Int): Int => Foo = {
+    def intToFoo: Int => Foo = {
 
       lazy val foo = new Foo()
 
       { i =>
-        foo.id.modify(100 * round + i)
-        foo.foo.modify(s"foo${100 * round + i}")
+        foo.id.modify(i)
+        foo.foo.modify(s"foo${i}")
         foo
       }
+    }
+
+    def round(foo: Foo, round: Int): Foo = {
+      val id = foo.id.get
+      foo.id.modify(100 * round + id)
+      foo.foo.modify(s"foo${100 * round + id}")
+      foo
     }
   }
 
@@ -2003,30 +2140,38 @@ object IterativeBatchExecutorCompilerSpec {
 
   object Bar {
 
-    def intToBar(round: Int): Int => Bar = {
+    def intToBar: Int => Bar = {
 
       lazy val bar = new Bar()
 
       { i =>
-        bar.id.modify(100 * round + 10 + i)
-        bar.fooId.modify(100 * round + i)
-        bar.bar.modify(s"bar${100 * round + 10 + i}")
+        bar.id.modify(10 + i)
+        bar.fooId.modify(i)
+        bar.bar.modify(s"bar${10 + i}")
         bar
       }
     }
 
-    def intToBars(round: Int): Int => Iterator[Bar] = {
+    def intToBars: Int => Iterator[Bar] = {
 
       lazy val bar = new Bar()
 
       { i =>
         (0 until i).iterator.map { j =>
-          bar.id.modify(100 * round + 10 + j)
-          bar.fooId.modify(100 * round + i)
-          bar.bar.modify(s"bar${100 * round + 10 + j}")
+          bar.id.modify(10 + j)
+          bar.fooId.modify(i)
+          bar.bar.modify(s"bar${10 + j}")
           bar
         }
       }
+    }
+
+    def round(bar: Bar, round: Int): Bar = {
+      val id = bar.id.get
+      bar.id.modify(100 * round + id)
+      bar.fooId.modify(100 * round + bar.fooId.get)
+      bar.bar.modify(s"bar${100 * round + id}")
+      bar
     }
   }
 
@@ -2097,15 +2242,21 @@ object IterativeBatchExecutorCompilerSpec {
 
   object Baz {
 
-    def intToBaz(round: Int): Int => Baz = {
+    def intToBaz: Int => Baz = {
 
       lazy val baz = new Baz()
 
       { i =>
-        baz.id.modify(100 * round + (i % 2))
-        baz.n.modify(100 * round + 100 * i)
+        baz.id.modify(i % 2)
+        baz.n.modify(100 * i)
         baz
       }
+    }
+
+    def round(baz: Baz, round: Int): Baz = {
+      baz.id.modify(100 * round + baz.id.get)
+      baz.n.modify(100 * round + baz.n.get)
+      baz
     }
   }
 
@@ -2163,6 +2314,24 @@ object IterativeBatchExecutorCompilerSpec {
   }
 
   class Ops {
+
+    @Update
+    def roundFoo(foo: Foo): Unit = {
+      val round = BatchContext.get("round").toInt
+      Foo.round(foo, round)
+    }
+
+    @Update
+    def roundBar(bar: Bar): Unit = {
+      val round = BatchContext.get("round").toInt
+      Bar.round(bar, round)
+    }
+
+    @Update
+    def roundBaz(baz: Baz): Unit = {
+      val round = BatchContext.get("round").toInt
+      Baz.round(baz, round)
+    }
 
     @Logging(Logging.Level.INFO)
     def logging(foo: Foo): String = {

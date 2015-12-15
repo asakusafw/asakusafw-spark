@@ -20,6 +20,7 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.common.{ Diagnostic, DiagnosticException }
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
@@ -63,38 +64,45 @@ class TemporaryInputCompiler extends RoundAwareNodeCompiler {
     val primaryOperator = subPlanInfo.getPrimaryOperator
     val operator = primaryOperator.asInstanceOf[ExternalInput]
 
-    val inputRef = context.addExternalInput(operator.getName, operator.getInfo)
+    if (IterativeInfo.getDeclared(operator).isIterative) {
+      throw new DiagnosticException(
+        Diagnostic.Level.ERROR,
+        s"Iterative batch extension does not support iterative external inputs: ${subplan}")
+    } else {
 
-    val iterativeInfo = IterativeInfo.get(subplan)
+      val inputRef = context.addExternalInput(operator.getName, operator.getInfo)
 
-    val builder =
-      iterativeInfo.getRecomputeKind match {
-        case IterativeInfo.RecomputeKind.ALWAYS =>
-          new TemporaryInputClassBuilder(
-            operator,
-            operator.getDataType.asType,
-            inputRef.getPaths.toSeq.sorted)(
-            subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeAlways
-        case IterativeInfo.RecomputeKind.PARAMETER =>
-          new TemporaryInputClassBuilder(
-            operator,
-            operator.getDataType.asType,
-            inputRef.getPaths.toSeq.sorted)(
-            subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeByParameter {
+      val iterativeInfo = IterativeInfo.get(subplan)
 
-            override val parameters: Set[String] = iterativeInfo.getParameters.toSet
-          }
-        case IterativeInfo.RecomputeKind.NEVER =>
-          new TemporaryInputClassBuilder(
-            operator,
-            operator.getDataType.asType,
-            inputRef.getPaths.toSeq.sorted)(
-            subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeOnce
-      }
+      val builder =
+        iterativeInfo.getRecomputeKind match {
+          case IterativeInfo.RecomputeKind.ALWAYS =>
+            new TemporaryInputClassBuilder(
+              operator,
+              operator.getDataType.asType,
+              inputRef.getPaths.toSeq.sorted)(
+              subPlanInfo.getLabel,
+              subplan.getOutputs.toSeq) with ComputeAlways
+          case IterativeInfo.RecomputeKind.PARAMETER =>
+            new TemporaryInputClassBuilder(
+              operator,
+              operator.getDataType.asType,
+              inputRef.getPaths.toSeq.sorted)(
+              subPlanInfo.getLabel,
+              subplan.getOutputs.toSeq) with ComputeByParameter {
 
-    context.addClass(builder)
+              override val parameters: Set[String] = iterativeInfo.getParameters.toSet
+            }
+          case IterativeInfo.RecomputeKind.NEVER =>
+            new TemporaryInputClassBuilder(
+              operator,
+              operator.getDataType.asType,
+              inputRef.getPaths.toSeq.sorted)(
+              subPlanInfo.getLabel,
+              subplan.getOutputs.toSeq) with ComputeOnce
+        }
+
+      context.addClass(builder)
+    }
   }
 }
