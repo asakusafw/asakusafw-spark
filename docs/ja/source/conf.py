@@ -42,7 +42,7 @@ extlinks = {
 }
 javadoclinks = {
     'asakusafw-javadoc': ('http://docs.asakusafw.com/latest/release/api/%s.html', ""),
-    'asakusafw-compiler-javadoc': ('http://docs.asakusafw.com/preview/asakusafw-compiler-javadoc/api/%s.html', ""),
+    'asakusafw-compiler-javadoc': ('http://docs.asakusafw.com/preview/asakusafw-compiler/api/%s.html', ""),
     'asakusafw-spark-planner-javadoc': ('http://docs.asakusafw.com/preview/asakusafw-spark-planner/api/%s.html', ""),
     'asakusa-spark-gradle-groovydoc': ('http://docs.asakusafw.com/preview/asakusa-spark-gradle/api/%s.html', ""),
 }
