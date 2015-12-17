@@ -20,7 +20,8 @@ import java.util.concurrent.TimeUnit
 import scala.collection.mutable.WeakHashMap
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.Duration
-import scala.util.Try
+import scala.util.{ Failure, Try }
+import scala.util.control.NonFatal
 
 import com.asakusafw.spark.runtime.RoundContext
 import com.asakusafw.spark.runtime.graph.Job
@@ -32,15 +33,18 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.util.{
   ReadWriteLockedMap
 }
 
-abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionContext) {
+abstract class IterativeBatchExecutor(
+  numSlots: Int, stopOnFail: Boolean)(implicit ec: ExecutionContext) {
 
-  def this()(implicit ec: ExecutionContext) = this(Int.MaxValue)
+  def this(numSlots: Int)(implicit ec: ExecutionContext) = this(numSlots, true)
+
+  def this()(implicit ec: ExecutionContext) = this(Int.MaxValue, true)
 
   def job: Job
 
   private val results =
     new WeakHashMap[RoundContext, Try[Unit]] with ReadWriteLockedMap[RoundContext, Try[Unit]]
-  def result(context: RoundContext): Try[Unit] = results(context)
+  def result(context: RoundContext): Option[Try[Unit]] = results.get(context)
 
   private val listenerBus = new ListenerBus("iterativebatch-executor-listenerbus")
 
@@ -48,8 +52,11 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
     listenerBus.addListener(listener)
   }
 
-  private val queue =
-    new MessageQueue[RoundContext]("iterativebatch-executor", numSlots = numSlots) {
+  private val queue = {
+    lazy val job = this.job
+
+    new MessageQueue[RoundContext](
+      "iterativebatch-executor", numSlots = numSlots, stopOnFail = stopOnFail) {
 
       override protected def onStart(): Unit = {
         super.onStart()
@@ -63,16 +70,30 @@ abstract class IterativeBatchExecutor(numSlots: Int)(implicit ec: ExecutionConte
         super.onStop()
       }
 
-      override protected def handleMessage(rc: RoundContext)(onComplete: () => Unit): Unit = {
+      override protected def handleMessage(
+        rc: RoundContext)(
+          onSuccess: () => Unit, onFailure: () => Unit): Unit = {
         listenerBus.post(RoundStarted(rc))
-        job.execute(rc)
-          .onComplete { result =>
+        try {
+          job.execute(rc).onComplete { result =>
             results += rc -> result
-            onComplete()
             listenerBus.post(RoundCompleted(rc, result))
+            if (result.isSuccess) {
+              onSuccess()
+            } else {
+              onFailure()
+            }
           }
+        } catch {
+          case NonFatal(t) =>
+            val result = Failure(t)
+            results += rc -> result
+            listenerBus.post(RoundCompleted(rc, result))
+            onFailure()
+        }
       }
     }
+  }
 
   def started: Boolean = queue.started
   def running: Boolean = queue.running
