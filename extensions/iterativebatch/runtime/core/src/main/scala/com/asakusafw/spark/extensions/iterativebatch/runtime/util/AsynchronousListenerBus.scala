@@ -15,14 +15,30 @@
  */
 package com.asakusafw.spark.extensions.iterativebatch.runtime.util
 
+import scala.util.control.NonFatal
+
+import org.slf4j.LoggerFactory
+
 abstract class AsynchronousListenerBus[L, E](name: String)
   extends ListenerBus[L, E] {
 
-  private val queue = new MessageQueue[E](name) {
+  val Logger = LoggerFactory.getLogger(getClass)
 
-    override protected def handleMessage(event: E)(onComplete: () => Unit): Unit = {
-      postToAll(event)
-      onComplete()
+  private val queue = new MessageQueue[E](name, stopOnFail = false) {
+
+    override protected def handleMessage(
+      event: E)(
+        onSuccess: () => Unit, onFailure: () => Unit): Unit = {
+      try {
+        postToAll(event)
+        onSuccess()
+      } catch {
+        case NonFatal(t) =>
+          if (Logger.isErrorEnabled) {
+            Logger.error(t.getMessage, t)
+          }
+          onFailure()
+      }
     }
   }
 

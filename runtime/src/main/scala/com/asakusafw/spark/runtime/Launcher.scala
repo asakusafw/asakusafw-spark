@@ -57,7 +57,7 @@ object Launcher {
       }
 
       if (!RuntimeContext.get.isSimulation) {
-        sparkClient.execute(sparkConf, conf.getStageInfo)
+        sys.exit(sparkClient.execute(sparkConf, conf.getStageInfo))
       }
     } catch {
       case t: Throwable =>

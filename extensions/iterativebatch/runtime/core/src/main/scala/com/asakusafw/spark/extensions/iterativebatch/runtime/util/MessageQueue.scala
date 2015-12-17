@@ -23,7 +23,11 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 
-abstract class MessageQueue[M](name: String, numThreads: Int = 1, numSlots: Int = Int.MaxValue) {
+abstract class MessageQueue[M](
+  name: String,
+  numThreads: Int = 1,
+  numSlots: Int = Int.MaxValue,
+  stopOnFail: Boolean = true) {
 
   require(numThreads > 0, s"The number of threads should be greater than 0: [${numThreads}].")
   require(numSlots > 0, s"The number of slots should be greater than 0: [${numSlots}].")
@@ -113,22 +117,44 @@ abstract class MessageQueue[M](name: String, numThreads: Int = 1, numSlots: Int 
         dequeueOrTerminate()
       } match {
         case Some(message) =>
-          handleMessage(message) { () =>
-            writeLock.acquireFor {
-              handlingMessages -= message
-              executeCompletion.signalAll()
-            }
-          }
+          handleMessage(message)(
+            onSuccess = { () =>
+              writeLock.acquireFor {
+                handlingMessages -= message
+                executeCompletion.signalAll()
+              }
+            },
+            onFailure = { () =>
+              writeLock.acquireFor {
+                handlingMessages -= message
+                executeCompletion.signalAll()
+                if (stopOnFail) {
+                  _running = false
+                  _stopped = true
+                  queueIsAvailable.signalAll()
+                  executor.shutdown()
+                  callOnStop()
+                }
+              }
+            })
           run()
         case _ =>
       }
     }
   }
 
-  protected def handleMessage(message: M)(onComplete: () => Unit): Unit
+  protected def handleMessage(message: M)(onSuccess: () => Unit, onFailure: () => Unit): Unit
 
   protected def onStart(): Unit = {}
   protected def onStop(): Unit = {}
+
+  private[this] var _onStopCalled = false
+  private def callOnStop(): Unit = {
+    if (!_onStopCalled) {
+      onStop()
+      _onStopCalled = true
+    }
+  }
 
   def start(): Unit = {
     writeLock.acquireFor {
@@ -180,7 +206,7 @@ abstract class MessageQueue[M](name: String, numThreads: Int = 1, numSlots: Int 
       if (running) {
         @tailrec
         def await(): Boolean = {
-          if (queue.isEmpty && handlingMessages.isEmpty) {
+          if (!running || queue.isEmpty && handlingMessages.isEmpty) {
             true
           } else if (executeCompletion.awaitFor(remain())) {
             await()
@@ -211,7 +237,7 @@ abstract class MessageQueue[M](name: String, numThreads: Int = 1, numSlots: Int 
         _terminating = false
         _stopped = true
 
-        onStop()
+        callOnStop()
       }
       queue.toSeq
     }

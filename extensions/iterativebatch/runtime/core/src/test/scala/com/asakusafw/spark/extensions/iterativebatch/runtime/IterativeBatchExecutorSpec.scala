@@ -90,7 +90,7 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
 
     rcs.zipWithIndex.foreach {
       case (rc, round) =>
-        assert(executor.result(rc).isSuccess)
+        assert(executor.result(rc).get.isSuccess)
 
         val result = collection(rc)
         assert(result === (0 until 100).map(i => 100 * round + i))
@@ -142,7 +142,7 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
 
     rcs.zipWithIndex.foreach {
       case (rc, round) =>
-        assert(executor.result(rc).isSuccess)
+        assert(executor.result(rc).get.isSuccess)
 
         val result = collection(rc)
         assert(result === (0 until 10).map(i => 10 * round + i))
@@ -169,16 +169,65 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     executor.stop(awaitExecution = true, gracefully = true)
 
     assert(listener.callOnExecutorStart === 1)
-    assert(listener.callOnRoundStarted === 10)
+    assert(listener.callOnRoundSubmitted === 10)
+    assert(listener.callOnRoundStart === 10)
     assert(listener.callOnRoundCompleted === 10)
-    assert(listener.callOnExecutorStart === 1)
+    assert(listener.callOnExecutorStop === 1)
+
+    assert(listener.roundSuccess === 10)
+    assert(listener.roundFailure === 0)
 
     rcs.zipWithIndex.foreach {
       case (rc, round) =>
-        assert(executor.result(rc).isSuccess)
+        assert(executor.result(rc).get.isSuccess)
 
         val result = collection(rc)
         assert(result === (0 until 100).map(i => 100 * round + i))
+    }
+  }
+
+  it should "handle exception" in { implicit sc =>
+    import Exception._
+
+    val rcs = (0 until 10).map { round =>
+      newRoundContext(batchArguments = Map("round" -> round.toString))
+    }
+
+    val collection =
+      new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
+
+    val listener = new CallCountListener()
+
+    val maxRounds = 8
+    val executor = new Executor(maxRounds, collection)(implicitly, ExecutionContext.global)
+    executor.addListener(listener)
+    executor.submitAll(rcs)
+
+    executor.start()
+    val remain = executor.stop(awaitExecution = true, gracefully = true)
+
+    assert(listener.callOnExecutorStart === 1)
+    assert(listener.callOnRoundSubmitted === 10)
+    assert(listener.callOnRoundStart === maxRounds + 1)
+    assert(listener.callOnRoundCompleted === maxRounds + 1)
+    assert(listener.callOnExecutorStop === 1)
+
+    assert(listener.roundSuccess === maxRounds)
+    assert(listener.roundFailure === 1)
+
+    assert(remain.size === 1)
+
+    rcs.zipWithIndex.foreach {
+      case (rc, round) if round < maxRounds =>
+        assert(executor.result(rc).get.isSuccess)
+
+        val result = collection(rc)
+        assert(result === (0 until 10).map(i => 10 * round + i))
+
+      case (rc, round) if round == maxRounds =>
+        assert(executor.result(rc).get.isFailure)
+      case (rc, _) =>
+        assert(executor.result(rc).isEmpty)
     }
   }
 }
@@ -235,7 +284,7 @@ object IterativeBatchExecutorSpec {
 
             { i: Int => 100 * round + i }
           }
-        new Job(Seq(new PrintSink(source), new CollectSink(collection)(source)))
+        new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
       }
     }
   }
@@ -267,7 +316,36 @@ object IterativeBatchExecutorSpec {
             Thread.sleep(d)
             i
           }
-        new Job(Seq(new PrintSink(source), new CollectSink(collection)(source)))
+        new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
+      }
+    }
+  }
+
+  object Exception {
+
+    class Executor(
+      maxRounds: Int,
+      collection: mutable.Map[RoundContext, Array[Int]])(
+        implicit sc: SparkContext, ec: ExecutionContext)
+      extends IterativeBatchExecutor(numSlots = 1) {
+
+      override val job: Job = {
+        val max = maxRounds
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
+          .mapWithRoundContext(Branch) { rc =>
+
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 10 * round + i }
+          }
+          .map(Branch) { i: Int =>
+            if (i >= 10 * max) {
+              throw new Exception(s"The number of rounds should be less than ${max}: [${i / 10}].")
+            }
+            i
+          }
+        new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
       }
     }
   }
@@ -275,23 +353,41 @@ object IterativeBatchExecutorSpec {
   class CallCountListener extends IterativeBatchExecutor.Listener {
 
     var callOnExecutorStart = 0
-    var callOnRoundStarted = 0
+    var callOnRoundSubmitted = 0
+    var callOnRoundStart = 0
     var callOnRoundCompleted = 0
     var callOnExecutorStop = 0
 
+    var roundSuccess = 0
+    var roundFailure = 0
+
     override def onExecutorStart(): Unit = {
+      println("ExecutorStart")
       callOnExecutorStart += 1
     }
 
+    override def onRoundSubmitted(rc: RoundContext): Unit = {
+      println(s"RoundSubmitted: ${rc}")
+      callOnRoundSubmitted += 1
+    }
+
     override def onRoundStart(rc: RoundContext): Unit = {
-      callOnRoundStarted += 1
+      println(s"RoundStart: ${rc}")
+      callOnRoundStart += 1
     }
 
     override def onRoundCompleted(rc: RoundContext, result: Try[Unit]): Unit = {
+      println(s"RoundCompleted: ${rc}, ${result}")
       callOnRoundCompleted += 1
+      if (result.isSuccess) {
+        roundSuccess += 1
+      } else {
+        roundFailure += 1
+      }
     }
 
     override def onExecutorStop(): Unit = {
+      println("ExecutorStop")
       callOnExecutorStop += 1
     }
   }
