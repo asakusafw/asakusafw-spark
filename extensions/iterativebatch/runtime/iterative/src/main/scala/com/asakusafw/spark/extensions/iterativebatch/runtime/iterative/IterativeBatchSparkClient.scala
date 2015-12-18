@@ -42,11 +42,12 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     implicit val sc = new SparkContext(conf)
     try {
       val numSlots = conf.getInt(Props.NumSlots, Props.DefaultNumSlots)
-      val executor = newIterativeBatchExecutor(numSlots)
+      val stopOnFail = conf.getBoolean(Props.StopOnFail, Props.DefaultStopOnFail)
+      val executor = newIterativeBatchExecutor(numSlots, stopOnFail)
 
       executor.addListener(Logger)
 
-      execute(executor, stageInfo)
+      execute(executor, stageInfo, stopOnFail)
     } finally {
       sc.stop()
     }
@@ -54,7 +55,8 @@ abstract class IterativeBatchSparkClient extends SparkClient {
 
   def execute(
     executor: IterativeBatchExecutor,
-    stageInfo: IterativeStageInfo)(
+    stageInfo: IterativeStageInfo,
+    stopOnFail: Boolean)(
       implicit sc: SparkContext): Int = {
     executor.start()
     try {
@@ -70,12 +72,13 @@ abstract class IterativeBatchSparkClient extends SparkClient {
       }
       executor.stop(awaitExecution = true, gracefully = true)
 
-      if (contexts.map(executor.result).forall { result =>
-        result.isDefined && result.get.isSuccess
-      }) {
-        0
-      } else {
+      if (stopOnFail &&
+        contexts.map(executor.result).exists { result =>
+          result.isEmpty || result.get.isFailure
+        }) {
         1
+      } else {
+        0
       }
     } catch {
       case NonFatal(t) =>
@@ -85,7 +88,7 @@ abstract class IterativeBatchSparkClient extends SparkClient {
   }
 
   def newIterativeBatchExecutor(
-    numSlots: Int)(
+    numSlots: Int, stopOnFail: Boolean)(
       implicit ec: ExecutionContext, sc: SparkContext): IterativeBatchExecutor
 
   def kryoRegistrator: String
