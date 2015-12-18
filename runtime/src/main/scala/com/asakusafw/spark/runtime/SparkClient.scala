@@ -15,7 +15,10 @@
  */
 package com.asakusafw.spark.runtime
 
-import scala.concurrent.{ Await, ExecutionContext }
+import java.util.concurrent.{ Executors, ThreadFactory }
+import java.util.concurrent.atomic.AtomicLong
+
+import scala.concurrent.{ Await, ExecutionContext, ExecutionContextExecutorService }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
@@ -29,6 +32,32 @@ import com.asakusafw.spark.runtime.graph.Job
 trait SparkClient {
 
   def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int
+}
+
+object SparkClient {
+
+  def ec: ExecutionContextExecutorService = Implicits.ec
+
+  object Implicits {
+
+    implicit lazy val ec: ExecutionContextExecutorService =
+      ExecutionContext.fromExecutorService(
+        Executors.newCachedThreadPool({
+          val name = "asakusa-executor"
+          val group = new ThreadGroup(name)
+          val count = new AtomicLong()
+
+          new ThreadFactory() {
+
+            override def newThread(runnable: Runnable): Thread = {
+              val thread = new Thread(group, runnable)
+              thread.setName(s"${name}-${count.getAndIncrement}")
+              thread.setDaemon(true)
+              thread
+            }
+          }
+        }))
+  }
 }
 
 abstract class DefaultClient extends SparkClient {
@@ -51,7 +80,7 @@ abstract class DefaultClient extends SparkClient {
       val job = newJob(sc)
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
       val context = DefaultClient.Context(hadoopConf)
-      Await.result(job.execute(context)(DefaultClient.ec), Duration.Inf)
+      Await.result(job.execute(context)(SparkClient.ec), Duration.Inf)
       0
     } finally {
       sc.stop()
@@ -78,6 +107,4 @@ object DefaultClient {
 
     override lazy val toString: String = stageInfo.toString
   }
-
-  lazy val ec: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
 }

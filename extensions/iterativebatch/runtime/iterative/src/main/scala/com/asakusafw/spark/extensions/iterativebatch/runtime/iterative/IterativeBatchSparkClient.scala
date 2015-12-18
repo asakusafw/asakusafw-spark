@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
 import com.asakusafw.spark.runtime.{ Props, RoundContext, SparkClient }
+import com.asakusafw.spark.runtime.SparkClient.Implicits.ec
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient._
 
@@ -151,6 +152,4 @@ object IterativeBatchSparkClient {
       }
     }
   }
-
-  implicit lazy val ec: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
 }
