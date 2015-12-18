@@ -57,15 +57,17 @@ class IterativeBatchSparkClientClassBuilder(
       classOf[IterativeBatchExecutor].asType,
       Seq(
         Type.INT_TYPE,
+        Type.BOOLEAN_TYPE,
         classOf[ExecutionContext].asType,
         classOf[SparkContext].asType)) { implicit mb =>
 
-        val thisVar :: numSlotsVar :: ecVar :: scVar :: _ = mb.argVars
+        val thisVar :: numSlotsVar :: stopOnFailVar :: ecVar :: scVar :: _ = mb.argVars
 
         val t = IterativeBatchExecutorCompiler.compile(plan)(
           context.iterativeBatchExecutorCompilerContext)
         val executor = pushNew(t)
-        executor.dup().invokeInit(numSlotsVar.push(), ecVar.push(), scVar.push())
+        executor.dup().invokeInit(
+          numSlotsVar.push(), stopOnFailVar.push(), ecVar.push(), scVar.push())
         `return`(executor)
       }
 

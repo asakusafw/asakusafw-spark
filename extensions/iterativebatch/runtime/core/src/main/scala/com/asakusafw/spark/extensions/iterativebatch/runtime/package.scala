@@ -23,12 +23,18 @@ package object runtime {
 
   object IterativeBatchProps {
     val NumSlots = s"${IterativeBatchPropsPrefix}.slots"
+    val StopOnFail = s"${IterativeBatchPropsPrefix}.stopOnFail"
+
     val DefaultNumSlots = Int.MaxValue
+    val DefaultStopOnFail = true
   }
 
   implicit class AugmentedProps(val props: Props.type) extends AnyVal {
 
     def NumSlots = IterativeBatchProps.NumSlots // scalastyle:ignore
+    def StopOnFail = IterativeBatchProps.StopOnFail // scalastyle:ignore
+
     def DefaultNumSlots = IterativeBatchProps.DefaultNumSlots // scalastyle:ignore
+    def DefaultStopOnFail = IterativeBatchProps.DefaultStopOnFail // scalastyle:ignore
   }
 }

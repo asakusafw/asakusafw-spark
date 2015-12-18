@@ -78,7 +78,7 @@ class IterativeBatchExecutorClassBuilder(
 
       val thisVar :: ecVar :: scVar :: _ = mb.argVars
 
-      thisVar.push().invokeInit(ldc(Int.MaxValue), ecVar.push(), scVar.push())
+      thisVar.push().invokeInit(ldc(Int.MaxValue), ldc(true), ecVar.push(), scVar.push())
     }
 
     ctorDef.newInit(Seq(
@@ -88,7 +88,18 @@ class IterativeBatchExecutorClassBuilder(
 
       val thisVar :: numSlotsVar :: ecVar :: scVar :: _ = mb.argVars
 
-      thisVar.push().invokeInit(superType, numSlotsVar.push(), ecVar.push())
+      thisVar.push().invokeInit(numSlotsVar.push(), ldc(true), ecVar.push(), scVar.push())
+    }
+
+    ctorDef.newInit(Seq(
+      Type.INT_TYPE,
+      Type.BOOLEAN_TYPE,
+      classOf[ExecutionContext].asType,
+      classOf[SparkContext].asType)) { implicit mb =>
+
+      val thisVar :: numSlotsVar :: stopOnFailVar :: ecVar :: scVar :: _ = mb.argVars
+
+      thisVar.push().invokeInit(superType, numSlotsVar.push(), stopOnFailVar.push(), ecVar.push())
       thisVar.push().putField("sc", scVar.push())
     }
   }
