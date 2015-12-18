@@ -21,6 +21,9 @@ import scala.concurrent.{ ExecutionContext, Future }
 import org.apache.spark.{ InterruptibleIterator, Partitioner, SparkContext, TaskContext }
 import org.apache.spark.rdd.RDD
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor._
+
 import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.rdd._
@@ -53,7 +56,8 @@ abstract class Aggregate[V, C](
       case (prevs, broadcasts) =>
 
         sc.clearCallSite()
-        sc.setCallSite(label)
+        sc.setCallSite(
+          CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
         val aggregated = {
           if (aggregation.mapSideCombine) {

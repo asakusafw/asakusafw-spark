@@ -24,6 +24,9 @@ import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor._
+
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class NewHadoopOutput(
@@ -71,7 +74,8 @@ abstract class NewHadoopOutput(
         val job = newJob(rc)
 
         sc.clearCallSite()
-        sc.setCallSite(label)
+        sc.setCallSite(
+          CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
         val output = prev.map(in => (NullWritable.get, in._2))
 

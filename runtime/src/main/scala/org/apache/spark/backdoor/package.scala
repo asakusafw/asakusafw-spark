@@ -15,6 +15,8 @@
  */
 package org.apache.spark
 
+import org.apache.spark.util.CallSite
+
 package object backdoor {
 
   type HttpServer = org.apache.spark.HttpServer
@@ -25,5 +27,7 @@ package object backdoor {
     def clean[F <: AnyRef](f: F, checkSerializable: Boolean = true): F = {
       sc.clean(f, checkSerializable)
     }
+
+    def setCallSite(callSite: CallSite): Unit = sc.setCallSite(callSite)
   }
 }

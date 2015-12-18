@@ -49,5 +49,15 @@ trait RoundContextSugar {
 
 object RoundContextSugar {
 
-  case class MockRoundContext(hadoopConf: Broadcasted[Configuration]) extends RoundContext
+  case class MockRoundContext(hadoopConf: Broadcasted[Configuration]) extends RoundContext {
+
+    private def stageInfo: StageInfo =
+      StageInfo.deserialize(hadoopConf.value.get(StageInfo.KEY_NAME))
+
+    override lazy val roundId: Option[String] = {
+      Option(stageInfo.getStageId)
+    }
+
+    override lazy val toString: String = stageInfo.toString
+  }
 }

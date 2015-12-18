@@ -23,6 +23,9 @@ import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor._
+
 import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
@@ -45,7 +48,8 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
       val job = newJob(rc)
 
       sc.clearCallSite()
-      sc.setCallSite(label)
+      sc.setCallSite(
+        CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
       val rdd = sc.newAPIHadoopRDD(
         job.getConfiguration,

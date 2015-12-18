@@ -13,14 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime
+package org.apache.spark.util
 
-import org.apache.hadoop.conf.Configuration
-import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+package object backdoor {
 
-trait RoundContext extends Serializable {
-
-  def roundId: Option[String]
-
-  def hadoopConf: Broadcasted[Configuration]
+  type CallSite = org.apache.spark.util.CallSite
+  val CallSite = org.apache.spark.util.CallSite
 }

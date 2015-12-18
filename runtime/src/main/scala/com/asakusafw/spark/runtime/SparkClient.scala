@@ -67,7 +67,17 @@ object DefaultClient {
 
   case class Context(
     hadoopConf: Broadcasted[Configuration])
-    extends RoundContext
+    extends RoundContext {
+
+    private def stageInfo: StageInfo =
+      StageInfo.deserialize(hadoopConf.value.get(StageInfo.KEY_NAME))
+
+    override lazy val roundId: Option[String] = {
+      Option(stageInfo.getStageId)
+    }
+
+    override lazy val toString: String = stageInfo.toString
+  }
 
   lazy val ec: ExecutionContext = ExecutionContext.fromExecutor(null) // scalastyle:ignore
 }
