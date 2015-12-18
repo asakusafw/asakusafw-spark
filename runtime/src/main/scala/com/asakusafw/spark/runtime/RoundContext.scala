@@ -20,5 +20,7 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 trait RoundContext extends Serializable {
 
+  def roundId: Option[String]
+
   def hadoopConf: Broadcasted[Configuration]
 }

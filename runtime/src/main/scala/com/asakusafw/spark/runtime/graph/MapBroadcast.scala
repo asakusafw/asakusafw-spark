@@ -22,6 +22,9 @@ import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor._
+
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class MapBroadcast(
@@ -39,7 +42,8 @@ abstract class MapBroadcast(
     source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]]).map { rdd =>
 
       sc.clearCallSite()
-      sc.setCallSite(label)
+      sc.setCallSite(
+        CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
       sc.broadcast(
         sc.smcogroup(Seq((rdd, sort)), partitioner, group)

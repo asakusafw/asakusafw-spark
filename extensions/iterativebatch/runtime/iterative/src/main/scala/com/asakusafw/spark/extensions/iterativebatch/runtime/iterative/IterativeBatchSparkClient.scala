@@ -95,7 +95,17 @@ object IterativeBatchSparkClient {
 
   case class Context(
     hadoopConf: Broadcasted[Configuration])
-    extends RoundContext
+    extends RoundContext {
+
+    private def stageInfo: StageInfo =
+      StageInfo.deserialize(hadoopConf.value.get(StageInfo.KEY_NAME))
+
+    override lazy val roundId: Option[String] = {
+      Option(stageInfo.getStageId)
+    }
+
+    override lazy val toString: String = stageInfo.toString
+  }
 
   object Logger extends IterativeBatchExecutor.Listener {
 
@@ -109,13 +119,13 @@ object IterativeBatchSparkClient {
 
     override def onRoundSubmitted(rc: RoundContext): Unit = {
       if (Logger.isInfoEnabled) {
-        Logger.info(s"Round[${stageInfo(rc)}] is submitted.")
+        Logger.info(s"Round[${rc}] is submitted.")
       }
     }
 
     override def onRoundStart(rc: RoundContext): Unit = {
       if (Logger.isInfoEnabled) {
-        Logger.info(s"Round[${stageInfo(rc)}] started.")
+        Logger.info(s"Round[${rc}] started.")
       }
     }
 
@@ -123,11 +133,11 @@ object IterativeBatchSparkClient {
       result match {
         case Success(_) =>
           if (Logger.isInfoEnabled) {
-            Logger.info(s"Round[${stageInfo(rc)}] successfully completed.")
+            Logger.info(s"Round[${rc}] successfully completed.")
           }
         case Failure(t) =>
           if (Logger.isErrorEnabled) {
-            Logger.error(s"Round[${stageInfo(rc)}] failed.", t)
+            Logger.error(s"Round[${rc}] failed.", t)
           }
       }
     }
@@ -136,10 +146,6 @@ object IterativeBatchSparkClient {
       if (Logger.isInfoEnabled) {
         Logger.info("IterativaBatchExecutor stopped.")
       }
-    }
-
-    private def stageInfo(rc: RoundContext): StageInfo = {
-      StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
     }
   }
 
