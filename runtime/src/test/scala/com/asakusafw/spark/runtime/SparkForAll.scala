@@ -47,7 +47,7 @@ trait SparkForAll extends BeforeAndAfterAll { self: Suite =>
       conf.set("spark.kryo.registrator", kryoRegistrator)
       conf.set("spark.kryo.referenceTracking", false.toString)
 
-      sc = new SparkContext(configure(conf))
+      sc = SparkContext.getOrCreate(configure(conf))
       afterStartSparkContext()
     }
   }

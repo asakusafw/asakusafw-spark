@@ -1218,7 +1218,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
   }
 
   def spark[A](block: SparkContext => A): A = {
-    val sc = new SparkContext(new SparkConf().setAppName("").setMaster("local[*]"))
+    val sc = SparkContext.getOrCreate(new SparkConf().setAppName("").setMaster("local[*]"))
     try {
       block(sc)
     } finally {

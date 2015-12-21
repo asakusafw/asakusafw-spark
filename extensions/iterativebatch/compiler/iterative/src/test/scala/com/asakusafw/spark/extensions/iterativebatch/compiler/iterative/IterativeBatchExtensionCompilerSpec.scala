@@ -162,7 +162,7 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
   }
 
   def spark[A](block: SparkContext => A): A = {
-    val sc = new SparkContext(new SparkConf().setAppName("").setMaster("local[*]"))
+    val sc = SparkContext.getOrCreate(new SparkConf().setAppName("").setMaster("local[*]"))
     try {
       block(sc)
     } finally {

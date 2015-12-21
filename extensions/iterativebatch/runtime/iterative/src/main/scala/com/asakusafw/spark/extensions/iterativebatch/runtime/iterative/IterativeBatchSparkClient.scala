@@ -40,7 +40,7 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     conf.set("spark.kryo.registrator", kryoRegistrator)
     conf.set("spark.kryo.referenceTracking", false.toString)
 
-    implicit val sc = new SparkContext(conf)
+    implicit val sc = SparkContext.getOrCreate(conf)
     try {
       val numSlots = conf.getInt(Props.NumSlots, Props.DefaultNumSlots)
       val stopOnFail = conf.getBoolean(Props.StopOnFail, Props.DefaultStopOnFail)
