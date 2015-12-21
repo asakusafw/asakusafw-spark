@@ -75,7 +75,7 @@ abstract class DefaultClient extends SparkClient {
     conf.set("spark.kryo.registrator", kryoRegistrator)
     conf.set("spark.kryo.referenceTracking", false.toString)
 
-    val sc = new SparkContext(conf)
+    val sc = SparkContext.getOrCreate(conf)
     try {
       val job = newJob(sc)
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
