@@ -88,7 +88,11 @@ private class ConvertOperatorFragmentClassBuilder(
             operator.outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
             dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
               +: operator.arguments.map { argument =>
-                ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
+                Option(argument.value).map { value =>
+                  ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                }.getOrElse {
+                  pushNull(argument.resolveClass.asType)
+                }
               }: _*)
           .asType(classOf[AnyRef].asType))
     `return`()

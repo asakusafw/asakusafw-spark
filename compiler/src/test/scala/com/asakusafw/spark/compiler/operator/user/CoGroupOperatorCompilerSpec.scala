@@ -34,7 +34,7 @@ import com.asakusafw.lang.compiler.model.graph.Groups
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.graph.BroadcastId
@@ -50,132 +50,157 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   behavior of classOf[CoGroupOperatorCompiler].getSimpleName
 
-  it should "compile CoGroup operator" in {
-    val operator = OperatorExtractor
-      .extract(classOf[CoGroup], classOf[CoGroupOperator], "cogroup")
-      .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")))
-      .input("bars", ClassDescription.of(classOf[Bar]),
-        Groups.parse(Seq("fooId"), Seq("+id")))
-      .output("fooResult", ClassDescription.of(classOf[Foo]))
-      .output("barResult", ClassDescription.of(classOf[Bar]))
-      .output("fooError", ClassDescription.of(classOf[Foo]))
-      .output("barError", ClassDescription.of(classOf[Bar]))
-      .output("nResult", ClassDescription.of(classOf[N]))
-      .argument("n", ImmediateDescription.of(10))
-      .build()
+  for {
+    s <- Seq("s", null)
+  } {
+    it should s"compile CoGroup operator${if (s == null) " with argument null" else ""}" in {
+      val operator = OperatorExtractor
+        .extract(classOf[CoGroup], classOf[CoGroupOperator], "cogroup")
+        .input("foos", ClassDescription.of(classOf[Foo]),
+          Groups.parse(Seq("id")))
+        .input("bars", ClassDescription.of(classOf[Bar]),
+          Groups.parse(Seq("fooId"), Seq("+id")))
+        .output("fooResult", ClassDescription.of(classOf[Foo]))
+        .output("barResult", ClassDescription.of(classOf[Bar]))
+        .output("fooError", ClassDescription.of(classOf[Foo]))
+        .output("barError", ClassDescription.of(classOf[Bar]))
+        .output("nResult", ClassDescription.of(classOf[N]))
+        .argument("n", ImmediateDescription.of(10))
+        .argument("s", ImmediateDescription.of(s))
+        .build()
 
-    implicit val context = newOperatorCompilerContext("flowId")
+      implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-    val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
+      val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+      val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
 
-    val fooResult = new GenericOutputFragment[Foo]()
-    val fooError = new GenericOutputFragment[Foo]()
+      val fooResult = new GenericOutputFragment[Foo]()
+      val fooError = new GenericOutputFragment[Foo]()
 
-    val barResult = new GenericOutputFragment[Bar]()
-    val barError = new GenericOutputFragment[Bar]()
+      val barResult = new GenericOutputFragment[Bar]()
+      val barError = new GenericOutputFragment[Bar]()
 
-    val nResult = new GenericOutputFragment[N]()
+      val nResult = new GenericOutputFragment[N]()
 
-    val fragment = cls.getConstructor(
-      classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[Fragment[_]], classOf[Fragment[_]],
-      classOf[Fragment[_]], classOf[Fragment[_]],
-      classOf[Fragment[_]])
-      .newInstance(Map.empty, fooResult, barResult, fooError, barError, nResult)
+      val fragment = cls.getConstructor(
+        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]],
+        classOf[Fragment[_]], classOf[Fragment[_]],
+        classOf[Fragment[_]])
+        .newInstance(Map.empty, fooResult, barResult, fooError, barError, nResult)
 
-    {
+      {
+        fragment.reset()
+        val foos = Seq.empty[Foo]
+        val bars = Seq.empty[Bar]
+        fragment.add(Seq(foos.iterator, bars.iterator))
+        assert(fooResult.iterator.size === 0)
+        assert(barResult.iterator.size === 0)
+        assert(fooError.iterator.size === 0)
+        assert(barError.iterator.size === 0)
+        val nResults = nResult.iterator.toSeq
+        assert(nResults.size === 1)
+        assert(nResults.head.n.get === 10)
+      }
+
       fragment.reset()
-      val foos = Seq.empty[Foo]
-      val bars = Seq.empty[Bar]
-      fragment.add(Seq(foos.iterator, bars.iterator))
       assert(fooResult.iterator.size === 0)
       assert(barResult.iterator.size === 0)
       assert(fooError.iterator.size === 0)
       assert(barError.iterator.size === 0)
-      val nResults = nResult.iterator.toSeq
-      assert(nResults.size === 1)
-      assert(nResults.head.n.get === 10)
-    }
+      assert(nResult.iterator.size === 0)
 
-    fragment.reset()
-    assert(fooResult.iterator.size === 0)
-    assert(barResult.iterator.size === 0)
-    assert(fooError.iterator.size === 0)
-    assert(barError.iterator.size === 0)
-    assert(nResult.iterator.size === 0)
-
-    {
-      fragment.reset()
-      val foo = new Foo()
-      foo.id.modify(1)
-      val foos = Seq(foo)
-      val bar = new Bar()
-      bar.id.modify(10)
-      bar.fooId.modify(1)
-      val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
-      val fooResults = fooResult.iterator.toSeq
-      assert(fooResults.size === 1)
-      assert(fooResults.head.id.get === foo.id.get)
-      val barResults = barResult.iterator.toSeq
-      assert(barResults.size === 1)
-      assert(barResults.head.id.get === bar.id.get)
-      assert(barResults.head.fooId.get === bar.fooId.get)
-      val fooErrors = fooError.iterator.toSeq
-      assert(fooErrors.size === 0)
-      val barErrors = barError.iterator.toSeq
-      assert(barErrors.size === 0)
-      val nResults = nResult.iterator.toSeq
-      assert(nResults.size === 1)
-      assert(nResults.head.n.get === 10)
-    }
-
-    fragment.reset()
-    assert(fooResult.iterator.size === 0)
-    assert(barResult.iterator.size === 0)
-    assert(fooError.iterator.size === 0)
-    assert(barError.iterator.size === 0)
-    assert(nResult.iterator.size === 0)
-
-    {
-      fragment.reset()
-      val foo = new Foo()
-      foo.id.modify(1)
-      val foos = Seq(foo)
-      val bars = (0 until 10).map { i =>
+      {
+        fragment.reset()
+        val foo = new Foo()
+        foo.id.modify(1)
+        val foos = Seq(foo)
         val bar = new Bar()
-        bar.id.modify(i)
+        bar.id.modify(10)
         bar.fooId.modify(1)
-        bar
+        val bars = Seq(bar)
+        fragment.add(Seq(foos.iterator, bars.iterator))
+        val fooResults = fooResult.iterator.toSeq
+        assert(fooResults.size === 1)
+        assert(fooResults.head.id.get === foo.id.get)
+        if (s == null) {
+          assert(fooResults.head.s.isNull)
+        } else {
+          assert(fooResults.head.s.getAsString === s)
+        }
+        val barResults = barResult.iterator.toSeq
+        assert(barResults.size === 1)
+        assert(barResults.head.id.get === bar.id.get)
+        assert(barResults.head.fooId.get === bar.fooId.get)
+        if (s == null) {
+          assert(barResults.head.s.isNull)
+        } else {
+          assert(barResults.head.s.getAsString === s)
+        }
+        val fooErrors = fooError.iterator.toSeq
+        assert(fooErrors.size === 0)
+        val barErrors = barError.iterator.toSeq
+        assert(barErrors.size === 0)
+        val nResults = nResult.iterator.toSeq
+        assert(nResults.size === 1)
+        assert(nResults.head.n.get === 10)
       }
-      fragment.add(Seq(foos.iterator, bars.iterator))
-      val fooResults = fooResult.iterator.toSeq
-      assert(fooResults.size === 0)
-      val barResults = barResult.iterator.toSeq
-      assert(barResults.size === 0)
-      val fooErrors = fooError.iterator.toSeq
-      assert(fooErrors.size === 1)
-      assert(fooErrors.head.id.get === foo.id.get)
-      val barErrors = barError.iterator.toSeq
-      assert(barErrors.size === 10)
-      barErrors.zip(bars).foreach {
-        case (actual, expected) =>
-          assert(actual.id.get === expected.id.get)
-          assert(actual.fooId.get === expected.fooId.get)
-      }
-      val nResults = nResult.iterator.toSeq
-      assert(nResults.size === 1)
-      assert(nResults.head.n.get === 10)
-    }
 
-    fragment.reset()
-    assert(fooResult.iterator.size === 0)
-    assert(barResult.iterator.size === 0)
-    assert(fooError.iterator.size === 0)
-    assert(barError.iterator.size === 0)
-    assert(nResult.iterator.size === 0)
+      fragment.reset()
+      assert(fooResult.iterator.size === 0)
+      assert(barResult.iterator.size === 0)
+      assert(fooError.iterator.size === 0)
+      assert(barError.iterator.size === 0)
+      assert(nResult.iterator.size === 0)
+
+      {
+        fragment.reset()
+        val foo = new Foo()
+        foo.id.modify(1)
+        val foos = Seq(foo)
+        val bars = (0 until 10).map { i =>
+          val bar = new Bar()
+          bar.id.modify(i)
+          bar.fooId.modify(1)
+          bar
+        }
+        fragment.add(Seq(foos.iterator, bars.iterator))
+        val fooResults = fooResult.iterator.toSeq
+        assert(fooResults.size === 0)
+        val barResults = barResult.iterator.toSeq
+        assert(barResults.size === 0)
+        val fooErrors = fooError.iterator.toSeq
+        assert(fooErrors.size === 1)
+        assert(fooErrors.head.id.get === foo.id.get)
+        if (s == null) {
+          assert(fooErrors.head.s.isNull)
+        } else {
+          assert(fooErrors.head.s.getAsString === s)
+        }
+        val barErrors = barError.iterator.toSeq
+        assert(barErrors.size === 10)
+        barErrors.zip(bars).foreach {
+          case (actual, expected) =>
+            assert(actual.id.get === expected.id.get)
+            assert(actual.fooId.get === expected.fooId.get)
+            if (s == null) {
+              assert(actual.s.isNull)
+            } else {
+              assert(actual.s.getAsString === s)
+            }
+        }
+        val nResults = nResult.iterator.toSeq
+        assert(nResults.size === 1)
+        assert(nResults.head.n.get === 10)
+      }
+
+      fragment.reset()
+      assert(fooResult.iterator.size === 0)
+      assert(barResult.iterator.size === 0)
+      assert(fooError.iterator.size === 0)
+      assert(barError.iterator.size === 0)
+      assert(nResult.iterator.size === 0)
+    }
   }
 }
 
@@ -188,18 +213,23 @@ object CoGroupOperatorCompilerSpec {
   class Foo extends DataModel[Foo] with FooP with Writable {
 
     val id = new IntOption()
+    val s = new StringOption()
 
     override def reset(): Unit = {
       id.setNull()
+      s.setNull()
     }
     override def copyFrom(other: Foo): Unit = {
       id.copyFrom(other.id)
+      s.copyFrom(other.s)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
+      s.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
+      s.write(out)
     }
 
     def getIdOption: IntOption = id
@@ -214,22 +244,27 @@ object CoGroupOperatorCompilerSpec {
 
     val id = new IntOption()
     val fooId = new IntOption()
+    val s = new StringOption()
 
     override def reset(): Unit = {
       id.setNull()
       fooId.setNull()
+      s.setNull()
     }
     override def copyFrom(other: Bar): Unit = {
       id.copyFrom(other.id)
       fooId.copyFrom(other.fooId)
+      s.copyFrom(other.s)
     }
     override def readFields(in: DataInput): Unit = {
       id.readFields(in)
       fooId.readFields(in)
+      s.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       id.write(out)
       fooId.write(out)
+      s.write(out)
     }
 
     def getIdOption: IntOption = id
@@ -265,7 +300,13 @@ object CoGroupOperatorCompilerSpec {
       foos: JList[Foo], bars: JList[Bar],
       fooResult: Result[Foo], barResult: Result[Bar],
       fooError: Result[Foo], barError: Result[Bar],
-      nResult: Result[N], n: Int): Unit = {
+      nResult: Result[N],
+      n: Int,
+      s: String): Unit = {
+      if (s != null) {
+        foos.foreach(_.s.modify(s))
+        bars.foreach(_.s.modify(s))
+      }
       if (foos.size == 1 && bars.size == 1) {
         fooResult.add(foos(0))
         barResult.add(bars(0))
@@ -282,7 +323,8 @@ object CoGroupOperatorCompilerSpec {
       foos: JList[F], bars: JList[B],
       fooResult: Result[F], barResult: Result[B],
       fooError: Result[F], barError: Result[B],
-      nResult: Result[N], n: Int): Unit = {
+      nResult: Result[N],
+      n: Int): Unit = {
       if (foos.size == 1 && bars.size == 1) {
         fooResult.add(foos(0))
         barResult.add(bars(0))

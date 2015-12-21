@@ -89,7 +89,11 @@ private class ExtractOperatorFragmentClassBuilder(
             getOutputField(output).asType(classOf[Result[_]].asType)
           }
           ++: operator.arguments.map { argument =>
-            ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
+            Option(argument.value).map { value =>
+              ldc(value)(ClassTag(argument.resolveClass), implicitly)
+            }.getOrElse {
+              pushNull(argument.resolveClass.asType)
+            }
           }: _*)
     `return`()
   }

@@ -422,15 +422,15 @@ object ShuffledMasterBranchOperatorCompilerSpec {
     }
 
     @MasterSelection
-    def selectp[Foo <: FooP, B <: BarP](foos: JList[Foo], bar: B): Foo = {
+    def selectp[F <: FooP, B <: BarP](foos: JList[F], bar: B): F = {
       if (bar.getIdOption.get % 2 == 0) {
         if (foos.size > 0) {
           foos.head
         } else {
-          null.asInstanceOf[Foo]
+          null.asInstanceOf[F]
         }
       } else {
-        null.asInstanceOf[Foo]
+        null.asInstanceOf[F]
       }
     }
   }

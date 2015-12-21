@@ -107,7 +107,11 @@ trait ShuffledJoin
               ({ () => mastersVar.push() } +:
                 { () => txVar.push() } +:
                 operator.arguments.map { argument =>
-                  () => ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
+                  Option(argument.value).map { value =>
+                    () => ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                  }.getOrElse {
+                    () => pushNull(argument.resolveClass.asType)
+                  }
                 }).zip(t.getArgumentTypes()).map {
                   case (s, t) => s().asType(t)
                 }: _*)

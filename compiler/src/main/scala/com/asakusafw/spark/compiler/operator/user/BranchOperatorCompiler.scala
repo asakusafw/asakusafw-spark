@@ -91,7 +91,11 @@ private class BranchOperatorFragmentClassBuilder(
         operator.methodDesc.asType.getReturnType,
         dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
           +: operator.arguments.map { argument =>
-            ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
+            Option(argument.value).map { value =>
+              ldc(value)(ClassTag(argument.resolveClass), implicitly)
+            }.getOrElse {
+              pushNull(argument.resolveClass.asType)
+            }
           }: _*)
     branch.dup().unlessNotNull {
       `throw`(pushNew0(classOf[NullPointerException].asType))

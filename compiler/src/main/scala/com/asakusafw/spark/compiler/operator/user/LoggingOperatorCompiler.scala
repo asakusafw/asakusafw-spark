@@ -91,7 +91,11 @@ private class LoggingOperatorFragmentClassBuilder(
           classOf[String].asType,
           dataModelVar.push()
             +: operator.arguments.map { argument =>
-              ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
+              Option(argument.value).map { value =>
+                ldc(value)(ClassTag(argument.resolveClass), implicitly)
+              }.getOrElse {
+                pushNull(argument.resolveClass.asType)
+              }
             }: _*))
     getOutputField(operator.outputs(Logging.ID_OUTPUT))
       .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))

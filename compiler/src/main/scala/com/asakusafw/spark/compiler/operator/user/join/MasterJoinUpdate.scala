@@ -44,7 +44,11 @@ trait MasterJoinUpdate extends JoinOperatorFragmentClassBuilder {
           masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
             +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
             +: operator.arguments.map { argument =>
-              ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
+              Option(argument.value).map { value =>
+                ldc(value)(ClassTag(argument.resolveClass), implicitly)
+              }.getOrElse {
+                pushNull(argument.resolveClass.asType)
+              }
             }: _*)
       getOutputField(operator.outputs(MasterJoinUpdateOp.ID_OUTPUT_UPDATED))
     }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))

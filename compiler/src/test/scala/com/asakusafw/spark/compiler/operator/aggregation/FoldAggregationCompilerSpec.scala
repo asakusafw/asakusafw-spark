@@ -25,7 +25,7 @@ import scala.collection.JavaConversions._
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.tools.asm._
@@ -41,39 +41,48 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   behavior of classOf[FoldAggregationCompiler].getSimpleName
 
-  it should "compile Aggregation for Fold" in {
-    val operator = OperatorExtractor
-      .extract(classOf[Fold], classOf[FoldOperator], "fold")
-      .input("input", ClassDescription.of(classOf[Foo]))
-      .output("output", ClassDescription.of(classOf[Foo]))
-      .argument("n", ImmediateDescription.of(10))
-      .build()
+  for {
+    s <- Seq("s", null)
+  } {
+    it should s"compile Aggregation for Fold${if (s == null) " with argument null" else ""}" in {
+      val operator = OperatorExtractor
+        .extract(classOf[Fold], classOf[FoldOperator], "fold")
+        .input("input", ClassDescription.of(classOf[Foo]))
+        .output("output", ClassDescription.of(classOf[Foo]))
+        .argument("n", ImmediateDescription.of(10))
+        .argument("s", ImmediateDescription.of(s))
+        .build()
 
-    implicit val context = newAggregationCompilerContext("flowId")
+      implicit val context = newAggregationCompilerContext("flowId")
 
-    val thisType = AggregationCompiler.compile(operator)
-    val cls = context.loadClass[Aggregation[Seq[_], Foo, Foo]](thisType.getClassName)
+      val thisType = AggregationCompiler.compile(operator)
+      val cls = context.loadClass[Aggregation[Seq[_], Foo, Foo]](thisType.getClassName)
 
-    val aggregation = cls.newInstance()
-    assert(aggregation.mapSideCombine === true)
+      val aggregation = cls.newInstance()
+      assert(aggregation.mapSideCombine === true)
 
-    val valueCombiner = aggregation.valueCombiner()
-    valueCombiner.insertAll((0 until 100).map { i =>
-      val foo = new Foo()
-      foo.i.modify(i)
-      (Seq(i % 2), foo)
-    }.iterator)
-    assert(valueCombiner.toSeq.map { case (k, v) => k -> v.i.get }
-      === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
+      val valueCombiner = aggregation.valueCombiner()
+      valueCombiner.insertAll((0 until 100).map { i =>
+        val foo = new Foo()
+        foo.i.modify(i)
+        (Seq(i % 2), foo)
+      }.iterator)
+      assert(valueCombiner.toSeq.map { case (k, v) => k -> (v.i.get, v.s.or("")) }
+        === Seq(
+          (Seq(0), ((0 until 100 by 2).sum + 10 * 49, if (s == null) "" else "s" * 49)),
+          (Seq(1), ((1 until 100 by 2).sum + 10 * 49, if (s == null) "" else "s" * 49))))
 
-    val combinerCombiner = aggregation.combinerCombiner()
-    combinerCombiner.insertAll((0 until 100).map { i =>
-      val foo = new Foo()
-      foo.i.modify(i)
-      (Seq(i % 2), foo)
-    }.iterator)
-    assert(combinerCombiner.toSeq.map { case (k, v) => k -> v.i.get }
-      === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
+      val combinerCombiner = aggregation.combinerCombiner()
+      combinerCombiner.insertAll((0 until 100).map { i =>
+        val foo = new Foo()
+        foo.i.modify(i)
+        (Seq(i % 2), foo)
+      }.iterator)
+      assert(combinerCombiner.toSeq.map { case (k, v) => k -> (v.i.get, v.s.or("")) }
+        === Seq(
+          (Seq(0), ((0 until 100 by 2).sum + 10 * 49, if (s == null) "" else "s" * 49)),
+          (Seq(1), ((1 until 100 by 2).sum + 10 * 49, if (s == null) "" else "s" * 49))))
+    }
   }
 
   it should "compile Aggregation for Fold with projective model" in {
@@ -98,8 +107,10 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
       foo.i.modify(i)
       (Seq(i % 2), foo)
     }.iterator)
-    assert(valueCombiner.toSeq.map { case (k, v) => k -> v.i.get }
-      === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
+    assert(valueCombiner.toSeq.map { case (k, v) => k -> (v.i.get, v.s.or("")) }
+      === Seq(
+        (Seq(0), ((0 until 100 by 2).sum + 10 * 49, "")),
+        (Seq(1), ((1 until 100 by 2).sum + 10 * 49, ""))))
 
     val combinerCombiner = aggregation.combinerCombiner()
     combinerCombiner.insertAll((0 until 100).map { i =>
@@ -107,8 +118,10 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
       foo.i.modify(i)
       (Seq(i % 2), foo)
     }.iterator)
-    assert(combinerCombiner.toSeq.map { case (k, v) => k -> v.i.get }
-      === Seq((Seq(0), (0 until 100 by 2).sum + 10 * 49), (Seq(1), (1 until 100 by 2).sum + 10 * 49)))
+    assert(combinerCombiner.toSeq.map { case (k, v) => k -> (v.i.get, v.s.or("")) }
+      === Seq(
+        (Seq(0), ((0 until 100 by 2).sum + 10 * 49, "")),
+        (Seq(1), ((1 until 100 by 2).sum + 10 * 49, ""))))
   }
 }
 
@@ -121,13 +134,16 @@ object FoldAggregationCompilerSpec {
   class Foo extends DataModel[Foo] with FooP {
 
     val i = new IntOption()
+    val s = new StringOption()
 
     override def reset(): Unit = {
       i.setNull()
+      s.setNull()
     }
 
     override def copyFrom(other: Foo): Unit = {
       i.copyFrom(other.i)
+      s.copyFrom(other.s)
     }
 
     def getIOption: IntOption = i
@@ -136,9 +152,12 @@ object FoldAggregationCompilerSpec {
   class FoldOperator {
 
     @Fold(partialAggregation = PartialAggregation.PARTIAL)
-    def fold(acc: Foo, value: Foo, n: Int): Unit = {
+    def fold(acc: Foo, value: Foo, n: Int, s: String): Unit = {
       acc.i.add(value.i)
       acc.i.add(n)
+      if (s != null) {
+        acc.s.modify(acc.s.or("") + s)
+      }
     }
 
     @Fold(partialAggregation = PartialAggregation.PARTIAL)

@@ -31,7 +31,7 @@ import org.apache.spark.broadcast.Broadcast
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value.{ IntOption, LongOption }
+import com.asakusafw.runtime.value.{ IntOption, LongOption, StringOption }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.graph.BroadcastId
@@ -47,44 +47,54 @@ class ConvertOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   behavior of classOf[ConvertOperatorCompiler].getSimpleName
 
-  it should "compile Convert operator" in {
-    val operator = OperatorExtractor
-      .extract(classOf[Convert], classOf[ConvertOperator], "convert")
-      .input("input", ClassDescription.of(classOf[Input]))
-      .output("original", ClassDescription.of(classOf[Input]))
-      .output("out", ClassDescription.of(classOf[Output]))
-      .argument("n", ImmediateDescription.of(10))
-      .build()
+  for {
+    s <- Seq("s", null)
+  } {
+    it should s"compile Convert operator${if (s == null) " with argument null" else ""}" in {
+      val operator = OperatorExtractor
+        .extract(classOf[Convert], classOf[ConvertOperator], "convert")
+        .input("input", ClassDescription.of(classOf[Input]))
+        .output("original", ClassDescription.of(classOf[Input]))
+        .output("out", ClassDescription.of(classOf[Output]))
+        .argument("n", ImmediateDescription.of(10))
+        .argument("s", ImmediateDescription.of(s))
+        .build()
 
-    implicit val context = newOperatorCompilerContext("flowId")
+      implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
+      val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+      val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
 
-    val out1 = new GenericOutputFragment[Input]()
-    val out2 = new GenericOutputFragment[Output]()
+      val out1 = new GenericOutputFragment[Input]()
+      val out2 = new GenericOutputFragment[Output]()
 
-    val fragment = cls.getConstructor(
-      classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, out1, out2)
-    fragment.reset()
+      val fragment = cls.getConstructor(
+        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, out1, out2)
+      fragment.reset()
 
-    val input = new Input()
-    for (i <- 0 until 10) {
-      input.i.modify(i)
-      input.l.modify(i)
-      fragment.add(input)
+      val input = new Input()
+      for (i <- 0 until 10) {
+        input.i.modify(i)
+        input.l.modify(i)
+        fragment.add(input)
+      }
+      out1.iterator.zipWithIndex.foreach {
+        case (input, i) =>
+          assert(input.i.get === i)
+          assert(input.l.get === i)
+      }
+      out2.iterator.zipWithIndex.foreach {
+        case (output, i) =>
+          assert(output.l.get === 10 * i)
+          if (s == null) {
+            assert(output.s.isNull)
+          } else {
+            assert(output.s.getAsString === s)
+          }
+      }
+      fragment.reset()
     }
-    out1.iterator.zipWithIndex.foreach {
-      case (input, i) =>
-        assert(input.i.get === i)
-        assert(input.l.get === i)
-    }
-    out2.iterator.zipWithIndex.foreach {
-      case (output, i) =>
-        assert(output.l.get === 10 * i)
-    }
-    fragment.reset()
   }
 
   it should "compile Convert operator with projective model" in {
@@ -123,6 +133,7 @@ class ConvertOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
     out2.iterator.zipWithIndex.foreach {
       case (output, i) =>
         assert(output.l.get === 10 * i)
+        assert(output.s.isNull)
     }
 
     fragment.reset()
@@ -165,18 +176,23 @@ object ConvertOperatorCompilerSpec {
   class Output extends DataModel[Output] with Writable {
 
     val l: LongOption = new LongOption()
+    val s: StringOption = new StringOption()
 
     override def reset: Unit = {
       l.setNull()
+      s.setNull()
     }
     override def copyFrom(other: Output): Unit = {
       l.copyFrom(other.l)
+      s.copyFrom(other.s)
     }
     override def readFields(in: DataInput): Unit = {
       l.readFields(in)
+      s.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       l.write(out)
+      s.write(out)
     }
 
     def getLOption: LongOption = l
@@ -187,9 +203,12 @@ object ConvertOperatorCompilerSpec {
     private[this] val out = new Output()
 
     @Convert
-    def convert(in: Input, n: Int): Output = {
+    def convert(in: Input, n: Int, s: String): Output = {
       out.reset()
       out.l.modify(n * in.l.get)
+      if (s != null) {
+        out.s.modify(s)
+      }
       out
     }
 
