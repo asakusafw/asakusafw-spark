@@ -16,6 +16,7 @@
 package com.asakusafw.spark.compiler.planning;
 
 import java.text.MessageFormat;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,12 +25,15 @@ import com.asakusafw.lang.compiler.common.ComplexAttribute;
 import com.asakusafw.lang.compiler.common.util.EnumUtil;
 import com.asakusafw.lang.compiler.planning.Plan;
 import com.asakusafw.lang.compiler.planning.SubPlan;
+import com.asakusafw.spark.compiler.planning.IterativeInfo.RecomputeKind;
 import com.asakusafw.spark.compiler.planning.SubPlanInfo.DriverType;
 import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputType;
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo.OutputType;
 
 /**
  * Statistics of Spark execution plan.
+ * @since 0.1.0
+ * @version 0.3.0
  */
 public class PlanStatistics implements ComplexAttribute {
 
@@ -38,6 +42,8 @@ public class PlanStatistics implements ComplexAttribute {
     private final Map<InputType, Integer> inputTypes;
 
     private final Map<OutputType, Integer> outputTypes;
+
+    private final Map<RecomputeKind, Integer> recomputeKinds;
 
     /**
      * Creates a new instance.
@@ -49,9 +55,26 @@ public class PlanStatistics implements ComplexAttribute {
             Map<DriverType, Integer> driverTypes,
             Map<InputType, Integer> inputTypes,
             Map<OutputType, Integer> outputTypes) {
+        this(driverTypes, inputTypes, outputTypes, Collections.<RecomputeKind, Integer>emptyMap());
+    }
+
+    /**
+     * Creates a new instance.
+     * @param driverTypes numbers of each driver type
+     * @param inputTypes numbers of each input type
+     * @param outputTypes numbers of each output type
+     * @param recomputeKinds numbers of each recompute kind
+     * @since 0.3.0
+     */
+    public PlanStatistics(
+            Map<DriverType, Integer> driverTypes,
+            Map<InputType, Integer> inputTypes,
+            Map<OutputType, Integer> outputTypes,
+            Map<RecomputeKind, Integer> recomputeKinds) {
         this.driverTypes = EnumUtil.freeze(driverTypes);
         this.inputTypes = EnumUtil.freeze(inputTypes);
         this.outputTypes = EnumUtil.freeze(outputTypes);
+        this.recomputeKinds = EnumUtil.freeze(recomputeKinds);
     }
 
     /**
@@ -63,6 +86,7 @@ public class PlanStatistics implements ComplexAttribute {
         Map<DriverType, Integer> driverTypes = new EnumMap<>(DriverType.class);
         Map<InputType, Integer> inputTypes = new EnumMap<>(InputType.class);
         Map<OutputType, Integer> outputTypes = new EnumMap<>(OutputType.class);
+        Map<RecomputeKind, Integer> recomputeKinds = new EnumMap<>(RecomputeKind.class);
         for (SubPlan sub : plan.getElements()) {
             process(sub, driverTypes);
             for (SubPlan.Input port : sub.getInputs()) {
@@ -71,8 +95,9 @@ public class PlanStatistics implements ComplexAttribute {
             for (SubPlan.Output port : sub.getOutputs()) {
                 process(port, outputTypes);
             }
+            collectIterative(sub, recomputeKinds);
         }
-        return new PlanStatistics(driverTypes, inputTypes, outputTypes);
+        return new PlanStatistics(driverTypes, inputTypes, outputTypes, recomputeKinds);
     }
 
     private static void process(SubPlan element, Map<DriverType, Integer> counters) {
@@ -97,6 +122,14 @@ public class PlanStatistics implements ComplexAttribute {
             return;
         }
         increment(info.getOutputType(), counters);
+    }
+
+    private static void collectIterative(SubPlan element, Map<RecomputeKind, Integer> counters) {
+        IterativeInfo info = element.getAttribute(IterativeInfo.class);
+        if (info == null) {
+            return;
+        }
+        increment(info.getRecomputeKind(), counters);
     }
 
     private static <T> void increment(T member, Map<T, Integer> counters) {
@@ -132,12 +165,23 @@ public class PlanStatistics implements ComplexAttribute {
         return outputTypes;
     }
 
+    /**
+     * Returns the numbers of each recompute kind.
+     * @return the numbers of each recompute kind
+     */
+    public Map<RecomputeKind, Integer> getRecomputeKinds() {
+        return recomputeKinds;
+    }
+
     @Override
     public Map<String, ?> toMap() {
         Map<String, Object> results = new LinkedHashMap<>();
         results.put("drivers", getDriverTypes()); //$NON-NLS-1$
         results.put("inputs", getInputTypes()); //$NON-NLS-1$
         results.put("outputs", getOutputTypes()); //$NON-NLS-1$
+        if (getRecomputeKinds().isEmpty() == false) {
+            results.put("iterative", getRecomputeKinds()); //$NON-NLS-1$
+        }
         return results;
     }
 

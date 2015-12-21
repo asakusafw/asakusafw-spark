@@ -423,14 +423,14 @@ public final class SparkPlanning {
             attachSizeInfo(context, plan);
             attachPartitionGroupInfo(context, plan);
         }
+        if (context.getOptions().contains(Option.ITERATIVE_EXTENSION)) {
+            IterativeOperationAnalyzer.attach(plan);
+        }
         if (context.getOptions().contains(Option.GRAPH_STATISTICS)) {
             attachGraphStatistics(plan);
         }
         if (context.getOptions().contains(Option.PLAN_STATISTICS)) {
             attachPlanStatistics(plan);
-        }
-        if (context.getOptions().contains(Option.ITERATIVE_EXTENSION)) {
-            IterativeOperationAnalyzer.attach(plan);
         }
     }
 
