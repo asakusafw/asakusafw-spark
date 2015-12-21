@@ -27,7 +27,7 @@ case class Branch[K](branchKey: BranchKey, actualKey: K)
 
 class BranchRDDFunctions[T](val self: RDD[T]) extends AnyVal {
 
-  def branch[K, U](
+  def branch[K: ClassTag, U: ClassTag](
     branchKeys: Set[BranchKey],
     f: Iterator[T] => Iterator[(Branch[K], U)],
     partitioners: Map[BranchKey, Partitioner] = Map.empty[BranchKey, Partitioner],

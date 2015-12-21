@@ -117,6 +117,8 @@ abstract class AggregateClassBuilder(
           sortVar.push(),
           partVar.push(),
           broadcastsVar.push(),
+          classTag(valueType),
+          classTag(combinerType),
           scVar.push())
         initMixIns()
       }

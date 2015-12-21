@@ -17,6 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.reflect.ClassTag
 
 import org.apache.spark.{ InterruptibleIterator, Partitioner, SparkContext, TaskContext }
 import org.apache.spark.rdd.RDD
@@ -28,7 +29,7 @@ import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.rdd._
 
-abstract class Aggregate[V, C](
+abstract class Aggregate[V: ClassTag, C: ClassTag](
   @transient prevs: Seq[(Source, BranchKey)],
   @transient sort: Option[SortOrdering],
   @transient partitioner: Partitioner)(

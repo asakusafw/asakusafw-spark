@@ -32,7 +32,8 @@ package object rdd {
 
   implicit class AugmentedPairRDD[K, V](val rdd: RDD[(K, V)]) extends AnyVal {
 
-    def shuffle(part: Partitioner, ordering: Option[Ordering[K]] = None): RDD[(K, V)] = {
+    def shuffle(part: Partitioner, ordering: Option[Ordering[K]] = None)(
+      implicit keyTag: ClassTag[K], valueTag: ClassTag[V]): RDD[(K, V)] = {
       if (rdd.partitioner == Some(part)) {
         rdd
       } else {
@@ -54,7 +55,7 @@ package object rdd {
       }
     }
 
-    def confluent[K, V](
+    def confluent[K: ClassTag, V: ClassTag](
       rdds: Seq[RDD[(K, V)]], part: Partitioner, ordering: Option[Ordering[K]]): RDD[(K, V)] = {
 
       if (rdds.size > 1) {
@@ -94,7 +95,7 @@ package object rdd {
       }
     }
 
-    def smcogroup[K](
+    def smcogroup[K: ClassTag](
       rdds: Seq[(RDD[(K, _)], Option[Ordering[K]])],
       part: Partitioner,
       grouping: Ordering[K]): RDD[(K, Seq[Iterator[_]])] = {
