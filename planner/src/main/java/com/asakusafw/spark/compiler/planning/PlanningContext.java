@@ -159,6 +159,12 @@ public class PlanningContext {
          * @since 0.3.0
          */
         ITERATIVE_EXTENSION(true),
+
+        /**
+         * Enables {@link ParameterInfo}.
+         * @since 0.3.0
+         */
+        PARAMETER_DETECTION(true),
         ;
 
         private String symbol;
