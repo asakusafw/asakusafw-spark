@@ -116,7 +116,11 @@ private class FoldAggregationClassBuilder(
       combinerVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
         +: valueVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
         +: operator.arguments.map { argument =>
-          ldc(argument.value)(ClassTag(argument.resolveClass), implicitly)
+          Option(argument.value).map { value =>
+            ldc(value)(ClassTag(argument.resolveClass), implicitly)
+          }.getOrElse {
+            pushNull(argument.resolveClass.asType)
+          }
         }: _*)
     `return`(combinerVar.push())
   }

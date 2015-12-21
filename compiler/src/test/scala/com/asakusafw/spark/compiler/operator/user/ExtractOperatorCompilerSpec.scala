@@ -32,7 +32,7 @@ import com.asakusafw.lang.compiler.model.description.{ ClassDescription, Immedia
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value.{ IntOption, LongOption }
+import com.asakusafw.runtime.value.{ IntOption, LongOption, StringOption }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.graph.BroadcastId
@@ -48,46 +48,61 @@ class ExtractOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   behavior of classOf[ExtractOperatorCompiler].getSimpleName
 
-  it should "compile Extract operator" in {
-    val operator = OperatorExtractor
-      .extract(classOf[Extract], classOf[ExtractOperator], "extract")
-      .input("input", ClassDescription.of(classOf[Input]))
-      .output("output1", ClassDescription.of(classOf[IntOutput]))
-      .output("output2", ClassDescription.of(classOf[LongOutput]))
-      .argument("n", ImmediateDescription.of(10))
-      .build()
+  for {
+    s <- Seq("s", null)
+  } {
+    it should s"compile Extract operator${if (s == null) " with argument null" else ""}" in {
+      val operator = OperatorExtractor
+        .extract(classOf[Extract], classOf[ExtractOperator], "extract")
+        .input("input", ClassDescription.of(classOf[Input]))
+        .output("output1", ClassDescription.of(classOf[IntOutput]))
+        .output("output2", ClassDescription.of(classOf[LongOutput]))
+        .argument("n", ImmediateDescription.of(10))
+        .argument("s", ImmediateDescription.of(s))
+        .build()
 
-    implicit val context = newOperatorCompilerContext("flowId")
+      implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
+      val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+      val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
 
-    val out1 = new GenericOutputFragment[IntOutput]()
-    val out2 = new GenericOutputFragment[LongOutput]()
+      val out1 = new GenericOutputFragment[IntOutput]()
+      val out2 = new GenericOutputFragment[LongOutput]()
 
-    val fragment = cls
-      .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(Map.empty, out1, out2)
+      val fragment = cls
+        .getConstructor(
+          classOf[Map[BroadcastId, Broadcast[_]]],
+          classOf[Fragment[_]], classOf[Fragment[_]])
+        .newInstance(Map.empty, out1, out2)
 
-    fragment.reset()
-    val input = new Input()
-    for (i <- 0 until 10) {
-      input.i.modify(i)
-      input.l.modify(i)
-      fragment.add(input)
+      fragment.reset()
+      val input = new Input()
+      for (i <- 0 until 10) {
+        input.i.modify(i)
+        input.l.modify(i)
+        fragment.add(input)
+      }
+      out1.iterator.zipWithIndex.foreach {
+        case (output, i) =>
+          assert(output.i.get === i)
+          if (s == null) {
+            assert(output.s.isNull)
+          } else {
+            assert(output.s.getAsString === s)
+          }
+      }
+      out2.iterator.zipWithIndex.foreach {
+        case (output, i) =>
+          assert(output.l.get === i / 10)
+          if (s == null) {
+            assert(output.s.isNull)
+          } else {
+            assert(output.s.getAsString === s)
+          }
+      }
+
+      fragment.reset()
     }
-    out1.iterator.zipWithIndex.foreach {
-      case (output, i) =>
-        assert(output.i.get === i)
-    }
-    out2.iterator.zipWithIndex.foreach {
-      case (output, i) =>
-        assert(output.l.get === i / 10)
-    }
-
-    fragment.reset()
   }
 
   it should "compile Extract operator with projective model" in {
@@ -123,10 +138,12 @@ class ExtractOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
     out1.iterator.zipWithIndex.foreach {
       case (output, i) =>
         assert(output.i.get === i)
+        assert(output.s.isNull)
     }
     out2.iterator.zipWithIndex.foreach {
       case (output, i) =>
         assert(output.l.get === i / 10)
+        assert(output.s.isNull)
     }
 
     fragment.reset()
@@ -173,18 +190,23 @@ object ExtractOperatorCompilerSpec {
   class IntOutput extends DataModel[IntOutput] with IntOutputP with Writable {
 
     val i: IntOption = new IntOption()
+    val s: StringOption = new StringOption()
 
     override def reset: Unit = {
       i.setNull()
+      s.setNull()
     }
     override def copyFrom(other: IntOutput): Unit = {
       i.copyFrom(other.i)
+      s.copyFrom(other.s)
     }
     override def readFields(in: DataInput): Unit = {
       i.readFields(in)
+      s.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       i.write(out)
+      s.write(out)
     }
 
     def getIOption: IntOption = i
@@ -197,18 +219,23 @@ object ExtractOperatorCompilerSpec {
   class LongOutput extends DataModel[LongOutput] with LongOutputP with Writable {
 
     val l: LongOption = new LongOption()
+    val s: StringOption = new StringOption()
 
     override def reset: Unit = {
       l.setNull()
+      s.setNull()
     }
     override def copyFrom(other: LongOutput): Unit = {
       l.copyFrom(other.l)
+      s.copyFrom(other.s)
     }
     override def readFields(in: DataInput): Unit = {
       l.readFields(in)
+      s.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       l.write(out)
+      s.write(out)
     }
 
     def getLOption: LongOption = l
@@ -220,17 +247,32 @@ object ExtractOperatorCompilerSpec {
     private[this] val l = new LongOutput()
 
     @Extract
-    def extract(in: Input, out1: Result[IntOutput], out2: Result[LongOutput], n: Int): Unit = {
-      i.getIOption.copyFrom(in.getIOption)
+    def extract(
+      in: Input,
+      out1: Result[IntOutput],
+      out2: Result[LongOutput],
+      n: Int,
+      s: String): Unit = {
+      i.i.copyFrom(in.getIOption)
+      if (s != null) {
+        i.s.modify(s)
+      }
       out1.add(i)
       for (_ <- 0 until n) {
-        l.getLOption.copyFrom(in.getLOption)
+        l.l.copyFrom(in.getLOption)
+        if (s != null) {
+          l.s.modify(s)
+        }
         out2.add(l)
       }
     }
 
     @Extract
-    def extractp[I <: InputP, IO <: IntOutputP, LO <: LongOutputP](in: I, out1: Result[IO], out2: Result[LO], n: Int): Unit = {
+    def extractp[I <: InputP, IO <: IntOutputP, LO <: LongOutputP](
+      in: I,
+      out1: Result[IO],
+      out2: Result[LO],
+      n: Int): Unit = {
       i.getIOption.copyFrom(in.getIOption)
       out1.add(i.asInstanceOf[IO])
       for (_ <- 0 until n) {

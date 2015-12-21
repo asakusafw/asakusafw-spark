@@ -31,7 +31,7 @@ import org.apache.spark.broadcast.Broadcast
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value.{ IntOption, LongOption }
+import com.asakusafw.runtime.value.{ IntOption, LongOption, StringOption }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.graph.BroadcastId
@@ -47,39 +47,49 @@ class UpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   behavior of classOf[UpdateOperatorCompiler].getSimpleName
 
-  it should "compile Update operator" in {
-    val operator = OperatorExtractor.extract(
-      classOf[Update], classOf[UpdateOperator], "update")
-      .input("in", ClassDescription.of(classOf[Foo]))
-      .output("out", ClassDescription.of(classOf[Foo]))
-      .argument("rate", ImmediateDescription.of(100))
-      .build();
+  for {
+    s <- Seq("s", null)
+  } {
+    it should s"compile Update operator${if (s == null) " with argument null" else ""}" in {
+      val operator = OperatorExtractor.extract(
+        classOf[Update], classOf[UpdateOperator], "update")
+        .input("in", ClassDescription.of(classOf[Foo]))
+        .output("out", ClassDescription.of(classOf[Foo]))
+        .argument("rate", ImmediateDescription.of(100))
+        .argument("s", ImmediateDescription.of(s))
+        .build();
 
-    implicit val context = newOperatorCompilerContext("flowId")
+      implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[Foo]](thisType.getClassName)
+      val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+      val cls = context.loadClass[Fragment[Foo]](thisType.getClassName)
 
-    val out = new GenericOutputFragment[Foo]()
+      val out = new GenericOutputFragment[Foo]()
 
-    val fragment = cls
-      .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
-      .newInstance(Map.empty, out)
+      val fragment = cls
+        .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
+        .newInstance(Map.empty, out)
 
-    fragment.reset()
-    val foo = new Foo()
-    for (i <- 0 until 10) {
-      foo.reset()
-      foo.i.modify(i)
-      fragment.add(foo)
+      fragment.reset()
+      val foo = new Foo()
+      for (i <- 0 until 10) {
+        foo.reset()
+        foo.i.modify(i)
+        fragment.add(foo)
+      }
+      out.iterator.zipWithIndex.foreach {
+        case (foo, i) =>
+          assert(foo.i.get === i)
+          assert(foo.l.get === i * 100)
+          if (s == null) {
+            assert(foo.s.isNull)
+          } else {
+            assert(foo.s.getAsString === s)
+          }
+      }
+
+      fragment.reset()
     }
-    out.iterator.zipWithIndex.foreach {
-      case (foo, i) =>
-        assert(foo.i.get === i)
-        assert(foo.l.get === i * 100)
-    }
-
-    fragment.reset()
   }
 
   it should "compile Update operator with projective model" in {
@@ -112,6 +122,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
       case (foo, i) =>
         assert(foo.i.get === i)
         assert(foo.l.get === i * 100)
+        assert(foo.s.isNull)
     }
 
     fragment.reset()
@@ -129,22 +140,27 @@ object UpdateOperatorCompilerSpec {
 
     val i: IntOption = new IntOption()
     val l: LongOption = new LongOption()
+    val s: StringOption = new StringOption()
 
     override def reset: Unit = {
       i.setNull()
       l.setNull()
+      s.setNull()
     }
     override def copyFrom(other: Foo): Unit = {
       i.copyFrom(other.i)
       l.copyFrom(other.l)
+      s.copyFrom(other.s)
     }
     override def readFields(in: DataInput): Unit = {
       i.readFields(in)
       l.readFields(in)
+      s.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       i.write(out)
       l.write(out)
+      s.write(out)
     }
 
     def getIOption: IntOption = i
@@ -154,8 +170,11 @@ object UpdateOperatorCompilerSpec {
   class UpdateOperator {
 
     @Update
-    def update(foo: Foo, rate: Int): Unit = {
+    def update(foo: Foo, rate: Int, s: String): Unit = {
       foo.l.modify(rate * foo.i.get)
+      if (s != null) {
+        foo.s.modify(s)
+      }
     }
 
     @Update

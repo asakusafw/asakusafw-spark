@@ -31,7 +31,7 @@ import org.apache.spark.broadcast.Broadcast
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.graph.BroadcastId
@@ -47,43 +47,52 @@ class BranchOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
 
   behavior of classOf[BranchOperatorCompiler].getSimpleName
 
-  it should "compile Branch operator" in {
-    val operator = OperatorExtractor
-      .extract(classOf[Branch], classOf[BranchOperator], "branch")
-      .input("input", ClassDescription.of(classOf[Foo]))
-      .output("low", ClassDescription.of(classOf[Foo]))
-      .output("high", ClassDescription.of(classOf[Foo]))
-      .argument("n", ImmediateDescription.of(10))
-      .build()
+  for {
+    s <- Seq("s", null)
+  } {
+    it should s"compile Branch operator${if (s == null) " with argument null" else ""}" in {
+      val operator = OperatorExtractor
+        .extract(classOf[Branch], classOf[BranchOperator], "branch")
+        .input("input", ClassDescription.of(classOf[Foo]))
+        .output("low", ClassDescription.of(classOf[Foo]))
+        .output("high", ClassDescription.of(classOf[Foo]))
+        .argument("n", ImmediateDescription.of(10))
+        .argument("s", ImmediateDescription.of(s))
+        .build()
 
-    implicit val context = newOperatorCompilerContext("flowId")
+      implicit val context = newOperatorCompilerContext("flowId")
 
-    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
-    val cls = context.loadClass[Fragment[Foo]](thisType.getClassName)
+      val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+      val cls = context.loadClass[Fragment[Foo]](thisType.getClassName)
 
-    val out1 = new GenericOutputFragment[Foo]()
-    val out2 = new GenericOutputFragment[Foo]()
+      val out1 = new GenericOutputFragment[Foo]()
+      val out2 = new GenericOutputFragment[Foo]()
 
-    val fragment = cls
-      .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[Fragment[_]], classOf[Fragment[_]])
-      .newInstance(Map.empty, out1, out2)
+      val fragment = cls
+        .getConstructor(
+          classOf[Map[BroadcastId, Broadcast[_]]],
+          classOf[Fragment[_]], classOf[Fragment[_]])
+        .newInstance(Map.empty, out1, out2)
 
-    val foo = new Foo()
-    for (i <- 0 until 10) {
-      foo.i.modify(i)
-      fragment.add(foo)
+      val foo = new Foo()
+      for (i <- 0 until 10) {
+        foo.i.modify(i)
+        fragment.add(foo)
+      }
+      val result1 = out1.iterator.toSeq
+      assert(result1.size === (if (s == null) 0 else 5))
+      result1.zipWithIndex.foreach {
+        case (foo, i) =>
+          assert(foo.i.get === i)
+      }
+      val result2 = out2.iterator.toSeq
+      assert(result2.size == (if (s == null) 10 else 5))
+      result2.zipWithIndex.foreach {
+        case (foo, i) =>
+          assert(foo.i.get === i + (if (s == null) 0 else 5))
+      }
+      fragment.reset()
     }
-    out1.iterator.zipWithIndex.foreach {
-      case (foo, i) =>
-        assert(foo.i.get === i)
-    }
-    out2.iterator.zipWithIndex.foreach {
-      case (foo, i) =>
-        assert(foo.i.get === i + 5)
-    }
-    fragment.reset()
   }
 
   it should "compile Branch operator with projective model" in {
@@ -118,10 +127,12 @@ class BranchOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
     out1.iterator.zipWithIndex.foreach {
       case (foo, i) =>
         assert(foo.i.get === i)
+        assert(foo.s.isNull)
     }
     out2.iterator.zipWithIndex.foreach {
       case (foo, i) =>
         assert(foo.i.get === i + 5)
+        assert(foo.s.isNull)
     }
 
     fragment.reset()
@@ -137,18 +148,23 @@ object BranchOperatorCompilerSpec {
   class Foo extends DataModel[Foo] with FooP with Writable {
 
     val i: IntOption = new IntOption()
+    val s: StringOption = new StringOption()
 
     override def reset: Unit = {
       i.setNull()
+      s.setNull()
     }
     override def copyFrom(other: Foo): Unit = {
       i.copyFrom(other.i)
+      s.copyFrom(other.s)
     }
     override def readFields(in: DataInput): Unit = {
       i.readFields(in)
+      s.readFields(in)
     }
     override def write(out: DataOutput): Unit = {
       i.write(out)
+      s.write(out)
     }
 
     def getIOption: IntOption = i
@@ -157,8 +173,8 @@ object BranchOperatorCompilerSpec {
   class BranchOperator {
 
     @Branch
-    def branch(in: Foo, n: Int): BranchOperatorCompilerSpecTestBranch = {
-      if (in.i.get < 5) {
+    def branch(in: Foo, n: Int, s: String): BranchOperatorCompilerSpecTestBranch = {
+      if (in.i.get < 5 && s != null) {
         BranchOperatorCompilerSpecTestBranch.LOW
       } else {
         BranchOperatorCompilerSpecTestBranch.HIGH
