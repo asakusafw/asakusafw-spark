@@ -88,6 +88,9 @@ import com.asakusafw.utils.graph.Graph;
  *      for {@link Plan}, {@link SubPlan}, and
  *      {@link com.asakusafw.lang.compiler.planning.SubPlan.Port SubPlan.(Input|Output)}
  * </li>
+ * <li> {@link ParameterInfo} -
+ *      for {@link Plan}
+ * </li>
  * </ul>
  * @since 0.1.0
  * @version 0.3.0
@@ -426,6 +429,9 @@ public final class SparkPlanning {
         if (context.getOptions().contains(Option.ITERATIVE_EXTENSION)) {
             IterativeOperationAnalyzer.attach(plan);
         }
+        if (context.getOptions().contains(Option.PARAMETER_DETECTION)) {
+            attachParameterInfo(plan);
+        }
         if (context.getOptions().contains(Option.GRAPH_STATISTICS)) {
             attachGraphStatistics(plan);
         }
@@ -506,7 +512,10 @@ public final class SparkPlanning {
                 }
             }
         }
+    }
 
+    private static void attachParameterInfo(Plan plan) {
+        plan.putAttribute(ParameterInfo.class, ParameterInfo.of(plan));
     }
 
     private static void attachGraphStatistics(Plan plan) {
