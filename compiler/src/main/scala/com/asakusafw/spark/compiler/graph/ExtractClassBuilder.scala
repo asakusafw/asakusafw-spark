@@ -58,8 +58,7 @@ abstract class ExtractClassBuilder(
         _.newClassType(classOf[Extract[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, marker.getDataType.asType)
         }
-      }
-      .build(),
+      },
     classOf[Extract[_]].asType)
   with Branching
   with LabelField {

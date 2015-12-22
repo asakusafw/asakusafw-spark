@@ -64,8 +64,7 @@ abstract class AggregateClassBuilder(
             .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
         }
-      }
-      .build(),
+      },
     classOf[Aggregate[_, _]].asType)
   with Branching
   with LabelField {

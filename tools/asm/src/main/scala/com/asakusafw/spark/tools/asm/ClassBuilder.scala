@@ -34,15 +34,18 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class ClassBuilder(
   val thisType: Type,
-  val signature: Option[String],
+  _signature: Option[ClassSignatureBuilder],
   val superType: Type,
   _interfaceTypes: Type*) {
 
+  def signature: Option[ClassSignatureBuilder] = _signature
+
   def interfaceTypes: Seq[Type] = _interfaceTypes
 
-  val logger = LoggerFactory.getLogger(getClass)
+  val Logger = LoggerFactory.getLogger(getClass)
 
-  def this(thisType: Type, signature: String, superType: Type, interfaceTypes: Type*) =
+  def this(
+    thisType: Type, signature: ClassSignatureBuilder, superType: Type, interfaceTypes: Type*) =
     this(thisType, Option(signature), superType, interfaceTypes: _*)
 
   def this(thisType: Type, superType: Type, interfaceTypes: Type*) =
@@ -54,7 +57,7 @@ abstract class ClassBuilder(
       V1_7,
       ACC_PUBLIC,
       thisType.getInternalName(),
-      signature.orNull,
+      signature.map(_.build()).orNull,
       superType.getInternalName(),
       interfaceTypes.map(_.getInternalName()).toArray)
     defAnnotations(new AnnotationDef(cw))
@@ -73,8 +76,8 @@ abstract class ClassBuilder(
     }
     cw.visitEnd()
     val bytes = cw.toByteArray()
-    if (logger.isTraceEnabled) {
-      logger.trace {
+    if (Logger.isTraceEnabled) {
+      Logger.trace {
         val writer = new StringWriter
         val cr = new ClassReader(bytes)
         cr.accept(new TraceClassVisitor(new PrintWriter(writer)), 0)

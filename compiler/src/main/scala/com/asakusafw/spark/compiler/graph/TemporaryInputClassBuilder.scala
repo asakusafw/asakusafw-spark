@@ -50,8 +50,7 @@ abstract class TemporaryInputClassBuilder(
         _.newClassType(classOf[TemporaryInput[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
         }
-      }
-      .build(),
+      },
     classOf[TemporaryInput[_]].asType) {
   self: ComputationStrategy =>
 

@@ -59,8 +59,7 @@ abstract class DirectInputClassBuilder(
             .newTypeArgument(SignatureVisitor.INSTANCEOF, keyType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
         }
-      }
-      .build(),
+      },
     classOf[DirectInput[_, _, _]].asType) {
   self: ComputationStrategy =>
 

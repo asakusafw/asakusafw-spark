@@ -42,8 +42,7 @@ class OutputFragmentClassBuilder(
         _.newClassType(classOf[OutputFragment[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
         }
-      }
-      .build(),
+      },
     classOf[OutputFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {

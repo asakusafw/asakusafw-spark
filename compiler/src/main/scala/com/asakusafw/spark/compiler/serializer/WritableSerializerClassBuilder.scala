@@ -41,8 +41,7 @@ class WritableSerializerClassBuilder(
         _.newClassType(classOf[WritableSerializer[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, writableType)
         }
-      }
-      .build(),
+      },
     classOf[WritableSerializer[_]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {

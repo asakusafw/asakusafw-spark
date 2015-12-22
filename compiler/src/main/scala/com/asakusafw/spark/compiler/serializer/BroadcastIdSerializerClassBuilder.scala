@@ -42,8 +42,7 @@ class BroadcastIdSerializerClassBuilder(
         _.newClassType(classOf[Serializer[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
         }
-      }
-      .build(),
+      },
     classOf[Serializer[_]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {

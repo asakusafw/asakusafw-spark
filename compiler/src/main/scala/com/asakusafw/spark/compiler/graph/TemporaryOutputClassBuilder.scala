@@ -47,8 +47,7 @@ class TemporaryOutputClassBuilder(
         _.newClassType(classOf[TemporaryOutput[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, operator.getDataType.asType)
         }
-      }
-      .build(),
+      },
     classOf[TemporaryOutput[_]].asType)
   with LabelField {
 
