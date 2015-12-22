@@ -47,8 +47,7 @@ class TemporaryOutputClassBuilder(
         _.newClassType(classOf[TemporaryOutput[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, operator.getDataType.asType)
         }
-      }
-      .build(),
+      },
     classOf[TemporaryOutput[_]].asType)
   with LabelField {
 
@@ -68,8 +67,7 @@ class TemporaryOutputClassBuilder(
           }
         }
         .newParameterType(classOf[SparkContext].asType)
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
 
         val thisVar :: prevsVar :: scVar :: _ = mb.argVars
 

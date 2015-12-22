@@ -38,7 +38,7 @@ abstract class NewHadoopInputClassBuilder(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       thisType: Type,
-      signature: String,
+      signature: ClassSignatureBuilder,
       superType: Type)(
         implicit val context: NodeCompiler.Context)
   extends ClassBuilder(thisType, signature, superType)
@@ -87,8 +87,7 @@ abstract class NewHadoopInputClassBuilder(
                 }
               }
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
 
         val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 

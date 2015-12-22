@@ -17,13 +17,16 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.signature.SignatureVisitor
 
+import org.apache.spark.rdd.RDD
+
 import com.asakusafw.spark.compiler.graph.ComputationStrategy
 import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
@@ -42,12 +45,47 @@ trait ComputeAlways extends ComputationStrategy {
         FieldDef(
           Opcodes.ACC_FINAL | Opcodes.ACC_TRANSIENT,
           "generatedRDDs",
-          classOf[mutable.Map[_, _]].asType)),
+          classOf[mutable.Map[_, _]].asType,
+          _.newClassType(classOf[mutable.Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[RoundContext].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Map[_, _]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+                    .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                      _.newClassType(classOf[Future[_]].asType) {
+                        _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                          _.newClassType(classOf[RDD[_]].asType) {
+                            _.newTypeArgument()
+                          }
+                        }
+                      }
+                    }
+                }
+              }
+          })),
       Seq(
         MethodDef("getOrCompute",
           classOf[Map[_, _]].asType,
-          classOf[RoundContext].asType,
-          classOf[ExecutionContext].asType))))
+          Seq(
+            classOf[RoundContext].asType,
+            classOf[ExecutionContext].asType),
+          new MethodSignatureBuilder()
+            .newParameterType(classOf[RoundContext].asType)
+            .newParameterType(classOf[ExecutionContext].asType)
+            .newReturnType {
+              _.newClassType(classOf[Map[_, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Future[_]].asType) {
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                        _.newClassType(classOf[RDD[_]].asType) {
+                          _.newTypeArgument()
+                        }
+                      }
+                    }
+                  }
+              }
+            }))))
 }
 
 trait ComputeByParameter extends ComputationStrategy {
@@ -58,12 +96,51 @@ trait ComputeByParameter extends ComputationStrategy {
         FieldDef(
           Opcodes.ACC_FINAL | Opcodes.ACC_TRANSIENT,
           "generatedRDDs",
-          classOf[mutable.Map[_, _]].asType)),
+          classOf[mutable.Map[_, _]].asType,
+          _.newClassType(classOf[mutable.Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[Seq[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
+              }
+            }
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Map[_, _]].asType) {
+                  _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+                    .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                      _.newClassType(classOf[Future[_]].asType) {
+                        _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                          _.newClassType(classOf[RDD[_]].asType) {
+                            _.newTypeArgument()
+                          }
+                        }
+                      }
+                    }
+                }
+              }
+          })),
       Seq(
         MethodDef("getOrCompute",
           classOf[Map[_, _]].asType,
-          classOf[RoundContext].asType,
-          classOf[ExecutionContext].asType))))
+          Seq(
+            classOf[RoundContext].asType,
+            classOf[ExecutionContext].asType),
+          new MethodSignatureBuilder()
+            .newParameterType(classOf[RoundContext].asType)
+            .newParameterType(classOf[ExecutionContext].asType)
+            .newReturnType {
+              _.newClassType(classOf[Map[_, _]].asType) {
+                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
+                  .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                    _.newClassType(classOf[Future[_]].asType) {
+                      _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                        _.newClassType(classOf[RDD[_]].asType) {
+                          _.newTypeArgument()
+                        }
+                      }
+                    }
+                  }
+              }
+            }))))
 
   def parameters: Set[String]
 
@@ -77,8 +154,7 @@ trait ComputeByParameter extends ComputationStrategy {
       new TypeSignatureBuilder()
         .newClassType(classOf[Set[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
-        }
-        .build())
+        })
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {

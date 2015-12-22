@@ -45,8 +45,7 @@ abstract class AggregationClassBuilder(
             .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
         }
-      }
-      .build(),
+      },
     classOf[Aggregation[_, _, _]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {

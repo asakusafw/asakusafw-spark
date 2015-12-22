@@ -108,8 +108,7 @@ abstract class CoGroupClassBuilder(
           }
         }
         .newParameterType(classOf[SparkContext].asType)
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
 
         val (thisVar :: prevsVar :: groupingVar :: partVar :: broadcastsVar
           :: scVar :: _) = mb.argVars
@@ -170,8 +169,7 @@ abstract class CoGroupClassBuilder(
                 }
               }
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
 
         val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 

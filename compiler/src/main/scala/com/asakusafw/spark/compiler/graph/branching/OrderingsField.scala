@@ -51,8 +51,7 @@ trait OrderingsField extends ClassBuilder {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
               }
             }
-        }
-        .build())
+        })
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
@@ -69,8 +68,7 @@ trait OrderingsField extends ClassBuilder {
                 }
               }
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
         val thisVar :: _ = mb.argVars
         thisVar.push().getField("orderings", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("orderings", initOrderings())

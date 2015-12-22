@@ -40,8 +40,7 @@ class GroupingOrderingClassBuilder(
         _.newClassType(classOf[AbstractOrdering[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
         }
-      }
-      .build(),
+      },
     classOf[AbstractOrdering[_]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {

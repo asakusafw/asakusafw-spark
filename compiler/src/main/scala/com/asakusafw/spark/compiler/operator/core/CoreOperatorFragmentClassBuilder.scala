@@ -40,8 +40,7 @@ abstract class CoreOperatorFragmentClassBuilder(
       new TypeSignatureBuilder()
         .newClassType(classOf[Fragment[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, childDataModelType)
-        }
-        .build())
+        })
     fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "childDataModel", childDataModelType)
   }
 
@@ -60,8 +59,7 @@ abstract class CoreOperatorFragmentClassBuilder(
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, childDataModelType)
           }
         }
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
         val thisVar :: broadcastsVar :: childVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(superType)

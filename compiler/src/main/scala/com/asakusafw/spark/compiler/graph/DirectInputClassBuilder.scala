@@ -59,8 +59,7 @@ abstract class DirectInputClassBuilder(
             .newTypeArgument(SignatureVisitor.INSTANCEOF, keyType)
             .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
         }
-      }
-      .build(),
+      },
     classOf[DirectInput[_, _, _]].asType) {
   self: ComputationStrategy =>
 
@@ -76,8 +75,7 @@ abstract class DirectInputClassBuilder(
           }
         }
         .newParameterType(classOf[SparkContext].asType)
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
 
         val thisVar :: broadcastsVar :: scVar :: _ = mb.argVars
 
@@ -102,8 +100,7 @@ abstract class DirectInputClassBuilder(
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
               .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
         `return`(
           buildMap { builder =>
             for {

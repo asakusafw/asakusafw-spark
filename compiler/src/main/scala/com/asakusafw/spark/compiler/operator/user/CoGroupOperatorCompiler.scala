@@ -101,8 +101,7 @@ private class CoGroupOperatorFragmentClassBuilder(
           _.newClassType(classOf[ListBuffer[_]].asType) {
             _.newTypeArgument()
           }
-        }
-        .build())
+        })
   }
 
   override def initFields()(implicit mb: MethodBuilder): Unit = {

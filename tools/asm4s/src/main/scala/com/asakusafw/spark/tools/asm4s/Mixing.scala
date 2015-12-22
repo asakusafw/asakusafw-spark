@@ -20,25 +20,50 @@ import org.objectweb.asm.{ Opcodes, Type }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-case class MixIn(traitType: Type, fields: Seq[MixIn.FieldDef], methods: Seq[MixIn.MethodDef])
+case class MixIn(
+  traitType: Type,
+  signature: Option[TypeSignatureBuilder => Unit],
+  fields: Seq[MixIn.FieldDef],
+  methods: Seq[MixIn.MethodDef])
 
 object MixIn {
 
-  case class FieldDef(access: Int, name: String, t: Type)
+  def apply(traitType: Type, fields: Seq[MixIn.FieldDef], methods: Seq[MixIn.MethodDef]): MixIn =
+    MixIn(traitType, None, fields, methods)
+
+  case class FieldDef(
+    access: Int, name: String, t: Type, signature: Option[TypeSignatureBuilder => Unit])
 
   object FieldDef {
 
     def apply(name: String, t: Type): FieldDef = {
-      FieldDef(0, name, t)
+      FieldDef(0, name, t, None)
+    }
+
+    def apply(access: Int, name: String, t: Type): FieldDef = {
+      FieldDef(access, name, t, None)
+    }
+
+    def apply(
+      access: Int, name: String, t: Type, signature: TypeSignatureBuilder => Unit): FieldDef = {
+      FieldDef(access, name, t, Option(signature))
     }
   }
 
-  case class MethodDef(name: String, t: Type)
+  case class MethodDef(name: String, t: Type, signature: Option[MethodSignatureBuilder])
 
   object MethodDef {
 
-    def apply(name: String, retType: Type, argumentTypes: Type*): MethodDef = {
-      MethodDef(name, Type.getMethodType(retType, argumentTypes: _*))
+    def apply(name: String, retType: Type, argumentTypes: Seq[Type]): MethodDef = {
+      MethodDef(name, Type.getMethodType(retType, argumentTypes: _*), None)
+    }
+
+    def apply(
+      name: String,
+      retType: Type,
+      argumentTypes: Seq[Type],
+      signature: MethodSignatureBuilder): MethodDef = {
+      MethodDef(name, Type.getMethodType(retType, argumentTypes: _*), Option(signature))
     }
   }
 }
@@ -49,6 +74,27 @@ trait Mixing extends ClassBuilder {
 
   def mixins: Seq[MixIn]
 
+  override def signature: Option[ClassSignatureBuilder] = {
+    super.signature.orElse {
+      if (mixins.exists(_.signature.isDefined)) {
+        Some(
+          (new ClassSignatureBuilder().newSuperclass(superType) /: super.interfaceTypes) {
+            case (builder, t) =>
+              builder.newInterface(t)
+          })
+      } else {
+        None
+      }
+    }.map {
+      mixins.foldLeft(_) {
+        case (builder, MixIn(_, Some(signature), _, _)) =>
+          builder.newInterface(signature)
+        case (builder, MixIn(traitType, _, _, _)) =>
+          builder.newInterface(traitType)
+      }
+    }
+  }
+
   override def interfaceTypes: Seq[Type] = {
     super.interfaceTypes ++ mixins.map(_.traitType)
   }
@@ -58,12 +104,17 @@ trait Mixing extends ClassBuilder {
 
     for {
       mixin <- mixins
-      FieldDef(access, field, t) <- mixin.fields
+      FieldDef(access, field, t, signature) <- mixin.fields
     } {
       fieldDef.newField(
         Opcodes.ACC_PRIVATE | access,
         fieldName(mixin.traitType, field),
-        t)
+        t,
+        signature.map { f =>
+          val builder = new TypeSignatureBuilder()
+          f(builder)
+          builder
+        })
     }
   }
 
@@ -86,12 +137,16 @@ trait Mixing extends ClassBuilder {
       mixin <- mixins
     } {
       for {
-        FieldDef(access, field, t) <- mixin.fields
+        FieldDef(access, field, t, signature) <- mixin.fields
       } {
-        methodDef.newMethod(fieldName(mixin.traitType, field), t, Seq.empty) { implicit mb =>
-          val thisVar :: _ = mb.argVars
-          `return`(thisVar.push().getField(fieldName(mixin.traitType, field), t))
-        }
+        methodDef.newMethod(fieldName(mixin.traitType, field), t, Seq.empty,
+          signature.map { f =>
+            new MethodSignatureBuilder()
+              .newReturnType(f)
+          }) { implicit mb =>
+            val thisVar :: _ = mb.argVars
+            `return`(thisVar.push().getField(fieldName(mixin.traitType, field), t))
+          }
 
         methodDef.newMethod(
           if ((access & Opcodes.ACC_FINAL) == 0) {
@@ -99,7 +154,12 @@ trait Mixing extends ClassBuilder {
           } else {
             fieldSetterName(mixin.traitType, field)
           },
-          Seq(t)) { implicit mb =>
+          Seq(t),
+          signature.map { f =>
+            new MethodSignatureBuilder()
+              .newParameterType(f)
+              .newVoidReturnType()
+          }) { implicit mb =>
             val thisVar :: valueVar :: _ = mb.argVars
             thisVar.push().putField(fieldName(mixin.traitType, field), valueVar.push())
             `return`()
@@ -107,9 +167,9 @@ trait Mixing extends ClassBuilder {
       }
 
       for {
-        MethodDef(method, t) <- mixin.methods
+        MethodDef(method, t, signature) <- mixin.methods
       } {
-        methodDef.newMethod(method, t) { implicit mb =>
+        methodDef.newMethod(method, t, signature) { implicit mb =>
           val thisVar :: vars = mb.argVars
 
           `return`(

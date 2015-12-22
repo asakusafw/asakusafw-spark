@@ -38,8 +38,7 @@ abstract class FragmentClassBuilder(
         _.newClassType(classOf[Fragment[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
         }
-      }
-      .build(),
+      },
     classOf[Fragment[_]].asType) {
 
   override def defFields(fieldDef: FieldDef): Unit = {

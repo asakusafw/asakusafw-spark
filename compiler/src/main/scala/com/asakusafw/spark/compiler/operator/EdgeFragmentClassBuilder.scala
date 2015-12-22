@@ -43,8 +43,7 @@ class EdgeFragmentClassBuilder(
             _.newClassType(dataModelType)
           }
         }
-      }
-      .build(),
+      },
     classOf[EdgeFragment[_]].asType) {
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {

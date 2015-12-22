@@ -42,8 +42,7 @@ class BranchKeySerializerClassBuilder(
         _.newClassType(classOf[Serializer[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
         }
-      }
-      .build(),
+      },
     classOf[Serializer[_]].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {

@@ -50,8 +50,7 @@ abstract class TemporaryInputClassBuilder(
         _.newClassType(classOf[TemporaryInput[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
         }
-      }
-      .build(),
+      },
     classOf[TemporaryInput[_]].asType) {
   self: ComputationStrategy =>
 
@@ -67,8 +66,7 @@ abstract class TemporaryInputClassBuilder(
           }
         }
         .newParameterType(classOf[SparkContext].asType)
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
 
         val thisVar :: broadcastsVar :: scVar :: _ = mb.argVars
 
@@ -90,8 +88,7 @@ abstract class TemporaryInputClassBuilder(
           _.newClassType(classOf[Set[_]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
 
         `return`(
           buildSet { builder =>

@@ -50,8 +50,7 @@ trait ShuffledJoin
       new TypeSignatureBuilder()
         .newClassType(classOf[ListBuffer[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, masterType)
-        }
-        .build())
+        })
   }
 
   override def initFields()(implicit mb: MethodBuilder): Unit = {
