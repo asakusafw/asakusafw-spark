@@ -62,8 +62,7 @@ trait BroadcastJoin
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF, masterType)
               }
             }
-        }
-        .build())
+        })
   }
 
   override def initFields()(implicit mb: MethodBuilder): Unit = {

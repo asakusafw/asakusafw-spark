@@ -53,8 +53,7 @@ trait AggregationsField extends ClassBuilder {
                   .newTypeArgument()
               }
             }
-        }
-        .build())
+        })
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {

@@ -53,8 +53,7 @@ trait PartitionersField extends ClassBuilder {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Partitioner].asType)
               }
             }
-        }
-        .build())
+        })
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {

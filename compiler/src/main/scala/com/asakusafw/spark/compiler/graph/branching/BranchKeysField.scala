@@ -42,8 +42,7 @@ trait BranchKeysField extends ClassBuilder {
       new TypeSignatureBuilder()
         .newClassType(classOf[Set[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-        }
-        .build())
+        })
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {

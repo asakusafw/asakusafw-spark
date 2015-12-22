@@ -36,8 +36,7 @@ trait OutputFragments extends FragmentClassBuilder {
         new TypeSignatureBuilder()
           .newClassType(classOf[Fragment[_]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, output.getDataType.asType)
-          }
-          .build())
+          })
     }
   }
 

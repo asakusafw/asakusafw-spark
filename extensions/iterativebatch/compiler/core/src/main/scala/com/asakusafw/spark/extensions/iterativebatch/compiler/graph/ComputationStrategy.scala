@@ -77,8 +77,7 @@ trait ComputeByParameter extends ComputationStrategy {
       new TypeSignatureBuilder()
         .newClassType(classOf[Set[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[String].asType)
-        }
-        .build())
+        })
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {

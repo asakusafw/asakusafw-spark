@@ -40,8 +40,7 @@ abstract class CoreOperatorFragmentClassBuilder(
       new TypeSignatureBuilder()
         .newClassType(classOf[Fragment[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, childDataModelType)
-        }
-        .build())
+        })
     fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "childDataModel", childDataModelType)
   }
 

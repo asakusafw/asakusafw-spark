@@ -125,64 +125,80 @@ abstract class ClassBuilder(
     final def newField(
       name: String,
       `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
-      newField(ACC_PUBLIC, name, `type`)(block)
+      newField(ACC_PUBLIC, name, `type`, None)(block)
     }
 
     final def newStaticField(
       name: String,
       `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
-      newField(ACC_PUBLIC | ACC_STATIC, name, `type`)(block)
+      newField(ACC_PUBLIC | ACC_STATIC, name, `type`, None)(block)
     }
 
     final def newFinalField(
       name: String,
       `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
-      newField(ACC_PUBLIC | ACC_FINAL, name, `type`)(block)
+      newField(ACC_PUBLIC | ACC_FINAL, name, `type`, None)(block)
     }
 
     final def newStaticFinalField(
       name: String,
       `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
-      newField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, `type`)(block)
+      newField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, `type`, None)(block)
     }
 
     final def newField(
       name: String,
       `type`: Type,
-      signature: String)(implicit block: FieldBuilder => Unit): Unit = {
-      newField(ACC_PUBLIC, name, `type`, signature)(block)
+      signature: TypeSignatureBuilder)(implicit block: FieldBuilder => Unit): Unit = {
+      newField(ACC_PUBLIC, name, `type`, Option(signature))(block)
     }
 
     final def newStaticField(
       name: String,
       `type`: Type,
-      signature: String)(implicit block: FieldBuilder => Unit): Unit = {
-      newField(ACC_PUBLIC | ACC_STATIC, name, `type`, signature)(block)
+      signature: TypeSignatureBuilder)(implicit block: FieldBuilder => Unit): Unit = {
+      newField(ACC_PUBLIC | ACC_STATIC, name, `type`, Option(signature))(block)
     }
 
     final def newFinalField(
       name: String,
       `type`: Type,
-      signature: String)(implicit block: FieldBuilder => Unit): Unit = {
-      newField(ACC_PUBLIC | ACC_FINAL, name, `type`, signature)(block)
+      signature: TypeSignatureBuilder)(implicit block: FieldBuilder => Unit): Unit = {
+      newField(ACC_PUBLIC | ACC_FINAL, name, `type`, Option(signature))(block)
     }
 
     final def newStaticFinalField(
       name: String,
       `type`: Type,
-      signature: String)(implicit block: FieldBuilder => Unit): Unit = {
-      newField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, `type`, signature)(block)
+      signature: TypeSignatureBuilder)(implicit block: FieldBuilder => Unit): Unit = {
+      newField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, `type`, Option(signature))(block)
+    }
+
+    final def newField(
+      access: Int,
+      name: String,
+      `type`: Type)(implicit block: FieldBuilder => Unit): Unit = {
+      newField(access, name, `type`, None)(block)
     }
 
     final def newField(
       access: Int,
       name: String,
       `type`: Type,
-      signature: String = null)(implicit block: FieldBuilder => Unit): Unit = { // scalastyle:ignore
+      signature: TypeSignatureBuilder)(implicit block: FieldBuilder => Unit): Unit = {
+      newField(access, name, `type`, Option(signature))(block)
+    }
+
+    final def newField(
+      access: Int,
+      name: String,
+      `type`: Type,
+      signature: Option[TypeSignatureBuilder])(implicit block: FieldBuilder => Unit): Unit = {
       if ((access & ACC_STATIC) == 0) {
         addField(name, `type`)
       }
-      val fv = cv.visitField(access, name, `type`.getDescriptor(), signature, null) // scalastyle:ignore
+      val fv = cv.visitField(
+        access, name, `type`.getDescriptor(), signature.map(_.build()).orNull, null) // scalastyle:ignore
       try {
         block(new FieldBuilder(fv))
       } finally {

@@ -51,8 +51,7 @@ trait OrderingsField extends ClassBuilder {
                 _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
               }
             }
-        }
-        .build())
+        })
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
