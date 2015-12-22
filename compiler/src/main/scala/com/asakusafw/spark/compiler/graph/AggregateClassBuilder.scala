@@ -105,8 +105,7 @@ abstract class AggregateClassBuilder(
           }
         }
         .newParameterType(classOf[SparkContext].asType)
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
 
         val thisVar :: prevsVar :: sortVar :: partVar :: broadcastsVar :: scVar :: _ = mb.argVars
 
@@ -160,8 +159,7 @@ abstract class AggregateClassBuilder(
                 }
               }
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
 
         val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
@@ -183,8 +181,7 @@ abstract class AggregateClassBuilder(
               .newTypeArgument(SignatureVisitor.INSTANCEOF, valueType)
               .newTypeArgument(SignatureVisitor.INSTANCEOF, combinerType)
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
 
         val aggregationType =
           AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)

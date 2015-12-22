@@ -59,8 +59,7 @@ abstract class CoreOperatorFragmentClassBuilder(
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, childDataModelType)
           }
         }
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
         val thisVar :: broadcastsVar :: childVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(superType)

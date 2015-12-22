@@ -72,8 +72,7 @@ trait AggregationsField extends ClassBuilder {
                 }
               }
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
         val thisVar :: _ = mb.argVars
         thisVar.push().getField("aggregations", classOf[Map[_, _]].asType).unlessNotNull {
           thisVar.push().putField("aggregations", initAggregations())

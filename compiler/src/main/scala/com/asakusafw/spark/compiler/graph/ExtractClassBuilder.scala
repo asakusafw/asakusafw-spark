@@ -87,8 +87,7 @@ abstract class ExtractClassBuilder(
           }
         }
         .newParameterType(classOf[SparkContext].asType)
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
 
         val thisVar :: inputsVar :: broadcastsVar :: scVar :: _ = mb.argVars
         thisVar.push().invokeInit(
@@ -141,8 +140,7 @@ abstract class ExtractClassBuilder(
                 }
               }
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
 
         val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 

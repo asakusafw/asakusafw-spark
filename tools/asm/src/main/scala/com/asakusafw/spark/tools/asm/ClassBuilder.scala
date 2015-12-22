@@ -218,14 +218,14 @@ abstract class ClassBuilder(
 
     final def newInit(
       argumentTypes: Seq[Type],
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(ACC_PUBLIC, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
 
     final def newInit(
       argumentTypes: Seq[Type],
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(ACC_PUBLIC, argumentTypes, signature, exceptionTypes: _*)(block)
     }
@@ -240,7 +240,7 @@ abstract class ClassBuilder(
     final def newInit(
       access: Int,
       argumentTypes: Seq[Type],
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newInit(access, argumentTypes, Option(signature), exceptionTypes: _*)(block)
     }
@@ -248,7 +248,7 @@ abstract class ClassBuilder(
     final def newInit(
       access: Int,
       argumentTypes: Seq[Type],
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       methodDef.newMethod(
         access, "<init>", argumentTypes, signature, exceptionTypes: _*) { implicit mb =>
@@ -311,7 +311,7 @@ abstract class ClassBuilder(
     final def newMethod(
       name: String,
       argumentTypes: Seq[Type],
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC,
@@ -321,7 +321,7 @@ abstract class ClassBuilder(
     final def newMethod(
       name: String,
       argumentTypes: Seq[Type],
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
@@ -331,7 +331,7 @@ abstract class ClassBuilder(
       name: String,
       retType: Type,
       argumentTypes: Seq[Type],
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
@@ -341,7 +341,7 @@ abstract class ClassBuilder(
       name: String,
       retType: Type,
       argumentTypes: Seq[Type],
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC, name, retType, argumentTypes, signature, exceptionTypes: _*)(block)
@@ -350,7 +350,7 @@ abstract class ClassBuilder(
     final def newStaticMethod(
       name: String,
       argumentTypes: Seq[Type],
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC | ACC_STATIC,
@@ -360,7 +360,7 @@ abstract class ClassBuilder(
     final def newStaticMethod(
       name: String,
       argumentTypes: Seq[Type],
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC | ACC_STATIC,
@@ -371,7 +371,7 @@ abstract class ClassBuilder(
       name: String,
       retType: Type,
       argumentTypes: Seq[Type],
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC | ACC_STATIC,
@@ -382,7 +382,7 @@ abstract class ClassBuilder(
       name: String,
       retType: Type,
       argumentTypes: Seq[Type],
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC | ACC_STATIC,
@@ -412,7 +412,7 @@ abstract class ClassBuilder(
       access: Int,
       name: String,
       argumentTypes: Seq[Type],
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         access, name, Type.VOID_TYPE, argumentTypes, Option(signature), exceptionTypes: _*)(block)
@@ -422,7 +422,7 @@ abstract class ClassBuilder(
       access: Int,
       name: String,
       argumentTypes: Seq[Type],
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         access, name, Type.VOID_TYPE, argumentTypes, signature, exceptionTypes: _*)(block)
@@ -433,7 +433,7 @@ abstract class ClassBuilder(
       name: String,
       retType: Type,
       argumentTypes: Seq[Type],
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         access, name, retType, argumentTypes, Option(signature), exceptionTypes: _*)(block)
@@ -444,7 +444,7 @@ abstract class ClassBuilder(
       name: String,
       retType: Type,
       argumentTypes: Seq[Type],
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         access,
@@ -465,7 +465,7 @@ abstract class ClassBuilder(
     final def newMethod(
       name: String,
       methodType: Type,
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC, name, methodType, Option(signature), exceptionTypes: _*)(block)
@@ -474,7 +474,7 @@ abstract class ClassBuilder(
     final def newMethod(
       name: String,
       methodType: Type,
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC, name, methodType, signature, exceptionTypes: _*)(block)
@@ -492,7 +492,7 @@ abstract class ClassBuilder(
     final def newStaticMethod(
       name: String,
       methodType: Type,
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC | ACC_STATIC,
@@ -502,7 +502,7 @@ abstract class ClassBuilder(
     final def newStaticMethod(
       name: String,
       methodType: Type,
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         ACC_PUBLIC | ACC_STATIC,
@@ -522,7 +522,7 @@ abstract class ClassBuilder(
       access: Int,
       name: String,
       methodType: Type,
-      signature: String,
+      signature: MethodSignatureBuilder,
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       newMethod(
         access, name, methodType, Option(signature), exceptionTypes: _*)(block)
@@ -532,14 +532,14 @@ abstract class ClassBuilder(
       access: Int,
       name: String,
       methodType: Type,
-      signature: Option[String],
+      signature: Option[MethodSignatureBuilder],
       exceptionTypes: Type*)(block: MethodBuilder => Unit): Unit = {
       assert(methodType.getSort == Type.METHOD)
       val mv = cv.visitMethod(
         access,
         name,
         methodType.getDescriptor,
-        signature.orNull,
+        signature.map(_.build()).orNull,
         exceptionTypes.map(_.getInternalName()).toArray)
       mv.visitCode()
       try {

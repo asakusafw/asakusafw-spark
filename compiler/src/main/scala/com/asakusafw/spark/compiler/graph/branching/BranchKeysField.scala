@@ -54,8 +54,7 @@ trait BranchKeysField extends ClassBuilder {
           _.newClassType(classOf[Set[_]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
         val thisVar :: _ = mb.argVars
         thisVar.push().getField("branchKeys", classOf[Set[_]].asType).unlessNotNull {
           thisVar.push().putField("branchKeys", initBranchKeys())

@@ -61,8 +61,8 @@ abstract class UserOperatorFragmentClassBuilder(
               }
             }
         })
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
+
         val thisVar :: broadcastsVar :: tailVars = mb.argVars
 
         thisVar.push().invokeInit(superType)

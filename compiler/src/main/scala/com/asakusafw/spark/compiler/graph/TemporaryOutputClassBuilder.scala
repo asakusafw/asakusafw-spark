@@ -67,8 +67,7 @@ class TemporaryOutputClassBuilder(
           }
         }
         .newParameterType(classOf[SparkContext].asType)
-        .newVoidReturnType()
-        .build()) { implicit mb =>
+        .newVoidReturnType()) { implicit mb =>
 
         val thisVar :: prevsVar :: scVar :: _ = mb.argVars
 

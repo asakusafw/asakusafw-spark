@@ -87,8 +87,7 @@ abstract class NewHadoopInputClassBuilder(
                 }
               }
           }
-        }
-        .build()) { implicit mb =>
+        }) { implicit mb =>
 
         val thisVar :: broadcastsVar :: fragmentBufferSizeVar :: _ = mb.argVars
 
