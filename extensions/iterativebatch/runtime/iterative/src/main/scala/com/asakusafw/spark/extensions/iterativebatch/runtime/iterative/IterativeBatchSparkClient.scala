@@ -16,6 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 package iterative
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.{ Failure, Success, Try }
@@ -61,16 +62,12 @@ abstract class IterativeBatchSparkClient extends SparkClient {
       implicit sc: SparkContext): Int = {
     executor.start()
     try {
-      val contexts = mutable.ArrayBuffer.empty[Context]
-      val cursor = stageInfo.newCursor()
-      while (cursor.next()) {
+      val contexts = stageInfo.iterator.toSeq.map { stageInfo =>
         val conf = new Configuration(sc.hadoopConfiguration)
-        conf.set(StageInfo.KEY_NAME, cursor.get.serialize)
-
-        val context = Context(sc.broadcast(conf))
-        contexts += context
-        executor.submit(context)
+        conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
+        Context(sc.broadcast(conf))
       }
+      executor.submitAll(contexts)
       executor.stop(awaitExecution = true, gracefully = true)
 
       if (stopOnFail &&
