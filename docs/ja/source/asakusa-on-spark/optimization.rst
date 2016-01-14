@@ -2,7 +2,7 @@
 Asakusa on Sparkの最適化設定
 ============================
 
-この文書では、Asakusa on Sparkのバッチアプリケーション実行時に設定可能な最適化設定について説明します。
+この文書では、Asakusa on Sparkのバッチアプリケーション実行時の最適化設定について説明します。
 
 ..  warning::
     現時点では、この文書で説明する Asakusa on Spark の機能は **Developer Preview** として公開しています。
@@ -11,14 +11,20 @@ Asakusa on Sparkの最適化設定
     * 本機能は今後、予告なしに仕様を変更する可能性があります。
     * 本機能は今後、予告なしに対応プラットフォームを変更する可能性があります。
 
-設定ファイル
-============
+設定方法
+========
 
-Asakusa on Sparkに関するバッチアプリケーション実行時のパラメータは、 :file:`$ASAKUSA_HOME/spark/conf/spark.properties` に記述します。このファイルは、Asakusa on Spark Gradle Pluginを有効にしてデプロイメントアーカイブを作成した場合にのみ含まれています。
+Asakusa on Sparkのバッチアプリケーション実行時の設定は、 `設定ファイル`_ を使う方法と `環境変数`_ を使う方法があります。
+
+設定ファイル
+------------
+
+Asakusa on Sparkに関するバッチアプリケーション実行時のパラメータは、 :file:`$ASAKUSA_HOME/spark/conf/spark.properties` に記述します。
+このファイルは、Asakusa on Spark Gradle Pluginを有効にしてデプロイメントアーカイブを作成した場合にのみ含まれています。
 
 このファイルに設定した内容はSpark向けのバッチアプリケーションの設定として使用され、バッチアプリケーション実行時の動作に影響を与えます。
 
-設定ファイルはJavaのプロパティファイルのフォーマットと同様です。
+設定ファイルはJavaのプロパティファイルのフォーマットと同様です。以下は ``spark.properties`` の設定例です。
 
 **spark.properties**
 
@@ -26,11 +32,39 @@ Asakusa on Sparkに関するバッチアプリケーション実行時のパラ�
     
     ## the number of parallel tasks of each Asakusa stage
     com.asakusafw.spark.parallelism=40
+    
+    ## the number of records of the in-memory buffer for each output fragment
+    com.asakusafw.spark.fragment.bufferSize=256
+
+環境変数
+--------
+
+Asakusa on Sparkに関するバッチアプリケーション実行時のパラメータは、環境変数 ``ASAKUSA_SPARK_APP_CONF`` に設定することもできます。
+
+環境変数 ``ASAKUSA_SPARK_APP_CONF`` の値には ``--engine-conf <key>=<value>`` という形式でパラメータを設定します。
+
+以下は環境変数の設定例です。
+
+..  code-block:: sh
+    
+    ASAKUSA_SPARK_APP_CONF='--engine-conf com.asakusafw.spark.parallelism=40 --engine-conf com.asakusafw.spark.fragment.bufferSize=256'
+
+設定ファイルと環境変数で同じプロパティが設定されていた場合、環境変数の値が利用されます。
+
+..  hint::
+    環境変数による設定は、バッチアプリケーションごとに設定を変更したい場合に便利です。
+    
+..  attention::
+    :program:`yaess-batch.sh` などのYAESSコマンドを実行する環境と、Sparkを実行する環境が異なる場合（例えばYAESSのSSH機能を利用している場合）に、
+    YAESSコマンドを実行する環境の環境変数がSparkを実行する環境に受け渡されないことがある点に注意してください。
+    
+    YAESSではYAESSコマンドを実行する環境の環境変数をYAESSのジョブ実行先に受け渡すための機能がいくつか用意されているので、それらの機能を利用することを推奨します。
+    詳しくは :asakusafw:`YAESSユーザガイド <yaess/user-guide.html>` などを参照してください。
 
 設定項目
 ========
 
-:file:`$ASAKUSA_HOME/spark/conf/spark.properties` に設定可能な項目は以下の通りです。
+Asakusa on Sparkのバッチアプリケーション実行時の設定項目は以下の通りです。
 
 ``com.asakusafw.spark.parallelism``
     バッチアプリケーション実行時に、ステージごとの標準的なタスク分割数を指定します。
