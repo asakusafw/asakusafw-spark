@@ -124,6 +124,9 @@ _SPARK_EXEC+=("$SPARK_CMD")
     "$@"
 
 _SPARK_RET=$?
+
+import "$_SPARK_ROOT/libexec/cleanup.sh"
+
 if [ $_SPARK_RET -ne 0 ]
 then
     echo "Spark failed with exit code: $_SPARK_RET" 1>&2
@@ -136,5 +139,7 @@ then
     echo "   Batch Args: $_OPT_BATCH_ARGUMENTS" 1>&2
     echo "    Libraries: --jars $_SPARK_LIBJARS"  1>&2
     echo "  Extra Props: $@" 1>&2
+    exit $_SPARK_RET
+else
     exit $_SPARK_RET
 fi
