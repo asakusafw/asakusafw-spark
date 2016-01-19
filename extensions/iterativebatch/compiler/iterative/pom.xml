@@ -75,6 +75,10 @@ target=jvm-1.7
       <groupId>com.asakusafw</groupId>
       <artifactId>simple-graph</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.asakusafw</groupId>
+      <artifactId>asakusa-iterative-common</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>com.asakusafw.spark</groupId>
@@ -85,10 +89,6 @@ target=jvm-1.7
       <groupId>com.asakusafw.spark</groupId>
       <artifactId>asakusa-spark-compiler</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.asakusafw.iterative</groupId>
-      <artifactId>asakusa-iterative-common</artifactId>
     </dependency>
     <dependency>
       <groupId>com.asakusafw.spark.extensions</groupId>
