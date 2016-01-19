@@ -450,6 +450,11 @@ encoding/<project>=UTF-8
         <version>${asakusafw.version}</version>
         <scope>provided</scope>
       </dependency>
+      <dependency>
+        <groupId>com.asakusafw</groupId>
+        <artifactId>asakusa-iterative-common</artifactId>
+        <version>${asakusafw.version}</version>
+      </dependency>
 
       <dependency>
         <groupId>com.asakusafw.lang.compiler</groupId>
@@ -509,11 +514,6 @@ encoding/<project>=UTF-8
       <dependency>
         <groupId>com.asakusafw.iterative</groupId>
         <artifactId>asakusa-iterative-launch</artifactId>
-        <version>${asakusafw-lang.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.asakusafw.iterative</groupId>
-        <artifactId>asakusa-iterative-common</artifactId>
         <version>${asakusafw-lang.version}</version>
       </dependency>
 

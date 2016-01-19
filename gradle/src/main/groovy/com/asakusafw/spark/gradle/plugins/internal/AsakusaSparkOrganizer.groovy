@@ -66,7 +66,7 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
                     "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.sparkProjectVersion}@jar",
                     "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.sparkProjectVersion}@jar",
                 ],
-                YaessIterativePlugin : "com.asakusafw.iterative:asakusa-iterative-yaess:${base.compilerProjectVersion}:lib@jar",
+                YaessIterativePlugin : "com.asakusafw:asakusa-iterative-yaess:${profile.asakusafwVersion}:lib@jar",
             ])
         }
     }
