@@ -41,9 +41,8 @@ class ConfluentSpec extends FlatSpec with SparkForAll {
     val part = new GroupingPartitioner(2)
     val ord = implicitly[Ordering[(String, Int)]]
     val rdd3: RDD[((String, Int), Int)] =
-      new ShuffledRDD(
-        sc.parallelize(0 until 100).flatMap(i => Seq(((i.toString, 4), i + 400), ((i.toString, 3), i + 300))), part)
-        .setKeyOrdering(ord)
+      sc.parallelize(0 until 100).flatMap(i => Seq(((i.toString, 4), i + 400), ((i.toString, 3), i + 300)))
+        .shuffle(part, Option(ord))
 
     val confluented = sc.confluent(Seq(rdd1, rdd2, rdd3), part, Some(ord))
     val (part0, part1) = (0 until 100).sortBy(_.toString).partition { i =>
@@ -67,24 +66,18 @@ class ConfluentSpec extends FlatSpec with SparkForAll {
     val ord = implicitly[Ordering[(String, Int)]]
 
     val rdd1: RDD[((String, Int), IntOption)] =
-      new ShuffledRDD(
-        sc.parallelize(0 until 10).map(i => ((i.toString, 0), i)),
-        part)
-        .setKeyOrdering(ord)
+      sc.parallelize(0 until 10).map(i => ((i.toString, 0), i))
+        .shuffle(part, Option(ord))
         .mapPartitions(f, preservesPartitioning = true)
 
     val rdd2: RDD[((String, Int), IntOption)] =
-      new ShuffledRDD(
-        sc.parallelize(0 until 10).flatMap(i => Seq(((i.toString, 1), i + 10), ((i.toString, 2), i + 20))),
-        part)
-        .setKeyOrdering(ord)
+      sc.parallelize(0 until 10).flatMap(i => Seq(((i.toString, 1), i + 10), ((i.toString, 2), i + 20)))
+        .shuffle(part, Option(ord))
         .mapPartitions(f, preservesPartitioning = true)
 
     val rdd3: RDD[((String, Int), IntOption)] =
-      new ShuffledRDD(
-        sc.parallelize(0 until 10).flatMap(i => Seq(((i.toString, 4), i + 40), ((i.toString, 3), i + 30))),
-        part)
-        .setKeyOrdering(ord)
+      sc.parallelize(0 until 10).flatMap(i => Seq(((i.toString, 4), i + 40), ((i.toString, 3), i + 30)))
+        .shuffle(part, Option(ord))
         .mapPartitions(f, preservesPartitioning = true)
 
     val confluented = sc.confluent(Seq(rdd1, rdd2, rdd3), part, Some(ord))

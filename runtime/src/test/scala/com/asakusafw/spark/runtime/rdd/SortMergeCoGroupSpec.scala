@@ -41,13 +41,11 @@ class SortMergeCoGroupSpec extends FlatSpec with SparkForAll {
 
     val part = new GroupingPartitioner(2)
     val ord3 = Ordering.Tuple2(implicitly[Ordering[String]], implicitly[Ordering[Int]].reverse)
-    val rdd3: RDD[((String, Int), Int)] =
-      new ShuffledRDD(
-        sc.parallelize(0 until 100).flatMap(i => Seq(
-          ((i.toString, 0), i.toLong),
-          ((i.toString, 10), i.toLong * 10))),
-        part)
-        .setKeyOrdering(ord3)
+    val rdd3: RDD[((String, Int), Long)] =
+      sc.parallelize(0 until 100).flatMap(i => Seq(
+        ((i.toString, 0), i.toLong),
+        ((i.toString, 10), i.toLong * 10)))
+        .shuffle(part, Option(ord3))
 
     val grouping = new GroupingOrdering
     val cogrouped = sc.smcogroup(

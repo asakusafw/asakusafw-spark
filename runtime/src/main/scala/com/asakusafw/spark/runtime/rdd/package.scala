@@ -23,6 +23,7 @@ import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.{ RDD, ShuffledRDD }
 
 import org.apache.spark.backdoor._
+import org.apache.spark.rdd.backdoor._
 
 package object rdd {
 
@@ -37,7 +38,9 @@ package object rdd {
       if (rdd.partitioner == Some(part)) {
         rdd
       } else {
-        new ShuffledRDD[K, V, V](rdd, part).setKeyOrdering(ordering.orNull)
+        rdd.withScope {
+          new ShuffledRDD[K, V, V](rdd, part).setKeyOrdering(ordering.orNull)
+        }
       }
     }
   }
