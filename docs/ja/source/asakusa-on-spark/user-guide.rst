@@ -91,7 +91,7 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
 Spark
 -----
 
-Asakusa on Sparkは、Spark 1.5.2 で動作を検証しています。
+Asakusa on Sparkは、Spark 1.6.0 で動作を検証しています。
 
 また、Sparkの動作モードとして、YARN cluster mode、および YARN client modeで動作を確認しています。
 
@@ -106,7 +106,7 @@ Asakusa on Sparkは、Spark 1.5.2 で動作を検証しています。
 Asakusa Framework 対応バージョンとコンポーネント
 ------------------------------------------------
 
-Asakusa on Sparkは、Asakusa Framework 0.7.5 以降のバージョンが必要です。
+Asakusa on Sparkは、Asakusa Framework 0.8.0 以降のバージョンが必要です。
 
 ..  warning::
     上記のバージョンより古いバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`Asakusa Gradle Plugin マイグレーションガイド <application/gradle-plugin.html#vup-gradle-plugin>` を参考にして上記のバージョンにマイグレーションしてください。
@@ -186,7 +186,7 @@ Asakusa on Spark Gradle Pluginを有効にするには、アプリケーショ�
 
 * ``buildscript/dependencis`` ブロックに指定しているAsakusa Gradle Pluginの指定をAsakusa on Spark Gradle Pluginの指定に置き換える。
 
-  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.2.1'``
+  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.3.0'``
 
 * Asakusa on Spark Gradle Pluginを適用する定義を追加する
   
