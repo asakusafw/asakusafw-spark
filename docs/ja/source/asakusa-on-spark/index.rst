@@ -15,6 +15,7 @@ Asakusa on Sparkの概要と利用方法は、 :doc:`user-guide` を参照して
     user-guide
     optimization
     reference
+    iterative-extension
     release-notes
     changelogs
 
