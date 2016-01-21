@@ -23,6 +23,9 @@ import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.rdd.{ RDD, ShuffledRDD }
 
 import org.apache.spark.backdoor._
+import org.apache.spark.rdd.backdoor._
+
+import com.asakusafw.spark.runtime.util.Iterators._
 
 package object rdd {
 
@@ -37,59 +40,34 @@ package object rdd {
       if (rdd.partitioner == Some(part)) {
         rdd
       } else {
-        new ShuffledRDD[K, V, V](rdd, part).setKeyOrdering(ordering.orNull)
+        rdd.withScope {
+          new ShuffledRDD[K, V, V](rdd, part).setKeyOrdering(ordering.orNull)
+        }
       }
     }
   }
 
   implicit class AugmentedSparkContext(val sc: SparkContext) extends AnyVal {
 
-    def zipPartitions[V: ClassTag](
-      rdds: Seq[RDD[_]],
-      preservesPartitioning: Boolean = false)(f: (Seq[Iterator[_]] => Iterator[V])): RDD[V] = {
-
-      if (rdds.size > 0) {
-        new ZippedPartitionsRDD(sc, sc.clean(f), rdds, preservesPartitioning)
-      } else {
-        sc.emptyRDD
-      }
-    }
-
     def confluent[K: ClassTag, V: ClassTag](
       rdds: Seq[RDD[(K, V)]], part: Partitioner, ordering: Option[Ordering[K]]): RDD[(K, V)] = {
 
-      if (rdds.size > 1) {
+      if (rdds.nonEmpty) {
         ordering match {
           case Some(ord) =>
-            zipPartitions(rdds.map(_.shuffle(part, ordering)), preservesPartitioning = true) {
-              iters =>
-                val buffs = iters.filter(_.hasNext).map(_.asInstanceOf[Iterator[(K, V)]].buffered)
-                Iterator.continually {
-                  ((None: Option[K]) /: buffs) {
-                    case (opt, iter) if iter.hasNext =>
-                      opt.map { key =>
-                        ord.min(key, iter.head._1)
-                      }.orElse(Some(iter.head._1))
-                    case (opt, _) => opt
-                  }
-                }.takeWhile(_.isDefined).map(_.get).flatMap { key =>
-                  buffs.iterator.flatMap { iter =>
-                    Iterator.continually {
-                      if (iter.hasNext && ord.equiv(iter.head._1, key)) {
-                        Some(iter.next)
-                      } else {
-                        None
-                      }
-                    }.takeWhile(_.isDefined).map(_.get)
-                  }
-                }
+            rdds.map(_.shuffle(part, ordering)).reduceLeft { (left, right) =>
+              left.zipPartitions(right, preservesPartitioning = true) {
+                case (leftIter, rightIter) if leftIter.hasNext && rightIter.hasNext =>
+                  leftIter.sortmerge(rightIter)(ord)
+                case (leftIter, _) if leftIter.hasNext => leftIter
+                case (_, rightIter) => rightIter
+              }
             }
           case None =>
-            zipPartitions(rdds.map(_.shuffle(part, ordering)), preservesPartitioning = true)(
-              _.iterator.flatMap(_.asInstanceOf[Iterator[(K, V)]]))
+            rdds.map(_.shuffle(part, ordering)).reduceLeft { (left, right) =>
+              left.zipPartitions(right, preservesPartitioning = true)(_ ++ _)
+            }
         }
-      } else if (rdds.size == 1) {
-        rdds.head.shuffle(part, ordering)
       } else {
         sc.emptyRDD
       }
@@ -100,39 +78,63 @@ package object rdd {
       part: Partitioner,
       grouping: Ordering[K]): RDD[(K, Seq[Iterator[_]])] = {
 
-      if (rdds.size > 0) {
+      if (rdds.nonEmpty) {
         val ord = Option(grouping)
         val shuffle: ((RDD[(K, Any)], Option[Ordering[K]])) => RDD[(K, _)] = {
           case (rdd, o) => rdd.shuffle(part, o.orElse(ord))
         }
 
-        zipPartitions(rdds.map(shuffle), preservesPartitioning = true) { iters =>
-          val buffs = iters.map(_.asInstanceOf[Iterator[(K, _)]].buffered)
-          var values = Seq.empty[Iterator[_]]
-          Iterator.continually {
-            values.foreach { iter =>
-              while (iter.hasNext) iter.next()
-            }
-            ((None: Option[K]) /: buffs) {
-              case (opt, iter) if iter.hasNext =>
-                opt.map { key =>
-                  grouping.min(key, iter.head._1)
-                }.orElse(Some(iter.head._1))
-              case (opt, _) => opt
-            }
-          }.takeWhile(_.isDefined).map(_.get).map { key =>
-            values = buffs.map { buff =>
-              new Iterator[Any] {
-                def hasNext = buff.hasNext && grouping.equiv(buff.head._1, key)
-                def next() = buff.next()._2
-              }
-            }
-            key -> values
-          }
+        val grouped = rdds.map(shuffle).map { shuffled =>
+          shuffled.mapPartitions(
+            _.asInstanceOf[Iterator[(K, Any)]].groupByOrderedKey()(grouping),
+            preservesPartitioning = true)
         }
+
+        sequence(grouped)(grouping)
       } else {
         sc.emptyRDD
       }
+    }
+  }
+
+  private def sequence[K: Ordering](
+    rdds: Seq[RDD[(K, Iterator[_])]]): RDD[(K, Seq[Iterator[_]])] = {
+    assert(rdds.size > 0)
+
+    (rdds.head.map { case (key, iter) => key -> Seq(iter) } /: rdds.tail.zipWithIndex) {
+      case (acc, (rdd, i)) =>
+        acc.zipPartitions(rdd, preservesPartitioning = true) { (leftIter, rightIter) =>
+          val ord = implicitly[Ordering[K]]
+          val leftBuff = leftIter.buffered
+          val rightBuff = rightIter.buffered
+
+          new Iterator[(K, Seq[Iterator[_]])] {
+
+            override def hasNext: Boolean = leftBuff.hasNext || rightBuff.hasNext
+
+            override def next(): (K, Seq[Iterator[_]]) = {
+              (leftBuff.hasNext, rightBuff.hasNext) match {
+                case (true, true) =>
+                  val key = ord.min(leftBuff.head._1, rightBuff.head._1)
+                  key -> ((if (ord.equiv(key, leftBuff.head._1)) {
+                    leftBuff.next()._2
+                  } else {
+                    Seq.fill(i + 1)(Iterator.empty)
+                  }) :+ (if (ord.equiv(key, rightBuff.head._1)) {
+                    rightBuff.next()._2
+                  } else {
+                    Iterator.empty
+                  }))
+                case (true, false) =>
+                  leftBuff.head._1 -> (leftBuff.next()._2 :+ Iterator.empty)
+                case (false, true) =>
+                  rightBuff.head._1 -> (Seq.fill(i + 1)(Iterator.empty) :+ rightBuff.next()._2)
+                case _ =>
+                  throw new AssertionError()
+              }
+            }
+          }
+        }
     }
   }
 }

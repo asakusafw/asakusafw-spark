@@ -20,6 +20,8 @@ import scala.reflect.ClassTag
 import org.apache.spark._
 import org.apache.spark.rdd._
 
+import org.apache.spark.rdd.backdoor._
+
 import com.asakusafw.spark.runtime.orderings.NoOrdering
 
 case class BranchKey(id: Int)
@@ -39,21 +41,25 @@ class BranchRDDFunctions[T](val self: RDD[T]) extends AnyVal {
     val branchPartitioner = new BranchPartitioner(
       branchKeys,
       partitioners.withDefaultValue(IdentityPartitioner(prepared.partitions.size)))
-    val shuffled = new ShuffledRDD[Branch[K], U, U](prepared, branchPartitioner)
+    val shuffled = prepared.withScope {
+      new ShuffledRDD[Branch[K], U, U](prepared, branchPartitioner)
+    }
     if (keyOrderings.nonEmpty) {
       shuffled.setKeyOrdering(
         new BranchKeyOrdering(keyOrderings.withDefaultValue(new NoOrdering[K])))
     }
     val branched = shuffled.map { case (Branch(_, k), u) => (k, u) }
     branchKeys.map { branch =>
-      branch -> new BranchedRDD[(K, U)](
-        branched,
-        partitioners.get(branch).orElse(prepared.partitioner),
-        i => {
-          val offset = branchPartitioner.offsetOf(branch)
-          val numPartitions = branchPartitioner.numPartitionsOf(branch)
-          offset <= i && i < offset + numPartitions
-        })
+      branch -> branched.withScope {
+        new BranchedRDD[(K, U)](
+          branched,
+          partitioners.get(branch).orElse(prepared.partitioner),
+          i => {
+            val offset = branchPartitioner.offsetOf(branch)
+            val numPartitions = branchPartitioner.numPartitionsOf(branch)
+            offset <= i && i < offset + numPartitions
+          })
+      }
     }.toMap
   }
 }

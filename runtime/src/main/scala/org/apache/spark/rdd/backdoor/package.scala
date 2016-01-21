@@ -17,6 +17,8 @@ package org.apache.spark.rdd
 
 package object backdoor {
 
-  type ZippedPartitionsPartition = org.apache.spark.rdd.ZippedPartitionsPartition
-  type ZippedPartitionsBaseRDD[V] = org.apache.spark.rdd.ZippedPartitionsBaseRDD[V]
+  implicit class RDDBackdoor[T](val rdd: RDD[T]) extends AnyVal {
+
+    def withScope[U](body: => U): U = rdd.withScope(body)
+  }
 }
