@@ -40,9 +40,8 @@ package object rdd {
       if (rdd.partitioner == Some(part)) {
         rdd
       } else {
-        rdd.withScope {
-          new ShuffledRDD[K, V, V](rdd, part).setKeyOrdering(ordering.orNull)
-        }
+        implicit val ord = ordering.orNull
+        rdd.repartitionAndSortWithinPartitions(part)
       }
     }
   }
