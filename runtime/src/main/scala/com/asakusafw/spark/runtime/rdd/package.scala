@@ -15,15 +15,10 @@
  */
 package com.asakusafw.spark.runtime
 
-import scala.collection.mutable
-import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 import org.apache.spark.{ Partitioner, SparkContext }
-import org.apache.spark.rdd.{ RDD, ShuffledRDD }
-
-import org.apache.spark.backdoor._
-import org.apache.spark.rdd.backdoor._
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.util.Iterators._
 
