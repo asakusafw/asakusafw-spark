@@ -35,7 +35,7 @@ abstract class CoGroup(
       implicit @transient val sc: SparkContext)
   extends Source
   with UsingBroadcasts
-  with Branching[Seq[Iterator[_]]] {
+  with Branching[IndexedSeq[Iterator[_]]] {
 
   @transient
   private val fragmentBufferSize =
@@ -69,7 +69,9 @@ abstract class CoGroup(
               grouping)
 
             branch(
-              cogrouped.asInstanceOf[RDD[(_, Seq[Iterator[_]])]], broadcasts, rc.hadoopConf)(
+              cogrouped.asInstanceOf[RDD[(_, IndexedSeq[Iterator[_]])]],
+              broadcasts,
+              rc.hadoopConf)(
                 fragmentBufferSize)
         }
 

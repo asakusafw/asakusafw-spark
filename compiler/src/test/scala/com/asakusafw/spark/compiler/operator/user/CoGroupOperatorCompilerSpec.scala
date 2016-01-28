@@ -72,7 +72,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
       implicit val context = newOperatorCompilerContext("flowId")
 
       val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
-      val cls = context.loadClass[Fragment[Seq[Iterator[_]]]](thisType.getClassName)
+      val cls = context.loadClass[Fragment[IndexedSeq[Iterator[_]]]](thisType.getClassName)
 
       val fooResult = new GenericOutputFragment[Foo]()
       val fooError = new GenericOutputFragment[Foo]()
@@ -93,7 +93,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
         fragment.reset()
         val foos = Seq.empty[Foo]
         val bars = Seq.empty[Bar]
-        fragment.add(Seq(foos.iterator, bars.iterator))
+        fragment.add(IndexedSeq(foos.iterator, bars.iterator))
         assert(fooResult.iterator.size === 0)
         assert(barResult.iterator.size === 0)
         assert(fooError.iterator.size === 0)
@@ -119,7 +119,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
         bar.id.modify(10)
         bar.fooId.modify(1)
         val bars = Seq(bar)
-        fragment.add(Seq(foos.iterator, bars.iterator))
+        fragment.add(IndexedSeq(foos.iterator, bars.iterator))
         val fooResults = fooResult.iterator.toSeq
         assert(fooResults.size === 1)
         assert(fooResults.head.id.get === foo.id.get)
@@ -164,7 +164,7 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
           bar.fooId.modify(1)
           bar
         }
-        fragment.add(Seq(foos.iterator, bars.iterator))
+        fragment.add(IndexedSeq(foos.iterator, bars.iterator))
         val fooResults = fooResult.iterator.toSeq
         assert(fooResults.size === 0)
         val barResults = barResult.iterator.toSeq

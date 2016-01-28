@@ -81,7 +81,7 @@ private class CoGroupOperatorFragmentClassBuilder(
   operator: UserOperator)(
     implicit context: OperatorCompiler.Context)
   extends UserOperatorFragmentClassBuilder(
-    classOf[Seq[Iterator[_]]].asType,
+    classOf[IndexedSeq[Iterator[_]]].asType,
     operator.implementationClass.asType,
     operator.outputs) {
 
