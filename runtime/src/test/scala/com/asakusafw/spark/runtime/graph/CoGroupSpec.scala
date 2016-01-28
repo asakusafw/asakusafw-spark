@@ -379,7 +379,7 @@ object CoGroupSpec {
 
     override def fragments(
       broadcasts: Map[BroadcastId, Broadcasted[_]])(
-        fragmentBufferSize: Int): (Fragment[Seq[Iterator[_]]], Map[BranchKey, OutputFragment[_]]) = {
+        fragmentBufferSize: Int): (Fragment[IndexedSeq[Iterator[_]]], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         FooResult -> new GenericOutputFragment[Foo](fragmentBufferSize),
         BarResult -> new GenericOutputFragment[Bar](fragmentBufferSize),
@@ -390,9 +390,9 @@ object CoGroupSpec {
     }
   }
 
-  class TestCoGroupFragment(outputs: Map[BranchKey, Fragment[_]]) extends Fragment[Seq[Iterator[_]]] {
+  class TestCoGroupFragment(outputs: Map[BranchKey, Fragment[_]]) extends Fragment[IndexedSeq[Iterator[_]]] {
 
-    override def add(groups: Seq[Iterator[_]]): Unit = {
+    override def add(groups: IndexedSeq[Iterator[_]]): Unit = {
       assert(groups.size == 2)
       val fooList = groups(0).asInstanceOf[Iterator[Foo]].toSeq
       val barList = groups(1).asInstanceOf[Iterator[Bar]].toSeq

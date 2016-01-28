@@ -70,7 +70,7 @@ package object rdd {
     def smcogroup[K: ClassTag](
       rdds: Seq[(RDD[(K, _)], Option[Ordering[K]])],
       part: Partitioner,
-      grouping: Ordering[K]): RDD[(K, Seq[Iterator[_]])] = {
+      grouping: Ordering[K]): RDD[(K, IndexedSeq[Iterator[_]])] = {
 
       if (rdds.nonEmpty) {
         val ord = Option(grouping)
@@ -78,51 +78,59 @@ package object rdd {
           case (rdd, o) => rdd.shuffle(part, o.orElse(ord))
         }
 
-        val grouped = rdds.map(shuffle).map { shuffled =>
-          shuffled.mapPartitions(
+        val grouped = rdds.map(shuffle).map(
+          _.mapPartitions(
             _.asInstanceOf[Iterator[(K, Any)]].groupByOrderedKey()(grouping),
-            preservesPartitioning = true)
-        }
+            preservesPartitioning = true))
 
-        sequence(grouped)(grouping)
+        sequence(grouped)(grouping, implicitly)
       } else {
         sc.emptyRDD
       }
     }
   }
 
-  private def sequence[K: Ordering](
-    rdds: Seq[RDD[(K, Iterator[_])]]): RDD[(K, Seq[Iterator[_]])] = {
+  private def sequence[K: Ordering: ClassTag](
+    rdds: Seq[RDD[(K, Iterator[_])]]): RDD[(K, IndexedSeq[Iterator[_]])] = {
     assert(rdds.size > 0)
 
-    (rdds.head.map { case (key, iter) => key -> Seq(iter) } /: rdds.tail.zipWithIndex) {
+    val n = rdds.size
+    (rdds.head.map {
+      case (key, iter) =>
+        val arr = Array.fill[Iterator[_]](n)(Iterator.empty)
+        arr(0) = iter
+        key -> arr
+    } /: rdds.tail.zipWithIndex) {
       case (acc, (rdd, i)) =>
         acc.zipPartitions(rdd, preservesPartitioning = true) { (leftIter, rightIter) =>
           val ord = implicitly[Ordering[K]]
           val leftBuff = leftIter.buffered
           val rightBuff = rightIter.buffered
 
-          new Iterator[(K, Seq[Iterator[_]])] {
+          new Iterator[(K, Array[Iterator[_]])] {
 
             override def hasNext: Boolean = leftBuff.hasNext || rightBuff.hasNext
 
-            override def next(): (K, Seq[Iterator[_]]) = {
+            override def next(): (K, Array[Iterator[_]]) = {
               (leftBuff.hasNext, rightBuff.hasNext) match {
                 case (true, true) =>
                   val key = ord.min(leftBuff.head._1, rightBuff.head._1)
-                  key -> ((if (ord.equiv(key, leftBuff.head._1)) {
+                  val arr = if (ord.equiv(key, leftBuff.head._1)) {
                     leftBuff.next()._2
                   } else {
-                    Seq.fill(i + 1)(Iterator.empty)
-                  }) :+ (if (ord.equiv(key, rightBuff.head._1)) {
-                    rightBuff.next()._2
-                  } else {
-                    Iterator.empty
-                  }))
+                    Array.fill[Iterator[_]](n)(Iterator.empty)
+                  }
+                  if (ord.equiv(key, rightBuff.head._1)) {
+                    arr(i + 1) = rightBuff.next()._2
+                  }
+                  key -> arr
                 case (true, false) =>
-                  leftBuff.head._1 -> (leftBuff.next()._2 :+ Iterator.empty)
+                  leftBuff.next()
                 case (false, true) =>
-                  rightBuff.head._1 -> (Seq.fill(i + 1)(Iterator.empty) :+ rightBuff.next()._2)
+                  val (k, v) = rightBuff.next()
+                  val arr = Array.fill[Iterator[_]](n)(Iterator.empty)
+                  arr(i + 1) = v
+                  k -> arr
                 case _ =>
                   throw new AssertionError()
               }
@@ -130,5 +138,6 @@ package object rdd {
           }
         }
     }
+      .mapValues(iters => iters)
   }
 }
