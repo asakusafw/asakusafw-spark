@@ -2,6 +2,23 @@
 Changelogs
 ==========
 
+Release 0.2.2
+=============
+
+Feb 01, 2016
+
+asakusafw-compiler
+------------------
+
+* [ :pr-compiler:`35` ] - Fix compiler using too much memory.
+* [ commit `6fbaa51 <https://github.com/asakusafw/asakusafw-compiler/commit/6fbaa51ca3c0ffa88d0bb3298d248b11559780fe>`_ ] - Bump up Asakusa Framework version to 0.7.6.
+
+asakusafw-spark
+---------------
+
+* [ commit `d05ca13 <https://github.com/asakusafw/asakusafw-spark/commit/d05ca13ebba95f7595bab16cbf4b921903523646>`_ ] - Bump up Asakusa Framework version to 0.7.6.
+* [ commit `b55f2e5 <https://github.com/asakusafw/asakusafw-spark/commit/b55f2e5f9d55cdf29bb59fdfa9346225aa8d39bd>`_ ] - Bump up document version to 0.2.2.
+
 Release 0.2.1
 =============
 
