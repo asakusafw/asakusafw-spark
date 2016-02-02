@@ -44,7 +44,7 @@ javadoclinks = {
     'asakusafw-javadoc': ('http://docs.asakusafw.com/latest/release/api/%s.html', ""),
     'asakusafw-compiler-javadoc': ('http://docs.asakusafw.com/asakusafw-compiler/latest/release/api/%s.html', ""),
     'asakusafw-spark-planner-javadoc': ('http://docs.asakusafw.com/asakusa-on-spark/latest/release/planner/api/%s.html', ""),
-    'asakusa-spark-gradle-groovydoc': ('http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugin/%s.html', ""),
+    'asakusa-spark-gradle-groovydoc': ('http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugins/%s.html', ""),
 }
 
 # The max depth of sidebar toctree.
