@@ -38,7 +38,7 @@ APIリファレンス
 * `Asakusa on Spark Gradle Plugins (Groovydoc)`_
 
 ..  _`Asakusa DSL Compiler API References (Javadoc)`: http://docs.asakusafw.com/asakusafw-compiler/latest/release/api/index.html
-..  _`Asakusa on Spark Gradle Plugins (Groovydoc)`: http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugin/index.html
+..  _`Asakusa on Spark Gradle Plugins (Groovydoc)`: http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugins/index.html
 
 リンク
 ======
