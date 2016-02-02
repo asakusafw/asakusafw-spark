@@ -42,9 +42,9 @@ extlinks = {
 }
 javadoclinks = {
     'asakusafw-javadoc': ('http://docs.asakusafw.com/latest/release/api/%s.html', ""),
-    'asakusafw-compiler-javadoc': ('http://docs.asakusafw.com/preview/asakusafw-compiler/api/%s.html', ""),
-    'asakusafw-spark-planner-javadoc': ('http://docs.asakusafw.com/preview/asakusafw-spark-planner/api/%s.html', ""),
-    'asakusa-spark-gradle-groovydoc': ('http://docs.asakusafw.com/preview/asakusa-spark-gradle/api/%s.html', ""),
+    'asakusafw-compiler-javadoc': ('http://docs.asakusafw.com/asakusafw-compiler/latest/release/api/%s.html', ""),
+    'asakusafw-spark-planner-javadoc': ('http://docs.asakusafw.com/asakusa-on-spark/latest/release/planner/api/%s.html', ""),
+    'asakusa-spark-gradle-groovydoc': ('http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugin/%s.html', ""),
 }
 
 # The max depth of sidebar toctree.
@@ -67,7 +67,7 @@ source_encoding = 'utf-8'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Asakusa Framework Developer Preview'
+project = u'Asakusa on Spark'
 copyright = u'2011-2016, Asakusa Framework Team'
 
 # The version info for the project you're documenting, acts as replacement for

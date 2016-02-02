@@ -4,6 +4,9 @@ Asakusa on Spark Iterative Extensions
 
 この文書では、Asakusa on Sparkの拡張機能「Iterative Extensions」について説明します。
 
+..  attention::
+    Asakusa on Spark バージョン |version| では、 Iterative Extensions は試験的機能として提供しています。
+
 概要
 ====
 

@@ -4,13 +4,6 @@ Asakusa on Spark ユーザガイド
 
 この文書では、 `Asakusa Framework`_ を使って作成したバッチアプリケーションを `Apache Spark`_ 上で実行する方法について説明します。
 
-..  warning::
-    現時点では、この文書で説明する Asakusa on Spark の機能は **Developer Preview** として公開しています。
-    
-    * プロダクション環境での利用は現時点では非推奨です。
-    * 本機能は今後、予告なしに仕様を変更する可能性があります。
-    * 本機能は今後、予告なしに対応プラットフォームを変更する可能性があります。
-
 ..  _`Asakusa Framework`: http://docs.asakusafw.com/latest/release/ja/html/index.html
 ..  _`Apache Spark`: http://spark.apache.org/
 

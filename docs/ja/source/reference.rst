@@ -4,13 +4,6 @@ Asakusa on Spark リファレンス
 
 この文書では、Asakusa on Sparkが提供するGradle PluginやDSLコンパイラの設定、およびバッチアプリケーション実行時の設定などについて説明します。
 
-..  warning::
-    現時点では、この文書で説明する Asakusa on Spark の機能は **Developer Preview** として公開しています。
-    
-    * プロダクション環境での利用は現時点では非推奨です。
-    * 本機能は今後、予告なしに仕様を変更する可能性があります。
-    * 本機能は今後、予告なしに対応プラットフォームを変更する可能性があります。
-
 ..  _`Apache Spark`: http://spark.apache.org/
 
 Asakusa on Spark Gradle Plugin リファレンス
