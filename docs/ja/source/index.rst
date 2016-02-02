@@ -1,6 +1,6 @@
-====================================
-Asakusa on Spark (Developer Preview)
-====================================
+================
+Asakusa on Spark
+================
 
 Asakusa on Sparkは、Asakusa DSLを始めとするAsakusa Frameworkの開発基盤を利用して作成したバッチアプリケーションに対して、Sparkをその実行基盤として利用するための機能セットを提供します。
 
@@ -37,8 +37,8 @@ APIリファレンス
 * `Asakusa DSL Compiler API References (Javadoc)`_
 * `Asakusa on Spark Gradle Plugins (Groovydoc)`_
 
-..  _`Asakusa DSL Compiler API References (Javadoc)`: http://docs.asakusafw.com/preview/asakusafw-compiler/api/index.html
-..  _`Asakusa on Spark Gradle Plugins (Groovydoc)`: http://docs.asakusafw.com/preview/asakusa-spark-gradle/api/index.html
+..  _`Asakusa DSL Compiler API References (Javadoc)`: http://docs.asakusafw.com/asakusafw-compiler/latest/release/api/index.html
+..  _`Asakusa on Spark Gradle Plugins (Groovydoc)`: http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugin/index.html
 
 リンク
 ======
