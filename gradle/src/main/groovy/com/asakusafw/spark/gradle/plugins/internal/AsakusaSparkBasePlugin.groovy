@@ -18,6 +18,8 @@ package com.asakusafw.spark.gradle.plugins.internal
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
+import com.asakusafw.gradle.plugins.AsakusafwBasePlugin
+
 /**
  * A Gradle sub plug-in for Asakusa on Spark compiler.
  */
@@ -73,6 +75,7 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
         this.project = project
         this.extension = project.extensions.create('asakusaSparkBase', AsakusaSparkBaseExtension)
         configureExtension()
+        configureTasks()
     }
 
     private void configureExtension() {
@@ -104,6 +107,16 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
             extension.sparkProjectVersion = null
         }
         project.logger.info "Asakusa DSL Compiler for Spark: ${extension.sparkProjectVersion}"
+    }
+
+    private void configureTasks() {
+        extendVersionsTask()
+    }
+
+    private void extendVersionsTask() {
+        project.tasks.getByName(AsakusafwBasePlugin.TASK_VERSIONS) << {
+            logger.lifecycle "Asakusa on Spark: ${extension.sparkProjectVersion}"
+        }
     }
 
     /**

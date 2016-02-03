@@ -21,7 +21,10 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.DependencyResolveDetails
 import org.gradle.api.artifacts.ModuleVersionSelector
 import org.gradle.api.artifacts.ResolutionStrategy
+import org.gradle.api.artifacts.ResolvedConfiguration
+import org.gradle.api.artifacts.ResolvedDependency
 
+import com.asakusafw.gradle.plugins.AsakusafwBasePlugin
 import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
 import com.asakusafw.gradle.plugins.AsakusafwPlugin
 import com.asakusafw.gradle.plugins.AsakusafwPluginConvention
@@ -166,6 +169,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 failOnError = { spark.failOnError }
             }
         }
+        extendVersionsTask()
         PluginUtils.afterEvaluate(project) {
             AsakusaCompileTask task = project.tasks.sparkCompileBatchapps
             Map<String, String> map = [:]
@@ -178,5 +182,40 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 task.systemProperties.put('logback.configurationFile', f.absolutePath)
             }
         }
+    }
+
+    private void extendVersionsTask() {
+        project.tasks.getByName(AsakusafwBasePlugin.TASK_VERSIONS) << {
+            def sparkVersion = 'INVALID'
+            try {
+                logger.info 'detecting Spark version'
+                ResolvedConfiguration conf = project.configurations.asakusaSparkCompiler.resolvedConfiguration
+                sparkVersion = findSparkVersion(conf) ?: 'UNKNOWN'
+            } catch (Exception e) {
+                logger.info 'failed to detect Spark version', e
+            }
+            logger.lifecycle "Spark: ${sparkVersion}"
+        }
+    }
+
+    private String findSparkVersion(ResolvedConfiguration conf) {
+        LinkedList<ResolvedDependency> work = new LinkedList<ResolvedDependency>()
+        work.addAll(conf.firstLevelModuleDependencies)
+        Set<ResolvedDependency> saw = new HashSet<ResolvedDependency>()
+        while (!work.empty) {
+            ResolvedDependency d = work.removeFirst()
+            if (saw.contains(d)) {
+                continue
+            }
+            saw.add(d)
+            if (d.moduleVersion != null
+                    && d.moduleGroup == 'org.apache.spark'
+                    && d.moduleName != null
+                    && d.moduleName.startsWith('spark-core_')) {
+                return d.moduleVersion
+            }
+            work.addAll(d.children)
+        }
+        return null
     }
 }
