@@ -63,6 +63,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
         AsakusafwPluginConvention convention = project.asakusafw
         AsakusafwCompilerExtension spark = convention.extensions.create('spark', AsakusafwCompilerExtension)
         spark.conventionMapping.with {
+            enabled = { true }
             outputDirectory = { project.relativePath(new File(project.buildDir, 'spark-batchapps')) }
             batchIdPrefix = { (String) 'spark.' }
             failOnError = { true }
