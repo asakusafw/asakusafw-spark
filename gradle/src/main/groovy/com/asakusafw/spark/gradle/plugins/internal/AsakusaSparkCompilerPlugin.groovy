@@ -148,6 +148,8 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             task.dependsOn 'classes'
             project.tasks.assemble.dependsOn task
 
+            task.compilerName = 'Asakusa DSL compiler for Spark'
+
             task.launcherClasspath << { project.configurations.asakusaSparkCompilerLauncher }
 
             task.toolClasspath << { project.configurations.asakusaSparkCompiler }
@@ -162,6 +164,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             task.clean = true
 
             task.conventionMapping.with {
+                enabled = { spark.enabled }
                 maxHeapSize = { convention.maxHeapSize }
                 runtimeWorkingDirectory = { spark.runtimeWorkingDirectory }
                 batchIdPrefix = { spark.batchIdPrefix }
