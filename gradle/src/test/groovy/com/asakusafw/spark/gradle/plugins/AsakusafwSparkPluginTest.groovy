@@ -46,14 +46,14 @@ class AsakusafwSparkPluginTest {
     Project project
 
     /**
-     * activates {@code 'asakusafw'} plug-in.
+     * activates {@code 'asakusafw-sdk'} plug-in.
      */
     @Test
-    public void activate_asakusafw() {
+    public void activate_asakusafw_sdk() {
         assert project.plugins.hasPlugin(AsakusaSparkCompilerPlugin) == false
         assert project.plugins.hasPlugin(AsakusaSparkOrganizerPlugin) == false
 
-        project.apply plugin: 'asakusafw'
+        project.apply plugin: 'asakusafw-sdk'
         assert project.plugins.hasPlugin(AsakusaSparkCompilerPlugin)
         assert project.plugins.hasPlugin(AsakusaSparkOrganizerPlugin) == false
     }

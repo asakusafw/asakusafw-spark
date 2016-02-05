@@ -16,6 +16,7 @@
 package com.asakusafw.spark.gradle.plugins.internal
 
 import org.gradle.api.Project
+import org.gradle.api.Task
 
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
 import com.asakusafw.gradle.plugins.internal.AbstractOrganizer
@@ -100,11 +101,13 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
             if (spark.isEnabled()) {
                 project.logger.info 'Enabling Asakusa on Spark'
                 task('attachAssemble').dependsOn task('attachComponentSpark')
-            }
-            if (profile.batchapps.isEnabled() && project.plugins.hasPlugin('asakusafw-spark')) {
-                project.logger.info 'Enabling Spark Batchapps'
-                task('attachSparkBatchapps').shouldRunAfter project.tasks.sparkCompileBatchapps
-                task('attachAssemble').dependsOn task('attachSparkBatchapps')
+                PluginUtils.afterTaskEnabled(project, AsakusaSparkCompilerPlugin.TASK_COMPILE) { Task compiler ->
+                    task('attachSparkBatchapps').dependsOn compiler
+                    if (profile.batchapps.isEnabled()) {
+                        project.logger.info 'Enabling Spark Batchapps'
+                        task('attachAssemble').dependsOn task('attachSparkBatchapps')
+                    }
+                }
             }
         }
     }

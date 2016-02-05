@@ -29,7 +29,7 @@ class AsakusafwSparkPlugin implements Plugin<Project> {
 
     @Override
     void apply(Project project) {
-        PluginUtils.afterPluginEnabled(project, 'asakusafw') {
+        PluginUtils.afterPluginEnabled(project, 'asakusafw-sdk') {
             project.apply plugin: AsakusaSparkCompilerPlugin
         }
         PluginUtils.afterPluginEnabled(project, 'asakusafw-organizer') {

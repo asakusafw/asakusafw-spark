@@ -26,8 +26,8 @@ import org.gradle.api.artifacts.ResolvedDependency
 
 import com.asakusafw.gradle.plugins.AsakusafwBasePlugin
 import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
-import com.asakusafw.gradle.plugins.AsakusafwPlugin
 import com.asakusafw.gradle.plugins.AsakusafwPluginConvention
+import com.asakusafw.gradle.plugins.internal.AsakusaSdkPlugin
 import com.asakusafw.gradle.plugins.internal.PluginUtils
 import com.asakusafw.gradle.tasks.AsakusaCompileTask
 import com.asakusafw.gradle.tasks.internal.ResolutionUtils
@@ -36,6 +36,8 @@ import com.asakusafw.gradle.tasks.internal.ResolutionUtils
  * A Gradle sub plug-in for Asakusa on Spark compiler.
  */
 class AsakusaSparkCompilerPlugin implements Plugin<Project> {
+
+    public static final String TASK_COMPILE = 'sparkCompileBatchapps'
 
     private static final Map<String, String> REDIRECT = [
             'com.asakusafw.runtime.core.BatchContext' : 'com.asakusafw.bridge.api.BatchContext',
@@ -51,7 +53,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
     void apply(Project project) {
         this.project = project
 
-        project.apply plugin: 'asakusafw'
+        project.apply plugin: 'asakusafw-sdk'
         project.apply plugin: AsakusaSparkBasePlugin
 
         configureConvention()
@@ -63,7 +65,6 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
         AsakusafwPluginConvention convention = project.asakusafw
         AsakusafwCompilerExtension spark = convention.extensions.create('spark', AsakusafwCompilerExtension)
         spark.conventionMapping.with {
-            enabled = { true }
             outputDirectory = { project.relativePath(new File(project.buildDir, 'spark-batchapps')) }
             batchIdPrefix = { (String) 'spark.' }
             failOnError = { true }
@@ -143,11 +144,10 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
     private void defineTasks() {
         AsakusafwPluginConvention convention = project.asakusafw
         AsakusafwCompilerExtension spark = convention.spark
-        project.task('sparkCompileBatchapps', type: AsakusaCompileTask) { AsakusaCompileTask task ->
-            task.group AsakusafwPlugin.ASAKUSAFW_BUILD_GROUP
+        project.tasks.create(TASK_COMPILE, AsakusaCompileTask) { AsakusaCompileTask task ->
+            task.group AsakusaSdkPlugin.ASAKUSAFW_BUILD_GROUP
             task.description 'Compiles Asakusa DSL source files for Spark environment'
             task.dependsOn 'classes'
-            project.tasks.assemble.dependsOn task
 
             task.compilerName = 'Asakusa DSL compiler for Spark'
 
@@ -165,7 +165,6 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
             task.clean = true
 
             task.conventionMapping.with {
-                enabled = { spark.enabled }
                 maxHeapSize = { convention.maxHeapSize }
                 runtimeWorkingDirectory = { spark.runtimeWorkingDirectory }
                 batchIdPrefix = { spark.batchIdPrefix }
@@ -175,7 +174,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
         }
         extendVersionsTask()
         PluginUtils.afterEvaluate(project) {
-            AsakusaCompileTask task = project.tasks.sparkCompileBatchapps
+            AsakusaCompileTask task = project.tasks.getByName(TASK_COMPILE)
             Map<String, String> map = [:]
             map.putAll(ResolutionUtils.resolveToStringMap(spark.compilerProperties))
             map.putAll(ResolutionUtils.resolveToStringMap(task.compilerProperties))

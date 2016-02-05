@@ -52,7 +52,7 @@ class AsakusaSparkCompilerPluginTest {
      */
     @Test
     void base() {
-        assert project.plugins.hasPlugin('asakusafw') != null
+        assert project.plugins.hasPlugin('asakusafw-sdk') != null
         assert project.plugins.hasPlugin(AsakusaSparkBasePlugin) != null
     }
 
