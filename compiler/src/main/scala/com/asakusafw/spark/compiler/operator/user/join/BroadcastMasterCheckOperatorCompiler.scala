@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package operator
-package user
+package operator.user
 package join
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.join.BroadcastMasterCheckOperatorFragment
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
+import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 
 class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
@@ -51,12 +54,44 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
         operator.outputs.map(_.dataModelType).mkString("(", ",", ")")
       } [${operator}]")
 
-    val builder =
-      new BroadcastJoinOperatorFragmentClassBuilder(
-        operator,
-        operator.inputs(MasterCheckOp.ID_INPUT_MASTER),
-        operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION)) with MasterCheck
+    val builder = new BroadcastMasterCheckOperatorFragmentClassBuilder(operator)
 
     context.addClass(builder)
+  }
+}
+
+private class BroadcastMasterCheckOperatorFragmentClassBuilder(
+  operator: UserOperator)(
+    implicit val context: OperatorCompiler.Context)
+  extends JoinOperatorFragmentClassBuilder(
+    operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType,
+    operator,
+    operator.inputs(MasterCheckOp.ID_INPUT_MASTER),
+    operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION))(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[BroadcastMasterCheckOperatorFragment[_, _, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType)
+          }
+        }),
+    classOf[BroadcastMasterCheckOperatorFragment[_, _, _]].asType)
+  with BroadcastJoin
+  with MasterCheck {
+
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: broadcastsVar :: fragmentVars = mb.argVars
+
+    thisVar.push().invokeInit(
+      superType,
+      masters(),
+      fragmentVars(MasterCheckOp.ID_OUTPUT_MISSED).push(),
+      fragmentVars(MasterCheckOp.ID_OUTPUT_FOUND).push())
   }
 }

@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package operator
-package user
-package join
+package operator.user.join
 
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -32,25 +31,37 @@ trait MasterJoinUpdate extends JoinOperatorFragmentClassBuilder {
 
   implicit def context: OperatorCompiler.Context
 
-  def operator: UserOperator
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-  override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
-    masterVar.push().ifNull({
-      getOutputField(operator.outputs(MasterJoinUpdateOp.ID_OUTPUT_MISSED))
-    }, {
-      getOperatorField()
-        .invokeV(
-          operator.methodDesc.getName,
-          masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-            +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
-            +: operator.arguments.map { argument =>
-              Option(argument.value).map { value =>
-                ldc(value)(ClassTag(argument.resolveClass), implicitly)
-              }.getOrElse {
-                pushNull(argument.resolveClass.asType)
-              }
-            }: _*)
-      getOutputField(operator.outputs(MasterJoinUpdateOp.ID_OUTPUT_UPDATED))
-    }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
+    methodDef.newMethod(
+      "update",
+      Seq(classOf[DataModel[_]].asType, classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: masterVar :: txVar :: _ = mb.argVars
+        thisVar.push().invokeV(
+          "update",
+          masterVar.push().cast(masterType),
+          txVar.push().cast(txType))
+        `return`()
+      }
+
+    methodDef.newMethod(
+      "update",
+      Seq(masterType, txType)) { implicit mb =>
+        val thisVar :: masterVar :: txVar :: _ = mb.argVars
+        getOperatorField()
+          .invokeV(
+            operator.methodDesc.getName,
+            masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+              +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
+              +: operator.arguments.map { argument =>
+                Option(argument.value).map { value =>
+                  ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                }.getOrElse {
+                  pushNull(argument.resolveClass.asType)
+                }
+              }: _*)
+        `return`()
+      }
   }
 }

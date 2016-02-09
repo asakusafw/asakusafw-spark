@@ -20,12 +20,14 @@ package core
 import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.analyzer.util.ProjectionOperatorUtil
 import com.asakusafw.lang.compiler.model.graph.CoreOperator
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.runtime.fragment.Fragment
+import com.asakusafw.spark.runtime.fragment.core.ProjectionOperatorsFragment
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -65,39 +67,67 @@ private class ProjectionOperatorsFragmentClassBuilder(
     implicit context: OperatorCompiler.Context)
   extends CoreOperatorFragmentClassBuilder(
     operator.inputs.head.dataModelType,
-    operator.outputs.head.dataModelType) {
+    operator.outputs.head.dataModelType)(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[ProjectionOperatorsFragment[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, operator.inputs.head.dataModelType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF, operator.outputs.head.dataModelType)
+          }
+        }),
+    classOf[ProjectionOperatorsFragment[_, _]].asType) {
 
   val mappings =
     ProjectionOperatorUtil.getPropertyMappings(context.dataModelLoader, operator)
       .toSeq
 
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    val thisVar :: _ = mb.argVars
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ :: childVar :: _ = mb.argVars
+    thisVar.push().invokeInit(
+      superType,
+      pushNew0(childDataModelType).asType(classOf[DataModel[_]].asType),
+      childVar.push())
+  }
 
-    thisVar.push().getField("childDataModel", childDataModelType).invokeV("reset")
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-    mappings.foreach { mapping =>
-      val srcProperty = mapping.getSourcePort.dataModelRef
-        .findProperty(mapping.getSourceProperty)
-      val destProperty = mapping.getDestinationPort.dataModelRef
-        .findProperty(mapping.getDestinationProperty)
-      assert(srcProperty.getType.asType == destProperty.getType.asType,
-        "The source and destination types should be the same: " +
-          s"(${srcProperty.getType}, ${destProperty.getType} [${operator}]")
+    methodDef.newMethod(
+      "project",
+      Seq(classOf[DataModel[_]].asType, classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: srcVar :: destVar :: _ = mb.argVars
+        thisVar.push().invokeV(
+          "project",
+          srcVar.push().cast(dataModelType),
+          destVar.push().cast(childDataModelType))
+        `return`()
+      }
 
-      pushObject(ValueOptionOps)
-        .invokeV(
-          "copy",
-          dataModelVar.push()
-            .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
-          thisVar.push().getField("childDataModel", childDataModelType)
-            .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
-    }
+    methodDef.newMethod(
+      "project",
+      Seq(dataModelType, childDataModelType)) { implicit mb =>
+        val thisVar :: srcVar :: destVar :: _ = mb.argVars
 
-    thisVar.push().getField("child", classOf[Fragment[_]].asType)
-      .invokeV("add", thisVar.push()
-        .getField("childDataModel", childDataModelType)
-        .asType(classOf[AnyRef].asType))
-    `return`()
+        mappings.foreach { mapping =>
+          val srcProperty = mapping.getSourcePort.dataModelRef
+            .findProperty(mapping.getSourceProperty)
+          val destProperty = mapping.getDestinationPort.dataModelRef
+            .findProperty(mapping.getDestinationProperty)
+          assert(srcProperty.getType.asType == destProperty.getType.asType,
+            "The source and destination types should be the same: " +
+              s"(${srcProperty.getType}, ${destProperty.getType} [${operator}]")
+
+          pushObject(ValueOptionOps)
+            .invokeV(
+              "copy",
+              srcVar.push()
+                .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
+              destVar.push()
+                .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
+        }
+
+        `return`()
+      }
   }
 }

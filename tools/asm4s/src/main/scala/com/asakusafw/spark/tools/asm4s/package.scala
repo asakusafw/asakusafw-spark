@@ -56,7 +56,13 @@ package object asm4s {
   }
 
   def buildSeq(block: SeqBuilder => Unit)(implicit mb: MethodBuilder): Stack = {
-    val builder = new SeqBuilder()
+    val builder = new SeqBuilder(indexed = false)
+    block(builder)
+    builder.result
+  }
+
+  def buildIndexedSeq(block: SeqBuilder => Unit)(implicit mb: MethodBuilder): Stack = {
+    val builder = new SeqBuilder(indexed = true)
     block(builder)
     builder.result
   }
@@ -144,7 +150,7 @@ package object asm4s {
     }
   }
 
-  class SeqBuilder private[asm4s] {
+  class SeqBuilder private[asm4s] (indexed: Boolean) {
 
     private val values = mutable.Buffer.empty[() => Stack]
 
@@ -154,9 +160,10 @@ package object asm4s {
 
     private[asm4s] def result(implicit mb: MethodBuilder): Stack = {
       if (values.isEmpty) {
-        pushObject(Seq).invokeV("empty", classOf[Seq[_]].asType)
+        pushObject(Seq).invokeV("empty",
+          if (indexed) classOf[IndexedSeq[_]].asType else classOf[Seq[_]].asType)
       } else {
-        val builder = pushObject(Seq)
+        val builder = (if (indexed) pushObject(IndexedSeq) else pushObject(Seq))
           .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
         for {
           value <- values
@@ -166,7 +173,8 @@ package object asm4s {
             classOf[mutable.Builder[_, _]].asType,
             value().asType(classOf[AnyRef].asType))
         }
-        builder.invokeI("result", classOf[AnyRef].asType).cast(classOf[Seq[_]].asType)
+        builder.invokeI("result", classOf[AnyRef].asType)
+          .cast(if (indexed) classOf[IndexedSeq[_]].asType else classOf[Seq[_]].asType)
       }
     }
   }

@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package operator
-package user
+package operator.user
 package join
 
-import scala.collection.JavaConversions._
-
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
 import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.join.BroadcastMasterJoinOperatorFragment
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
+import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
 
 class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
@@ -55,16 +57,48 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
         operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
       } [${operator}]")
 
-    val builder =
-      new BroadcastJoinOperatorFragmentClassBuilder(
-        operator,
-        operator.inputs(MasterJoinOp.ID_INPUT_MASTER),
-        operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION)) with MasterJoin {
-
-        val mappings =
-          JoinedModelUtil.getPropertyMappings(context.classLoader, operator).toSeq
-      }
+    val builder = new BroadcastMasterJoinOperatorFragmentClassBuilder(operator)
 
     context.addClass(builder)
+  }
+}
+
+private class BroadcastMasterJoinOperatorFragmentClassBuilder(
+  operator: UserOperator)(
+    implicit val context: OperatorCompiler.Context)
+  extends JoinOperatorFragmentClassBuilder(
+    operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
+    operator,
+    operator.inputs(MasterJoinOp.ID_INPUT_MASTER),
+    operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION))(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[BroadcastMasterJoinOperatorFragment[_, _, _, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.inputs(MasterJoinOp.ID_INPUT_MASTER).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
+          }
+        }),
+    classOf[BroadcastMasterJoinOperatorFragment[_, _, _, _]].asType)
+  with BroadcastJoin
+  with MasterJoin {
+
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: broadcastsVar :: fragmentVars = mb.argVars
+
+    thisVar.push().invokeInit(
+      superType,
+      masters(),
+      fragmentVars(MasterJoinOp.ID_OUTPUT_MISSED).push(),
+      fragmentVars(MasterJoinOp.ID_OUTPUT_JOINED).push(),
+      pushNew0(joinedType).asType(classOf[DataModel[_]].asType))
   }
 }

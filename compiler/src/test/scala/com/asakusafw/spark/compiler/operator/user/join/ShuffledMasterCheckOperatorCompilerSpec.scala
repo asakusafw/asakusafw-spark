@@ -82,7 +82,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
       bar.id.modify(10)
       bar.fooId.modify(1)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val founds = found.iterator.toSeq
       assert(founds.size === 1)
       assert(founds.head.id.get === 10)
@@ -101,7 +101,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
       bar.id.modify(10)
       bar.fooId.modify(1)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val founds = found.iterator.toSeq
       assert(founds.size === 0)
       val misseds = missed.iterator.toSeq
@@ -149,7 +149,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
         bar.fooId.modify(0)
         bar
       }
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val founds = found.iterator.toSeq
       assert(founds.size === 5)
       assert(founds.map(_.id.get) === (0 until 10 by 2))
@@ -169,7 +169,7 @@ class ShuffledMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompile
       bar.id.modify(10)
       bar.fooId.modify(1)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val founds = found.iterator.toSeq
       assert(founds.size === 0)
       val misseds = missed.iterator.toSeq

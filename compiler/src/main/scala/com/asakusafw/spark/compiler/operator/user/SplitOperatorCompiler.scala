@@ -20,10 +20,14 @@ package user
 import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.analyzer.util.JoinedModelUtil
 import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.runtime.core.Result
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.SplitOperatorFragment
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -64,74 +68,94 @@ private class SplitOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Split.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
-    operator.outputs) {
+    operator.outputs)(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[SplitOperatorFragment[_, _, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(Split.ID_INPUT).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType)
+          }
+        }),
+    classOf[SplitOperatorFragment[_, _, _]].asType) {
 
   val mappings =
     JoinedModelUtil.getPropertyMappings(context.classLoader, operator).toSeq
 
-  override def defFields(fieldDef: FieldDef): Unit = {
-    super.defFields(fieldDef)
-    fieldDef.newField("leftDataModel", operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType)
-    fieldDef.newField("rightDataModel", operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType)
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ :: fragmentVars = mb.argVars
+
+    thisVar.push().invokeInit(
+      superType,
+      pushNew0(operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType)
+        .asType(classOf[DataModel[_]].asType),
+      pushNew0(operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType)
+        .asType(classOf[DataModel[_]].asType),
+      fragmentVars(Split.ID_OUTPUT_LEFT).push(),
+      fragmentVars(Split.ID_OUTPUT_RIGHT).push())
   }
 
-  override def initFields()(implicit mb: MethodBuilder): Unit = {
-    super.initFields()
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-    val thisVar :: _ = mb.argVars
+    methodDef.newMethod(
+      "split",
+      Seq(
+        classOf[DataModel[_]].asType,
+        classOf[DataModel[_]].asType,
+        classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: inputVar :: leftVar :: rightVar :: _ = mb.argVars
+        thisVar.push().invokeV(
+          "split",
+          inputVar.push().cast(dataModelType),
+          leftVar.push().cast(operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType),
+          rightVar.push().cast(operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType))
+        `return`()
+      }
 
-    thisVar.push().putField(
-      "leftDataModel",
-      pushNew0(operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType))
-    thisVar.push().putField(
-      "rightDataModel",
-      pushNew0(operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType))
-  }
+    methodDef.newMethod(
+      "split",
+      Seq(
+        dataModelType,
+        operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType,
+        operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType)) { implicit mb =>
+        val thisVar :: inputVar :: leftVar :: rightVar :: _ = mb.argVars
 
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    val thisVar :: _ = mb.argVars
+        val vars = Seq(leftVar, rightVar)
 
-    val leftVar = thisVar.push()
-      .getField("leftDataModel", operator.outputs(Split.ID_OUTPUT_LEFT).dataModelType)
-      .store()
-    val rightVar = thisVar.push()
-      .getField("rightDataModel", operator.outputs(Split.ID_OUTPUT_RIGHT).dataModelType)
-      .store()
-    leftVar.push().invokeV("reset")
-    rightVar.push().invokeV("reset")
+        mappings.foreach { mapping =>
+          assert(mapping.getSourcePort == operator.inputs(Split.ID_INPUT),
+            "The source port should be the same as the port for Split.ID_INPUT: " +
+              s"(${mapping.getSourcePort}, ${operator.inputs(Split.ID_INPUT)}) [${operator}]")
+          val srcProperty =
+            operator.inputs(Split.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
 
-    val vars = Seq(leftVar, rightVar)
+          val dest = operator.outputs.indexOf(mapping.getDestinationPort)
+          val destVar = vars(dest)
+          val destProperty =
+            operator.outputs(dest).dataModelRef.findProperty(mapping.getDestinationProperty)
 
-    mappings.foreach { mapping =>
-      assert(mapping.getSourcePort == operator.inputs(Split.ID_INPUT),
-        "The source port should be the same as the port for Split.ID_INPUT: " +
-          s"(${mapping.getSourcePort}, ${operator.inputs(Split.ID_INPUT)}) [${operator}]")
-      val srcProperty =
-        operator.inputs(Split.ID_INPUT).dataModelRef.findProperty(mapping.getSourceProperty)
+          assert(srcProperty.getType.asType == destProperty.getType.asType,
+            "The source and destination types should be the same: "
+              + s"(${srcProperty.getType}, ${destProperty.getType}) [${operator}]")
 
-      val dest = operator.outputs.indexOf(mapping.getDestinationPort)
-      val destVar = vars(dest)
-      val destProperty =
-        operator.outputs(dest).dataModelRef.findProperty(mapping.getDestinationProperty)
+          pushObject(ValueOptionOps)
+            .invokeV(
+              "copy",
+              inputVar.push()
+                .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
+              destVar.push()
+                .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
+        }
 
-      assert(srcProperty.getType.asType == destProperty.getType.asType,
-        "The source and destination types should be the same: "
-          + s"(${srcProperty.getType}, ${destProperty.getType}) [${operator}]")
-
-      pushObject(ValueOptionOps)
-        .invokeV(
-          "copy",
-          dataModelVar.push()
-            .invokeV(srcProperty.getDeclaration.getName, srcProperty.getType.asType),
-          destVar.push()
-            .invokeV(destProperty.getDeclaration.getName, destProperty.getType.asType))
-    }
-
-    getOutputField(operator.outputs(Split.ID_OUTPUT_LEFT))
-      .invokeV("add", leftVar.push().asType(classOf[AnyRef].asType))
-    getOutputField(operator.outputs(Split.ID_OUTPUT_RIGHT))
-      .invokeV("add", rightVar.push().asType(classOf[AnyRef].asType))
-
-    `return`()
+        `return`()
+      }
   }
 }

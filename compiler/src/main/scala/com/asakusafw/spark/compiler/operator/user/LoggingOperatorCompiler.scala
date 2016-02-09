@@ -20,10 +20,13 @@ package user
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.bridge.api.Report
 import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.LoggingOperatorFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.Logging
@@ -76,29 +79,62 @@ private class LoggingOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Logging.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
-    operator.outputs) {
+    operator.outputs)(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[LoggingOperatorFragment[_]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(Logging.ID_INPUT).dataModelType)
+          }
+        }),
+    classOf[LoggingOperatorFragment[_]].asType) {
 
   val level = Option(operator.annotationDesc.elements("value"))
     .map(_.value.asInstanceOf[Logging.Level]).getOrElse(Logging.Level.getDefault)
 
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    invokeStatic(
-      classOf[Report].asType,
-      level.name.toLowerCase,
-      getOperatorField()
-        .invokeV(
-          operator.methodDesc.getName,
-          classOf[String].asType,
-          dataModelVar.push()
-            +: operator.arguments.map { argument =>
-              Option(argument.value).map { value =>
-                ldc(value)(ClassTag(argument.resolveClass), implicitly)
-              }.getOrElse {
-                pushNull(argument.resolveClass.asType)
-              }
-            }: _*))
-    getOutputField(operator.outputs(Logging.ID_OUTPUT))
-      .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
-    `return`()
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ :: fragmentVars = mb.argVars
+
+    thisVar.push().invokeInit(
+      superType,
+      fragmentVars(Logging.ID_OUTPUT).push())
+  }
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod(
+      "logging",
+      Seq(classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: inputVar :: _ = mb.argVars
+        thisVar.push().invokeV(
+          "logging",
+          inputVar.push().cast(dataModelType))
+        `return`()
+      }
+
+    methodDef.newMethod(
+      "logging",
+      Seq(dataModelType)) { implicit mb =>
+        val thisVar :: inputVar :: _ = mb.argVars
+        invokeStatic(
+          classOf[Report].asType,
+          level.name.toLowerCase,
+          getOperatorField()
+            .invokeV(
+              operator.methodDesc.getName,
+              classOf[String].asType,
+              inputVar.push()
+                +: operator.arguments.map { argument =>
+                  Option(argument.value).map { value =>
+                    ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                  }.getOrElse {
+                    pushNull(argument.resolveClass.asType)
+                  }
+                }: _*))
+        `return`()
+      }
   }
 }

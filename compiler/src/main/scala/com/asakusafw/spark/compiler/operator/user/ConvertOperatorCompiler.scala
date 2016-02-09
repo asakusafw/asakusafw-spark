@@ -20,9 +20,12 @@ package user
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.ConvertOperatorFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.Convert
@@ -75,26 +78,63 @@ private class ConvertOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Convert.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
-    operator.outputs) {
+    operator.outputs)(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[ConvertOperatorFragment[_, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(Convert.ID_INPUT).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType)
+          }
+        }),
+    classOf[ConvertOperatorFragment[_, _]].asType) {
 
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    getOutputField(operator.outputs(Convert.ID_OUTPUT_ORIGINAL))
-      .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
-    getOutputField(operator.outputs(Convert.ID_OUTPUT_CONVERTED))
-      .invokeV("add",
-        getOperatorField()
-          .invokeV(
-            operator.methodDesc.getName,
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ :: fragmentVars = mb.argVars
+
+    thisVar.push().invokeInit(
+      superType,
+      fragmentVars(Convert.ID_OUTPUT_ORIGINAL).push(),
+      fragmentVars(Convert.ID_OUTPUT_CONVERTED).push())
+  }
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod(
+      "convert",
+      classOf[DataModel[_]].asType,
+      Seq(classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: inputVar :: _ = mb.argVars
+        `return`(
+          thisVar.push().invokeV(
+            "convert",
             operator.outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
-            dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-              +: operator.arguments.map { argument =>
-                Option(argument.value).map { value =>
-                  ldc(value)(ClassTag(argument.resolveClass), implicitly)
-                }.getOrElse {
-                  pushNull(argument.resolveClass.asType)
-                }
-              }: _*)
-          .asType(classOf[AnyRef].asType))
-    `return`()
+            inputVar.push().cast(dataModelType)))
+      }
+
+    methodDef.newMethod(
+      "convert",
+      operator.outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
+      Seq(dataModelType)) { implicit mb =>
+        val thisVar :: inputVar :: _ = mb.argVars
+        `return`(
+          getOperatorField()
+            .invokeV(
+              operator.methodDesc.getName,
+              operator.outputs(Convert.ID_OUTPUT_CONVERTED).dataModelType,
+              inputVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+                +: operator.arguments.map { argument =>
+                  Option(argument.value).map { value =>
+                    ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                  }.getOrElse {
+                    pushNull(argument.resolveClass.asType)
+                  }
+                }: _*))
+      }
   }
 }

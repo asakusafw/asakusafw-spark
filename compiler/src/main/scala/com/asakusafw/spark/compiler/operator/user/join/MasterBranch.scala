@@ -14,60 +14,58 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package operator
-package user
-package join
+package operator.user.join
 
 import scala.reflect.ClassTag
 
-import org.objectweb.asm.Type
-
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp }
 
 trait MasterBranch extends JoinOperatorFragmentClassBuilder {
 
   implicit def context: OperatorCompiler.Context
 
-  def operator: UserOperator
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-  override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
-    block { ctrl =>
-      val branch = getOperatorField()
-        .invokeV(
-          operator.methodDesc.name,
-          operator.methodDesc.asType.getReturnType,
-          masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-            +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
-            +: operator.arguments.map { argument =>
-              Option(argument.value).map { value =>
-                ldc(value)(ClassTag(argument.resolveClass), implicitly)
-              }.getOrElse {
-                pushNull(argument.resolveClass.asType)
-              }
-            }: _*)
-      branch.dup().unlessNotNull {
-        branch.pop()
-        `throw`(pushNew0(classOf[NullPointerException].asType))
+    methodDef.newMethod(
+      "branch",
+      classOf[Enum[_]].asType,
+      Seq(classOf[DataModel[_]].asType, classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: masterVar :: txVar :: _ = mb.argVars
+        `return`(
+          thisVar.push().invokeV(
+            "branch",
+            operator.methodDesc.asType.getReturnType,
+            masterVar.push().cast(masterType),
+            txVar.push().cast(txType)))
       }
-      operator.branchOutputMap.foreach {
-        case (output, enum) =>
-          branch.dup().unlessNe(
-            getStatic(
-              operator.methodDesc.asType.getReturnType,
-              enum.name,
-              operator.methodDesc.asType.getReturnType)) {
-              getOutputField(output)
-                .invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
-              branch.pop()
-              ctrl.break()
-            }
+
+    methodDef.newMethod(
+      "branch",
+      operator.methodDesc.asType.getReturnType,
+      Seq(masterType, txType)) { implicit mb =>
+        val thisVar :: masterVar :: txVar :: _ = mb.argVars
+        val branch = getOperatorField()
+          .invokeV(
+            operator.methodDesc.name,
+            operator.methodDesc.asType.getReturnType,
+            masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+              +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
+              +: operator.arguments.map { argument =>
+                Option(argument.value).map { value =>
+                  ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                }.getOrElse {
+                  pushNull(argument.resolveClass.asType)
+                }
+              }: _*)
+        branch.dup().unlessNotNull {
+          branch.pop()
+          `throw`(pushNew0(classOf[NullPointerException].asType))
+        }
+        `return`(branch)
       }
-      branch.pop()
-      `throw`(pushNew0(classOf[AssertionError].asType))
-    }
   }
 }

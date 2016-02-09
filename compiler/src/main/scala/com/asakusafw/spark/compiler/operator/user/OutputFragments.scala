@@ -56,10 +56,8 @@ trait OutputFragments extends FragmentClassBuilder {
 
   def defReset()(implicit mb: MethodBuilder): Unit = {
     val thisVar :: _ = mb.argVars
-    unlessReset {
-      operatorOutputs.foreach { output =>
-        thisVar.push().getField(output.getName, classOf[Fragment[_]].asType).invokeV("reset")
-      }
+    operatorOutputs.foreach { output =>
+      thisVar.push().getField(output.getName, classOf[Fragment[_]].asType).invokeV("reset")
     }
     `return`()
   }
