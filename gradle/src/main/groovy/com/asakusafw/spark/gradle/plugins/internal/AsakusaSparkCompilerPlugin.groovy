@@ -81,9 +81,6 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 description 'Asakusa DSL Compiler for Spark environment'
                 extendsFrom project.configurations.compile
             }
-            asakusaSparkCompilerLauncher {
-                description 'Asakusa DSL Compiler Launcher for Spark environment'
-            }
         }
         PluginUtils.afterEvaluate(project) {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
@@ -135,8 +132,6 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
 
                 asakusaSparkCompiler "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.sparkProjectVersion}"
-
-                asakusaSparkCompilerLauncher "com.asakusafw.lang.tool:asakusa-tool-launcher:${base.compilerProjectVersion}"
             }
         }
     }
@@ -151,7 +146,7 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
 
             task.compilerName = 'Asakusa DSL compiler for Spark'
 
-            task.launcherClasspath << { project.configurations.asakusaSparkCompilerLauncher }
+            task.launcherClasspath << { project.configurations.asakusaToolLauncher }
 
             task.toolClasspath << { project.configurations.asakusaSparkCompiler }
             task.toolClasspath << { project.sourceSets.main.compileClasspath - project.configurations.compile }
