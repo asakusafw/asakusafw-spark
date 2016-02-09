@@ -101,7 +101,7 @@ class AsakusaSparkCompilerPluginTest {
 
         assert task.explore.empty == false
         assert task.attach.empty == false
-        assert task.embed.empty
+        assert task.embed.empty == false
         assert task.external.empty
 
         spark.include = null
