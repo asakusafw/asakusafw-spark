@@ -14,27 +14,21 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime.fragment
+package user
 
-import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 
-abstract class Fragment[T] extends Result[T] {
+abstract class BranchOperatorFragment[T <: DataModel[T], E <: Enum[E]](
+  children: Map[E, Fragment[T]])
+  extends Fragment[T] {
 
-  private[this] var reset: Boolean = true
-
-  override final def add(result: T): Unit = {
-    reset = false
-    doAdd(result)
+  override def doAdd(result: T): Unit = {
+    children(branch(result)).add(result)
   }
 
-  def doAdd(result: T): Unit
+  def branch(dm: T): E
 
-  final def reset(): Unit = {
-    if (!reset) {
-      doReset()
-      reset = true
-    }
+  override def doReset(): Unit = {
+    children.values.foreach(_.reset())
   }
-
-  def doReset(): Unit
 }

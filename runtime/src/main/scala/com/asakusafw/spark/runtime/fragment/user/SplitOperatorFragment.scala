@@ -14,27 +14,27 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime.fragment
+package user
 
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 
-abstract class Fragment[T] extends Result[T] {
+abstract class SplitOperatorFragment[T <: DataModel[T], L <: DataModel[L], R <: DataModel[R]](
+  left: L, right: R, l: Fragment[L], r: Fragment[R])
+  extends Fragment[T] {
 
-  private[this] var reset: Boolean = true
-
-  override final def add(result: T): Unit = {
-    reset = false
-    doAdd(result)
+  override def doAdd(result: T): Unit = {
+    left.reset()
+    right.reset()
+    split(result, left, right)
+    l.add(left)
+    r.add(right)
   }
 
-  def doAdd(result: T): Unit
+  def split(input: T, left: L, right: R): Unit
 
-  final def reset(): Unit = {
-    if (!reset) {
-      doReset()
-      reset = true
-    }
+  override def doReset(): Unit = {
+    l.reset()
+    r.reset()
   }
-
-  def doReset(): Unit
 }

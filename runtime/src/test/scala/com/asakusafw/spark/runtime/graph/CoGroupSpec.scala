@@ -392,7 +392,7 @@ object CoGroupSpec {
 
   class TestCoGroupFragment(outputs: Map[BranchKey, Fragment[_]]) extends Fragment[IndexedSeq[Iterator[_]]] {
 
-    override def add(groups: IndexedSeq[Iterator[_]]): Unit = {
+    override def doAdd(groups: IndexedSeq[Iterator[_]]): Unit = {
       assert(groups.size == 2)
       val fooList = groups(0).asInstanceOf[Iterator[Foo]].toSeq
       val barList = groups(1).asInstanceOf[Iterator[Bar]].toSeq
@@ -405,7 +405,7 @@ object CoGroupSpec {
       }
     }
 
-    override def reset(): Unit = {
+    override def doReset(): Unit = {
       outputs.values.foreach(_.reset())
     }
   }

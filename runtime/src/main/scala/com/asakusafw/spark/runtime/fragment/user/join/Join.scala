@@ -14,27 +14,15 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime.fragment
+package user.join
 
-import com.asakusafw.runtime.core.Result
+import java.util.{ List => JList }
+
 import com.asakusafw.runtime.model.DataModel
 
-abstract class Fragment[T] extends Result[T] {
+trait Join[M <: DataModel[M], T <: DataModel[T]] {
 
-  private[this] var reset: Boolean = true
+  def masterSelection(masters: JList[M], tx: T): M
 
-  override final def add(result: T): Unit = {
-    reset = false
-    doAdd(result)
-  }
-
-  def doAdd(result: T): Unit
-
-  final def reset(): Unit = {
-    if (!reset) {
-      doReset()
-      reset = true
-    }
-  }
-
-  def doReset(): Unit
+  def join(master: M, tx: T): Unit
 }

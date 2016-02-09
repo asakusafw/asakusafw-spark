@@ -152,12 +152,12 @@ object ResourceBrokingIteratorSpec {
 
   class TestFragment(output: Fragment[Foo]) extends Fragment[Foo] {
 
-    override def add(foo: Foo): Unit = {
+    override def doAdd(foo: Foo): Unit = {
       foo.str.modify(s"${BatchContext.get("batcharg")}_${foo.id.get}")
       output.add(foo)
     }
 
-    override def reset(): Unit = {
+    override def doReset(): Unit = {
       output.reset()
     }
   }

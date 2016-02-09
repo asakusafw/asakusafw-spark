@@ -14,27 +14,15 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime.fragment
+package core
 
-import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 
-abstract class Fragment[T] extends Result[T] {
+abstract class CoreOperatorFragment[T <: DataModel[T], U <: DataModel[U]](
+  val child: Fragment[U])
+  extends Fragment[T] {
 
-  private[this] var reset: Boolean = true
-
-  override final def add(result: T): Unit = {
-    reset = false
-    doAdd(result)
+  override final def doReset(): Unit = {
+    child.reset()
   }
-
-  def doAdd(result: T): Unit
-
-  final def reset(): Unit = {
-    if (!reset) {
-      doReset()
-      reset = true
-    }
-  }
-
-  def doReset(): Unit
 }
