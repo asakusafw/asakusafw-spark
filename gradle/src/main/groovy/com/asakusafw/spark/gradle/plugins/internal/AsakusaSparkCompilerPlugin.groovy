@@ -167,6 +167,8 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                 outputDirectory = { project.file(spark.outputDirectory) }
                 failOnError = { spark.failOnError }
             }
+            project.tasks.compileBatchapp.dependsOn task
+            project.tasks.jarBatchapp.from { task.outputDirectory }
         }
         extendVersionsTask()
         PluginUtils.afterEvaluate(project) {
