@@ -78,6 +78,22 @@ class AsakusaSparkOrganizerPluginTest {
      * test for extension.
      */
     @Test
+    void extension_override_yaess_iterative() {
+        AsakusafwOrganizerPluginConvention root = project.asakusafwOrganizer
+        assert root.yaess.iterativeEnabled == true
+        assert root.profiles.dev.yaess.iterativeEnabled == true
+        assert root.profiles.prod.yaess.iterativeEnabled == true
+
+        root.profiles.testing {
+            // ok
+        }
+        assert root.profiles.testing.yaess.iterativeEnabled == true
+    }
+
+    /**
+     * test for extension.
+     */
+    @Test
     void extension_inherited() {
         AsakusafwOrganizerPluginConvention root = project.asakusafwOrganizer
         AsakusafwOrganizerSparkExtension extension = root.spark
