@@ -15,6 +15,7 @@
  */
 package com.asakusafw.spark.tools
 
+import scala.collection.GenTraversable
 import scala.collection.generic.Growable
 import scala.collection.mutable
 import scala.reflect.{ ClassTag, NameTransformer }
@@ -159,9 +160,9 @@ package object asm4s {
     }
 
     private[asm4s] def result(implicit mb: MethodBuilder): Stack = {
-      if (values.isEmpty) {
-        pushObject(Seq).invokeV("empty",
-          if (indexed) classOf[IndexedSeq[_]].asType else classOf[Seq[_]].asType)
+      (if (values.isEmpty) {
+        pushObject(if (indexed) IndexedSeq else Seq)
+          .invokeV("empty", classOf[GenTraversable[_]].asType)
       } else {
         val builder = (if (indexed) pushObject(IndexedSeq) else pushObject(Seq))
           .invokeV("newBuilder", classOf[mutable.Builder[_, _]].asType)
@@ -174,8 +175,8 @@ package object asm4s {
             value().asType(classOf[AnyRef].asType))
         }
         builder.invokeI("result", classOf[AnyRef].asType)
-          .cast(if (indexed) classOf[IndexedSeq[_]].asType else classOf[Seq[_]].asType)
-      }
+      })
+        .cast(if (indexed) classOf[IndexedSeq[_]].asType else classOf[Seq[_]].asType)
     }
   }
 
