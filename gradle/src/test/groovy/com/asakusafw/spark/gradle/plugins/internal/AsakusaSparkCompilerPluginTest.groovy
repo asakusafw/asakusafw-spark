@@ -15,7 +15,12 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
+import java.util.concurrent.Callable
+
+import org.gradle.api.Buildable
 import org.gradle.api.Project
+import org.gradle.api.Task
+import org.gradle.api.tasks.TaskDependency
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Rule
 import org.junit.Test
@@ -143,5 +148,35 @@ class AsakusaSparkCompilerPluginTest {
 
         spark.failOnError = false
         assert task.failOnError == spark.failOnError
+    }
+
+    /**
+     * Test for {@code project.tasks.compileBatchapp}.
+     */
+    @Test
+    void tasks_compileBatchapp() {
+        Task task = project.tasks.findByName('compileBatchapp')
+        assert task != null
+        assert dependencies(task).contains('sparkCompileBatchapps')
+    }
+
+    Set<String> dependencies(Task task) {
+        return task.getDependsOn().collect { toTaskNames(task, it) }.flatten().toSet()
+    }
+
+    Collection<String> toTaskNames(Task origin, Object value) {
+        if (value instanceof Task) {
+            return [ value.name ]
+        } else if (value instanceof Callable<?>) {
+            return toTaskNames(origin, value.call() ?: [])
+        } else if (value instanceof TaskDependency) {
+            return value.getDependencies(origin).collect { it.name }
+        } else if (value instanceof Buildable) {
+            return toTaskNames(origin, value.buildDependencies)
+        } else if (value instanceof Collection<?> || value instanceof Object[]) {
+            return value.collect { toTaskNames(origin, it) }.flatten()
+        } else {
+            return [ String.valueOf(value) ]
+        }
     }
 }
