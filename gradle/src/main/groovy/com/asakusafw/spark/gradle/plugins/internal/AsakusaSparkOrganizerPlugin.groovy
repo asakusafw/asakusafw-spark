@@ -42,7 +42,7 @@ class AsakusaSparkOrganizerPlugin implements Plugin<Project> {
         project.apply plugin: 'asakusafw-organizer'
         project.apply plugin: AsakusaSparkBasePlugin
 
-        configureDefaultConvention()
+        configureConvention()
         configureProfiles()
         configureTasks()
     }
@@ -55,11 +55,14 @@ class AsakusaSparkOrganizerPlugin implements Plugin<Project> {
         return organizers
     }
 
-    private void configureDefaultConvention() {
+    private void configureConvention() {
         AsakusafwOrganizerPluginConvention convention = project.asakusafwOrganizer
         convention.extensions.create('spark', AsakusafwOrganizerSparkExtension)
         convention.spark.conventionMapping.with {
             enabled = { true }
+        }
+        convention.yaess.conventionMapping.with {
+            iterativeEnabled = { true }
         }
     }
 
