@@ -277,6 +277,12 @@ final class TypeArgumentSignatureBuilder private[asm] (sv: SignatureVisitor)
     }
   }
 
+  def newTypeArgument(wildcard: Char, name: String): this.type = {
+    newTypeArgument(wildcard) {
+      _.newTypeVariable(name)
+    }
+  }
+
   def newTypeArgument(wildcard: Char)(block: TypeSignatureBuilder => Unit): this.type = {
     sv.visitTypeArgument(wildcard)
     block(new TypeSignatureBuilder(sv))

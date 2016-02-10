@@ -14,27 +14,18 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime.fragment
+package user.join
 
-import com.asakusafw.runtime.core.Result
+import com.asakusafw.runtime.flow.{ ArrayListBuffer, ListBuffer }
 import com.asakusafw.runtime.model.DataModel
 
-abstract class Fragment[T] extends Result[T] {
+trait MasterBranch[M <: DataModel[M], T <: DataModel[T], E <: Enum[E]] extends Join[M, T] {
 
-  private[this] var reset: Boolean = true
+  def children: Map[E, Fragment[T]]
 
-  override final def add(result: T): Unit = {
-    reset = false
-    doAdd(result)
+  override def join(master: M, tx: T): Unit = {
+    children(branch(master, tx)).add(tx)
   }
 
-  def doAdd(result: T): Unit
-
-  final def reset(): Unit = {
-    if (!reset) {
-      doReset()
-      reset = true
-    }
-  }
-
-  def doReset(): Unit
+  def branch(master: M, tx: T): E
 }

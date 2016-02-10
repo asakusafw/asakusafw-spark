@@ -18,9 +18,10 @@ package operator
 package core
 
 import org.apache.spark.broadcast.Broadcast
-import org.objectweb.asm.{ Opcodes, Type }
+import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.graph.BroadcastId
@@ -30,21 +31,12 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class CoreOperatorFragmentClassBuilder(
   dataModelType: Type,
   val childDataModelType: Type)(
-    implicit context: OperatorCompiler.Context)
-  extends FragmentClassBuilder(dataModelType) {
+    signature: Option[ClassSignatureBuilder],
+    superType: Type)(
+      implicit context: OperatorCompiler.Context)
+  extends FragmentClassBuilder(dataModelType)(signature, superType) {
 
-  override def defFields(fieldDef: FieldDef): Unit = {
-    super.defFields(fieldDef)
-
-    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "child", classOf[Fragment[_]].asType,
-      new TypeSignatureBuilder()
-        .newClassType(classOf[Fragment[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, childDataModelType)
-        })
-    fieldDef.newField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL, "childDataModel", childDataModelType)
-  }
-
-  override def defConstructors(ctorDef: ConstructorDef): Unit = {
+  override final def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(
       Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType, classOf[Fragment[_]].asType),
       new MethodSignatureBuilder()
@@ -59,21 +51,8 @@ abstract class CoreOperatorFragmentClassBuilder(
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, childDataModelType)
           }
         }
-        .newVoidReturnType()) { implicit mb =>
-        val thisVar :: broadcastsVar :: childVar :: _ = mb.argVars
-
-        thisVar.push().invokeInit(superType)
-        thisVar.push().putField("child", childVar.push())
-        thisVar.push().putField("childDataModel", pushNew0(childDataModelType))
-        initReset()
-      }
+        .newVoidReturnType())(defCtor()(_))
   }
 
-  override def defReset()(implicit mb: MethodBuilder): Unit = {
-    val thisVar :: _ = mb.argVars
-    unlessReset {
-      thisVar.push().getField("child", classOf[Fragment[_]].asType).invokeV("reset")
-    }
-    `return`()
-  }
+  def defCtor()(implicit mb: MethodBuilder): Unit
 }

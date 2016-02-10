@@ -14,27 +14,22 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime.fragment
+package user
 
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 
-abstract class Fragment[T] extends Result[T] {
+abstract class ExtractOperatorFragment[T <: DataModel[T]](
+  children: IndexedSeq[Fragment[_]])
+  extends Fragment[T] {
 
-  private[this] var reset: Boolean = true
-
-  override final def add(result: T): Unit = {
-    reset = false
-    doAdd(result)
+  override def doAdd(result: T): Unit = {
+    extract(result, children)
   }
 
-  def doAdd(result: T): Unit
+  def extract(input: T, outputs: IndexedSeq[Result[_]]): Unit
 
-  final def reset(): Unit = {
-    if (!reset) {
-      doReset()
-      reset = true
-    }
+  override def doReset(): Unit = {
+    children.foreach(_.reset())
   }
-
-  def doReset(): Unit
 }

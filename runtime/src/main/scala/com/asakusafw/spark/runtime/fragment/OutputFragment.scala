@@ -38,12 +38,12 @@ abstract class OutputFragment[T <: DataModel[T] with Writable](bufferSize: Int)
     buf
   }
 
-  override def reset(): Unit = {
+  override def doReset(): Unit = {
     buf.shrink()
     buf.begin()
   }
 
-  override def add(result: T): Unit = {
+  override def doAdd(result: T): Unit = {
     if (buf.isExpandRequired()) {
       buf.expand(newDataModel())
     }
@@ -63,7 +63,7 @@ abstract class OutputFragment[T <: DataModel[T] with Writable](bufferSize: Int)
         if (hasnext) {
           if (!iter.hasNext) {
             hasnext = false
-            reset()
+            doReset()
           }
         }
         hasnext

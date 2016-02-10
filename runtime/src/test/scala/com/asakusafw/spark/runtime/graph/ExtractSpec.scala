@@ -339,7 +339,7 @@ object ExtractSpec {
 
     class BranchFragment(foo1Output: Fragment[Foo], foo2Output: Fragment[Foo]) extends Fragment[Foo] {
 
-      override def add(foo: Foo): Unit = {
+      override def doAdd(foo: Foo): Unit = {
         if (foo.id.get % 2 == 0) {
           foo1Output.add(foo)
         } else {
@@ -347,7 +347,7 @@ object ExtractSpec {
         }
       }
 
-      override def reset(): Unit = {
+      override def doReset(): Unit = {
         foo1Output.reset()
         foo2Output.reset()
       }
@@ -409,7 +409,7 @@ object ExtractSpec {
 
     class BranchFragment(bar1Output: Fragment[Bar], bar2Output: Fragment[Bar]) extends Fragment[Bar] {
 
-      override def add(bar: Bar): Unit = {
+      override def doAdd(bar: Bar): Unit = {
         if (bar.id.get % 100 % 3 == 0) {
           bar1Output.add(bar)
         } else {
@@ -417,7 +417,7 @@ object ExtractSpec {
         }
       }
 
-      override def reset(): Unit = {
+      override def doReset(): Unit = {
         bar1Output.reset()
         bar2Output.reset()
       }

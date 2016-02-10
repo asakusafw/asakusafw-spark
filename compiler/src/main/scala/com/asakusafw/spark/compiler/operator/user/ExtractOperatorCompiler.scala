@@ -20,12 +20,16 @@ package user
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.ExtractOperatorFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.vocabulary.operator.Extract
 
 class ExtractOperatorCompiler extends UserOperatorCompiler {
@@ -78,23 +82,65 @@ private class ExtractOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Extract.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
-    operator.outputs) {
-
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    getOperatorField()
-      .invokeV(
-        operator.methodDesc.getName,
-        dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-          +: operator.outputs.map { output =>
-            getOutputField(output).asType(classOf[Result[_]].asType)
+    operator.outputs)(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[ExtractOperatorFragment[_]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(Extract.ID_INPUT).dataModelType)
           }
-          ++: operator.arguments.map { argument =>
-            Option(argument.value).map { value =>
-              ldc(value)(ClassTag(argument.resolveClass), implicitly)
-            }.getOrElse {
-              pushNull(argument.resolveClass.asType)
-            }
-          }: _*)
-    `return`()
+        }),
+    classOf[ExtractOperatorFragment[_]].asType) {
+
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ :: fragmentVars = mb.argVars
+
+    thisVar.push().invokeInit(
+      superType,
+      buildIndexedSeq { builder =>
+        fragmentVars.foreach {
+          builder += _.push()
+        }
+      })
+  }
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod(
+      "extract",
+      Seq(classOf[DataModel[_]].asType, classOf[IndexedSeq[Result[_]]].asType)) { implicit mb =>
+        val thisVar :: inputVar :: outputsVar :: _ = mb.argVars
+        thisVar.push().invokeV(
+          "extract",
+          inputVar.push().cast(dataModelType),
+          outputsVar.push())
+        `return`()
+      }
+
+    methodDef.newMethod(
+      "extract",
+      Seq(dataModelType, classOf[IndexedSeq[Result[_]]].asType)) { implicit mb =>
+        val thisVar :: inputVar :: outputsVar :: _ = mb.argVars
+
+        getOperatorField()
+          .invokeV(
+            operator.methodDesc.getName,
+            inputVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+              +: (0 until operator.outputs.size).map { i =>
+                applySeq(outputsVar.push(), ldc(i)).asType(classOf[Result[_]].asType)
+              }
+              ++: operator.arguments.map { argument =>
+                Option(argument.value).map { value =>
+                  ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                }.getOrElse {
+                  pushNull(argument.resolveClass.asType)
+                }
+              }: _*)
+
+        `return`()
+      }
   }
 }

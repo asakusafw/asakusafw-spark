@@ -17,8 +17,6 @@ package com.asakusafw.spark.compiler
 package operator
 package user
 
-import scala.concurrent.Future
-
 import org.apache.spark.broadcast.Broadcast
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
@@ -34,12 +32,13 @@ abstract class UserOperatorFragmentClassBuilder(
   dataModelType: Type,
   val operatorType: Type,
   val operatorOutputs: Seq[OperatorOutput])(
-    implicit context: OperatorCompiler.Context)
-  extends FragmentClassBuilder(dataModelType)
-  with OperatorField
-  with OutputFragments {
+    signature: Option[ClassSignatureBuilder],
+    superType: Type)(
+      implicit context: OperatorCompiler.Context)
+  extends FragmentClassBuilder(dataModelType)(signature, superType)
+  with OperatorField {
 
-  override def defConstructors(ctorDef: ConstructorDef): Unit = {
+  override final def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(
       classOf[Map[BroadcastId, Broadcast[_]]].asType
         +: (0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
@@ -61,16 +60,8 @@ abstract class UserOperatorFragmentClassBuilder(
               }
             }
         })
-        .newVoidReturnType()) { implicit mb =>
-
-        val thisVar :: broadcastsVar :: tailVars = mb.argVars
-
-        thisVar.push().invokeInit(superType)
-        initReset()
-        initOutputFields(tailVars)
-        initFields()
-      }
+        .newVoidReturnType())(defCtor()(_))
   }
 
-  def initFields()(implicit mb: MethodBuilder): Unit = {}
+  def defCtor()(implicit mb: MethodBuilder): Unit
 }

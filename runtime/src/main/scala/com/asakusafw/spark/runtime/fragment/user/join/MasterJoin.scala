@@ -14,27 +14,28 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime.fragment
+package user.join
 
-import com.asakusafw.runtime.core.Result
+import com.asakusafw.runtime.flow.{ ArrayListBuffer, ListBuffer }
 import com.asakusafw.runtime.model.DataModel
 
-abstract class Fragment[T] extends Result[T] {
+trait MasterJoin[M <: DataModel[M], T <: DataModel[T], J <: DataModel[J]] extends Join[M, T] {
 
-  private[this] var reset: Boolean = true
+  def missed: Fragment[T]
 
-  override final def add(result: T): Unit = {
-    reset = false
-    doAdd(result)
-  }
+  def joined: Fragment[J]
 
-  def doAdd(result: T): Unit
+  def joinedDataModel: J
 
-  final def reset(): Unit = {
-    if (!reset) {
-      doReset()
-      reset = true
+  override def join(master: M, tx: T): Unit = {
+    if (master != null) { // scalastyle:ignore
+      joinedDataModel.reset()
+      join(master, tx, joinedDataModel)
+      joined.add(joinedDataModel)
+    } else {
+      missed.add(tx)
     }
   }
 
-  def doReset(): Unit
+  def join(master: M, tx: T, joined: J): Unit
 }

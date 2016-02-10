@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package operator
-package user
+package operator.user
 package join
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.join.ShuffledMasterCheckOperatorFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 
@@ -52,12 +53,42 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
         operator.outputs.map(_.dataModelType).mkString("(", ",", ")")
       } [${operator}]")
 
-    val builder =
-      new ShuffledJoinOperatorFragmentClassBuilder(
-        operator,
-        operator.inputs(MasterCheckOp.ID_INPUT_MASTER),
-        operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION)) with MasterCheck
+    val builder = new ShuffledMasterCheckOperatorFragmentClassBuilder(operator)
 
     context.addClass(builder)
+  }
+}
+
+private class ShuffledMasterCheckOperatorFragmentClassBuilder(
+  operator: UserOperator)(
+    implicit val context: OperatorCompiler.Context)
+  extends JoinOperatorFragmentClassBuilder(
+    classOf[IndexedSeq[Iterator[_]]].asType,
+    operator,
+    operator.inputs(MasterCheckOp.ID_INPUT_MASTER),
+    operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION))(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[ShuffledMasterCheckOperatorFragment[_, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType)
+          }
+        }),
+    classOf[ShuffledMasterCheckOperatorFragment[_, _]].asType)
+  with ShuffledJoin
+  with MasterCheck {
+
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: broadcastsVar :: fragmentVars = mb.argVars
+
+    thisVar.push().invokeInit(
+      superType,
+      fragmentVars(MasterCheckOp.ID_OUTPUT_MISSED).push(),
+      fragmentVars(MasterCheckOp.ID_OUTPUT_FOUND).push())
   }
 }

@@ -20,9 +20,12 @@ package user
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.UpdateOperatorFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.Update
@@ -83,24 +86,56 @@ private class UpdateOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Update.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
-    operator.outputs) {
+    operator.outputs)(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[UpdateOperatorFragment[_]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(Update.ID_INPUT).dataModelType)
+          }
+        }),
+    classOf[UpdateOperatorFragment[_]].asType) {
 
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    getOperatorField()
-      .invokeV(
-        operator.methodDesc.getName,
-        dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-          +: operator.arguments.map { argument =>
-            Option(argument.value).map { value =>
-              ldc(value)(ClassTag(argument.resolveClass), implicitly)
-            }.getOrElse {
-              pushNull(argument.resolveClass.asType)
-            }
-          }: _*)
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ :: fragmentVars = mb.argVars
+    thisVar.push().invokeInit(
+      superType,
+      fragmentVars(Update.ID_OUTPUT).push())
+  }
 
-    getOutputField(operator.outputs.head)
-      .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-    `return`()
+    methodDef.newMethod(
+      "update",
+      Seq(classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: inputVar :: _ = mb.argVars
+        thisVar.push().invokeV(
+          "update",
+          inputVar.push().cast(dataModelType))
+        `return`()
+      }
+
+    methodDef.newMethod(
+      "update",
+      Seq(dataModelType)) { implicit mb =>
+        val thisVar :: inputVar :: _ = mb.argVars
+
+        getOperatorField()
+          .invokeV(
+            operator.methodDesc.getName,
+            inputVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+              +: operator.arguments.map { argument =>
+                Option(argument.value).map { value =>
+                  ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                }.getOrElse {
+                  pushNull(argument.resolveClass.asType)
+                }
+              }: _*)
+
+        `return`()
+      }
   }
 }

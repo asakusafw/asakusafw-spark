@@ -30,6 +30,7 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput, UserOperator }
 import com.asakusafw.lang.compiler.planning.PlanMarker
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.graph.BroadcastId
@@ -45,31 +46,8 @@ trait BroadcastJoin
 
   implicit def context: OperatorCompiler.Context
 
-  def masterInput: OperatorInput
-  def txInput: OperatorInput
-
-  def operator: UserOperator
-
-  override def defFields(fieldDef: FieldDef): Unit = {
-    super.defFields(fieldDef)
-
-    fieldDef.newField("masters", classOf[Map[_, _]].asType,
-      new TypeSignatureBuilder()
-        .newClassType(classOf[Map[_, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(classOf[Seq[_]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF, masterType)
-              }
-            }
-        })
-  }
-
-  override def initFields()(implicit mb: MethodBuilder): Unit = {
-    super.initFields()
-
+  protected def masters()(implicit mb: MethodBuilder): Stack = {
     val thisVar :: broadcastsVar :: _ = mb.argVars
-
     val marker: Option[MarkerOperator] = {
       val opposites = masterInput.getOpposites
       assert(opposites.size <= 1,
@@ -87,93 +65,58 @@ trait BroadcastJoin
         operator.asInstanceOf[MarkerOperator]
       }
     }
-
-    thisVar.push().putField(
-      "masters",
-      marker.map { marker =>
-        applyMap(
-          broadcastsVar.push(), context.broadcastIds.getField(marker))
-          .cast(classOf[Broadcast[_]].asType)
-          .invokeV("value", classOf[AnyRef].asType)
-          .cast(classOf[Map[_, _]].asType)
-      }.getOrElse {
-        buildMap(_ => ())
-      })
+    marker.map { marker =>
+      applyMap(
+        broadcastsVar.push(), context.broadcastIds.getField(marker))
+        .cast(classOf[Broadcast[_]].asType)
+        .invokeV("value", classOf[AnyRef].asType)
+        .cast(classOf[Map[_, _]].asType)
+    }.getOrElse {
+      buildMap(_ => ())
+    }
   }
 
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    val thisVar :: _ = mb.argVars
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-    val keyVar = {
-      val dataModelRef = txInput.dataModelRef
-      val group = txInput.getGroup
+    methodDef.newMethod(
+      "key",
+      classOf[AnyRef].asType,
+      Seq(classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: txVar :: _ = mb.argVars
+        `return`(
+          thisVar.push().invokeV("key", classOf[ShuffleKey].asType, txVar.push().cast(txType)))
+      }
 
-      val shuffleKey = pushNew(classOf[ShuffleKey].asType)
-      shuffleKey.dup().invokeInit(
-        if (group.getGrouping.isEmpty) {
-          buildArray(Type.BYTE_TYPE)(_ => ())
-        } else {
-          pushObject(WritableSerDe)
-            .invokeV("serialize", classOf[Array[Byte]].asType,
-              buildSeq { builder =>
-                for {
-                  propertyName <- group.getGrouping
-                  property = dataModelRef.findProperty(propertyName)
-                } {
-                  builder +=
-                    dataModelVar.push().invokeV(
-                      property.getDeclaration.getName, property.getType.asType)
-                }
-              })
-        },
-        buildArray(Type.BYTE_TYPE)(_ => ()))
-      shuffleKey.store()
-    }
+    methodDef.newMethod(
+      "key",
+      classOf[ShuffleKey].asType,
+      Seq(txType)) { implicit mb =>
+        val thisVar :: txVar :: _ = mb.argVars
 
-    val mastersVar =
-      thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType)
-        .invokeI("contains", Type.BOOLEAN_TYPE, keyVar.push().asType(classOf[AnyRef].asType))
-        .ifTrue({
-          pushObject(JavaConversions)
-            .invokeV("seqAsJavaList", classOf[JList[_]].asType,
-              applyMap(
-                thisVar.push().getField("masters", classOf[Map[ShuffleKey, Seq[_]]].asType),
-                keyVar.push())
-                .cast(classOf[Seq[_]].asType))
-        }, {
-          pushNew0(classOf[ArrayList[_]].asType).asType(classOf[JList[_]].asType)
-        })
-        .store()
+        val dataModelRef = txInput.dataModelRef
+        val group = txInput.getGroup
 
-    val selectedVar = (masterSelection match {
-      case Some((name, t)) =>
-        getOperatorField()
-          .invokeV(
-            name,
-            t.getReturnType(),
-            ({ () => mastersVar.push() } +:
-              { () => dataModelVar.push() } +:
-              operator.arguments.map { argument =>
-                Option(argument.value).map { value =>
-                  () => ldc(value)(ClassTag(argument.resolveClass), implicitly)
-                }.getOrElse {
-                  () => pushNull(argument.resolveClass.asType)
-                }
-              }).zip(t.getArgumentTypes()).map {
-                case (s, t) => s().asType(t)
-              }: _*)
-      case None =>
-        pushObject(DefaultMasterSelection)
-          .invokeV(
-            "select",
-            classOf[AnyRef].asType,
-            mastersVar.push(),
-            dataModelVar.push().asType(classOf[AnyRef].asType))
-          .cast(masterType)
-    }).store()
-
-    join(selectedVar, dataModelVar)
-
-    `return`()
+        val shuffleKey = pushNew(classOf[ShuffleKey].asType)
+        shuffleKey.dup().invokeInit(
+          if (group.getGrouping.isEmpty) {
+            buildArray(Type.BYTE_TYPE)(_ => ())
+          } else {
+            pushObject(WritableSerDe)
+              .invokeV("serialize", classOf[Array[Byte]].asType,
+                buildSeq { builder =>
+                  for {
+                    propertyName <- group.getGrouping
+                    property = dataModelRef.findProperty(propertyName)
+                  } {
+                    builder +=
+                      txVar.push().invokeV(
+                        property.getDeclaration.getName, property.getType.asType)
+                  }
+                })
+          },
+          buildArray(Type.BYTE_TYPE)(_ => ()))
+        `return`(shuffleKey)
+      }
   }
 }

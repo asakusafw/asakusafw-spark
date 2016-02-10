@@ -29,58 +29,17 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 abstract class FragmentClassBuilder(
   val dataModelType: Type)(
-    implicit context: OperatorCompiler.Context)
+    signature: Option[ClassSignatureBuilder],
+    superType: Type)(
+      implicit context: OperatorCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/Fragment$$${nextId};"),
-    new ClassSignatureBuilder()
-      .newSuperclass {
-        _.newClassType(classOf[Fragment[_]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
-        }
-      },
-    classOf[Fragment[_]].asType) {
-
-  override def defFields(fieldDef: FieldDef): Unit = {
-    super.defFields(fieldDef)
-
-    fieldDef.newField(Opcodes.ACC_PRIVATE, "reset", Type.BOOLEAN_TYPE)
-  }
-
-  protected def initReset()(implicit mb: MethodBuilder): Unit = {
-    val thisVar :: _ = mb.argVars
-    thisVar.push().putField("reset", ldc(true))
-  }
-
-  override def defMethods(methodDef: MethodDef): Unit = {
-    super.defMethods(methodDef)
-
-    methodDef.newMethod("add", Seq(classOf[AnyRef].asType)) { implicit mb =>
-      val thisVar :: resultVar :: _ = mb.argVars
-      thisVar.push().invokeV("add", resultVar.push().cast(dataModelType))
-      `return`()
-    }
-
-    methodDef.newMethod("add", Seq(dataModelType)) { implicit mb =>
-      val thisVar :: dataModelVar :: _ = mb.argVars
-      thisVar.push().putField("reset", ldc(false))
-      defAddMethod(dataModelVar)
-    }
-
-    methodDef.newMethod("reset", Seq.empty)(defReset()(_))
-  }
-
-  def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit
-  def defReset()(implicit mb: MethodBuilder): Unit
-
-  protected def unlessReset(b: => Unit)(implicit mb: MethodBuilder): Unit = {
-    val thisVar :: _ = mb.argVars
-    thisVar.push().getField("reset", Type.BOOLEAN_TYPE).unlessTrue {
-      b
-      thisVar.push().putField("reset", ldc(true))
-    }
-  }
-}
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/${
+        val superClassName = superType.getClassName
+        superClassName.substring(superClassName.lastIndexOf('.') + 1)
+      }$$${nextId};"),
+    signature,
+    superType)
 
 object FragmentClassBuilder {
 

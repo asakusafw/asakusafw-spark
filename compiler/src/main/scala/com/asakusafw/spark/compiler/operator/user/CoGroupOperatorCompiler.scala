@@ -22,12 +22,15 @@ import java.util.{ List => JList }
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 
-import org.objectweb.asm.{ Opcodes, Type }
+import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.CoGroupOperatorFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
@@ -83,34 +86,20 @@ private class CoGroupOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     classOf[IndexedSeq[Iterator[_]]].asType,
     operator.implementationClass.asType,
-    operator.outputs) {
+    operator.outputs)(
+    None,
+    classOf[CoGroupOperatorFragment].asType) {
 
   val inputBuffer =
     operator.annotationDesc.getElements()("inputBuffer").resolve(context.classLoader)
       .asInstanceOf[InputBuffer]
 
-  override def defFields(fieldDef: FieldDef): Unit = {
-    super.defFields(fieldDef)
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ :: fragmentVars = mb.argVars
 
-    fieldDef.newField(
-      Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
-      "buffers",
-      classOf[Array[ListBuffer[_]]].asType,
-      new TypeSignatureBuilder()
-        .newArrayType {
-          _.newClassType(classOf[ListBuffer[_]].asType) {
-            _.newTypeArgument()
-          }
-        })
-  }
-
-  override def initFields()(implicit mb: MethodBuilder): Unit = {
-    super.initFields()
-
-    val thisVar :: _ = mb.argVars
-
-    thisVar.push().putField("buffers",
-      buildArray(classOf[ListBuffer[_]].asType) { builder =>
+    thisVar.push().invokeInit(
+      superType,
+      buildIndexedSeq { builder =>
         for {
           input <- operator.inputs
         } {
@@ -120,65 +109,77 @@ private class CoGroupOperatorFragmentClassBuilder(
               case InputBuffer.ESCAPE => classOf[FileMapListBuffer[_]].asType
             })
         }
+      },
+      buildIndexedSeq { builder =>
+        fragmentVars.foreach {
+          builder += _.push()
+        }
       })
   }
 
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    val thisVar :: _ = mb.argVars
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
 
-    val bufferVars = operator.inputs.zipWithIndex.map {
-      case (input, i) =>
-        val iterVar = applySeq(dataModelVar.push(), ldc(i))
-          .cast(classOf[Iterator[_]].asType)
-          .store()
-        val bufferVar = thisVar.push()
-          .getField("buffers", classOf[Array[ListBuffer[_]]].asType)
-          .aload(ldc(i))
-          .store()
-        bufferVar.push().invokeI("begin")
-
-        whileLoop(iterVar.push().invokeI("hasNext", Type.BOOLEAN_TYPE)) { ctrl =>
-          bufferVar.push().invokeI("isExpandRequired", Type.BOOLEAN_TYPE).unlessFalse {
-            bufferVar.push().invokeI(
-              "expand", pushNew0(input.dataModelType).asType(classOf[AnyRef].asType))
-          }
-          bufferVar.push().invokeI("advance", classOf[AnyRef].asType)
-            .cast(input.dataModelType)
-            .invokeV(
-              "copyFrom",
-              iterVar.push().invokeI("next", classOf[AnyRef].asType)
-                .cast(input.dataModelType))
-        }
-
-        bufferVar.push().invokeI("end")
-        bufferVar
-    }
-
-    getOperatorField()
-      .invokeV(
-        operator.methodDesc.getName,
-        bufferVars.map(_.push().asType(classOf[JList[_]].asType))
-          ++ operator.outputs.map { output =>
-            getOutputField(output).asType(classOf[Result[_]].asType)
-          }
-          ++ operator.arguments.map { argument =>
-            Option(argument.value).map { value =>
-              ldc(value)(ClassTag(argument.resolveClass), implicitly)
-            }.getOrElse {
-              pushNull(argument.resolveClass.asType)
+    methodDef.newMethod(
+      "newDataModelFor",
+      classOf[DataModel[_ <: DataModel[_]]].asType,
+      Seq(Type.INT_TYPE),
+      new MethodSignatureBuilder()
+        .newFormalTypeParameter("T") {
+          _.newInterfaceBound {
+            _.newClassType(classOf[DataModel[_]].asType) {
+              _.newTypeArgument(SignatureVisitor.INSTANCEOF, "T")
             }
-          }: _*)
+          }
+        }
+        .newReturnType {
+          _.newTypeVariable("T")
+        }) { implicit mb =>
+        val thisVar :: iVar :: _ = mb.argVars
+        operator.inputs.zipWithIndex.foreach {
+          case (input, i) =>
+            iVar.push().unlessNe(ldc(i)) {
+              `return`(thisVar.push().invokeV(s"newDataModelFor${i}", input.dataModelType))
+            }
+        }
+        `throw`(pushNew0(classOf[AssertionError].asType))
+      }
 
-    val iVar = ldc(0).store()
-    loop { ctrl =>
-      iVar.push().unlessLessThan(ldc(operator.inputs.size))(ctrl.break())
-      thisVar.push()
-        .getField("buffers", classOf[Array[ListBuffer[_]]].asType)
-        .aload(iVar.push())
-        .invokeI("shrink")
-      iVar.inc(1)
+    operator.inputs.zipWithIndex.map {
+      case (input, i) =>
+        methodDef.newMethod(
+          s"newDataModelFor${i}",
+          input.dataModelType,
+          Seq.empty) { implicit mb =>
+            `return`(pushNew0(input.dataModelType))
+          }
     }
 
-    `return`()
+    methodDef.newMethod(
+      "cogroup",
+      Seq(
+        classOf[IndexedSeq[ListBuffer[_ <: DataModel[_]]]].asType,
+        classOf[IndexedSeq[Result[_]]].asType)) { implicit mb =>
+        val thisVar :: buffersVar :: outputsVar :: _ = mb.argVars
+
+        getOperatorField()
+          .invokeV(
+            operator.methodDesc.getName,
+            (0 until operator.inputs.size).map { i =>
+              applySeq(buffersVar.push(), ldc(i)).cast(classOf[JList[_]].asType)
+            }
+              ++ (0 until operator.outputs.size).map { i =>
+                applySeq(outputsVar.push(), ldc(i)).cast(classOf[Result[_]].asType)
+              }
+              ++ operator.arguments.map { argument =>
+                Option(argument.value).map { value =>
+                  ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                }.getOrElse {
+                  pushNull(argument.resolveClass.asType)
+                }
+              }: _*)
+
+        `return`()
+      }
   }
 }

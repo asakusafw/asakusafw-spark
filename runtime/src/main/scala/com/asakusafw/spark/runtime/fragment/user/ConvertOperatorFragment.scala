@@ -14,27 +14,23 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime.fragment
+package user
 
-import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 
-abstract class Fragment[T] extends Result[T] {
+abstract class ConvertOperatorFragment[T <: DataModel[T], U <: DataModel[U]](
+  original: Fragment[T], converted: Fragment[U])
+  extends Fragment[T] {
 
-  private[this] var reset: Boolean = true
-
-  override final def add(result: T): Unit = {
-    reset = false
-    doAdd(result)
+  override def doAdd(result: T): Unit = {
+    original.add(result)
+    converted.add(convert(result))
   }
 
-  def doAdd(result: T): Unit
+  def convert(input: T): U
 
-  final def reset(): Unit = {
-    if (!reset) {
-      doReset()
-      reset = true
-    }
+  override def doReset(): Unit = {
+    original.reset()
+    converted.reset()
   }
-
-  def doReset(): Unit
 }

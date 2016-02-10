@@ -83,7 +83,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
       bar.id.modify(10)
       bar.fooId.modify(10)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 0)
       val highs = high.iterator.toSeq
@@ -102,7 +102,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
       bar.id.modify(10)
       bar.fooId.modify(1)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 1)
       assert(lows.head.id.get === 10)
@@ -150,7 +150,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
         bar.fooId.modify(10)
         bar
       }
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 5)
       assert(lows.map(_.id.get) === (1 until 10 by 2))
@@ -170,7 +170,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
       bar.id.modify(10)
       bar.fooId.modify(1)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 1)
       assert(lows.head.id.get === 10)
@@ -216,7 +216,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
       bar.id.modify(10)
       bar.fooId.modify(10)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 0)
       val highs = high.iterator.toSeq
@@ -235,7 +235,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
       bar.id.modify(10)
       bar.fooId.modify(1)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 1)
       assert(lows.head.id.get === 10)
@@ -283,7 +283,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
         bar.fooId.modify(10)
         bar
       }
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 5)
       assert(lows.map(_.id.get) === (1 until 10 by 2))
@@ -303,7 +303,7 @@ class ShuffledMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompil
       bar.id.modify(10)
       bar.fooId.modify(1)
       val bars = Seq(bar)
-      fragment.add(Seq(foos.iterator, bars.iterator))
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
       val lows = low.iterator.toSeq
       assert(lows.size === 1)
       assert(lows.head.id.get === 10)

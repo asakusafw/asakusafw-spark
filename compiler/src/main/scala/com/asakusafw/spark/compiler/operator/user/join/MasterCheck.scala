@@ -14,28 +14,6 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package operator
-package user
-package join
+package operator.user.join
 
-import scala.reflect.ClassTag
-
-import org.objectweb.asm.Type
-
-import com.asakusafw.lang.compiler.model.graph.UserOperator
-import com.asakusafw.spark.tools.asm._
-import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
-
-trait MasterCheck extends JoinOperatorFragmentClassBuilder {
-
-  def operator: UserOperator
-
-  override def join(masterVar: Var, txVar: Var)(implicit mb: MethodBuilder): Unit = {
-    masterVar.push().ifNull({
-      getOutputField(operator.outputs(MasterCheckOp.ID_OUTPUT_MISSED))
-    }, {
-      getOutputField(operator.outputs(MasterCheckOp.ID_OUTPUT_FOUND))
-    }).invokeV("add", txVar.push().asType(classOf[AnyRef].asType))
-  }
-}
+trait MasterCheck extends JoinOperatorFragmentClassBuilder

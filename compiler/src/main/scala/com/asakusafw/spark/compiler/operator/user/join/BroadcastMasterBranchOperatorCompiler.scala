@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.compiler
-package operator
-package user
+package operator.user
 package join
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.join.BroadcastMasterBranchOperatorFragment
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
+import com.asakusafw.spark.tools.asm._
+import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.vocabulary.operator.{ MasterBranch => MasterBranchOp }
 
 class BroadcastMasterBranchOperatorCompiler extends UserOperatorCompiler {
@@ -67,12 +72,59 @@ class BroadcastMasterBranchOperatorCompiler extends UserOperatorCompiler {
           ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       }) [${operator}]")
 
-    val builder =
-      new BroadcastJoinOperatorFragmentClassBuilder(
-        operator,
-        operator.inputs(MasterBranchOp.ID_INPUT_MASTER),
-        operator.inputs(MasterBranchOp.ID_INPUT_TRANSACTION)) with MasterBranch
+    val builder = new BroadcastMasterBranchOperatorFragmentClassBuilder(operator)
 
     context.addClass(builder)
+  }
+}
+
+private class BroadcastMasterBranchOperatorFragmentClassBuilder(
+  operator: UserOperator)(
+    implicit val context: OperatorCompiler.Context)
+  extends JoinOperatorFragmentClassBuilder(
+    operator.inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType,
+    operator,
+    operator.inputs(MasterBranchOp.ID_INPUT_MASTER),
+    operator.inputs(MasterBranchOp.ID_INPUT_TRANSACTION))(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[BroadcastMasterBranchOperatorFragment[_, _, _, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.inputs(MasterBranchOp.ID_INPUT_MASTER).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.methodDesc.asType.getReturnType)
+          }
+        }),
+    classOf[BroadcastMasterBranchOperatorFragment[_, _, _, _]].asType)
+  with BroadcastJoin
+  with MasterBranch {
+
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: broadcastsVar :: fragmentVars = mb.argVars
+
+    val branchOutputMap = operator.branchOutputMap
+
+    thisVar.push().invokeInit(
+      superType,
+      masters(),
+      buildMap { builder =>
+        operatorOutputs.zip(fragmentVars).foreach {
+          case (output, fragmentVar) =>
+            val enum = branchOutputMap(output)
+            builder += (
+              getStatic(
+                operator.methodDesc.asType.getReturnType,
+                enum.name,
+                operator.methodDesc.asType.getReturnType),
+                fragmentVar.push())
+        }
+      })
   }
 }

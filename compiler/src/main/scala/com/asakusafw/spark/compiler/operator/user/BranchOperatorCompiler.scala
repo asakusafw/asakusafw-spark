@@ -20,11 +20,15 @@ package user
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.fragment.user.BranchOperatorFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.vocabulary.operator.Branch
 
 class BranchOperatorCompiler extends UserOperatorCompiler {
@@ -82,36 +86,80 @@ private class BranchOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Branch.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
-    operator.outputs) {
-
-  override def defAddMethod(dataModelVar: Var)(implicit mb: MethodBuilder): Unit = {
-    val branch = getOperatorField()
-      .invokeV(
-        operator.methodDesc.name,
-        operator.methodDesc.asType.getReturnType,
-        dataModelVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-          +: operator.arguments.map { argument =>
-            Option(argument.value).map { value =>
-              ldc(value)(ClassTag(argument.resolveClass), implicitly)
-            }.getOrElse {
-              pushNull(argument.resolveClass.asType)
-            }
-          }: _*)
-    branch.dup().unlessNotNull {
-      `throw`(pushNew0(classOf[NullPointerException].asType))
-    }
-    operator.branchOutputMap.foreach {
-      case (output, enum) =>
-        branch.dup().unlessNe(
-          getStatic(
-            operator.methodDesc.asType.getReturnType,
-            enum.name,
-            operator.methodDesc.asType.getReturnType)) {
-            getOutputField(output)
-              .invokeV("add", dataModelVar.push().asType(classOf[AnyRef].asType))
-            `return`()
+    operator.outputs)(
+    Option(
+      new ClassSignatureBuilder()
+        .newSuperclass {
+          _.newClassType(classOf[BranchOperatorFragment[_, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(Branch.ID_INPUT).dataModelType)
+              .newTypeArgument(
+                SignatureVisitor.INSTANCEOF,
+                operator.methodDesc.asType.getReturnType)
           }
-    }
-    `throw`(pushNew0(classOf[AssertionError].asType))
+        }),
+    classOf[BranchOperatorFragment[_, _]].asType) {
+
+  override def defCtor()(implicit mb: MethodBuilder): Unit = {
+    val thisVar :: _ :: fragmentVars = mb.argVars
+
+    val branchOutputMap = operator.branchOutputMap
+
+    thisVar.push().invokeInit(
+      superType,
+      buildMap { builder =>
+        operatorOutputs.zip(fragmentVars).foreach {
+          case (output, fragmentVar) =>
+            val enum = branchOutputMap(output)
+            builder += (
+              getStatic(
+                operator.methodDesc.asType.getReturnType,
+                enum.name,
+                operator.methodDesc.asType.getReturnType),
+                fragmentVar.push())
+        }
+      })
+  }
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod(
+      "branch",
+      classOf[Enum[_]].asType,
+      Seq(classOf[DataModel[_]].asType)) { implicit mb =>
+        val thisVar :: dmVar :: _ = mb.argVars
+        `return`(
+          thisVar.push().invokeV(
+            "branch",
+            operator.methodDesc.asType.getReturnType,
+            dmVar.push().cast(dataModelType)))
+      }
+
+    methodDef.newMethod(
+      "branch",
+      operator.methodDesc.asType.getReturnType,
+      Seq(dataModelType)) { implicit mb =>
+        val thisVar :: dmVar :: _ = mb.argVars
+
+        val branch = getOperatorField()
+          .invokeV(
+            operator.methodDesc.name,
+            operator.methodDesc.asType.getReturnType,
+            dmVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
+              +: operator.arguments.map { argument =>
+                Option(argument.value).map { value =>
+                  ldc(value)(ClassTag(argument.resolveClass), implicitly)
+                }.getOrElse {
+                  pushNull(argument.resolveClass.asType)
+                }
+              }: _*)
+        branch.dup().unlessNotNull {
+          `throw`(pushNew0(classOf[NullPointerException].asType))
+        }
+
+        `return`(branch)
+      }
   }
 }
