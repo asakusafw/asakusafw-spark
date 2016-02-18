@@ -123,7 +123,6 @@ artifacts {
     archives tasks.sourcesJar
 }
 
-task wrapper(type: Wrapper) {
-    gradleVersion '2.3'
+tasks.withType(Wrapper) {
     jarFile file('.buildtools/gradlew.jar')
 }
