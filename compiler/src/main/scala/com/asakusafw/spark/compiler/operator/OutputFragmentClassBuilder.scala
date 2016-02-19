@@ -55,13 +55,19 @@ class OutputFragmentClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
+    methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }) { implicit mb =>
+        val thisVar :: _ = mb.argVars
+        `return`(thisVar.push().invokeV("newDataModel", dataModelType))
+      }
+
     methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { implicit mb =>
       `return`(pushNew0(dataModelType))
-    }
-
-    methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { implicit mb =>
-      val thisVar :: _ = mb.argVars
-      `return`(thisVar.push().invokeV("newDataModel", dataModelType))
     }
   }
 }

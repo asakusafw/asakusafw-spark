@@ -128,7 +128,18 @@ private class BranchOperatorFragmentClassBuilder(
     methodDef.newMethod(
       "branch",
       classOf[Enum[_]].asType,
-      Seq(classOf[DataModel[_]].asType)) { implicit mb =>
+      Seq(classOf[DataModel[_]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newReturnType {
+          _.newClassType(classOf[Enum[_]].asType) {
+            _.newTypeArgument()
+          }
+        }) { implicit mb =>
         val thisVar :: dmVar :: _ = mb.argVars
         `return`(
           thisVar.push().invokeV(

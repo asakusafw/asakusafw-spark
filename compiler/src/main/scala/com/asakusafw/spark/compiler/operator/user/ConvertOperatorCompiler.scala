@@ -108,7 +108,18 @@ private class ConvertOperatorFragmentClassBuilder(
     methodDef.newMethod(
       "convert",
       classOf[DataModel[_]].asType,
-      Seq(classOf[DataModel[_]].asType)) { implicit mb =>
+      Seq(classOf[DataModel[_]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newReturnType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }) { implicit mb =>
         val thisVar :: inputVar :: _ = mb.argVars
         `return`(
           thisVar.push().invokeV(
