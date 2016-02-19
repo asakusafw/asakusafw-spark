@@ -22,6 +22,7 @@ import java.util.{ List => JList }
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, OperatorOutput, UserOperator }
 import com.asakusafw.runtime.flow.ListBuffer
@@ -54,7 +55,27 @@ abstract class JoinOperatorFragmentClassBuilder(
     methodDef.newMethod(
       "masterSelection",
       classOf[DataModel[_]].asType,
-      Seq(classOf[JList[_]].asType, classOf[DataModel[_]].asType)) { implicit mb =>
+      Seq(classOf[JList[_]].asType, classOf[DataModel[_]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[JList[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[DataModel[_]].asType) {
+                _.newTypeArgument()
+              }
+            }
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newReturnType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }) { implicit mb =>
         val thisVar :: mastersVar :: txVar :: _ = mb.argVars
         `return`(
           thisVar.push().invokeV(
@@ -67,7 +88,15 @@ abstract class JoinOperatorFragmentClassBuilder(
     methodDef.newMethod(
       "masterSelection",
       masterType,
-      Seq(classOf[JList[_]].asType, txType)) { implicit mb =>
+      Seq(classOf[JList[_]].asType, txType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[JList[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, masterType)
+          }
+        }
+        .newParameterType(txType)
+        .newReturnType(masterType)) { implicit mb =>
         val thisVar :: mastersVar :: txVar :: _ = mb.argVars
         `return`(
           operator.selectionMethod match {

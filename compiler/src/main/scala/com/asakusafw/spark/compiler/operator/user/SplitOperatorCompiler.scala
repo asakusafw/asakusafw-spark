@@ -110,7 +110,24 @@ private class SplitOperatorFragmentClassBuilder(
       Seq(
         classOf[DataModel[_]].asType,
         classOf[DataModel[_]].asType,
-        classOf[DataModel[_]].asType)) { implicit mb =>
+        classOf[DataModel[_]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newVoidReturnType()) { implicit mb =>
         val thisVar :: inputVar :: leftVar :: rightVar :: _ = mb.argVars
         thisVar.push().invokeV(
           "split",

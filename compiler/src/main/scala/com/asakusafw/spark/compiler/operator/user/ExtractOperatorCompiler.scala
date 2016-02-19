@@ -111,7 +111,23 @@ private class ExtractOperatorFragmentClassBuilder(
 
     methodDef.newMethod(
       "extract",
-      Seq(classOf[DataModel[_]].asType, classOf[IndexedSeq[Result[_]]].asType)) { implicit mb =>
+      Seq(classOf[DataModel[_]].asType, classOf[IndexedSeq[Result[_]]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[IndexedSeq[Result[_]]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[Result[_]].asType) {
+                _.newTypeArgument()
+              }
+            }
+          }
+        }
+        .newVoidReturnType()) { implicit mb =>
         val thisVar :: inputVar :: outputsVar :: _ = mb.argVars
         thisVar.push().invokeV(
           "extract",

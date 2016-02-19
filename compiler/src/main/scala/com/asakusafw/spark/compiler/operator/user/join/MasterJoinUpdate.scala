@@ -36,7 +36,19 @@ trait MasterJoinUpdate extends JoinOperatorFragmentClassBuilder {
 
     methodDef.newMethod(
       "update",
-      Seq(classOf[DataModel[_]].asType, classOf[DataModel[_]].asType)) { implicit mb =>
+      Seq(classOf[DataModel[_]].asType, classOf[DataModel[_]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newVoidReturnType()) { implicit mb =>
         val thisVar :: masterVar :: txVar :: _ = mb.argVars
         thisVar.push().invokeV(
           "update",

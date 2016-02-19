@@ -29,7 +29,13 @@ trait ShuffledJoin
     methodDef.newMethod(
       "newMasterDataModel",
       classOf[DataModel[_]].asType,
-      Seq.empty) { implicit mb =>
+      Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }) { implicit mb =>
         val thisVar :: _ = mb.argVars
         `return`(thisVar.push().invokeV("newMasterDataModel", masterType))
       }

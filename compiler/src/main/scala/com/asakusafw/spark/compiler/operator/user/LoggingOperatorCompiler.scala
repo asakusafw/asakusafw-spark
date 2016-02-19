@@ -107,7 +107,14 @@ private class LoggingOperatorFragmentClassBuilder(
 
     methodDef.newMethod(
       "logging",
-      Seq(classOf[DataModel[_]].asType)) { implicit mb =>
+      Seq(classOf[DataModel[_]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[DataModel[_]].asType) {
+            _.newTypeArgument()
+          }
+        }
+        .newVoidReturnType()) { implicit mb =>
         val thisVar :: inputVar :: _ = mb.argVars
         thisVar.push().invokeV(
           "logging",
