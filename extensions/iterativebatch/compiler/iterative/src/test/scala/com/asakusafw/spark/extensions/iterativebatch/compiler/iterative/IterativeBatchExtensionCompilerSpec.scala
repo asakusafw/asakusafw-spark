@@ -51,7 +51,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.SparkClientCompiler
+import com.asakusafw.spark.compiler.{ GeneratedClassPackageInternalName, SparkClientCompiler }
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Update
@@ -198,7 +198,9 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
     try {
       val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
       Thread.currentThread.setContextClassLoader(classloader)
-      val cls = Class.forName("com.asakusafw.generated.spark.flowId.IterativeBatchSparkClient", true, classloader)
+      val cls = Class.forName(
+        s"${GeneratedClassPackageInternalName.replaceAll("/", ".")}.flowId.IterativeBatchSparkClient",
+        true, classloader)
         .asSubclass(classOf[SparkClient])
       val instance = cls.newInstance()
 
