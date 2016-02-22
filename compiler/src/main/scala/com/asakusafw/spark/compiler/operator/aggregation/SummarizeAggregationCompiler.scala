@@ -58,7 +58,8 @@ private class SummarizeAggregationClassBuilder(
     implicit context: AggregationCompiler.Context)
   extends AggregationClassBuilder(
     operator.inputs(Summarize.ID_INPUT).dataModelType,
-    operator.outputs(Summarize.ID_OUTPUT).dataModelType) {
+    operator.outputs(Summarize.ID_OUTPUT).dataModelType)(
+    AggregationClassBuilder.AggregationType.Summarize) {
 
   val propertyFoldings =
     SummarizedModelUtil.getPropertyFoldings(context.classLoader, operator).toSeq

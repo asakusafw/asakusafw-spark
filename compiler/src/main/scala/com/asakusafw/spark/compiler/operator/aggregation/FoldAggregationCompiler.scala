@@ -80,7 +80,8 @@ private class FoldAggregationClassBuilder(
     implicit context: AggregationCompiler.Context)
   extends AggregationClassBuilder(
     operator.inputs(Fold.ID_INPUT).dataModelType,
-    operator.outputs(Fold.ID_OUTPUT).dataModelType)
+    operator.outputs(Fold.ID_OUTPUT).dataModelType)(
+    AggregationClassBuilder.AggregationType.Fold)
   with OperatorField {
 
   val operatorType = operator.implementationClass.asType

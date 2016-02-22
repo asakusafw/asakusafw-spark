@@ -18,6 +18,8 @@ package graph
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.mutable
+
 import org.apache.spark.SparkContext
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
@@ -104,7 +106,9 @@ abstract class TemporaryInputClassBuilder(
 
 object TemporaryInputClassBuilder {
 
-  private[this] val curId: AtomicLong = new AtomicLong(0L)
+  private[this] val curIds: mutable.Map[NodeCompiler.Context, AtomicLong] =
+    mutable.WeakHashMap.empty
 
-  def nextId: Long = curId.getAndIncrement
+  def nextId(implicit context: NodeCompiler.Context): Long =
+    curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
 }

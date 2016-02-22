@@ -34,10 +34,11 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class AggregationClassBuilder(
   val valueType: Type,
   val combinerType: Type)(
-    implicit context: AggregationCompiler.Context)
+    val aggregationType: AggregationType)(
+      implicit context: AggregationCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/Aggregation$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/${nextName(aggregationType)};"), // scalastyle:ignore
     new ClassSignatureBuilder()
       .newSuperclass {
         _.newClassType(classOf[Aggregation[_, _, _]].asType) {
@@ -143,9 +144,23 @@ abstract class AggregationClassBuilder(
 
 object AggregationClassBuilder {
 
-  private[this] val curId: AtomicLong = new AtomicLong(0L)
+  trait AggregationType
 
-  def nextId: Long = curId.getAndIncrement
+  object AggregationType {
+    case object Fold extends AggregationType
+    case object Summarize extends AggregationType
+  }
+
+  private[this] val curIds: mutable.Map[AggregationCompiler.Context, mutable.Map[AggregationType, AtomicLong]] = // scalastyle:ignore
+    mutable.WeakHashMap.empty
+
+  def nextName(aggregationType: AggregationType)(implicit context: AggregationCompiler.Context): String = {
+    s"${aggregationType}Aggregation$$${
+      curIds.getOrElseUpdate(context, mutable.Map.empty)
+        .getOrElseUpdate(aggregationType, new AtomicLong(0))
+        .getAndIncrement()
+    }"
+  }
 
   private[this] val cache: mutable.Map[AggregationCompiler.Context, mutable.Map[(String, Long), Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
