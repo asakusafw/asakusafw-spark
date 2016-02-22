@@ -154,7 +154,9 @@ object AggregationClassBuilder {
   private[this] val curIds: mutable.Map[AggregationCompiler.Context, mutable.Map[AggregationType, AtomicLong]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
-  def nextName(aggregationType: AggregationType)(implicit context: AggregationCompiler.Context): String = {
+  def nextName(
+    aggregationType: AggregationType)(
+      implicit context: AggregationCompiler.Context): String = {
     s"${aggregationType}Aggregation$$${
       curIds.getOrElseUpdate(context, mutable.Map.empty)
         .getOrElseUpdate(aggregationType, new AtomicLong(0))
