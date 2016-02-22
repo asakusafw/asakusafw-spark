@@ -19,6 +19,7 @@ package graph
 import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.concurrent.Future
 
 import org.apache.spark.{ Partitioner, SparkContext }
@@ -192,7 +193,9 @@ abstract class AggregateClassBuilder(
 
 object AggregateClassBuilder {
 
-  private[this] val curId: AtomicLong = new AtomicLong(0L)
+  private[this] val curIds: mutable.Map[NodeCompiler.Context, AtomicLong] =
+    mutable.WeakHashMap.empty
 
-  def nextId: Long = curId.getAndIncrement
+  def nextId(implicit context: NodeCompiler.Context): Long =
+    curIds.getOrElseUpdate(context, new AtomicLong(0)).getAndIncrement()
 }

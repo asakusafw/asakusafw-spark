@@ -18,6 +18,8 @@ package operator
 
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.mutable
+
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -34,16 +36,22 @@ abstract class FragmentClassBuilder(
       implicit context: OperatorCompiler.Context)
   extends ClassBuilder(
     Type.getType(
-      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/${
-        val superClassName = superType.getClassName
-        superClassName.substring(superClassName.lastIndexOf('.') + 1)
-      }$$${nextId};"),
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/${nextName(superType)};"),
     signature,
     superType)
 
 object FragmentClassBuilder {
 
-  private[this] val curId: AtomicLong = new AtomicLong(0L)
+  private[this] val curIds: mutable.Map[OperatorCompiler.Context, mutable.Map[String, AtomicLong]] = // scalastyle:ignore
+    mutable.WeakHashMap.empty
 
-  def nextId: Long = curId.getAndIncrement
+  def nextName(superType: Type)(implicit context: OperatorCompiler.Context): String = {
+    val superClassName = superType.getClassName
+    val simpleName = superClassName.substring(superClassName.lastIndexOf('.') + 1)
+    s"${simpleName}$$${
+      curIds.getOrElseUpdate(context, mutable.Map.empty)
+        .getOrElseUpdate(simpleName, new AtomicLong(0))
+        .getAndIncrement()
+    }"
+  }
 }

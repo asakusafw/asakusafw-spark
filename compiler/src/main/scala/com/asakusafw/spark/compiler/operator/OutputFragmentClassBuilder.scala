@@ -74,9 +74,11 @@ class OutputFragmentClassBuilder(
 
 object OutputFragmentClassBuilder {
 
-  private[this] val curId: AtomicLong = new AtomicLong(0L)
+  private[this] val curIds: mutable.Map[OperatorCompiler.Context, AtomicLong] =
+    mutable.WeakHashMap.empty
 
-  def nextId: Long = curId.getAndIncrement
+  def nextId(implicit context: OperatorCompiler.Context): Long =
+    curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
 
   private[this] val cache: mutable.Map[OperatorCompiler.Context, mutable.Map[(String, Type), Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty

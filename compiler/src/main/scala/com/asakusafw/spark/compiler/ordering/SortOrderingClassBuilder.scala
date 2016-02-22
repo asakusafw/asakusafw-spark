@@ -112,9 +112,11 @@ class SortOrderingClassBuilder(
 
 object SortOrderingClassBuilder {
 
-  private[this] val curId: AtomicLong = new AtomicLong(0L)
+  private[this] val curIds: mutable.Map[CompilerContext, AtomicLong] =
+    mutable.WeakHashMap.empty
 
-  def nextId: Long = curId.getAndIncrement
+  def nextId(implicit context: CompilerContext): Long =
+    curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
 
   private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Type, Seq[(Type, Boolean)]), Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
