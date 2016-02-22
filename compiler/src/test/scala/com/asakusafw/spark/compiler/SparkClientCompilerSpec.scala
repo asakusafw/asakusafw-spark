@@ -1270,7 +1270,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     try {
       val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)
       Thread.currentThread.setContextClassLoader(classloader)
-      val cls = Class.forName("com.asakusafw.generated.spark.flowId.SparkClient", true, classloader)
+      val cls = Class.forName(
+        s"${GeneratedClassPackageInternalName.replaceAll("/", ".")}.flowId.SparkClient",
+        true, classloader)
         .asSubclass(classOf[SparkClient])
       val instance = cls.newInstance()
 

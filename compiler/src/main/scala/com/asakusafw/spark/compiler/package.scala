@@ -32,7 +32,7 @@ import com.asakusafw.spark.tools.asm._
 
 package object compiler {
 
-  val GeneratedClassPackageInternalName = "com/asakusafw/generated/spark"
+  val GeneratedClassPackageInternalName = "com/asakusafw/spark/generated"
 
   implicit class AugmentedTypeDescription(val desc: TypeDescription) extends AnyVal {
 
