@@ -159,7 +159,31 @@ private class CoGroupOperatorFragmentClassBuilder(
       "cogroup",
       Seq(
         classOf[IndexedSeq[ListBuffer[_ <: DataModel[_]]]].asType,
-        classOf[IndexedSeq[Result[_]]].asType)) { implicit mb =>
+        classOf[IndexedSeq[Result[_]]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[IndexedSeq[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[ListBuffer[_]].asType) {
+                _.newTypeArgument(SignatureVisitor.EXTENDS) {
+                  _.newClassType(classOf[DataModel[_]].asType) {
+                    _.newTypeArgument()
+                  }
+                }
+              }
+            }
+          }
+        }
+        .newParameterType {
+          _.newClassType(classOf[IndexedSeq[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
+              _.newClassType(classOf[Result[_]].asType) {
+                _.newTypeArgument()
+              }
+            }
+          }
+        }
+        .newVoidReturnType()) { implicit mb =>
         val thisVar :: buffersVar :: outputsVar :: _ = mb.argVars
 
         getOperatorField()
