@@ -471,6 +471,70 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
+    it should s"compile IterativeBatchExecutor with StopFragment: [${conf}]" in { implicit sc =>
+      val path = createTempDirectoryForEach("test-").toFile
+
+      prepareData("foos", path) {
+        sc.parallelize(0 until 100).map(Foo.intToFoo)
+      }
+
+      val inputOperator = ExternalInput
+        .newInstance("foos/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "test",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val extractOperator = OperatorExtractor
+        .extract(classOf[Extract], classOf[Ops], "extract")
+        .input("foo", ClassDescription.of(classOf[Foo]), roundFoo.findOutput("output"))
+        .output("evenResult", ClassDescription.of(classOf[Foo]))
+        .output("oddResult", ClassDescription.of(classOf[Foo]))
+        .build()
+
+      val evenOutputOperator = ExternalOutput
+        .newInstance("even", extractOperator.findOutput("evenResult"))
+
+      val graph = new OperatorGraph(Seq(
+        inputOperator,
+        extractOperator,
+        evenOutputOperator))
+
+      val executorType = compile(flowId, graph, 2, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
+      execute(flowId, executorType, rounds)
+
+      for {
+        round <- rounds
+      } {
+        {
+          val result = readResult[Foo](evenOutputOperator.getName, round, path)
+            .map { foo =>
+              (foo.id.get, foo.foo.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(result ===
+            (0 until 100).filter(_ % 2 == 0).map(i => (100 * round + i, s"foo${100 * round + i}")))
+        }
+      }
+    }
+  }
+
+  for {
+    iterativeExtension <- Seq(
+      new IterativeExtension(),
+      new IterativeExtension("round"))
+  } {
+    val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
+
     it should s"compile IterativeBatchExecutor with CoGroup: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 

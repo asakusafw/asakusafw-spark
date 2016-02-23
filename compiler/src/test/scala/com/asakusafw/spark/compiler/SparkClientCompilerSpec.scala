@@ -354,6 +354,52 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
       }
     }
 
+    it should s"compile Spark client with StopFragment: ${configuration}" in {
+      val (path, classpath) = createTempDirs()
+
+      spark { implicit sc =>
+        prepareData("foo", path) {
+          sc.parallelize(0 until 100).map(Foo.intToFoo)
+        }
+      }
+
+      val inputOperator = ExternalInput
+        .newInstance("foo/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "test",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val extractOperator = OperatorExtractor
+        .extract(classOf[Extract], classOf[Ops], "extract")
+        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .output("evenResult", ClassDescription.of(classOf[Foo]))
+        .output("oddResult", ClassDescription.of(classOf[Foo]))
+        .build()
+
+      val evenOutputOperator = ExternalOutput
+        .newInstance("even", extractOperator.findOutput("evenResult"))
+
+      val graph = new OperatorGraph(Seq(
+        inputOperator,
+        extractOperator,
+        evenOutputOperator))
+
+      compile(graph, 2, path, classpath)
+      execute(classpath, threshold, parallelism)
+
+      spark { implicit sc =>
+        {
+          val result = readResult[Foo]("even", path)
+            .map { foo =>
+              (foo.id.get, foo.foo.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(result === (0 until 100).filter(_ % 2 == 0).map(i => (i, s"foo${i}")))
+        }
+      }
+    }
+
     it should s"compile Spark client with CoGroup: ${configuration}" in {
       val (path, classpath) = createTempDirs()
 
