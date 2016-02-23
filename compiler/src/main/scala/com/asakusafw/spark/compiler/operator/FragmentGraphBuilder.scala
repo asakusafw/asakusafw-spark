@@ -68,7 +68,7 @@ class FragmentGraphBuilder(
   def build(output: OperatorOutput): Var = {
     if (output.getOpposites.size == 0) {
       vars.getOrElseUpdate(-1L, {
-        pushObject(StopFragment).store()
+        pushObject(StopFragment).cast(classOf[StopFragment[_]].asType).store()
       })
     } else if (output.getOpposites.size > 1) {
       val opposites = output.getOpposites.toSeq.map(_.getOwner).map { operator =>
