@@ -83,8 +83,8 @@ abstract class NewHadoopOutput(
 
         val output = prev.map(in => (NullWritable.get, in._2))
 
-        if (Logger.isDebugEnabled()) {
-          Logger.debug(output.toDebugString)
+        if (Logger.isTraceEnabled()) {
+          Logger.trace(output.toDebugString)
         }
 
         output.saveAsNewAPIHadoopDataset(job.getConfiguration)
