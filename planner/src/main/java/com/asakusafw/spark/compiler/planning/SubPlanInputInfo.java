@@ -152,6 +152,8 @@ public class SubPlanInputInfo implements ComplexAttribute {
 
     /**
      * Represents extra attributes for inputs.
+     * @since 0.1.0
+     * @version 0.3.0
      */
     public enum InputOption {
 
@@ -159,5 +161,11 @@ public class SubPlanInputInfo implements ComplexAttribute {
          * Represents whether the target input is a primary one or not.
          */
         PRIMARY,
+
+        /**
+         * Each input group data should be able to spill out of the heap.
+         * @since 0.3.0
+         */
+        SPILL_OUT,
     }
 }

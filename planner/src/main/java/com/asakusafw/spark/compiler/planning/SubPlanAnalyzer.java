@@ -16,6 +16,7 @@
 package com.asakusafw.spark.compiler.planning;
 
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -214,16 +215,15 @@ public class SubPlanAnalyzer {
 
     private SubPlanInputInfo analyze0(SubPlan.Input input) {
         InputType type = computeInputType(input);
+        Set<InputOption> options = computeInputOptions(input, type);
         switch (type) {
         case VOID:
         case DONT_CARE:
         case PREPARE_EXTERNAL_OUTPUT:
-            return new SubPlanInputInfo(input, type, Collections.singleton(InputOption.PRIMARY), null);
         case BROADCAST:
-            return new SubPlanInputInfo(input, type, Collections.<InputOption>emptySet(), null);
+            return new SubPlanInputInfo(input, type, options, null);
         case PARTITIONED:
-            return new SubPlanInputInfo(input, type, Collections.singleton(InputOption.PRIMARY),
-                    computeInputGroup(input));
+            return new SubPlanInputInfo(input, type, options, computeInputGroup(input));
         default:
             throw new AssertionError(type);
         }
@@ -247,6 +247,39 @@ public class SubPlanAnalyzer {
         default:
             throw new AssertionError(type);
         }
+    }
+
+    private Set<InputOption> computeInputOptions(SubPlan.Input input, InputType type) {
+        Set<InputOption> results = EnumSet.noneOf(InputOption.class);
+        switch (type) {
+        case VOID:
+        case DONT_CARE:
+        case PREPARE_EXTERNAL_OUTPUT:
+            results.add(InputOption.PRIMARY);
+            break;
+        case PARTITIONED:
+            results.add(InputOption.PRIMARY);
+            if (isSpillOut(input)) {
+                results.add(InputOption.SPILL_OUT);
+            }
+            break;
+        case BROADCAST:
+            break;
+        default:
+            throw new AssertionError(type);
+        }
+        return results;
+    }
+
+    private boolean isSpillOut(SubPlan.Input input) {
+        for (OperatorInput consumer : input.getOperator().getOutput().getOpposites()) {
+            OperatorClass info = getOperatorClass(consumer.getOwner());
+            OperatorInput resolved = info.getOperator().findInput(consumer.getName());
+            if (info.getAttributes(resolved).contains(InputAttribute.ESCAPED)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Group computeInputGroup(SubPlan.Input input) {
