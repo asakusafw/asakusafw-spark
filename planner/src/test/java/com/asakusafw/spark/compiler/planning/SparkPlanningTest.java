@@ -42,6 +42,7 @@ import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputOption;
 import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputType;
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo.OutputOption;
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo.OutputType;
+import com.asakusafw.vocabulary.flow.processor.InputBuffer;
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation;
 import com.asakusafw.vocabulary.operator.CoGroup;
 import com.asakusafw.vocabulary.operator.Extract;
@@ -171,6 +172,7 @@ in --- *G --- o0 --- *C --- out
         assertThat(s1, not(driverOption(is(DriverOption.PARTIAL))));
         assertThat(input(s1), inputType(is(InputType.PARTITIONED)));
         assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
+        assertThat(input(s1), inputOption(is(not(InputOption.SPILL_OUT))));
         assertThat(input(s1), inputPartition(is(group("=a"))));
         assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
         assertThat(output(s1), outputType(is(OutputType.PREPARE_EXTERNAL_OUTPUT)));
@@ -793,6 +795,50 @@ in --- *G --- o0 --- *C --- out
         }
     }
 
+    /**
+     * co-group spill out.
+<pre>{@code
+in --- o0 --- out
+==>
+in --- *G --- o0 --- *C --- out
+}</pre>
+     */
+    @Test
+    public void cogroup_spill_out() {
+        MockOperators m = new MockOperators();
+        PlanDetail detail = SparkPlanning.plan(context(), m
+            .input("in", DataSize.LARGE)
+            .bless("o0", op(CoGroup.class, "cogroup_escape")
+                    .input("in", m.getCommonDataType(), group("=a"))
+                    .output("out", m.getCommonDataType()))
+                .connect("in", "o0")
+            .output("out").connect("o0", "out")
+            .toGraph());
+        MockOperators mock = restore(detail);
+        Plan plan = detail.getPlan();
+        assertThat(plan.getElements(), hasSize(3));
+
+        SubPlan s0 = ownerOf(detail, mock.get("in"));
+        SubPlan s1 = ownerOf(detail, mock.get("o0"));
+
+        assertThat(output(s0), outputType(is(OutputType.PARTITIONED)));
+        assertThat(output(s0), outputPartition(is(group("=a"))));
+        assertThat(output(s0), outputAggregation(is(nullValue())));
+        assertThat(output(s0), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
+
+        assertThat(info(s1).toString(), s1, primaryOperator(isOperator("o0")));
+        assertThat(s1, driverType(is(DriverType.COGROUP)));
+        assertThat(s1, not(driverOption(is(DriverOption.PARTIAL))));
+        assertThat(input(s1), inputType(is(InputType.PARTITIONED)));
+        assertThat(input(s1), inputOption(is(InputOption.PRIMARY)));
+        assertThat(input(s1), inputOption(is(InputOption.SPILL_OUT)));
+        assertThat(input(s1), inputPartition(is(group("=a"))));
+        assertThat(input(s1), partitionGroupSize(is(PartitionGroupInfo.DataSize.REGULAR)));
+        assertThat(output(s1), outputType(is(OutputType.PREPARE_EXTERNAL_OUTPUT)));
+        assertThat(output(s1), outputPartition(is(nullValue())));
+        assertThat(output(s1), outputAggregation(is(nullValue())));
+    }
+
     static SubPlanInfo info(SubPlan container) {
         SubPlanInfo info = container.getAttribute(SubPlanInfo.class);
         assertThat(String.valueOf(info), info, is(notNullValue()));
@@ -955,6 +1001,9 @@ in --- *G --- o0 --- *C --- out
 
         @CoGroup
         public abstract void cogroup();
+
+        @CoGroup(inputBuffer = InputBuffer.ESCAPE)
+        public abstract void cogroup_escape();
 
         @Fold(partialAggregation = PartialAggregation.PARTIAL)
         public abstract void fold_partial();
