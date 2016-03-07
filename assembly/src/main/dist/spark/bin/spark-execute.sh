@@ -92,11 +92,11 @@ echo "                Flow ID: $_OPT_FLOW_ID"
 echo "           Execution ID: $_OPT_EXECUTION_ID"
 echo "                  Class: $_OPT_CLASS_NAME"
 echo "     ASAKUSA_SPARK_OPTS: $ASAKUSA_SPARK_OPTS"
-echo " ASAKUSA_SPARK_APP_CONF: $ASAKUSA_SPARK_APP_CONF"
+echo "     ASAKUSA_SPARK_ARGS: $ASAKUSA_SPARK_ARGS"
 echo "            SPARK_FILES: ${_SPARK_FILES[@]}"
 echo "        SPARK_APP_FILES: ${_SPARK_APP_FILES[@]}"
 
-export ASAKUSA_SPARK_APP_CONF
+export ASAKUSA_SPARK_ARGS
 
 _SPARK_EXEC=()
 
@@ -120,7 +120,7 @@ _SPARK_EXEC+=("$SPARK_CMD")
     --execution-id "$_OPT_EXECUTION_ID" \
     --batch-arguments "$_OPT_BATCH_ARGUMENTS," \
     "${_SPARK_APP_FILES[@]}" \
-    $ASAKUSA_SPARK_APP_CONF \
+    $ASAKUSA_SPARK_ARGS \
     "$@"
 
 _SPARK_RET=$?
