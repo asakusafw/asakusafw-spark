@@ -32,15 +32,15 @@ Asakusa on Sparkに関するバッチアプリケーション実行時のパラ�
 環境変数
 --------
 
-Asakusa on Sparkに関するバッチアプリケーション実行時のパラメータは、環境変数 ``ASAKUSA_SPARK_APP_CONF`` に設定することもできます。
+Asakusa on Sparkに関するバッチアプリケーション実行時のパラメータは、環境変数 ``ASAKUSA_SPARK_ARGS`` に設定することもできます。
 
-環境変数 ``ASAKUSA_SPARK_APP_CONF`` の値には ``--engine-conf <key>=<value>`` という形式でパラメータを設定します。
+環境変数 ``ASAKUSA_SPARK_ARGS`` の値には ``--engine-conf <key>=<value>`` という形式でパラメータを設定します。
 
 以下は環境変数の設定例です。
 
 ..  code-block:: sh
     
-    ASAKUSA_SPARK_APP_CONF='--engine-conf com.asakusafw.spark.parallelism=40 --engine-conf com.asakusafw.spark.fragment.bufferSize=256'
+    ASAKUSA_SPARK_ARGS='--engine-conf com.asakusafw.spark.parallelism=40 --engine-conf com.asakusafw.spark.fragment.bufferSize=256'
 
 設定ファイルと環境変数で同じプロパティが設定されていた場合、環境変数の値が利用されます。
 
