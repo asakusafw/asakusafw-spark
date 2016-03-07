@@ -20,8 +20,8 @@ object Iterators {
 
   implicit class AugmentedOrderedPairIterator[K, V](val iter: Iterator[(K, V)]) extends AnyVal {
 
-    def groupByOrderedKey()(implicit ord: Ordering[K]): Iterator[(K, Iterator[V])] = {
-      self.groupByOrderedKey[K, V](iter)
+    def groupByKey()(implicit ord: Ordering[K]): Iterator[(K, Iterator[V])] = {
+      self.groupByKey[K, V](iter)
     }
 
     def sortmerge(other: Iterator[(K, V)])(implicit ord: Ordering[K]): Iterator[(K, V)] = {
@@ -29,7 +29,7 @@ object Iterators {
     }
   }
 
-  def groupByOrderedKey[K: Ordering, V](
+  def groupByKey[K: Ordering, V](
     iter: Iterator[(K, V)]): Iterator[(K, Iterator[V])] = {
     val ord = implicitly[Ordering[K]]
     val buff = iter.buffered
@@ -45,12 +45,14 @@ object Iterators {
 
         val key = buff.head._1
 
-        key -> new Iterator[V] {
+        cur = new Iterator[V] {
 
           override def hasNext: Boolean = buff.hasNext && ord.equiv(key, buff.head._1)
 
           override def next(): V = buff.next()._2
         }
+
+        key -> cur
       }
     }
   }

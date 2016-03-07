@@ -80,7 +80,7 @@ package object rdd {
 
         val grouped = rdds.map(shuffle).map(
           _.mapPartitions(
-            _.asInstanceOf[Iterator[(K, Any)]].groupByOrderedKey()(grouping),
+            _.asInstanceOf[Iterator[(K, Any)]].groupByKey()(grouping),
             preservesPartitioning = true))
 
         sequence(grouped)(grouping, implicitly)
