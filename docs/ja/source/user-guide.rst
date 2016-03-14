@@ -69,17 +69,17 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
       - OS
       - JDK
     * - Hortonworks Data Platform
-      - 2.3 (Apache Hadoop 2.7.1)
+      - 2.4 (Apache Hadoop 2.7.1)
       - CentOS 7 (7.1)
-      - JDK 8 (1.8.0_51)
+      - JDK 8 (1.8.0_60)
     * - MapR
       - 5.0.0 (MRv2)
       - CentOS 6 (6.6)
       - JDK 7 (1.7.0_75)
     * - Amazon EMR
-      - AMI 4.1.0
-      - Amazon Linux 2015.03
-      - JDK 7 (1.7.0_85)
+      - AMI 4.3.0
+      - Amazon Linux 2015.09
+      - JDK 7 (1.7.0_95)
 
 Spark
 -----
@@ -96,25 +96,23 @@ Asakusa on Sparkは、Spark 1.6.0 で動作を検証しています。
 
 ..  _`Running Spark on YARN`: https://spark.apache.org/docs/latest/running-on-yarn.html
 
-Asakusa Framework 対応バージョンとコンポーネント
-------------------------------------------------
+Asakusa Framework 対応バージョン
+--------------------------------
 
-Asakusa on Sparkは、Asakusa Framework 0.8.0 以降のバージョンが必要です。
+Asakusa on Spark バージョン |version| は、Asakusa Framework 0.8.0 以降のバージョンが必要です。
 
 ..  warning::
-    上記のバージョンより古いバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`Asakusa Gradle Plugin マイグレーションガイド <application/gradle-plugin.html#vup-gradle-plugin>` を参考にして上記のバージョンにマイグレーションしてください。
+    上記のバージョンより古いバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`Asakusa Gradle Plugin マイグレーションガイド <application/gradle-plugin-migration-guide>` を参考にして上記のバージョンにマイグレーションしてください。
 
-また運用環境で利用するAsakusa Frameworkバージョンは、Hadoop2系向けAsakusa Framework ( ``-hadoop2`` )でのみ動作を検証しています。
+Gradle
+------
 
-アプリケーションのビルドで使用するGradleのバージョンは ``2.8`` に対応しています。これより古いGradleのバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`プロジェクトで利用するGradleのバージョンアップ <application/gradle-plugin.html#vup-gradle-wrapper>` を参考にしてバージョンをあげてください。
+アプリケーションのビルドで使用するGradleのバージョンは ``2.11`` に対応しています。
 
 ..  attention::
     Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を上記のバージョンに設定してください。
 
 ..  _`Shafu`: http://docs.asakusafw.com/jinrikisha/ja/html/shafu.html
-
-..  seealso::
-    Asakusa Frameworkバージョンについては、 :asakusafw:`Asakusa Framework デプロイメントガイド <administration/deployment-guide.html>` などを参照してください。
 
 非対応機能
 ~~~~~~~~~~
@@ -157,11 +155,7 @@ Asakusa on Sparkは、Asakusa Frameworkが提供する以下の機能には対�
 新規に開発環境を構築する場合は、以下のドキュメントなどを参考にして開発環境を準備してください。
 
 * :asakusafw:`Asakusa Framework スタートガイド <introduction/start-guide.html>`
-* :asakusafw:`Asakusa Framework スタートガイド for Windows <introduction/start-guide-windows.html>`
 * :jinrikisha:`Jinrikisha - Asakusa Framework Starter Package - <index.html>`
-
-..  attention::
-    Asakusa on Sparkを利用する場合、開発環境で使用するJavaはJDK7が必要です。JDK6には対応していません。
 
 アプリケーションの開発
 ======================
@@ -191,8 +185,10 @@ Asakusa on Spark Gradle Pluginを有効にするには、アプリケーショ�
 
 ..  literalinclude:: attachment/build.gradle
     :language: groovy
-    :lines: 1-20
-    :emphasize-lines: 6,18
+    :emphasize-lines: 6,13
+
+..  attention::
+    Asakusa Framework 0.8.0 以降では、 アプリケーションプロジェクトのテンプレートや一部のサンプルアプリケーションでは上記の設定があらかじめ設定済みになっています。
 
 アプリケーションのビルド
 ------------------------
@@ -264,7 +260,6 @@ Asakusa on Sparkの実行に環境変数を利用する場合、 :file:`$ASAKUSA
 ----------------------------
 
 デプロイしたバッチアプリケーションをYAESSを使って実行します。
-
 
 :program:`$ASAKUSA_HOME/yaess/bin/yaess-batch.sh` コマンドに実行するバッチIDとバッチ引数を指定してバッチを実行します。
 標準の設定では、Spark向けのバッチアプリケーションはバッチIDの接頭辞に ``spark.`` が付与されているので、このバッチIDを指定します。
