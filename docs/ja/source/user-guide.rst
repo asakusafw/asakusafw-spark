@@ -185,7 +185,7 @@ Asakusa on Spark Gradle Pluginを有効にするには、アプリケーショ�
 
 ..  literalinclude:: attachment/build.gradle
     :language: groovy
-    :emphasize-lines: 6,13
+    :emphasize-lines: 8,15
 
 ..  attention::
     Asakusa Framework 0.8.0 以降では、 アプリケーションプロジェクトのテンプレートや一部のサンプルアプリケーションでは上記の設定があらかじめ設定済みになっています。
