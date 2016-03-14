@@ -84,12 +84,12 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
 Spark
 -----
 
-Asakusa on Sparkは、Spark 1.6.0 で動作を検証しています。
+Asakusa on Spark バージョン |version| は、Spark 1.6.1 で動作を検証しています。
 
 また、Sparkの動作モードとして、YARN cluster mode、および YARN client modeで動作を確認しています。
 
 ..  attention::
-    その他のバージョンを利用して問題が発生した場合は、上記のバージョンを利用してください。
+    Asakusa on Spark バージョン 0.3.0 以降は、 Spark 1.5.2 以前のバージョンでは動作しません。
 
 ..  seealso::
     SparkのYARN上での動作モードについては、Sparkのドキュメント `Running Spark on YARN`_ を参照してください。
@@ -185,7 +185,7 @@ Asakusa on Spark Gradle Pluginを有効にするには、アプリケーショ�
 
 ..  literalinclude:: attachment/build.gradle
     :language: groovy
-    :emphasize-lines: 6,13
+    :emphasize-lines: 8,15
 
 ..  attention::
     Asakusa Framework 0.8.0 以降では、 アプリケーションプロジェクトのテンプレートや一部のサンプルアプリケーションでは上記の設定があらかじめ設定済みになっています。
