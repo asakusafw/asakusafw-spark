@@ -54,10 +54,11 @@ class BranchRDDFunctions[T](val self: RDD[T]) extends AnyVal {
         new BranchedRDD[(K, U)](
           branched,
           partitioners.get(branch).orElse(prepared.partitioner),
-          i => {
+          {
             val offset = branchPartitioner.offsetOf(branch)
             val numPartitions = branchPartitioner.numPartitionsOf(branch)
-            offset <= i && i < offset + numPartitions
+
+            i => offset <= i && i < offset + numPartitions
           })
       }
     }.toMap
@@ -95,9 +96,9 @@ private class BranchKeyOrdering[K](orderings: Map[BranchKey, Ordering[K]])
 }
 
 private class BranchedRDD[T: ClassTag](
-  @transient prev: RDD[T],
-  @transient part: Option[Partitioner],
-  @transient partitionFilterFunc: Int => Boolean)
+  prev: RDD[T],
+  part: Option[Partitioner],
+  partitionFilterFunc: Int => Boolean)
   extends PartitionPruningRDD[T](prev, partitionFilterFunc) {
 
   override val partitioner = part
