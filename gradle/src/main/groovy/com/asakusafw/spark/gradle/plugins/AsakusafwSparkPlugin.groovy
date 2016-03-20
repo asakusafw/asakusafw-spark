@@ -19,7 +19,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 
 import com.asakusafw.gradle.plugins.internal.PluginUtils
-import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkCompilerPlugin
+import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkSdkPlugin
 import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkOrganizerPlugin
 
 /**
@@ -30,7 +30,7 @@ class AsakusafwSparkPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         PluginUtils.afterPluginEnabled(project, 'asakusafw-sdk') {
-            project.apply plugin: AsakusaSparkCompilerPlugin
+            project.apply plugin: AsakusaSparkSdkPlugin
         }
         PluginUtils.afterPluginEnabled(project, 'asakusafw-organizer') {
             project.apply plugin: AsakusaSparkOrganizerPlugin

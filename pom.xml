@@ -61,6 +61,7 @@
     <module>runtime</module>
     <module>tools</module>
     <module>extensions</module>
+    <module>test-adapter</module>
     <module>assembly</module>
   </modules>
 
@@ -452,6 +453,12 @@ encoding/<project>=UTF-8
       </dependency>
       <dependency>
         <groupId>com.asakusafw</groupId>
+        <artifactId>asakusa-test-compiler</artifactId>
+        <version>${asakusafw.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw</groupId>
         <artifactId>asakusa-iterative-common</artifactId>
         <version>${asakusafw.version}</version>
       </dependency>
@@ -499,6 +506,16 @@ encoding/<project>=UTF-8
       <dependency>
         <groupId>com.asakusafw.lang.compiler</groupId>
         <artifactId>asakusa-compiler-hadoop</artifactId>
+        <version>${asakusafw-lang.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw.lang.compiler</groupId>
+        <artifactId>asakusa-compiler-test-adapter</artifactId>
+        <version>${asakusafw-lang.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw.lang.compiler</groupId>
+        <artifactId>asakusa-compiler-extension-redirector</artifactId>
         <version>${asakusafw-lang.version}</version>
       </dependency>
       <dependency>

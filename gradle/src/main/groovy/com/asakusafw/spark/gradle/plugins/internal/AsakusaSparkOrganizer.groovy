@@ -96,7 +96,7 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
             if (spark.isEnabled()) {
                 project.logger.info "Enabling Asakusa on Spark: ${profile.name}"
                 task('attachAssemble').dependsOn task('attachComponentSpark')
-                PluginUtils.afterTaskEnabled(project, AsakusaSparkCompilerPlugin.TASK_COMPILE) { Task compiler ->
+                PluginUtils.afterTaskEnabled(project, AsakusaSparkSdkPlugin.TASK_COMPILE) { Task compiler ->
                     task('attachSparkBatchapps').dependsOn compiler
                     if (profile.batchapps.isEnabled()) {
                         project.logger.info "Enabling Spark Batchapps: ${profile.name}"
