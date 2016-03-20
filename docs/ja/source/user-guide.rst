@@ -164,12 +164,25 @@ Asakusa on Sparkは、Asakusa Frameworkが提供する以下の機能には対�
 
 ここでは、 :asakusafw:`Asakusa Framework スタートガイド <introduction/start-guide.html>` などで使用しているサンプルアプリケーション「カテゴリー別売上金額集計バッチ」をSpark向けにビルドするよう設定します。
 
+プロジェクトテンプレートのダウンロード
+--------------------------------------
+
+Asakusa on Sparkを利用する構成を持つプロジェクトテンプレートは、以下リンクからダウンロードします。
+
+* `asakusa-spark-template-0.3.0.tar.gz <http://www.asakusafw.com/download/gradle-plugin/asakusa-spark-template-0.3.0.tar.gz>`_
+
+また、Asakusa Frameworkの `サンプルプログラム集 (GitHub)`_ では、Asakusa on Sparkを利用する構成を持つサンプルアプリケーションプロジェクトを公開しています。
+
+..  _`サンプルプログラム集 (GitHub)`: http://github.com/asakusafw/asakusafw-examples
+
 Asakusa on Spark Gradle Plugin
 ------------------------------
 
 Asakusa on Spark Gradle Pluginは、アプリケーションプロジェクトに対してAsakusa on Sparkのさまざまな機能を追加します。
 
-Asakusa on Spark Gradle Pluginを有効にするには、アプリケーションプロジェクトのビルドスクリプト ( :file:`build.gradle` )に対して以下の設定を追加します。
+`プロジェクトテンプレートのダウンロード`_ で説明したプロジェクトテンプレートや `サンプルプログラム集 (GitHub)`_ のプロジェクトでは、Asakusa on Spark Gradle Pluginがあらかじめ利用可能になっています。
+
+基本的な構成のみを持つプロジェクトテンプレートからAsakusa on Spark Gradle Pluginを有効にするには、アプリケーションプロジェクトのビルドスクリプト ( :file:`build.gradle` )に対して以下の設定を追加します。
 
 * ``buildscript/dependencis`` ブロックに指定しているAsakusa Gradle Pluginの指定をAsakusa on Spark Gradle Pluginの指定に置き換える。
 
@@ -186,9 +199,6 @@ Asakusa on Spark Gradle Pluginを有効にするには、アプリケーショ�
 ..  literalinclude:: attachment/build.gradle
     :language: groovy
     :emphasize-lines: 8,15
-
-..  attention::
-    Asakusa Framework 0.8.0 以降では、 アプリケーションプロジェクトのテンプレートや一部のサンプルアプリケーションでは上記の設定があらかじめ設定済みになっています。
 
 アプリケーションのビルド
 ------------------------
