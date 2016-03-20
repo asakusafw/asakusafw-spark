@@ -42,7 +42,7 @@ configurations {
 
 repositories {
     if (project.hasProperty('mavenLocal')) {
-        logger.lifecycle "enabling maven local repo"
+        logger.lifecycle 'enabling maven local repository'
         mavenLocal()
     }
     mavenCentral()
@@ -53,6 +53,7 @@ repositories {
 dependencies {
     compile gradleApi()
     compile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: parentPom.pluginVersion
+    testCompile gradleTestKit()
     deployerJars 'org.springframework.build:aws-maven:5.0.0.RELEASE'
 }
 
@@ -66,17 +67,8 @@ tasks.withType(AbstractCompile) { task ->
     }
 }
 
-eclipse.classpath {
-    file {
-        whenMerged { classpath ->
-            classpath.entries.findAll {
-                it.path.contains('org.eclipse.jdt.launching.JRE_CONTAINER')
-            }.each {
-                it.path = "org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-${sourceCompatibility}"
-            }
-            classpath.entries.unique()
-        }
-    }
+eclipse.jdt {
+    javaRuntimeName = 'JavaSE-1.7'
 }
 
 groovydoc {
@@ -85,20 +77,21 @@ groovydoc {
     footer "Copyright 2011-${new Date().format('yyyy')} Asakusa Framework Team."
 }
 
-processResources { t ->
-    t.inputs.property 'version', new HashMap<String, String>(parentPom)
+processResources {
+    File outputFile = new File(destinationDir, 'META-INF/asakusa-spark-gradle/artifact.properties')
+    inputs.properties parentPom
+    outputs.file outputFile
     doLast {
-        logger.info "injecting project version info: ${project.parentPom}"
-        File file = new File(t.destinationDir, 'META-INF/asakusa-spark-gradle/artifact.properties')
-        if (!file.parentFile.exists()) {
-            project.mkdir file.parentFile
+        logger.info "injecting artifact versions: ${parentPom}"
+        if (!outputFile.parentFile.exists()) {
+            project.mkdir outputFile.parentFile
         }
 
         Properties p = new Properties()
         p.put("core-version", parentPom.coreVersion)
         p.put('compiler-version', parentPom.langVersion)
         p.put('spark-compiler-version', parentPom.projectVersion)
-        file.withOutputStream { s ->
+        outputFile.withOutputStream { s ->
             p.store(s, null)
         }
     }
