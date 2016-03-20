@@ -34,9 +34,9 @@ import com.asakusafw.gradle.tasks.AsakusaCompileTask
 import com.asakusafw.gradle.tasks.internal.ResolutionUtils
 
 /**
- * Test for {@link AsakusaSparkCompilerPlugin}.
+ * Test for {@link AsakusaSparkSdkPlugin}.
  */
-class AsakusaSparkCompilerPluginTest {
+class AsakusaSparkSdkPluginTest {
 
     /**
      * The test initializer.
@@ -45,7 +45,7 @@ class AsakusaSparkCompilerPluginTest {
     public final TestRule initializer = new TestRule() {
         Statement apply(Statement stmt, Description desc) {
             project = ProjectBuilder.builder().withName(desc.methodName).build()
-            project.apply plugin: AsakusaSparkCompilerPlugin
+            project.apply plugin: AsakusaSparkSdkPlugin
             return stmt
         }
     }

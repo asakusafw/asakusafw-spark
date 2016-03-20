@@ -23,8 +23,8 @@ import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
-import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkCompilerPlugin
 import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkOrganizerPlugin
+import com.asakusafw.spark.gradle.plugins.internal.AsakusaSparkSdkPlugin
 
 /**
  * Test for {@link AsakusafwSparkPlugin}.
@@ -50,11 +50,11 @@ class AsakusafwSparkPluginTest {
      */
     @Test
     public void activate_asakusafw_sdk() {
-        assert project.plugins.hasPlugin(AsakusaSparkCompilerPlugin) == false
+        assert project.plugins.hasPlugin(AsakusaSparkSdkPlugin) == false
         assert project.plugins.hasPlugin(AsakusaSparkOrganizerPlugin) == false
 
         project.apply plugin: 'asakusafw-sdk'
-        assert project.plugins.hasPlugin(AsakusaSparkCompilerPlugin)
+        assert project.plugins.hasPlugin(AsakusaSparkSdkPlugin)
         assert project.plugins.hasPlugin(AsakusaSparkOrganizerPlugin) == false
     }
 
@@ -63,11 +63,11 @@ class AsakusafwSparkPluginTest {
      */
     @Test
     public void activate_asakusafw_organizer() {
-        assert project.plugins.hasPlugin(AsakusaSparkCompilerPlugin) == false
+        assert project.plugins.hasPlugin(AsakusaSparkSdkPlugin) == false
         assert project.plugins.hasPlugin(AsakusaSparkOrganizerPlugin) == false
 
         project.apply plugin: 'asakusafw-organizer'
-        assert project.plugins.hasPlugin(AsakusaSparkCompilerPlugin) == false
+        assert project.plugins.hasPlugin(AsakusaSparkSdkPlugin) == false
         assert project.plugins.hasPlugin(AsakusaSparkOrganizerPlugin)
     }
 }

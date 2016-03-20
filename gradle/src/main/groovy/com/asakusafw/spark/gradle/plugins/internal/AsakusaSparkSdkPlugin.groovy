@@ -33,9 +33,9 @@ import com.asakusafw.gradle.tasks.AsakusaCompileTask
 import com.asakusafw.gradle.tasks.internal.ResolutionUtils
 
 /**
- * A Gradle sub plug-in for Asakusa on Spark compiler.
+ * A Gradle sub plug-in for Asakusa on Spark SDK.
  */
-class AsakusaSparkCompilerPlugin implements Plugin<Project> {
+class AsakusaSparkSdkPlugin implements Plugin<Project> {
 
     public static final String TASK_COMPILE = 'sparkCompileBatchapps'
 
@@ -77,24 +77,26 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
 
     private void configureConfigurations() {
         project.configurations {
+            asakusaSparkCommon {
+                description 'Common libraries of Asakusa DSL Compiler for Spark'
+                exclude group: 'asm', module: 'asm'
+            }
             asakusaSparkCompiler {
-                description 'Asakusa DSL Compiler for Spark environment'
+                description 'Full classpath of Asakusa DSL Compiler for Spark'
                 extendsFrom project.configurations.compile
+                extendsFrom project.configurations.asakusaSparkCommon
+            }
+            asakusaSparkTestkit {
+                description 'Asakusa DSL testkit classpath for Spark'
+                extendsFrom project.configurations.asakusaSparkCommon
+                exclude group: 'com.asakusafw', module: 'asakusa-test-mapreduce'
             }
         }
         PluginUtils.afterEvaluate(project) {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
             AsakusafwPluginConvention asakusa = project.asakusafw
             project.configurations {
-                asakusaSparkCompiler { Configuration conf ->
-                    base.excludeModules.each { Object moduleInfo ->
-                        project.logger.info "excludes module for Spark compiler: ${moduleInfo}"
-                        if (moduleInfo instanceof Map<?, ?>) {
-                            conf.exclude moduleInfo
-                        } else {
-                            conf.exclude module: moduleInfo
-                        }
-                    }
+                asakusaSparkCommon { Configuration conf ->
                     if (base.customSparkArtifact != null) {
                         conf.resolutionStrategy { ResolutionStrategy strategy ->
                             strategy.eachDependency { DependencyResolveDetails details ->
@@ -106,32 +108,45 @@ class AsakusaSparkCompilerPlugin implements Plugin<Project> {
                         }
                     }
                 }
+                asakusaSparkCompiler { Configuration conf ->
+                    base.excludeModules.each { Object moduleInfo ->
+                        project.logger.info "excludes module for Spark compiler: ${moduleInfo}"
+                        if (moduleInfo instanceof Map<?, ?>) {
+                            conf.exclude moduleInfo
+                        } else {
+                            conf.exclude module: moduleInfo
+                        }
+                    }
+                }
             }
             project.dependencies {
-                asakusaSparkCompiler("com.asakusafw.spark:asakusa-spark-compiler:${base.sparkProjectVersion}") {
+                asakusaSparkCommon("com.asakusafw.spark:asakusa-spark-compiler:${base.sparkProjectVersion}") {
                     exclude module: 'hadoop-client'
                 }
 
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
+                asakusaSparkCommon "com.asakusafw:java-dom:${asakusa.asakusafwVersion}"
+
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.sparkProjectVersion}"
+
                 asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${asakusa.asakusafwVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${asakusa.asakusafwVersion}"
-                asakusaSparkCompiler "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
-                asakusaSparkCompiler "com.asakusafw:java-dom:${asakusa.asakusafwVersion}"
-
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.compilerProjectVersion}"
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.compilerProjectVersion}"
-
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-yaess-core:${asakusa.asakusafwVersion}"
-
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${asakusa.asakusafwVersion}"
-
-                asakusaSparkCompiler "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.compilerProjectVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${asakusa.asakusafwVersion}"
 
-                asakusaSparkCompiler "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.compilerProjectVersion}"
-                asakusaSparkCompiler "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.sparkProjectVersion}"
+                asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-test-adapter:${base.sparkProjectVersion}"
+                asakusaSparkTestkit "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.compilerProjectVersion}"
+                asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-runtime:${base.sparkProjectVersion}"
+                asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.sparkProjectVersion}"
+                asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.sparkProjectVersion}"
             }
         }
     }
