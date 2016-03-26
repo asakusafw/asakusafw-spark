@@ -20,9 +20,11 @@ ext.parentPom = { f ->
     def xml = new XmlSlurper().parse(f)
     return [
         projectVersion : xml.version.text(),
-        pluginVersion : xml['properties']['asakusafw.version'].text().replaceFirst('-hadoop[12]', ''),
         coreVersion : xml['properties']['asakusafw.version'].text(),
+        sdkVersion : xml['properties']['asakusafw-sdk.version'].text(),
         langVersion : xml['properties']['asakusafw-lang.version'].text(),
+        sparkVersion : xml['properties']['spark.version'].text(),
+        hadoopVersion : xml['properties']['hadoop.version'].text(),
     ]
 }(project.file('../pom.xml'))
  
@@ -52,7 +54,7 @@ repositories {
 
 dependencies {
     compile gradleApi()
-    compile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: parentPom.pluginVersion
+    compile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: parentPom.sdkVersion
     testCompile gradleTestKit()
     deployerJars 'org.springframework.build:aws-maven:5.0.0.RELEASE'
 }
@@ -88,9 +90,12 @@ processResources {
         }
 
         Properties p = new Properties()
+        p.put('feature-version', parentPom.projectVersion)
         p.put("core-version", parentPom.coreVersion)
-        p.put('compiler-version', parentPom.langVersion)
-        p.put('spark-compiler-version', parentPom.projectVersion)
+        p.put("sdk-version", parentPom.sdkVersion)
+        p.put('lang-version', parentPom.langVersion)
+        p.put('spark-version', parentPom.sparkVersion)
+        p.put('hadoop-version', parentPom.hadoopVersion)
         outputFile.withOutputStream { s ->
             p.store(s, null)
         }

@@ -18,18 +18,40 @@ package com.asakusafw.spark.gradle.plugins.internal
 /**
  * An extension object for the Asakusa on Spark features.
  * This is only for internal use.
+ * @since 0.1.0
+ * @version 0.3.0
  */
 class AsakusaSparkBaseExtension {
 
     /**
-     * The compiler project version.
-     */
-    String compilerProjectVersion
-
-    /**
      * The Spark project version.
      */
-    String sparkProjectVersion
+    String featureVersion
+
+    /**
+     * The core libraries version.
+     */
+    String coreVersion
+
+    /**
+     * The SDK libraries version.
+     */
+    String sdkVersion
+
+    /**
+     * The compiler libraries version.
+     */
+    String langVersion
+
+    /**
+     * The Spark version.
+     */
+    String sparkVersion
+
+    /**
+     * The Hadoop version.
+     */
+    String hadoopVersion
 
     /**
      * The custom Spark artifact notation (nullable).
