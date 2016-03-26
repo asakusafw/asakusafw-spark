@@ -120,21 +120,21 @@ class AsakusaSparkSdkPlugin implements Plugin<Project> {
                 }
             }
             project.dependencies {
-                asakusaSparkCommon("com.asakusafw.spark:asakusa-spark-compiler:${base.sparkProjectVersion}") {
+                asakusaSparkCommon("com.asakusafw.spark:asakusa-spark-compiler:${base.featureVersion}") {
                     exclude module: 'hadoop-client'
                 }
 
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.compilerProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.langVersion}"
                 asakusaSparkCommon "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
                 asakusaSparkCommon "com.asakusafw:java-dom:${asakusa.asakusafwVersion}"
 
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.compilerProjectVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.compilerProjectVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.compilerProjectVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.compilerProjectVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.compilerProjectVersion}"
-                asakusaSparkCommon "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.compilerProjectVersion}"
-                asakusaSparkCommon "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.sparkProjectVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.langVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.langVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.langVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.langVersion}"
+                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.langVersion}"
+                asakusaSparkCommon "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.langVersion}"
+                asakusaSparkCommon "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.featureVersion}"
 
                 asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${asakusa.asakusafwVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${asakusa.asakusafwVersion}"
@@ -142,11 +142,11 @@ class AsakusaSparkSdkPlugin implements Plugin<Project> {
                 asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${asakusa.asakusafwVersion}"
                 asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${asakusa.asakusafwVersion}"
 
-                asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-test-adapter:${base.sparkProjectVersion}"
-                asakusaSparkTestkit "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.compilerProjectVersion}"
-                asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-runtime:${base.sparkProjectVersion}"
-                asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.sparkProjectVersion}"
-                asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.sparkProjectVersion}"
+                asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-test-adapter:${base.featureVersion}"
+                asakusaSparkTestkit "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.langVersion}"
+                asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-runtime:${base.featureVersion}"
+                asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.featureVersion}"
+                asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.featureVersion}"
             }
         }
     }

@@ -15,6 +15,9 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
+import java.util.Map
+import java.util.Properties
+
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -79,34 +82,67 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
     }
 
     private void configureExtension() {
-        configureArtifactVersion()
+        configureArtifactVersions()
         extension.excludeModules.addAll(EXCLUDE_MODULES)
     }
 
-    private void configureArtifactVersion() {
-        InputStream input = getClass().classLoader.getResourceAsStream(ARTIFACT_INFO_PATH)
-        if (input != null) {
+    private void configureArtifactVersions() {
+        Properties properties = loadProperties(ARTIFACT_INFO_PATH)
+        driveProperties(ARTIFACT_INFO_PATH, [
+            'feature-version': 'Asakusa on Spark',
+            'core-version': 'Asakusa Core libraries',
+            'sdk-version': 'Asakusa SDK',
+            'lang-version': 'Asakusa DSL compiler',
+            'spark-version': 'Apache Spark',
+            'hadoop-version': 'Apache Hadoop',
+        ])
+        project.logger.info "Asakusa on Spark: ${extension.featureVersion}"
+    }
+
+    private void driveProperties(String path, Map<String, String> configurations) {
+        Properties properties = loadProperties(path)
+        configurations.each { String key, String name ->
+            StringBuilder buf = new StringBuilder()
+            boolean sawHyphen = false
+            for (char c : key.toCharArray()) {
+                if (c == '-') {
+                    sawHyphen = true
+                } else {
+                    buf.append(sawHyphen ? Character.toUpperCase(c) : c)
+                    sawHyphen = false
+                }
+            }
+            String prop = buf.toString()
+            assert extension.hasProperty(prop)
+            extension[prop] = extract(properties, key, name)
+        }
+    }
+
+    private String extract(Properties properties, String key, String name) {
+        String value = properties.getProperty(key, INVALID_VERSION)
+        if (value == INVALID_VERSION) {
+            project.logger.warn "failed to detect version of ${name}"
+        } else {
+            project.logger.info "${name} version: ${value}"
+        }
+        return value
+    }
+
+    private Properties loadProperties(String path) {
+        Properties results = new Properties()
+        InputStream input = getClass().classLoader.getResourceAsStream(path)
+        if (input == null) {
+            project.logger.warn "missing properties file: ${path}"
+        } else {
             try {
-                Properties properties = new Properties()
-                properties.load(input)
-                extension.compilerProjectVersion = properties.getProperty('compiler-version', INVALID_VERSION)
-                extension.sparkProjectVersion = properties.getProperty('spark-compiler-version', INVALID_VERSION)
+                results.load(input)
             } catch (IOException e) {
-                project.logger.warn "error occurred while extracting artifact version: ${ARTIFACT_INFO_PATH}"
+                project.logger.warn "error occurred while extracting properties: ${path}"
             } finally {
                 input.close()
             }
         }
-        if (extension.compilerProjectVersion == null) {
-            project.logger.warn "failed to detect version of Asakusa DSL Compiler Core: ${ARTIFACT_INFO_PATH}"
-            extension.compilerProjectVersion = null
-        }
-        project.logger.info "Asakusa DSL Compiler Core: ${extension.compilerProjectVersion}"
-        if (extension.sparkProjectVersion == null) {
-            project.logger.warn "failed to detect version of Asakusa DSL Compiler for Spark: ${ARTIFACT_INFO_PATH}"
-            extension.sparkProjectVersion = null
-        }
-        project.logger.info "Asakusa DSL Compiler for Spark: ${extension.sparkProjectVersion}"
+        return results
     }
 
     private void configureTasks() {
@@ -115,7 +151,7 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
 
     private void extendVersionsTask() {
         project.tasks.getByName(AsakusafwBasePlugin.TASK_VERSIONS) << {
-            logger.lifecycle "Asakusa on Spark: ${extension.sparkProjectVersion}"
+            logger.lifecycle "Asakusa on Spark: ${extension.featureVersion}"
         }
     }
 
