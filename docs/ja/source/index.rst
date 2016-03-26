@@ -34,10 +34,8 @@ Asakusa on Sparkの概要と利用方法は、 :doc:`user-guide` を参照して
 APIリファレンス
 ---------------
 
-* `Asakusa DSL Compiler API References (Javadoc)`_
 * `Asakusa on Spark Gradle Plugins (Groovydoc)`_
 
-..  _`Asakusa DSL Compiler API References (Javadoc)`: http://docs.asakusafw.com/asakusafw-compiler/latest/release/api/index.html
 ..  _`Asakusa on Spark Gradle Plugins (Groovydoc)`: http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugins/index.html
 
 リンク
@@ -47,4 +45,3 @@ APIリファレンス
 * `Apache Spark`_
 
 ..  _`Apache Spark`: https://spark.apache.org/
-
