@@ -43,7 +43,7 @@ Asakusa on Spark Gradle Pluginが提供する機能とインターフェース�
 
     ``asakusafwOrganizer.batchapps.enabled`` に ``true`` が指定されている場合、自動的に有効になる。
 
-..  [#] :asakusa-spark-gradle-groovydoc:`com.asakusafw.gradle.tasks.AsakusaCompileTask`
+..  [#] :asakusafw-sdk-gradle-groovydoc:`com.asakusafw.gradle.tasks.AsakusaCompileTask`
 
 タスク拡張
 ----------
@@ -141,7 +141,7 @@ Asakusa on Spark Gradle Pluginは Batch Application Plugin に対して Asakusa 
 
     既定値: ``true`` (即座にコンパイルを停止する)
 
-..  [#] これらのプロパティは規約オブジェクト :asakusa-spark-gradle-groovydoc:`com.asakusafw.gradle.plugins.AsakusafwCompilerExtension` が提供します。
+..  [#] これらのプロパティは規約オブジェクト :asakusafw-sdk-gradle-groovydoc:`com.asakusafw.gradle.plugins.AsakusafwCompilerExtension` が提供します。
 
 Framework Organizer Plugin ( ``asakusafwOrganizer`` ) への拡張
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
