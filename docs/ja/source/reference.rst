@@ -266,14 +266,14 @@ Asakusa DSL Compiler for Sparkで利用可能なコンパイラプロパティ�
 
     主に、 ``@MasterJoin`` 系の演算子でJOINのアルゴリズムを決める際など、データサイズによる最適化の情報として利用される。
 
-    既定値: ``10572800`` (10MB)
+    既定値: ``10485760`` (10MB)
 
 ``input.estimator.small``
     インポーター記述の ``getDataSize()`` に ``DataSize.SMALL`` が指定された際、それを何バイトのデータとして見積もるか。
 
     その他については ``input.estimator.tiny`` と同様。
 
-    既定値: ``211456000`` (200MB)
+    既定値: ``209715200`` (200MB)
 
 ``input.estimator.large``
     インポーター記述の ``getDataSize()`` に ``DataSize.LARGE`` が指定された際、それを何バイトのデータとして見積もるか。
