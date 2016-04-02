@@ -69,7 +69,7 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
       - OS
       - JDK
     * - Hortonworks Data Platform
-      - 2.4 (Apache Hadoop 2.7.1)
+      - 2.4.0
       - CentOS 7 (7.1)
       - JDK 8 (1.8.0_60)
     * - MapR
@@ -77,8 +77,12 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
       - CentOS 6 (6.6)
       - JDK 7 (1.7.0_75)
     * - Amazon EMR
-      - AMI 4.3.0
+      - 4.4.0
       - Amazon Linux 2015.09
+      - JDK 8 (1.8.0_71)
+    * - Microsoft Azure HDInsight
+      - 3.4
+      - Ubuntu 14.04.4
       - JDK 7 (1.7.0_95)
 
 Spark
@@ -104,10 +108,7 @@ Asakusa on Spark バージョン |version| は、Asakusa Framework 0.8.0 以降�
 ..  warning::
     上記のバージョンより古いバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`Asakusa Gradle Plugin マイグレーションガイド <application/gradle-plugin-migration-guide>` を参考にして上記のバージョンにマイグレーションしてください。
 
-Gradle
-------
-
-アプリケーションのビルドで使用するGradleのバージョンは ``2.11`` に対応しています。
+アプリケーションのビルドで使用するGradleのバージョンは ``2.12`` に対応しています。
 
 ..  attention::
     Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を上記のバージョンに設定してください。
@@ -142,6 +143,8 @@ Asakusa on Sparkは、Asakusa Frameworkが提供する以下の機能には対�
       - http://www.mapr.com/
     * - Amazon EMR
       - http://aws.amazon.com/elasticmapreduce/
+    * - Microsoft Azure HDInsight
+      - https://azure.microsoft.com/services/hdinsight/
     * - JDK (Java SE)
       - http://www.oracle.com/technetwork/java/javase/index.html
     * - Gradle
@@ -167,7 +170,7 @@ Asakusa on Sparkは、Asakusa Frameworkが提供する以下の機能には対�
 プロジェクトテンプレートのダウンロード
 --------------------------------------
 
-Asakusa on Sparkを利用する構成を持つプロジェクトテンプレートは、以下リンクからダウンロードします。
+Asakusa on Sparkを利用する構成を持つアプリケーション開発用のプロジェクトテンプレートは、以下リンクからダウンロードします。
 
 * `asakusa-spark-template-0.3.0.tar.gz <http://www.asakusafw.com/download/gradle-plugin/asakusa-spark-template-0.3.0.tar.gz>`_
 
@@ -182,7 +185,7 @@ Asakusa on Spark Gradle Pluginは、アプリケーションプロジェクト�
 
 `プロジェクトテンプレートのダウンロード`_ で説明したプロジェクトテンプレートや `サンプルプログラム集 (GitHub)`_ のプロジェクトでは、Asakusa on Spark Gradle Pluginがあらかじめ利用可能になっています。
 
-基本的な構成のみを持つプロジェクトテンプレートからAsakusa on Spark Gradle Pluginを有効にするには、アプリケーションプロジェクトのビルドスクリプト ( :file:`build.gradle` )に対して以下の設定を追加します。
+その他のプロジェクトで Asakusa on Spark Gradle Pluginを有効にするには、アプリケーションプロジェクトのビルドスクリプト ( :file:`build.gradle` )に対して以下の設定を追加します。
 
 * ``buildscript/dependencis`` ブロックに指定しているAsakusa Gradle Pluginの指定をAsakusa on Spark Gradle Pluginの指定に置き換える。
 
