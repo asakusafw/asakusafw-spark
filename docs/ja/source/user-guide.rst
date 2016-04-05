@@ -22,12 +22,12 @@ Asakusa Frameworkの適用領域においても、いくつかのケースでSpa
 Asakusa on Sparkを利用する場合、従来のAsakusa Frameworkが提供するDSLやテスト機構をそのまま利用して開発を行います。
 アプリケーションをビルドして運用環境向けの実行モジュール（デプロイメントアーカイブ）を作成する段階ではじめてSpark用のコンパイラを利用します。
 
-..  figure:: attachment/asakusa-spark-sdk.png
+..  figure:: attachment/asakusa-sdk.png
     :width: 640px
 
 また、Asakusa DSL Compiler for Sparkで生成したバッチアプリケーションは、従来と同様にYAESSを利用して実行できます。
 
-..  figure:: attachment/asakusa-spark-runtime.png
+..  figure:: attachment/asakusa-runtime.png
     :width: 640px
 
 Asakusa DSL
