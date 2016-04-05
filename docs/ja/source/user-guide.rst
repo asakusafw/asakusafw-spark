@@ -77,7 +77,7 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
       - CentOS 6 (6.6)
       - JDK 7 (1.7.0_75)
     * - Amazon EMR
-      - 4.4.0
+      - 4.5.0
       - Amazon Linux 2015.09
       - JDK 8 (1.8.0_71)
     * - Microsoft Azure HDInsight
