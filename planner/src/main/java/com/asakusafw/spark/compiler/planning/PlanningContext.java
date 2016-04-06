@@ -171,7 +171,7 @@ public class PlanningContext {
 
         private boolean defaultEnabled;
 
-        private Option(boolean defaultEnabled) {
+        Option(boolean defaultEnabled) {
             this.symbol = toSymbol(name());
             this.defaultEnabled = defaultEnabled;
         }
