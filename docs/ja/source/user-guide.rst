@@ -108,8 +108,7 @@ Asakusa on Spark バージョン |version| は、Asakusa Framework バージョ�
 マイグレーション
 ~~~~~~~~~~~~~~~~
 
-過去のAsakusa on Sparkバージョンを利用している開発環境、およびアプリケーションプロジェクトのバージョンアップ手順は、
-:asakusafw:`開発環境マイグレーションガイド <application/migration-guide.html>` を参照してください。
+過去のAsakusa on Sparkバージョンを利用している開発環境、およびアプリケーションプロジェクトのバージョンアップ手順は、 :asakusafw:`開発環境マイグレーションガイド <application/migration-guide.html>` を参照してください。
 
 ..  attention::
     Asakusa on Spark 0.2.2 以前のバージョンからマイグレーションを行う場合、Asakusa Framework バージョン は 0.7系からのマイグレーションとなります。
@@ -118,11 +117,7 @@ Asakusa on Spark バージョン |version| は、Asakusa Framework バージョ�
 非対応機能
 ~~~~~~~~~~
 
-Asakusa on Sparkは、Asakusa Frameworkが提供する以下の機能には対応していません。
-
-* ThunderGate
-* レガシーモジュール
-* その他該当バージョンで非推奨となっている機能
+Asakusa on Sparkは、Asakusa Frameworkの該当バージョンで非推奨となっている機能には対応していません。
 
 リンク
 ------
