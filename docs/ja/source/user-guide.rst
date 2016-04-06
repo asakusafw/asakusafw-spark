@@ -103,17 +103,17 @@ Asakusa on Spark バージョン |version| は、Spark 1.6.1 で動作を検証�
 Asakusa Framework 対応バージョン
 --------------------------------
 
-Asakusa on Spark バージョン |version| は、Asakusa Framework 0.8.0 以降のバージョンが必要です。
+Asakusa on Spark バージョン |version| は、Asakusa Framework バージョン 0.8.0 を使用します。
 
-..  warning::
-    上記のバージョンより古いバージョンを使用している場合、以降の手順を実施する **前に** 、 :asakusafw:`Asakusa Gradle Plugin マイグレーションガイド <application/gradle-plugin-migration-guide>` を参考にして上記のバージョンにマイグレーションしてください。
+マイグレーション
+~~~~~~~~~~~~~~~~
 
-アプリケーションのビルドで使用するGradleのバージョンは ``2.12`` に対応しています。
+過去のAsakusa on Sparkバージョンを利用している開発環境、およびアプリケーションプロジェクトのバージョンアップ手順は、
+:asakusafw:`開発環境マイグレーションガイド <application/migration-guide.html>` を参照してください。
 
 ..  attention::
-    Eclipse上で `Shafu`_ を利用している場合、Eclipse設定画面のメニューから :guilabel:`Jinrikisha (人力車)` 選択し、 :guilabel:`Gradleのバージョン` を上記のバージョンに設定してください。
-
-..  _`Shafu`: http://docs.asakusafw.com/jinrikisha/ja/html/shafu.html
+    Asakusa on Spark 0.2.2 以前のバージョンからマイグレーションを行う場合、Asakusa Framework バージョン は 0.7系からのマイグレーションとなります。
+    このため、 :asakusafw:`開発環境マイグレーションガイド <application/migration-guide.html>` の「バージョン 0.8.0 へのマイグレーション」に関する記述を必ず確認してください。
 
 非対応機能
 ~~~~~~~~~~
