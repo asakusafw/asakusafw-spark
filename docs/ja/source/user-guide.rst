@@ -226,7 +226,7 @@ Asakusa on Spark Gradle Pluginは、アプリケーションプロジェクト�
     ./gradlew assemble
 
 ..  hint::
-    Shafu利用する場合は、プロジェクトを選択してコンテキストメニューから :menuselection:`Jinrikisha (人力車) --> Asakusaデプロイメントアーカイブを生成` を選択します。
+    Shafuを利用する場合は、プロジェクトを選択してコンテキストメニューから :menuselection:`Jinrikisha (人力車) --> Asakusaデプロイメントアーカイブを生成` を選択します。
 
 アプリケーションの実行
 ======================
