@@ -5,7 +5,7 @@ Changelogs
 Release 0.3.0
 =============
 
-(in depelopment)
+Apr 08, 2016
 
 * [ :milestone-asakusafw-spark:`0.3.0` ]
 * [ :milestone-asakusafw-compiler:`0.3.0` ]
