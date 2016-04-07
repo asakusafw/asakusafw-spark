@@ -53,12 +53,15 @@ Asakusa on Spark Gradle Pluginが提供する機能とインターフェース�
 
     ``asakuafw-spark`` と ``asakusafw-organizer`` プラグインがいずれも有効である場合、 ``sparkCompileBatchapps`` が依存関係に追加される。
 
-``attachAssemble_<profile名>``
-    対象のプロファイルのデプロイメントアーカイブに必要なコンポーネントを追加する。
+``compileBatchapp``
+    Asakusa DSLコンパイラを使ってバッチアプリケーションのコンパイルを行い、実行可能モジュールを生成する。
 
-    ``asakuafw-spark`` と ``asakusafw-organizer`` プラグインがいずれも有効である場合、 ``attachComponentSpark`` や ``attachSparkBatchapps`` のうち有効であるものが依存関係に追加される。
+    ``asakuafw-spark`` プラグインが有効である場合、 ``sparkCompileBatchapps`` が依存関係に追加される。
 
-    このタスクはデプロイメントアーカイブを生成する ``assembleAsakusafw`` の依存先になっているため、このタスクの依存先に上記のタスクを追加することで、デプロイメントアーカイブに必要なコンポーネントを追加できるようになっている。
+``jarBatchapp``
+    ``compileBatchapp`` タスクで生成したバッチアプリケーションを含むjarファイルを生成する。
+
+    ``asakuafw-spark`` プラグインが有効である場合、 ``sparkCompileBatchapps`` タスクの生成物がjarファイルの内容に追加される。
 
 規約プロパティ拡張
 ------------------
