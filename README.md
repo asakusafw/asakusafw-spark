@@ -1,4 +1,4 @@
-# Asakusa Framework on Spark Project
+# Asakusa on Spark
 Asakusa on Spark provides facilities that make [Asakusa](https://github.com/asakusafw/asakusafw) batch applications run on [Apache Spark](https://spark.apache.org/) clusters.
 
 This project includes the followings:
@@ -24,8 +24,12 @@ cd gradle
 ./gradlew clean build
 ```
 
+## Referred Projects
+* [Asakusa Framework Core](https://github.com/asakusafw/asakusafw)
+* [Asakusa Framework Language Toolset](https://github.com/asakusafw/asakusafw-compiler)
+
 ## Resources
-* Document (ja): [Asakusa on Spark](http://docs.asakusafw.com/asakusa-on-spark/)
+* [Asakusa on Spark Documentation (ja)](http://docs.asakusafw.com/asakusa-on-spark/)
 
 ## License
 * [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
