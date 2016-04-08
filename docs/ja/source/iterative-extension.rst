@@ -197,7 +197,7 @@ Asakusa Framework バージョン ``0.8.0`` 以降では、Asakusa DSLに対し�
     
     public abstract class HogeOperators {
         ...
-        @Iterative("iterative-param1", "iterative-param2")
+        @Iterative({ "iterative-param1", "iterative-param2" })
         @Update
         public void hogeOperator(Bar bar) {
             String iterativeParameter1 = BatchContext.get("iterative-param1");
