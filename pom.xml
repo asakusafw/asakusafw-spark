@@ -38,7 +38,7 @@
 
     <asakusafw.version>0.8.1-SNAPSHOT</asakusafw.version>
     <asakusafw-sdk.version>0.8.1-SNAPSHOT</asakusafw-sdk.version>
-    <asakusafw-lang.version>0.3.0</asakusafw-lang.version>
+    <asakusafw-lang.version>0.3.1-SNAPSHOT</asakusafw-lang.version>
 
     <scala.compat.version>2.10</scala.compat.version>
     <scala.version>${scala.compat.version}.6</scala.version>
