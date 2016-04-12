@@ -535,7 +535,7 @@ public final class SparkPlanning {
 
         final List<SubPlan> elements = new LinkedList<>();
 
-        public SubPlanGroup(Set<Operator> commonSources) {
+        SubPlanGroup(Set<Operator> commonSources) {
             this.commonSources = Collections.unmodifiableSet(commonSources);
         }
 
@@ -556,7 +556,7 @@ public final class SparkPlanning {
 
     private static class CustomEquivalence implements OperatorEquivalence {
 
-        public CustomEquivalence() {
+        CustomEquivalence() {
             return;
         }
 
@@ -613,7 +613,7 @@ public final class SparkPlanning {
 
         private final Object aggregation;
 
-        public EdgeInfo(TypeDescription type, Group partition, Operator aggregation) {
+        EdgeInfo(TypeDescription type, Group partition, Operator aggregation) {
             assert type != null;
             this.type = type;
             this.partition = partition;
