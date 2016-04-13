@@ -133,7 +133,7 @@ private class LoggingOperatorFragmentClassBuilder(
             .invokeV(
               operator.methodDesc.getName,
               classOf[String].asType,
-              inputVar.push()
+              inputVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
                 +: operator.arguments.map { argument =>
                   Option(argument.value).map { value =>
                     ldc(value)(ClassTag(argument.resolveClass), implicitly)
