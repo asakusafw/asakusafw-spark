@@ -60,7 +60,10 @@ abstract class UserOperatorFragmentClassBuilder(
               }
             }
         })
-        .newVoidReturnType())(defCtor()(_))
+        .newVoidReturnType()) { implicit mb =>
+        defCtor()
+        initOperatorField()
+      }
   }
 
   def defCtor()(implicit mb: MethodBuilder): Unit

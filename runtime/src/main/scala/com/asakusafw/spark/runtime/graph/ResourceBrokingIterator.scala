@@ -22,7 +22,7 @@ import com.asakusafw.bridge.broker.{ ResourceBroker, ResourceSession }
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.core.{ HadoopConfiguration, ResourceConfiguration }
 
-class ResourceBrokingIterator[+T](val hadoopConf: Configuration, val delegate: Iterator[T])
+class ResourceBrokingIterator[+T](val hadoopConf: Configuration, _delegate: => Iterator[T])
   extends Iterator[T] {
 
   val session = ResourceBroker.attach(
@@ -33,6 +33,8 @@ class ResourceBrokingIterator[+T](val hadoopConf: Configuration, val delegate: I
         session.put(classOf[StageInfo], StageInfo.deserialize(hadoopConf.get(StageInfo.KEY_NAME)))
       }
     })
+
+  val delegate = _delegate
 
   def hasNext: Boolean = {
     if (delegate.hasNext) {

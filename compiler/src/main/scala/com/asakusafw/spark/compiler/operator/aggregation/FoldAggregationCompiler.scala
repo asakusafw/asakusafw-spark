@@ -90,6 +90,7 @@ private class FoldAggregationClassBuilder(
     ctorDef.newInit(Seq.empty) { implicit mb =>
       val thisVar :: _ = mb.argVars
       thisVar.push().invokeInit(superType)
+      initOperatorField()
     }
   }
 
