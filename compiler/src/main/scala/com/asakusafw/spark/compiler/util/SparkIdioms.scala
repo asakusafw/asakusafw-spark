@@ -19,13 +19,12 @@ package util
 import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.objectweb.asm.Type
 
-import com.asakusafw.spark.compiler.ordering.{
-  GroupingOrderingClassBuilder,
-  SortOrderingClassBuilder
-}
+import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder
+import com.asakusafw.spark.runtime.orderings.GroupingOrdering
 import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
+import com.asakusafw.spark.tools.asm4s._
 
 object SparkIdioms {
 
@@ -35,20 +34,20 @@ object SparkIdioms {
     partitioner.asType(classOf[Partitioner].asType)
   }
 
-  def groupingOrdering(
-    groupingTypes: Seq[Type])(
-      implicit mb: MethodBuilder,
-      context: CompilerContext): Stack = {
-    pushNew0(GroupingOrderingClassBuilder.getOrCompile(groupingTypes))
+  def groupingOrdering(implicit mb: MethodBuilder): Stack = {
+    pushObject(GroupingOrdering)
       .asType(classOf[Ordering[ShuffleKey]].asType)
   }
 
   def sortOrdering(
-    groupingTypes: Seq[Type],
     orderingTypes: Seq[(Type, Boolean)])(
       implicit mb: MethodBuilder,
       context: CompilerContext): Stack = {
-    pushNew0(SortOrderingClassBuilder.getOrCompile(groupingTypes, orderingTypes))
-      .asType(classOf[Ordering[ShuffleKey]].asType)
+    if (orderingTypes.isEmpty) {
+      groupingOrdering
+    } else {
+      pushNew0(SortOrderingClassBuilder.getOrCompile(orderingTypes))
+        .asType(classOf[Ordering[ShuffleKey]].asType)
+    }
   }
 }

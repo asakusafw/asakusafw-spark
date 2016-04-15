@@ -75,11 +75,10 @@ object CoGroupInstantiator extends Instantiator {
               },
               option(
                 sortOrdering(
-                  input.dataModelRef.groupingTypes(input.getGroup.getGrouping),
                   input.dataModelRef.orderingTypes(input.getGroup.getOrdering))))
         }
       },
-      groupingOrdering(properties.head),
+      groupingOrdering,
       if (properties.head.isEmpty) {
         partitioner(ldc(1))
       } else {

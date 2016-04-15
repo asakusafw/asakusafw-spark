@@ -222,9 +222,8 @@ class IterativeBatchExecutorClassBuilder(
           arguments += context.branchKeys.getField(subPlanOutput.getOperator)
           arguments += option(
             sortOrdering(
-              dataModelRef.groupingTypes(group.getGrouping),
               dataModelRef.orderingTypes(group.getOrdering)))
-          arguments += groupingOrdering(dataModelRef.groupingTypes(group.getGrouping))
+          arguments += groupingOrdering
           arguments += partitioner(ldc(1))
           arguments += ldc(broadcastInfo.getLabel)
           if (iterativeInfo.getRecomputeKind == IterativeInfo.RecomputeKind.PARAMETER) {

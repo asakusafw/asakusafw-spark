@@ -37,6 +37,7 @@ import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
+import com.asakusafw.spark.runtime.orderings.GroupingOrdering
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 @RunWith(classOf[JUnitRunner])
@@ -64,7 +65,6 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
           .flatMap(BarInput)(Bar.intToBars)
       val barOrd = new Bar.SortOrdering()
 
-      val grouping = new GroupingOrdering()
       val partitioner = new HashPartitioner(2)
 
       val cogroup =
@@ -72,7 +72,7 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
           Seq(
             (Seq((foos, FooInput)), Option(fooOrd)),
             (Seq((bars, BarInput)), Option(barOrd))),
-          grouping, partitioner)("cogroup")
+          GroupingOrdering, partitioner)("cogroup")
 
       val rc = newRoundContext()
 
@@ -142,7 +142,6 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
           .flatMap(BarInput)(Bar.intToBars)
       val barOrd = new Bar.SortOrdering()
 
-      val grouping = new GroupingOrdering()
       val partitioner = new HashPartitioner(2)
 
       val cogroup =
@@ -150,7 +149,7 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
           Seq(
             (Seq((foos1, FooInput), (foos2, FooInput)), Option(fooOrd)),
             (Seq((bars1, BarInput), (bars2, BarInput)), Option(barOrd))),
-          grouping, partitioner)("cogroup")
+          GroupingOrdering, partitioner)("cogroup")
 
       val rc = newRoundContext()
 
@@ -216,15 +215,6 @@ class CoGroupWithParallelismSpec extends CoGroupSpec {
 }
 
 object CoGroupSpec {
-
-  class GroupingOrdering extends GroupOrdering {
-
-    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-      val xGrouping = x.grouping
-      val yGrouping = y.grouping
-      IntOption.compareBytes(xGrouping, 0, xGrouping.length, yGrouping, 0, yGrouping.length)
-    }
-  }
 
   class Foo extends DataModel[Foo] with Writable {
 

@@ -65,7 +65,6 @@ object AggregateInstantiator extends Instantiator {
       },
       option(
         sortOrdering(
-          input.dataModelRef.groupingTypes(input.getGroup.getGrouping),
           input.dataModelRef.orderingTypes(input.getGroup.getOrdering))),
       (if (input.getGroup.getGrouping.isEmpty) {
         partitioner(ldc(1))
