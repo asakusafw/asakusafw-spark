@@ -99,7 +99,6 @@ trait OrderingsField extends ClassBuilder {
         builder += (
           context.branchKeys.getField(output.getOperator),
           sortOrdering(
-            dataModelRef.groupingTypes(partitionInfo.getGrouping),
             dataModelRef.orderingTypes(partitionInfo.getOrdering)))
       }
     }

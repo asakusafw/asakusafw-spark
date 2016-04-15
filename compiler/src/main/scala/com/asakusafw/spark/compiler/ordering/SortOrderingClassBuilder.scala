@@ -24,18 +24,18 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.compiler.ordering.SortOrderingClassBuilder._
+import com.asakusafw.spark.runtime.orderings.GroupingOrdering
 import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class SortOrderingClassBuilder(
-  groupingOrderingType: Type,
   orderingTypes: Seq[(Type, Boolean)])(
     implicit context: CompilerContext)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/ordering/SortOrdering$$${nextId};"),
-    groupingOrderingType) {
+    classOf[GroupingOrdering].asType) {
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
@@ -47,7 +47,12 @@ class SortOrderingClassBuilder(
         val thisVar :: xVar :: yVar :: _ = mb.argVars
 
         val cmp = thisVar.push()
-          .invokeS(groupingOrderingType, "compare", Type.INT_TYPE, xVar.push(), yVar.push())
+          .invokeS(
+            classOf[GroupingOrdering].asType,
+            "compare",
+            Type.INT_TYPE,
+            xVar.push(),
+            yVar.push())
 
         `return`(
           cmp.dup().ifEq0({
@@ -118,29 +123,19 @@ object SortOrderingClassBuilder {
   def nextId(implicit context: CompilerContext): Long =
     curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
 
-  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Type, Seq[(Type, Boolean)]), Type]] = // scalastyle:ignore
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Seq[(Type, Boolean)]), Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   def getOrCompile(
-    groupingTypes: Seq[Type],
-    orderingTypes: Seq[(Type, Boolean)])(
-      implicit context: CompilerContext): Type = {
-    getOrCompile(
-      GroupingOrderingClassBuilder.getOrCompile(groupingTypes),
-      orderingTypes)
-  }
-
-  def getOrCompile(
-    groupingOrderingType: Type,
     orderingTypes: Seq[(Type, Boolean)])(
       implicit context: CompilerContext): Type = {
     if (orderingTypes.isEmpty) {
-      groupingOrderingType
+      classOf[GroupingOrdering].asType
     } else {
       cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
-        (context.flowId, groupingOrderingType, orderingTypes), {
+        (context.flowId, orderingTypes), {
           context.addClass(
-            new SortOrderingClassBuilder(groupingOrderingType, orderingTypes))
+            new SortOrderingClassBuilder(orderingTypes))
         })
     }
   }
