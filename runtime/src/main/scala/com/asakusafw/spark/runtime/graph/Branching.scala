@@ -123,16 +123,15 @@ trait Branching[T] {
     broadcasts: Map[BroadcastId, Broadcasted[_]],
     hadoopConf: Broadcasted[Configuration])(
       fragmentBufferSize: Int): Iterator[(Branch[ShuffleKey], _)] = {
-    val (fragment, outputs) = fragments(broadcasts)(fragmentBufferSize)
-    assert(outputs.keys.toSet == branchKeys,
-      s"The branch keys of outputs and branch keys field should be the same: (${
-        outputs.keys.mkString("(", ",", ")")
-      }, ${
-        branchKeys.mkString("(", ",", ")")
-      })")
 
-    new ResourceBrokingIterator(
-      hadoopConf.value,
+    new ResourceBrokingIterator(hadoopConf.value, {
+      val (fragment, outputs) = fragments(broadcasts)(fragmentBufferSize)
+      assert(outputs.keys.toSet == branchKeys,
+        s"The branch keys of outputs and branch keys field should be the same: (${
+          outputs.keys.mkString("(", ",", ")")
+        }, ${
+          branchKeys.mkString("(", ",", ")")
+        })")
       iter.flatMap {
         case (_, value) =>
           fragment.reset()
@@ -141,6 +140,7 @@ trait Branching[T] {
             case (key, output) =>
               output.iterator.map(value => (Branch(key, shuffleKey(key, value)), value))
           }
-      })
+      }
+    })
   }
 }
