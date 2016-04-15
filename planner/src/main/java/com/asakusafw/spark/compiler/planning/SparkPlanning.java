@@ -93,11 +93,13 @@ import com.asakusafw.utils.graph.Graph;
  * </li>
  * </ul>
  * @since 0.1.0
- * @version 0.3.0
+ * @version 0.3.1
  */
 public final class SparkPlanning {
 
     static final Logger LOG = LoggerFactory.getLogger(SparkPlanning.class);
+
+    private static final int OPTIMIZATION_STEP_LIMIT = 1_000;
 
     /**
      * The compiler property key prefix of planning options.
@@ -201,14 +203,33 @@ public final class SparkPlanning {
      */
     static void prepareOperatorGraph(PlanningContext context, OperatorGraph graph) {
         Planning.normalize(graph);
-        Planning.removeDeadFlow(graph);
-        OperatorRewriters.apply(
-                context.getOptimizerContext(),
-                context.getEstimator(),
-                context.getRewriter(),
-                graph);
+        optimize(context, graph);
         insertPlanMarkers(context, graph);
         Planning.simplifyTerminators(graph);
+    }
+
+    private static void optimize(PlanningContext context, OperatorGraph graph) {
+        int step = 0;
+        boolean changed;
+        do {
+            step++;
+            LOG.debug("optimize step#{}", step);
+            Planning.removeDeadFlow(graph);
+            if (step > OPTIMIZATION_STEP_LIMIT) {
+                LOG.warn(MessageFormat.format(
+                        "the number of optimization steps exceeded limit: {0}",
+                        OPTIMIZATION_STEP_LIMIT));
+                break;
+            }
+            OperatorGraph.Snapshot before = graph.getSnapshot();
+            OperatorRewriters.apply(
+                    context.getOptimizerContext(),
+                    context.getEstimator(),
+                    context.getRewriter(),
+                    graph);
+            OperatorGraph.Snapshot after = graph.getSnapshot();
+            changed = before.equals(after) == false;
+        } while (changed);
     }
 
     static void insertPlanMarkers(PlanningContext context, OperatorGraph graph) {
