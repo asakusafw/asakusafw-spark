@@ -21,21 +21,18 @@ import java.util.Arrays
 import com.asakusafw.runtime.io.util.WritableRawComparable
 
 class ShuffleKey(
-  val grouping: Int,
+  val grouping: Array[Byte],
   val ordering: Array[Byte]) extends Equals {
-
-  def this(grouping: Array[Byte], ordering: Array[Byte]) =
-    this(Arrays.hashCode(grouping), ordering)
 
   def this() = this(Array.emptyByteArray, Array.emptyByteArray)
 
-  override def hashCode: Int = grouping
+  override def hashCode: Int = Arrays.hashCode(grouping)
 
   override def equals(obj: Any): Boolean = {
     obj match {
       case that: ShuffleKey =>
         (that canEqual this) &&
-          this.grouping == that.grouping &&
+          Arrays.equals(this.grouping, that.grouping) &&
           Arrays.equals(this.ordering, that.ordering)
       case _ => false
     }

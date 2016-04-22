@@ -36,6 +36,7 @@ class SortOrderingClassBuilderSpec extends FlatSpec with UsingCompilerContext {
     implicit val context = newCompilerContext("flowId")
 
     val thisType = SortOrderingClassBuilder.getOrCompile(
+      Seq(classOf[IntOption].asType),
       Seq((classOf[LongOption].asType, true), (classOf[StringOption].asType, false)))
     val cls = context.loadClass[Ordering[ShuffleKey]](thisType.getClassName)
     val ordering = cls.newInstance()
