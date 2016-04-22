@@ -42,7 +42,6 @@ import com.asakusafw.spark.runtime.fragment.{
   OutputFragment
 }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.orderings.GroupingOrdering
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 @RunWith(classOf[JUnitRunner])
@@ -287,10 +286,12 @@ object AggregateSpec {
       }
     }
 
-    class SortOrdering extends GroupingOrdering {
+    class SortOrdering extends Ordering[ShuffleKey] {
 
       override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
-        val cmp = super.compare(x, y)
+        val xGrouping = x.grouping
+        val yGrouping = y.grouping
+        val cmp = IntOption.compareBytes(xGrouping, 0, xGrouping.length, yGrouping, 0, yGrouping.length)
         if (cmp == 0) {
           val xOrdering = x.ordering
           val yOrdering = y.ordering

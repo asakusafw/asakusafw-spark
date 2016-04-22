@@ -34,7 +34,6 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.orderings.GroupingOrdering
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 @RunWith(classOf[JUnitRunner])
@@ -60,7 +59,7 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
       source,
       Input,
       None,
-      GroupingOrdering,
+      new GroupingOrdering(),
       new HashPartitioner(1))("broadcast")
 
     val rc = newRoundContext()
@@ -93,7 +92,7 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
       source,
       Input,
       Some(new SortOrdering()),
-      GroupingOrdering,
+      new GroupingOrdering(),
       new HashPartitioner(1))("broadcast")
 
     val rc = newRoundContext()
@@ -160,6 +159,15 @@ object MapBroadcastSpec {
   }
 
   val Input = BranchKey(0)
+
+  class GroupingOrdering extends Ordering[ShuffleKey] {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      val xGrouping = x.grouping
+      val yGrouping = y.grouping
+      StringOption.compareBytes(xGrouping, 0, xGrouping.length, yGrouping, 0, yGrouping.length)
+    }
+  }
 
   class SortOrdering extends GroupingOrdering {
 

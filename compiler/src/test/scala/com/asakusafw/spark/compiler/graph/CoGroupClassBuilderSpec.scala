@@ -55,7 +55,6 @@ import com.asakusafw.spark.runtime.graph.{
   Source
 }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.orderings.GroupingOrdering
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.InputBuffer
@@ -193,6 +192,7 @@ class CoGroupClassBuilderSpec
           .flatMap(getBranchKey(barsMarker))(Bar.intToBars)
       val barOrd = new Bar.SortOrdering()
 
+      val grouping = new GroupingOrdering()
       val partitioner = new HashPartitioner(2)
 
       val cogroup = cls.getConstructor(
@@ -205,7 +205,7 @@ class CoGroupClassBuilderSpec
           Seq(
             (Seq((foos, getBranchKey(foosMarker))), Option(fooOrd)),
             (Seq((bars, getBranchKey(barsMarker))), Option(barOrd))),
-          GroupingOrdering,
+          grouping,
           partitioner,
           Map.empty,
           sc)
@@ -309,6 +309,13 @@ class CoGroupClassBuilderSpec
 }
 
 object CoGroupClassBuilderSpec {
+
+  class GroupingOrdering extends Ordering[ShuffleKey] {
+
+    override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+      IntOption.compareBytes(x.grouping, 0, x.grouping.length, y.grouping, 0, y.grouping.length)
+    }
+  }
 
   class Foo extends DataModel[Foo] with Writable {
 

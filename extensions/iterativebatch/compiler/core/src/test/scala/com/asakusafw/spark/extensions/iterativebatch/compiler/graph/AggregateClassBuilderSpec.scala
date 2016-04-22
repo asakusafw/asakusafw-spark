@@ -58,7 +58,6 @@ import com.asakusafw.spark.runtime.graph.{
   Source
 }
 import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.orderings.GroupingOrdering
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator.Fold
@@ -167,7 +166,7 @@ class AggregateClassBuilderSpec
         classOf[SparkContext])
         .newInstance(
           Seq((foos, getBranchKey(foosMarker))),
-          Option(GroupingOrdering),
+          Option(new Foo.SortOrdering()),
           new HashPartitioner(2),
           Map.empty,
           sc)
@@ -352,6 +351,13 @@ object AggregateClassBuilderSpec {
           WritableSerDe.serialize(foo.i),
           Array.emptyByteArray)
         (shuffleKey, foo)
+      }
+    }
+
+    class SortOrdering extends Ordering[ShuffleKey] {
+
+      override def compare(x: ShuffleKey, y: ShuffleKey): Int = {
+        IntOption.compareBytes(x.grouping, 0, x.grouping.length, y.grouping, 0, y.grouping.length)
       }
     }
   }

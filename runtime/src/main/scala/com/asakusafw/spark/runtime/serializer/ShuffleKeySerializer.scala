@@ -24,14 +24,15 @@ import com.asakusafw.spark.runtime.rdd.ShuffleKey
 class ShuffleKeySerializer extends Serializer[ShuffleKey](false, false) {
 
   override def write(kryo: Kryo, output: Output, obj: ShuffleKey): Unit = {
-    output.writeInt(obj.grouping, true)
+    output.writeInt(obj.grouping.length, true)
+    output.write(obj.grouping)
     output.writeInt(obj.ordering.length, true)
     output.write(obj.ordering)
   }
 
   override def read(kryo: Kryo, input: Input, t: Class[ShuffleKey]): ShuffleKey = {
     new ShuffleKey(
-      input.readInt(true),
+      input.readBytes(input.readInt(true)),
       input.readBytes(input.readInt(true)))
   }
 }

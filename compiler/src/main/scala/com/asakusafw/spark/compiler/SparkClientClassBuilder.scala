@@ -156,8 +156,9 @@ class SparkClientClassBuilder(
                   context.branchKeys.getField(subPlanOutput.getOperator),
                   option(
                     sortOrdering(
+                      dataModelRef.groupingTypes(group.getGrouping),
                       dataModelRef.orderingTypes(group.getOrdering))),
-                  groupingOrdering,
+                  groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
                   partitioner(ldc(1)),
                   ldc(broadcastInfo.getLabel),
                   scVar.push())
