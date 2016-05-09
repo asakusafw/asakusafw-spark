@@ -41,9 +41,9 @@
     <asakusafw-lang.version>0.4.0-SNAPSHOT</asakusafw-lang.version>
 
     <java.version>1.8</java.version>
-    <scala.compat.version>2.10</scala.compat.version>
-    <scala.version>${scala.compat.version}.6</scala.version>
-    <spark.version>1.6.2</spark.version>
+    <scala.compat.version>2.11</scala.compat.version>
+    <scala.version>${scala.compat.version}.8</scala.version>
+    <spark.version>2.0.0</spark.version>
     <jetty.version>8.1.14.v20131031</jetty.version>
     <hadoop.version>2.7.2</hadoop.version>
     <asm.version>5.0.3</asm.version>
@@ -808,20 +808,5 @@ encoding/<project>=UTF-8
       </snapshots>
     </pluginRepository>
   </pluginRepositories>
-
-  <profiles>
-    <profile>
-      <id>scala-2.11</id>
-      <activation>
-        <property>
-          <name>scala-2.11</name>
-        </property>
-      </activation>
-      <properties>
-        <scala.compat.version>2.11</scala.compat.version>
-        <scala.version>${scala.compat.version}.7</scala.version>
-      </properties>
-    </profile>
-  </profiles>
 
 </project>
