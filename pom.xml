@@ -115,6 +115,10 @@
               </property>
               <property>
                 <name>org.slf4j.simpleLogger.defaultLogLevel</name>
+                <value>info</value>
+              </property>
+              <property>
+                <name>org.slf4j.simpleLogger.log.com.asakusafw</name>
                 <value>debug</value>
               </property>
             </systemProperties>
