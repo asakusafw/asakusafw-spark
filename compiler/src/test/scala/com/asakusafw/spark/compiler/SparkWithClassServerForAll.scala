@@ -33,16 +33,14 @@ trait SparkWithClassServerForAll extends TempDirForAll with SparkForAll { self: 
   }
 
   override def configure(conf: SparkConf): SparkConf = {
-    classServer = new ClassServer(createTempDirectoryForAll("classserver-"), cl, conf)
-    val uri = classServer.start()
+    classServer = new ClassServer(createTempDirectoryForAll("classserver-"), cl)
     Thread.currentThread().setContextClassLoader(classServer.classLoader)
 
-    conf.set("spark.repl.class.uri", uri)
+    conf.set("spark.repl.class.outputDir", classServer.root.toFile.getAbsolutePath)
   }
 
   override def afterStopSparkContext(): Unit = {
     try {
-      classServer.stop()
       classServer = null
     } finally {
       Thread.currentThread().setContextClassLoader(cl)
