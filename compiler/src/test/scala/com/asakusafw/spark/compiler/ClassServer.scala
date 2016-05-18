@@ -26,7 +26,6 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 import org.apache.spark.SparkConf
-import org.apache.spark.backdoor.{ HttpServer, SecurityManager }
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.Type
 import org.objectweb.asm.util.TraceClassVisitor
@@ -34,29 +33,13 @@ import org.slf4j.LoggerFactory
 
 import resource._
 
-class ClassServer(val root: Path, val parent: ClassLoader, conf: SparkConf, securityManager: SecurityManager) {
+class ClassServer(val root: Path, val parent: ClassLoader) {
 
-  val Logger = LoggerFactory.getLogger(getClass)
+  private val Logger = LoggerFactory.getLogger(getClass)
 
-  def this(root: Path, parent: ClassLoader, conf: SparkConf) = {
-    this(root, parent, conf, new SecurityManager(conf))
-  }
-
-  private val httpServer = new HttpServer(conf, root.toFile(), securityManager, serverName = "ClassServer")
   val classLoader = new URLClassLoader(Array(root.toUri.toURL), parent)
 
   val registered = mutable.Set.empty[Type]
-
-  def start(): String = {
-    httpServer.start()
-    Logger.info(s"Class server started at ${httpServer.uri}")
-    httpServer.uri
-  }
-
-  def stop(): Unit = {
-    httpServer.stop()
-    Logger.info("Class server stopped")
-  }
 
   def register(`type`: Type, bytes: => Array[Byte]): Unit = {
     if (registered(`type`)) {
