@@ -50,16 +50,18 @@ abstract class NewHadoopOutput(
       rdds.head
     } else {
       Future.sequence(rdds).map { prevs =>
-        val part = Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*)
-        val (unioning, coalescing) = prevs.partition(_.partitions.size < part.numPartitions)
-        val coalesced = if (coalescing.nonEmpty) {
-          (coalescing.map { prev =>
-            if (prev.partitions.size == part.numPartitions) {
-              prev
-            } else {
-              prev.coalesce(part.numPartitions, shuffle = false)
-            }
-          }).reduceLeft {
+        val numPartitions =
+          Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*).numPartitions
+        val coalesced = prevs.map { prev =>
+          if (prev.partitions.size == numPartitions) {
+            prev
+          } else {
+            prev.coalesce(numPartitions, shuffle = false)
+          }
+        }
+        val (zipping, unioning) = coalesced.partition(_.partitions.size == numPartitions)
+        val zipped = if (zipping.nonEmpty) {
+          zipping.reduceLeft {
             (left, right) =>
               left.zipPartitions(right, preservesPartitioning = false)(_ ++ _)
           }
@@ -67,9 +69,9 @@ abstract class NewHadoopOutput(
           sc.emptyRDD[(_, _)]
         }
         if (unioning.isEmpty) {
-          coalesced
+          zipped
         } else {
-          sc.union(coalesced +: unioning)
+          sc.union(zipped, unioning: _*)
         }
       }
     })
