@@ -15,7 +15,7 @@
  */
 package com.asakusafw.spark.compiler
 
-import org.scalatest.Suite
+import org.scalatest.{ BeforeAndAfterAll, Suite }
 
 import scala.collection.JavaConversions._
 
@@ -23,27 +23,28 @@ import org.apache.spark.SparkConf
 
 import com.asakusafw.spark.runtime.{ SparkForAll, TempDirForAll }
 
-trait SparkWithClassServerForAll extends TempDirForAll with SparkForAll { self: Suite =>
+trait ClassServerForAll extends BeforeAndAfterAll with TempDirForAll { self: Suite =>
 
   var cl: ClassLoader = _
   var classServer: ClassServer = _
 
-  override def beforeStartSparkContext(): Unit = {
-    cl = Thread.currentThread().getContextClassLoader()
+  override def beforeAll(): Unit = {
+    try {
+      super.beforeAll()
+    } finally {
+      cl = Thread.currentThread().getContextClassLoader()
+      classServer = new ClassServer(createTempDirectoryForAll("classserver-"), cl)
+      Thread.currentThread().setContextClassLoader(classServer.classLoader)
+    }
   }
 
-  override def configure(conf: SparkConf): SparkConf = {
-    classServer = new ClassServer(createTempDirectoryForAll("classserver-"), cl)
-    Thread.currentThread().setContextClassLoader(classServer.classLoader)
-
-    conf.set("spark.repl.class.outputDir", classServer.root.toFile.getAbsolutePath)
-  }
-
-  override def afterStopSparkContext(): Unit = {
+  override def afterAll(): Unit = {
     try {
       classServer = null
-    } finally {
       Thread.currentThread().setContextClassLoader(cl)
+      cl = null
+    } finally {
+      super.afterAll()
     }
   }
 }

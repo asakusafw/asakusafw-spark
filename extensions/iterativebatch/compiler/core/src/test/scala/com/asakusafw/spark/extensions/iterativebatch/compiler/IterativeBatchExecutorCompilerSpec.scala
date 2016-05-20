@@ -53,10 +53,10 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
-import com.asakusafw.spark.compiler.FlowIdForEach
-import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
+import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
 import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.runtime._
+import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.model.{ Key, Joined, Summarized }
@@ -77,7 +77,8 @@ class IterativeBatchExecutorCompilerSpec extends Suites(
 
 class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
   extends FlatSpec
-  with SparkWithClassServerForAll
+  with ClassServerForAll
+  with SparkForAll
   with FlowIdForEach
   with TempDirForEach
   with UsingCompilerContext

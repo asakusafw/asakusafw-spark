@@ -42,10 +42,10 @@ import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.value.IntOption
-import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar, TempDirForEach }
+import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -55,7 +55,7 @@ import com.asakusafw.spark.runtime.graph.{
 }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
-abstract class OutputClassBuilderSpec extends FlatSpec with SparkWithClassServerForAll {
+abstract class OutputClassBuilderSpec extends FlatSpec with ClassServerForAll with SparkForAll {
 
   import OutputClassBuilderSpec._
 
