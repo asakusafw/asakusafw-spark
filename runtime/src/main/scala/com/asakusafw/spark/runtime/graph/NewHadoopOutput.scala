@@ -53,8 +53,8 @@ abstract class NewHadoopOutput(
         val numPartitions =
           Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*).numPartitions
         val coalesced = prevs.map {
-          case prev if prev.partitions.size == numPartitions => prev
-          case prev => prev.coalesce(numPartitions, shuffle = false)
+          case prev: RDD[(_, _)] if prev.partitions.size == numPartitions => prev
+          case prev: RDD[(_, _)] => prev.coalesce(numPartitions, shuffle = false)
         }
         val (zipping, unioning) = coalesced.partition(_.partitions.size == numPartitions)
         val zipped = if (zipping.nonEmpty) {
