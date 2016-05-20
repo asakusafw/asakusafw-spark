@@ -51,9 +51,12 @@ abstract class Extract[T](
         Future.sequence(rdds).map { prevs =>
           val numPartitions =
             Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*).numPartitions
-          val coalesced = prevs.map {
-            case prev: RDD[(_, T)] if prev.partitions.size == numPartitions => prev
-            case prev: RDD[(_, T)] => prev.coalesce(numPartitions, shuffle = false)
+          val coalesced = prevs.map { prev =>
+            if (prev.partitions.size == numPartitions) {
+              prev
+            } else {
+              prev.coalesce(numPartitions, shuffle = false)
+            }
           }
           val (zipping, unioning) = coalesced.partition(_.partitions.size == numPartitions)
           val zipped = if (zipping.nonEmpty) {
