@@ -48,17 +48,16 @@ abstract class Extract[T](
       (if (rdds.size == 1) {
         rdds.head
       } else {
-        Future.sequence(rdds).map { rdds =>
-          val part = Partitioner.defaultPartitioner(rdds.head, rdds.tail: _*)
-          val (unioning, coalescing) = rdds.partition(_.partitions.size < part.numPartitions)
-          val coalesced = if (coalescing.nonEmpty) {
-            (coalescing.map { prev =>
-              if (prev.partitions.size == part.numPartitions) {
-                prev
-              } else {
-                prev.coalesce(part.numPartitions, shuffle = false)
-              }
-            }).reduceLeft {
+        Future.sequence(rdds).map { prevs =>
+          val numPartitions =
+            Partitioner.defaultPartitioner(prevs.head, prevs.tail: _*).numPartitions
+          val coalesced = prevs.map {
+            case prev if prev.partitions.size == numPartitions => prev
+            case prev => prev.coalesce(numPartitions, shuffle = false)
+          }
+          val (zipping, unioning) = coalesced.partition(_.partitions.size == numPartitions)
+          val zipped = if (zipping.nonEmpty) {
+            zipping.reduceLeft {
               (left, right) =>
                 left.zipPartitions(right, preservesPartitioning = false)(_ ++ _)
             }
@@ -66,9 +65,9 @@ abstract class Extract[T](
             sc.emptyRDD[(_, T)]
           }
           if (unioning.isEmpty) {
-            coalesced
+            zipped
           } else {
-            sc.union(coalesced, unioning: _*)
+            sc.union(zipped, unioning: _*)
           }
         }
       }).zip(zipBroadcasts(rc)).map {
