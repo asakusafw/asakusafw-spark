@@ -40,10 +40,10 @@ import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
-import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
+import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -59,7 +59,8 @@ class ExtractClassBuilderSpecTest extends ExtractClassBuilderSpec
 
 class ExtractClassBuilderSpec
   extends FlatSpec
-  with SparkWithClassServerForAll
+  with ClassServerForAll
+  with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
   with RoundContextSugar {

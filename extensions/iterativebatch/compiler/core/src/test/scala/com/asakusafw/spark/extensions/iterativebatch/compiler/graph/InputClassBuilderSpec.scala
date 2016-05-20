@@ -48,11 +48,11 @@ import com.asakusafw.runtime.stage.StageConstants
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value.IntOption
-import com.asakusafw.spark.compiler.FlowIdForEach
-import com.asakusafw.spark.compiler.fixture.SparkWithClassServerForAll
+import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
 import com.asakusafw.spark.compiler.graph._
 import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.runtime.{ RoundContextSugar, TempDirForEach }
+import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -64,7 +64,7 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.RoundAwareParallelCollectionSource
 
-abstract class InputClassBuilderSpec extends FlatSpec with SparkWithClassServerForAll {
+abstract class InputClassBuilderSpec extends FlatSpec with ClassServerForAll with SparkForAll {
 
   import InputClassBuilderSpec._
 

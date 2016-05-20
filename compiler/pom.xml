@@ -222,10 +222,6 @@ target=jvm-1.7
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.apache.spark</groupId>
-      <artifactId>spark-repl_${scala.compat.version}</artifactId>
-    </dependency>
   </dependencies>
 
 </project>

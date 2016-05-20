@@ -735,34 +735,6 @@ encoding/<project>=UTF-8
         <version>${asakusafw-lang.version}</version>
         <scope>test</scope>
       </dependency>
-      <dependency>
-        <groupId>org.apache.spark</groupId>
-        <artifactId>spark-repl_${scala.compat.version}</artifactId>
-        <version>${spark.version}</version>
-        <scope>test</scope>
-        <exclusions>
-          <exclusion>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-bagel_${scala.compat.version}</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-mllib_${scala.compat.version}</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_${scala.compat.version}</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>jline</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.codehaus.groovy</groupId>
-            <artifactId>groovy-all</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
     </dependencies>
   </dependencyManagement>
 
