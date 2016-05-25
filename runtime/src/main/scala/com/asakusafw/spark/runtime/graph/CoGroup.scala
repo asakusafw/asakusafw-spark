@@ -16,6 +16,7 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import scala.annotation.meta.param
 import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.{ Partitioner, SparkContext }
@@ -28,9 +29,9 @@ import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroup(
-  @transient prevs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
-  @transient group: GroupOrdering,
-  @transient part: Partitioner)(
+  @(transient @param) prevs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
+  @(transient @param) group: GroupOrdering,
+  @(transient @param) part: Partitioner)(
     @transient val broadcasts: Map[BroadcastId, Broadcast])(
       implicit @transient val sc: SparkContext)
   extends Source

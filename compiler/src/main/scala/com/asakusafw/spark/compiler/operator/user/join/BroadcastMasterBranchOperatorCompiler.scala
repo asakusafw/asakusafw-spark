@@ -17,6 +17,8 @@ package com.asakusafw.spark.compiler
 package operator.user
 package join
 
+import scala.language.existentials
+
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 

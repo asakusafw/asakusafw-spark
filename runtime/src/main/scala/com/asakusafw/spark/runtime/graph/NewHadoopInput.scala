@@ -16,6 +16,7 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import scala.annotation.meta.param
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.{ classTag, ClassTag }
 
@@ -31,9 +32,9 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
   implicit sc: SparkContext,
-  @transient ifClassTag: ClassTag[IF],
-  @transient kClassTag: ClassTag[K],
-  @transient vClassTag: ClassTag[V])
+  @(transient @param) ifClassTag: ClassTag[IF],
+  @(transient @param) kClassTag: ClassTag[K],
+  @(transient @param) vClassTag: ClassTag[V])
   extends Input
   with UsingBroadcasts
   with Branching[V] {

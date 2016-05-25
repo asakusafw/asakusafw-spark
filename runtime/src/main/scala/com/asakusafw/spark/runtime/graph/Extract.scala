@@ -16,6 +16,7 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import scala.annotation.meta.param
 import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.{ Partitioner, SparkContext }
@@ -25,7 +26,7 @@ import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class Extract[T](
-  @transient prevs: Seq[(Source, BranchKey)])(
+  @(transient @param) prevs: Seq[(Source, BranchKey)])(
     @transient val broadcasts: Map[BroadcastId, Broadcast])(
       implicit @transient val sc: SparkContext)
   extends Source

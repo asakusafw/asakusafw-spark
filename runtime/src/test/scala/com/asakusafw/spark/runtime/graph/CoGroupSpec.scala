@@ -22,6 +22,7 @@ import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
 
+import scala.annotation.meta.param
 import scala.collection.JavaConversions._
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -339,9 +340,9 @@ object CoGroupSpec {
   val BarError = BranchKey(5)
 
   class TestCoGroup(
-    @transient inputs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
-    @transient grouping: GroupOrdering,
-    @transient part: Partitioner)(
+    @(transient @param) inputs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
+    @(transient @param) grouping: GroupOrdering,
+    @(transient @param) part: Partitioner)(
       val label: String)(
         implicit sc: SparkContext)
     extends CoGroup(inputs, grouping, part)(Map.empty)
