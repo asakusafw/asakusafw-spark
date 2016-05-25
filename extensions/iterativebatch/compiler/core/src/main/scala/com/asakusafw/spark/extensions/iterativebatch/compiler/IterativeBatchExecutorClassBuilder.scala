@@ -68,7 +68,7 @@ class IterativeBatchExecutorClassBuilder(
     fieldDef.newField(
       Opcodes.ACC_PRIVATE,
       "job",
-      classOf[Job]asType)
+      classOf[Job].asType)
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {

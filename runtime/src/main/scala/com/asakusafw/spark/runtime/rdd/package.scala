@@ -15,6 +15,7 @@
  */
 package com.asakusafw.spark.runtime
 
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 import org.apache.spark.{ Partitioner, SparkContext }
