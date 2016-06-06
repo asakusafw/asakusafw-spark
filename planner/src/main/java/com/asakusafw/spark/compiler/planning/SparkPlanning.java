@@ -158,7 +158,7 @@ public final class SparkPlanning {
             JobflowInfo jobflow,
             Collection<PlanningContext.Option> options) {
         PlanningContext context = new PlanningContext(
-                new OptimizerContextAdapter(parent, jobflow.getFlowId()),
+                new OptimizerContextAdapter(parent, jobflow.getFlowId(), SparkOptimizerToolkit.INSTANCE),
                 options);
         return context;
     }
