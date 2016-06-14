@@ -275,7 +275,6 @@ encoding/<project>=UTF-8
           <configuration>
             <xmlOutput>true</xmlOutput>
             <findbugsXmlOutput>true</findbugsXmlOutput>
-            <excludeFilterFile>com/asakusafw/fb_exclude.xml</excludeFilterFile>
             <sourceEncoding>UTF-8</sourceEncoding>
             <outputEncoding>UTF-8</outputEncoding>
           </configuration>
