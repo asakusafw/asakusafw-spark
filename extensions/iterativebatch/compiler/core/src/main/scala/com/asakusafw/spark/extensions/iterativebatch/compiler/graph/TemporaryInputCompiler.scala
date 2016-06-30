@@ -25,7 +25,7 @@ import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.graph.{
-  ComputeOnce,
+  CacheOnce,
   InputInstantiator,
   Instantiator,
   TemporaryInputClassBuilder
@@ -82,14 +82,14 @@ class TemporaryInputCompiler extends RoundAwareNodeCompiler {
               operator.getDataType.asType,
               inputRef.getPaths.toSeq.sorted)(
               subPlanInfo.getLabel,
-              subplan.getOutputs.toSeq) with ComputeAlways
+              subplan.getOutputs.toSeq) with CacheAlways
           case IterativeInfo.RecomputeKind.PARAMETER =>
             new TemporaryInputClassBuilder(
               operator,
               operator.getDataType.asType,
               inputRef.getPaths.toSeq.sorted)(
               subPlanInfo.getLabel,
-              subplan.getOutputs.toSeq) with ComputeByParameter {
+              subplan.getOutputs.toSeq) with CacheByParameter {
 
               override val parameters: Set[String] = iterativeInfo.getParameters.toSet
             }
@@ -99,7 +99,7 @@ class TemporaryInputCompiler extends RoundAwareNodeCompiler {
               operator.getDataType.asType,
               inputRef.getPaths.toSeq.sorted)(
               subPlanInfo.getLabel,
-              subplan.getOutputs.toSeq) with ComputeOnce
+              subplan.getOutputs.toSeq) with CacheOnce
         }
 
       context.addClass(builder)

@@ -30,9 +30,9 @@ class ParallelCollectionSource[T: ClassTag](
   numSlices: Option[Int] = None)(
     val label: String)(
       implicit @transient val sc: SparkContext)
-  extends Source with ComputeOnce with ComputeOnce.Ops {
+  extends Source with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with CacheOnce.Ops {
 
-  override def compute(
+  override def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
     val rdd = sc.parallelize(data, numSlices.getOrElse(sc.defaultParallelism))
     Map(branchKey -> Future.successful(rdd))

@@ -27,22 +27,23 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class Extract[T](
   @(transient @param) prevs: Seq[(Source, BranchKey)])(
-    @transient val broadcasts: Map[BroadcastId, Broadcast])(
+    @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
       implicit @transient val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[T] {
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
   @transient
   private val fragmentBufferSize =
     sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
-  override def compute(
+  override def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, T)]])
+        source.compute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, T)]])
     }
 
     val future =

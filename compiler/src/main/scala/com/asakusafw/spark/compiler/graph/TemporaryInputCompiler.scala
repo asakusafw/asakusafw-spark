@@ -64,7 +64,7 @@ class TemporaryInputCompiler extends NodeCompiler {
         operator.getDataType.asType,
         inputRef.getPaths.toSeq.sorted)(
         subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq) with ComputeOnce
+        subplan.getOutputs.toSeq) with CacheOnce
 
     context.addClass(builder)
   }

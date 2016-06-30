@@ -122,7 +122,7 @@ class IterativeBatchExecutorClassBuilder(
           thisVar.push().putField("job", {
             val nodesVar = pushNewArray(classOf[Node].asType, ldc(subplans.size)).store()
             val broadcastsVar = pushObject(mutable.Map)
-              .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast]].asType)
+              .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType)
               .store()
 
             subplans.foreach {
@@ -148,7 +148,7 @@ class IterativeBatchExecutorClassBuilder(
       case (subplan, i) =>
         methodDef.newMethod(Opcodes.ACC_PRIVATE, s"node${i}", Seq(
           classOf[Array[Node]].asType,
-          classOf[mutable.Map[BroadcastId, Broadcast]].asType))(
+          classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType))(
           defNodeMethod(subplan, i)(subplanToIdx)(_))
     }
   }
@@ -179,7 +179,7 @@ class IterativeBatchExecutorClassBuilder(
               applyMap(
                 allBroadcastsVar.push(),
                 context.broadcastIds.getField(prevSubPlanOperator))
-              .cast(classOf[Broadcast].asType))
+              .cast(classOf[Broadcast[_]].asType))
           } else {
             val marker = subPlanInput.getOperator
             val iterativeInfo = IterativeInfo.get(subPlanInput)

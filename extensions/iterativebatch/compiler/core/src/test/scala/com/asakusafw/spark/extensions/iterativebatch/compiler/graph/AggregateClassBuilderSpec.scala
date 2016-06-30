@@ -163,7 +163,7 @@ class AggregateClassBuilderSpec
         classOf[Seq[(Source, BranchKey)]],
         classOf[Option[SortOrdering]],
         classOf[Partitioner],
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Seq((foos, getBranchKey(foosMarker))),
@@ -184,7 +184,7 @@ class AggregateClassBuilderSpec
           batchArguments = Map("round" -> round.toString))
         val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
-        val results = aggregate.getOrCompute(rc)
+        val results = aggregate.compute(rc)
 
         val result = Await.result(
           results(getBranchKey(resultMarker))
@@ -269,7 +269,7 @@ class AggregateClassBuilderSpec
         classOf[Seq[(Source, BranchKey)]],
         classOf[Option[SortOrdering]],
         classOf[Partitioner],
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Seq((foos, getBranchKey(foosMarker))),
@@ -290,7 +290,7 @@ class AggregateClassBuilderSpec
           batchArguments = Map("round" -> round.toString))
         val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
-        val results = aggregate.getOrCompute(rc)
+        val results = aggregate.compute(rc)
 
         val result = Await.result(
           results(getBranchKey(resultMarker))

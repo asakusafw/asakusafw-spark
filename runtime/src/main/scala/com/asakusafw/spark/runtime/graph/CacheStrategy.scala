@@ -16,23 +16,7 @@
 package com.asakusafw.spark.runtime
 package graph
 
-import scala.collection.mutable
-import scala.concurrent.{ ExecutionContext, Future }
+trait CacheStrategy[K, V] {
 
-import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
-
-trait BroadcastOnce {
-  self: Broadcast =>
-
-  @transient
-  private var broadcasted: Future[Broadcasted[_]] = _
-
-  def getOrBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
-    synchronized {
-      if (broadcasted == null) { // scalastyle:ignore
-        broadcasted = broadcast(rc)
-      }
-      broadcasted
-    }
-  }
+  def getOrCache(key: K, value: => V): V
 }

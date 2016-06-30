@@ -16,6 +16,7 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import scala.concurrent.Future
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.fs.Path
@@ -23,18 +24,21 @@ import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
+import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class TemporaryInput[V: ClassTag](
-  @transient val broadcasts: Map[BroadcastId, Broadcast])(
+  @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
     implicit sc: SparkContext)
   extends NewHadoopInput[TemporaryInputFormat[V], NullWritable, V] {
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
-  def paths: Set[String]
+  protected def paths: Set[String]
 
-  override def newJob(rc: RoundContext): MRJob = {
+  override protected def newJob(rc: RoundContext): MRJob = {
     val job = MRJob.getInstance(rc.hadoopConf.value)
     val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
     FileInputFormat.setInputPaths(job, paths.map { path =>

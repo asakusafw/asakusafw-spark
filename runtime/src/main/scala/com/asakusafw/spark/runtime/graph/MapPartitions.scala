@@ -30,12 +30,13 @@ abstract class MapPartitions[T, U: ClassTag](
   f: (Int, Iterator[T]) => Iterator[U],
   preservesPartitioning: Boolean = false)(
     implicit val sc: SparkContext) extends Source with Source.Ops {
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
   override val label: String = parent.label
 
-  override def compute(
+  override def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-    val prevs = parent.getOrCompute(rc)
+    val prevs = parent.compute(rc)
     prevs.updated(
       branchKey,
       prevs(branchKey).map {

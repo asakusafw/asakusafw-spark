@@ -23,13 +23,14 @@ import org.scalatest.junit.JUnitRunner
 import java.io.{ DataInput, DataOutput }
 
 import scala.collection.JavaConversions._
-import scala.concurrent.Await
+import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.Writable
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
@@ -76,7 +77,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val rc = newRoundContext()
 
       val result = Await.result(
-        aggregate.getOrCompute(rc).apply(Result).map {
+        aggregate.compute(rc).apply(Result).map {
           _.map {
             case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
@@ -108,7 +109,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val rc = newRoundContext()
 
       val result = Await.result(
-        aggregate.getOrCompute(rc).apply(Result).map {
+        aggregate.compute(rc).apply(Result).map {
           _.map {
             case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
@@ -132,12 +133,12 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
     val rc = newRoundContext()
 
     val (result1, result2) = Await.result(
-      aggregate.getOrCompute(rc).apply(Result1).map {
+      aggregate.compute(rc).apply(Result1).map {
         _.map {
           case (_, foo: Foo) => (foo.id.get, foo.sum.get)
         }.collect.toSeq.sortBy(_._1)
       }.zip {
-        aggregate.getOrCompute(rc).apply(Result2).map {
+        aggregate.compute(rc).apply(Result2).map {
           _.map {
             case (_, foo: Foo) => foo.sum.get
           }.collect.toSeq
@@ -247,7 +248,7 @@ object AggregateSpec {
         val label: String)(
           implicit sc: SparkContext)
       extends Aggregate[Foo, Foo](prev, sort, part)(Map.empty)
-      with ComputeOnce {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       def this(
         prev: (Source, BranchKey),
@@ -313,7 +314,7 @@ object AggregateSpec {
         val label: String)(
           implicit sc: SparkContext)
       extends Extract[Foo](Seq(prev))(Map.empty)
-      with ComputeOnce {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
 

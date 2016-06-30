@@ -184,7 +184,7 @@ class TemporaryInputClassBuilderSpec
         }
 
         val input = cls.getConstructor(
-          classOf[Map[BroadcastId, Broadcast]],
+          classOf[Map[BroadcastId, Broadcast[_]]],
           classOf[SparkContext])
           .newInstance(
             Map.empty,
@@ -203,7 +203,7 @@ class TemporaryInputClassBuilderSpec
           val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
           val result = Await.result(
-            input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
+            input.compute(rc).apply(getBranchKey(inputMarker)).map {
               _.map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
@@ -327,7 +327,7 @@ class DirectInputClassBuilderSpec
       }
 
       val input = cls.getConstructor(
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Map.empty,
@@ -346,7 +346,7 @@ class DirectInputClassBuilderSpec
         val bias = if (iterativeExtension.isDefined) 100 * round else 0
 
         val result = Await.result(
-          input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
+          input.compute(rc).apply(getBranchKey(inputMarker)).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq.sorted

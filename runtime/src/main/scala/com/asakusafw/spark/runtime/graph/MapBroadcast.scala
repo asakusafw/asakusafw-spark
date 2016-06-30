@@ -33,14 +33,16 @@ abstract class MapBroadcast(
   group: GroupOrdering,
   part: Partitioner)(
     val label: String)(
-      implicit val sc: SparkContext) extends Broadcast {
+      implicit val sc: SparkContext) extends Broadcast[Map[ShuffleKey, Seq[_]]] {
+  self: CacheStrategy[RoundContext, Future[Broadcasted[Map[ShuffleKey, Seq[_]]]]] =>
 
-  override def broadcast(
-    rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
+  override protected def doBroadcast(
+    rc: RoundContext)(
+      implicit ec: ExecutionContext): Future[Broadcasted[Map[ShuffleKey, Seq[_]]]] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]])
+        source.compute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]])
     }
 
     Future.sequence(rdds).map { prevs =>
@@ -69,4 +71,4 @@ class MapBroadcastOnce(
     label: String)(
       implicit sc: SparkContext)
   extends MapBroadcast(prevs, sort, group, partitioner)(label)
-  with BroadcastOnce
+  with CacheOnce[RoundContext, Future[Broadcasted[Map[ShuffleKey, Seq[_]]]]]

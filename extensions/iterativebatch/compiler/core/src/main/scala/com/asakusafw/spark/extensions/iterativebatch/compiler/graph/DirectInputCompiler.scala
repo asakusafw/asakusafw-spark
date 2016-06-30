@@ -23,7 +23,7 @@ import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.graph.{
-  ComputeOnce,
+  CacheOnce,
   DirectInputClassBuilder,
   InputInstantiator,
   Instantiator
@@ -76,7 +76,7 @@ class DirectInputCompiler extends RoundAwareNodeCompiler {
             inputFormatInfo.getValueClass.asType,
             inputFormatInfo.getExtraConfiguration.toMap)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeAlways
+            subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new DirectInputClassBuilder(
             operator,
@@ -85,7 +85,7 @@ class DirectInputCompiler extends RoundAwareNodeCompiler {
             inputFormatInfo.getValueClass.asType,
             inputFormatInfo.getExtraConfiguration.toMap)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeByParameter {
+            subplan.getOutputs.toSeq) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
           }
@@ -97,7 +97,7 @@ class DirectInputCompiler extends RoundAwareNodeCompiler {
             inputFormatInfo.getValueClass.asType,
             inputFormatInfo.getExtraConfiguration.toMap)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeOnce
+            subplan.getOutputs.toSeq) with CacheOnce
       }
 
     context.addClass(builder)

@@ -24,13 +24,14 @@ import java.io.{ DataInput, DataOutput }
 
 import scala.annotation.meta.param
 import scala.collection.JavaConversions._
-import scala.concurrent.Await
+import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.Writable
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
@@ -79,23 +80,23 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
-          cogroup.getOrCompute(rc).apply(FooResult).map {
+          cogroup.compute(rc).apply(FooResult).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
-            cogroup.getOrCompute(rc).apply(BarResult).map {
+            cogroup.compute(rc).apply(BarResult).map {
               _.map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
-            cogroup.getOrCompute(rc).apply(FooError).map {
+            cogroup.compute(rc).apply(FooError).map {
               _.map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
-              cogroup.getOrCompute(rc).apply(BarError).map {
+              cogroup.compute(rc).apply(BarError).map {
                 _.map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
@@ -157,23 +158,23 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
-          cogroup.getOrCompute(rc).apply(FooResult).map {
+          cogroup.compute(rc).apply(FooResult).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
-            cogroup.getOrCompute(rc).apply(BarResult).map {
+            cogroup.compute(rc).apply(BarResult).map {
               _.map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
-            cogroup.getOrCompute(rc).apply(FooError).map {
+            cogroup.compute(rc).apply(FooError).map {
               _.map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
-              cogroup.getOrCompute(rc).apply(BarError).map {
+              cogroup.compute(rc).apply(BarError).map {
                 _.map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
@@ -346,7 +347,7 @@ object CoGroupSpec {
       val label: String)(
         implicit sc: SparkContext)
     extends CoGroup(inputs, grouping, part)(Map.empty)
-    with ComputeOnce {
+    with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
     override def branchKeys: Set[BranchKey] = {
       Set(FooResult, BarResult, FooError, BarError)

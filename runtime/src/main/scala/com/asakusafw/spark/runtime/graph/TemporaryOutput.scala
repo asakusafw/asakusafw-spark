@@ -32,9 +32,9 @@ abstract class TemporaryOutput[T: ClassTag](
     implicit sc: SparkContext)
   extends NewHadoopOutput(prevs) {
 
-  def path: String
+  protected def path: String
 
-  override def newJob(rc: RoundContext): MRJob = {
+  override protected def newJob(rc: RoundContext): MRJob = {
     val job = MRJob.getInstance(rc.hadoopConf.value)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])

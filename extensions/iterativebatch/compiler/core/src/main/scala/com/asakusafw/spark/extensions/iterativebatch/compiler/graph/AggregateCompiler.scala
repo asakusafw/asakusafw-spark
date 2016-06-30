@@ -26,7 +26,7 @@ import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.graph.{
   AggregateClassBuilder,
   AggregateInstantiator,
-  ComputeOnce,
+  CacheOnce,
   Instantiator
 }
 import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo }
@@ -73,14 +73,14 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
             combinerType,
             operator)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeAlways
+            subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new AggregateClassBuilder(
             valueType,
             combinerType,
             operator)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeByParameter {
+            subplan.getOutputs.toSeq) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
           }
@@ -90,7 +90,7 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
             combinerType,
             operator)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeOnce
+            subplan.getOutputs.toSeq) with CacheOnce
       }
 
     context.addClass(builder)

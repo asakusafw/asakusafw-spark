@@ -24,9 +24,9 @@ class Job(nodes: Seq[Node]) {
     Future.sequence(
       nodes.flatMap {
         case source: Source =>
-          source.getOrCompute(rc).values
-        case broadcast: Broadcast =>
-          Seq(broadcast.getOrBroadcast(rc))
+          source.compute(rc).values
+        case broadcast: Broadcast[_] =>
+          Seq(broadcast.broadcast(rc))
         case sink: Sink =>
           Seq(sink.submitJob(rc))
       }).map(_ => ())

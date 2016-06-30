@@ -22,7 +22,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.graph.{
-  ComputeOnce,
+  CacheOnce,
   ExtractClassBuilder,
   ExtractInstantiator,
   Instantiator
@@ -62,12 +62,12 @@ class ExtractCompiler extends RoundAwareNodeCompiler {
           new ExtractClassBuilder(
             marker)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeAlways
+            subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new ExtractClassBuilder(
             marker)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeByParameter {
+            subplan.getOutputs.toSeq) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
           }
@@ -75,7 +75,7 @@ class ExtractCompiler extends RoundAwareNodeCompiler {
           new ExtractClassBuilder(
             marker)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeOnce
+            subplan.getOutputs.toSeq) with CacheOnce
       }
 
     context.addClass(builder)

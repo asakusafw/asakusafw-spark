@@ -24,7 +24,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.graph.{
   CoGroupClassBuilder,
   CoGroupInstantiator,
-  ComputeOnce,
+  CacheOnce,
   Instantiator
 }
 import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo }
@@ -61,12 +61,12 @@ class CoGroupCompiler extends RoundAwareNodeCompiler {
           new CoGroupClassBuilder(
             operator)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeAlways
+            subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new CoGroupClassBuilder(
             operator)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeByParameter {
+            subplan.getOutputs.toSeq) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
           }
@@ -74,7 +74,7 @@ class CoGroupCompiler extends RoundAwareNodeCompiler {
           new CoGroupClassBuilder(
             operator)(
             subPlanInfo.getLabel,
-            subplan.getOutputs.toSeq) with ComputeOnce
+            subplan.getOutputs.toSeq) with CacheOnce
       }
 
     context.addClass(builder)

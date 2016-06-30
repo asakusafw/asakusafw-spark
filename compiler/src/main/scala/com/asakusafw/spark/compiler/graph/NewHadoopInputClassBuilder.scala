@@ -44,7 +44,7 @@ abstract class NewHadoopInputClassBuilder(
   extends ClassBuilder(thisType, signature, superType)
   with Branching
   with LabelField {
-  self: ComputationStrategy =>
+  self: CacheStrategy =>
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)

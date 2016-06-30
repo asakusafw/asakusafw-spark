@@ -22,7 +22,7 @@ import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
 
-import scala.concurrent.Await
+import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.reflect.{ classTag, ClassTag }
@@ -35,6 +35,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
 import org.apache.spark.{ Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
 import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
@@ -95,7 +96,7 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
       val rc = newRoundContext()
 
       val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
+        input.compute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -117,7 +118,7 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
       val rc = newRoundContext()
 
       val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
+        input.compute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -168,7 +169,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
       val rc = newRoundContext()
 
       val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
+        input.compute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -190,7 +191,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
       val rc = newRoundContext()
 
       val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
+        input.compute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -264,7 +265,7 @@ object InputSpec {
         val label: String)(
           implicit sc: SparkContext)
       extends TemporaryInput[Foo](Map.empty)
-      with ComputeOnce {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       def this(path: String)(label: String)(implicit sc: SparkContext) = this(Set(path))(label)
 
@@ -308,7 +309,7 @@ object InputSpec {
         Map.empty)(
         classTag[DirectFileInputFormat].asInstanceOf[ClassTag[InputFormat[NullWritable, Foo]]],
         classTag[NullWritable], classTag[Foo], implicitly)
-      with ComputeOnce {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Input)
 
