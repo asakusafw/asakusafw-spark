@@ -31,11 +31,13 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.bridge.api.BatchContext
+import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
@@ -49,6 +51,7 @@ import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.runtime.core.Result
+import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
@@ -99,14 +102,23 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     super.configure(conf)
   }
 
-  def prepareData[T: ClassTag](name: String, path: File)(rdd: RDD[T])(implicit sc: SparkContext): Unit = {
-    val job = MRJob.getInstance(sc.hadoopConfiguration)
-    job.setOutputKeyClass(classOf[NullWritable])
-    job.setOutputValueClass(classTag[T].runtimeClass)
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
+  val configurePath: (MRJob, File, String) => Unit = { (job, path, name) =>
+    job.setOutputFormatClass(classOf[TemporaryOutputFormat[_]])
     TemporaryOutputFormat.setOutputPath(
       job,
       new Path(path.getPath, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}${name}"))
+  }
+
+  def prepareData[T: ClassTag](
+    name: String,
+    path: File,
+    configurePath: (MRJob, File, String) => Unit = configurePath)(
+      rdd: RDD[T])(
+        implicit sc: SparkContext): Unit = {
+    val job = MRJob.getInstance(sc.hadoopConfiguration)
+    job.setOutputKeyClass(classOf[NullWritable])
+    job.setOutputValueClass(classTag[T].runtimeClass)
+    configurePath(job, path, name)
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
 
@@ -183,27 +195,32 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     it should s"compile IterativeBatchExecutor from simple plan with InputFormatInfo: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
-      prepareData("foos", path) {
-        sc.parallelize(0 until 100).map(Foo.intToFoo)
+      val configurePath: (MRJob, File, String) => Unit = { (job, path, name) =>
+        job.setOutputFormatClass(classOf[SequenceFileOutputFormat[NullWritable, Foo]])
+        FileOutputFormat.setOutputPath(job, new Path(path.getPath, name))
+      }
+
+      val rounds = 0 to 1
+      for {
+        round <- rounds
+      } {
+        prepareData(s"foos_${round}", path, configurePath) {
+          sc.parallelize(0 until 100).map(Foo.intToFoo).map(Foo.round(_, round))
+        }
       }
 
       val inputOperator = ExternalInput
-        .newInstance("foos",
+        .newWithAttributes("foos",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "test",
             ClassDescription.of(classOf[Foo]),
             ExternalInputInfo.DataSize.UNKNOWN))
-
-      val roundFoo = OperatorExtractor
-        .extract(classOf[Update], classOf[Ops], "roundFoo")
-        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
-        .output("output", ClassDescription.of(classOf[Foo]))
         .attribute(classOf[IterativeExtension], iterativeExtension)
         .build()
 
       val outputOperator = ExternalOutput
-        .newInstance("output", roundFoo.findOutput("output"))
+        .newInstance("output", inputOperator.findOutput(ExternalInput.PORT_NAME))
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
@@ -215,12 +232,17 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
             override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
               new InputFormatInfo(
-                ClassDescription.of(classOf[TemporaryInputFormat[_]]),
+                ClassDescription.of(classOf[DirectFileInputFormat]),
                 ClassDescription.of(classOf[NullWritable]),
                 ClassDescription.of(classOf[Foo]),
-                Map(FileInputFormat.INPUT_DIR ->
-                  /*s"${path.getPath}/${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foos/part-*"*/
-                  s"${path.getPath}/${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foos/part-*"))
+                Map(
+                  "com.asakusafw.directio.test" -> classOf[HadoopDataSource].getName,
+                  "com.asakusafw.directio.test.path" -> "test",
+                  "com.asakusafw.directio.test.fs.path" -> path.getAbsolutePath,
+                  DirectFileInputFormat.KEY_BASE_PATH -> "test",
+                  DirectFileInputFormat.KEY_RESOURCE_PATH -> "foos_${round}/part-*",
+                  DirectFileInputFormat.KEY_DATA_CLASS -> classOf[Foo].getName,
+                  DirectFileInputFormat.KEY_FORMAT_CLASS -> classOf[FooSequenceFileFormat].getName))
             }
           })
         val jobflow = newJobflow(flowId, graph)
@@ -234,7 +256,6 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         executorType
       }
 
-      val rounds = 0 to 0 // 1
       execute(flowId, executorType, rounds)
 
       for {
@@ -2751,5 +2772,22 @@ object IterativeBatchExecutorCompilerSpec {
 
     @Summarize
     def summarize(value: Baz): SummarizedBaz = ???
+  }
+
+  class FooSequenceFileFormat extends SequenceFileFormat[NullWritable, Foo, Foo] {
+
+    override def getSupportedType(): Class[Foo] = classOf[Foo]
+
+    override def createKeyObject(): NullWritable = NullWritable.get()
+
+    override def createValueObject(): Foo = new Foo()
+
+    override def copyToModel(key: NullWritable, value: Foo, model: Foo): Unit = {
+      model.copyFrom(value)
+    }
+
+    override def copyFromModel(model: Foo, key: NullWritable, value: Foo): Unit = {
+      value.copyFrom(model)
+    }
   }
 }
