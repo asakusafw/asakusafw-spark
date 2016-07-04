@@ -32,7 +32,7 @@ trait ComputeByParameter {
 
   @transient
   private val generatedRDDs: mutable.Map[Seq[String], Map[BranchKey, Future[RDD[_]]]] =
-    mutable.WeakHashMap.empty
+    mutable.Map.empty
 
   override def getOrCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
