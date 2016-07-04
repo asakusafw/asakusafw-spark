@@ -13,24 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime
-package graph
+package com.asakusafw.spark.runtime.directio
 
-import scala.concurrent.{ ExecutionContext, Future }
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.util.ReflectionUtils
 
-class Job(nodes: Seq[Node]) {
+class HadoopObjectFactory(conf: Configuration) extends ObjectFactory {
 
-  def execute(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
-    Future.sequence(
-      nodes.flatMap {
-        case source: Source =>
-          source.compute(rc).values
-        case broadcast: Broadcast[_] =>
-          Seq(broadcast.broadcast(rc))
-        case action: Action[_] =>
-          Seq(action.perform(rc))
-        case sink: Sink =>
-          Seq(sink.submitJob(rc))
-      }).map(_ => ())
+  override def newInstance[T](cls: Class[T]): T = {
+    ReflectionUtils.newInstance(cls, conf)
   }
 }

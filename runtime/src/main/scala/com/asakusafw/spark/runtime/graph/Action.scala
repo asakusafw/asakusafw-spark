@@ -18,19 +18,12 @@ package graph
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class Job(nodes: Seq[Node]) {
+trait Action[T] extends Node {
+  self: CacheStrategy[RoundContext, Future[T]] =>
 
-  def execute(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
-    Future.sequence(
-      nodes.flatMap {
-        case source: Source =>
-          source.compute(rc).values
-        case broadcast: Broadcast[_] =>
-          Seq(broadcast.broadcast(rc))
-        case action: Action[_] =>
-          Seq(action.perform(rc))
-        case sink: Sink =>
-          Seq(sink.submitJob(rc))
-      }).map(_ => ())
+  protected def doPerform(rc: RoundContext)(implicit ec: ExecutionContext): Future[T]
+
+  final def perform(rc: RoundContext)(implicit ec: ExecutionContext): Future[T] = {
+    getOrCache(rc, doPerform(rc))
   }
 }

@@ -13,24 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime
-package graph
+package com.asakusafw.spark.runtime.directio
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.reflect.{ classTag, ClassTag }
 
-class Job(nodes: Seq[Node]) {
+trait ObjectFactory {
 
-  def execute(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
-    Future.sequence(
-      nodes.flatMap {
-        case source: Source =>
-          source.compute(rc).values
-        case broadcast: Broadcast[_] =>
-          Seq(broadcast.broadcast(rc))
-        case action: Action[_] =>
-          Seq(action.perform(rc))
-        case sink: Sink =>
-          Seq(sink.submitJob(rc))
-      }).map(_ => ())
-  }
+  def newInstance[T](cls: Class[T]): T
+
+  def newInstance[T: ClassTag](): T = newInstance(classTag[T].runtimeClass.asInstanceOf[Class[T]])
 }
