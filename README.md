@@ -24,6 +24,9 @@ cd gradle
 ./gradlew clean build
 ```
 
+## How to build document
+* See documantation [`README`](docs/README.md).
+
 ## Referred Projects
 * [Asakusa Framework Core](https://github.com/asakusafw/asakusafw)
 * [Asakusa Framework Language Toolset](https://github.com/asakusafw/asakusafw-compiler)
