@@ -22,10 +22,10 @@ Asakusa on Sparkに関するバッチアプリケーション実行時のパラ�
 **spark.properties**
 
 ..  code-block:: properties
-    
+
     ## the number of parallel tasks of each Asakusa stage
     com.asakusafw.spark.parallelism=40
-    
+
     ## the number of records of the in-memory buffer for each output fragment
     com.asakusafw.spark.fragment.bufferSize=256
 
@@ -39,18 +39,18 @@ Asakusa on Sparkに関するバッチアプリケーション実行時のパラ�
 以下は環境変数の設定例です。
 
 ..  code-block:: sh
-    
+
     ASAKUSA_SPARK_ARGS='--engine-conf com.asakusafw.spark.parallelism=40 --engine-conf com.asakusafw.spark.fragment.bufferSize=256'
 
 設定ファイルと環境変数で同じプロパティが設定されていた場合、環境変数の値が利用されます。
 
 ..  hint::
     環境変数による設定は、バッチアプリケーションごとに設定を変更したい場合に便利です。
-    
+
 ..  attention::
     :program:`yaess-batch.sh` などのYAESSコマンドを実行する環境と、Sparkを実行する環境が異なる場合（例えばYAESSのSSH機能を利用している場合）に、
     YAESSコマンドを実行する環境の環境変数がSparkを実行する環境に受け渡されないことがある点に注意してください。
-    
+
     YAESSではYAESSコマンドを実行する環境の環境変数をYAESSのジョブ実行先に受け渡すための機能がいくつか用意されているので、それらの機能を利用することを推奨します。
     詳しくは :asakusafw:`YAESSユーザガイド <yaess/user-guide.html>` などを参照してください。
 
@@ -65,7 +65,7 @@ Asakusa on Sparkのバッチアプリケーション実行時の設定項目は�
     ステージの特性（推定データサイズや処理内容）によって、この分割数を元に実際のタスク分割数が決定されます。
 
     標準的には、SparkのExecutorに割り当てた全コア数の1〜4倍程度を指定します。
-    
+
     このプロパティが設定されていない場合、 ``spark.default.parallelism`` の値を代わりに利用します。いずれのプロパティも設定されていない場合、下記の既定値を利用します。
 
     既定値: ``2``
@@ -90,20 +90,23 @@ Asakusa on Sparkのバッチアプリケーション実行時の設定項目は�
     標準のタスク分割数については ``com.asakusafw.spark.parallelism`` で設定できます。また、データサイズの閾値についてはコンパイラプロパティの ``spark.parallelism.limit.huge`` で設定できます。
 
     既定値: ``4.0``
-    
+
 ..  seealso::
     コンパイラプロパティについては、 :doc:`reference` を参照してください。
 
 ``com.asakusafw.spark.fragment.bufferSize``
-    演算子の出力に結果 ( ``Result`` [#]_ ) 型を使用する場合に、``Result型`` に追加するデータモデルオブジェクトをメモリ上に保持する個数を指定します。
-    
-    演算子の処理中に ``Result`` に追加したデータモデルオブジェクトの個数がこのプロパティに設定した値を超えた時点で、 ``Result`` の内容をファイル上のバッファに退避します。
+    バッチアプリケーション実行時に、各演算子の出力となるデータモデルオブジェクトをメモリ上に保持する個数を指定します。
+    グループ単位で実行される演算子に対しては、グループ単位での保持数になります。
 
-    このプロパティを設定しない、または負の値を指定した場合、演算子の処理が終了するまで ``Result`` に追加したすべてのデータモデルオブジェクトはメモリ上に保持されます。
-    
+    演算子の処理中に出力されるデータモデルオブジェクトの個数がこのプロパティに設定した値を超えた時点で、メモリ上に保持していたデータモデルオブジェクトの内容をファイル上のバッファに退避します。
+
+    このプロパティを設定しない、または負の値を指定した場合、演算子の処理が終了するまで出力対象となるすべてのデータモデルオブジェクトはメモリ上に保持されます。
+
     既定値: ``-1``
-
-..  [#] :asakusafw-javadoc:`com.asakusafw.runtime.core.Result` 演算子の出力となるデータモデルオブジェクトを保持します。 ``add`` メソッドにより複数のオブジェクトを追加することができます。
 
 ..  hint::
     ある演算子の出力サイズが大きくメモリ不足エラーが発生するような場合に、このプロパティを設定することで問題を回避できる可能性があります。
+
+..  attention::
+    ファイル上のバッファは利用するJVMのシステムプロパティ ``java.io.tmpdir`` で設定されているディレクトリ配下に作成されます。
+    大量のバッファが出力されるような処理を実行する場合には、出力先に十分な空き領域を確保する必要があることに注意してください。
