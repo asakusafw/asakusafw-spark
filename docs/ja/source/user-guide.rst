@@ -88,7 +88,7 @@ Asakusa on Sparkは、以下のHadoopディストリビューションと組み�
 Spark
 -----
 
-Asakusa on Spark バージョン |version| は、Spark 1.6.1 で動作を検証しています。
+Asakusa on Spark バージョン |version| は、Spark 1.6.2 で動作を検証しています。
 
 また、Sparkの動作モードとして、YARN cluster mode、および YARN client modeで動作を確認しています。
 
@@ -103,7 +103,7 @@ Asakusa on Spark バージョン |version| は、Spark 1.6.1 で動作を検証�
 Asakusa Framework 対応バージョン
 --------------------------------
 
-Asakusa on Spark バージョン |version| は、Asakusa Framework バージョン 0.8.0 を使用します。
+Asakusa on Spark バージョン |version| は、Asakusa Framework バージョン 0.8.1 を使用します。
 
 マイグレーション
 ~~~~~~~~~~~~~~~~
@@ -167,7 +167,7 @@ Asakusa on Sparkは、Asakusa Frameworkの該当バージョンで非推奨と�
 
 Asakusa on Sparkを利用する構成を持つアプリケーション開発用のプロジェクトテンプレートは、以下リンクからダウンロードします。
 
-* `asakusa-spark-template-0.3.0.tar.gz <http://www.asakusafw.com/download/gradle-plugin/asakusa-spark-template-0.3.0.tar.gz>`_
+* `asakusa-spark-template-0.3.1.tar.gz <http://www.asakusafw.com/download/gradle-plugin/asakusa-spark-template-0.3.1.tar.gz>`_
 
 また、Asakusa Frameworkの `サンプルプログラム集 (GitHub)`_ では、Asakusa on Sparkを利用する構成を持つサンプルアプリケーションプロジェクトを公開しています。
 
@@ -184,10 +184,10 @@ Asakusa on Spark Gradle Pluginは、アプリケーションプロジェクト�
 
 * ``buildscript/dependencis`` ブロックに指定しているAsakusa Gradle Pluginの指定をAsakusa on Spark Gradle Pluginの指定に置き換える。
 
-  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.3.0'``
+  * ``group: 'com.asakusafw.spark', name: 'asakusa-spark-gradle', version: '0.3.1'``
 
 * Asakusa on Spark Gradle Pluginを適用する定義を追加する
-  
+
   * ``apply plugin: 'asakusafw-spark'``
 
 以下はAsakusa on Spark Gradle Pluginの設定を追加したビルドスクリプトの例です。
@@ -203,7 +203,7 @@ Asakusa on Spark Gradle Pluginは、アプリケーションプロジェクト�
 `Asakusa on Spark Gradle Plugin`_ を設定した状態で、Gradleタスク :program:`sparkCompileBatchapps` を実行すると、Asakusa DSL Compiler for Sparkを利用し、Spark向けのバッチアプリケーションのビルドを実行します。
 
 ..  code-block:: sh
-    
+
     ./gradlew sparkCompileBatchapps
 
 :program:`sparkCompileBatchapps` タスクを実行すると、アプリケーションプロジェクトの :file:`build/spark-batchapps` 配下にビルド済みのバッチアプリケーションが生成されます。
@@ -222,7 +222,7 @@ Asakusa on Spark Gradle Pluginは、アプリケーションプロジェクト�
 デプロイメントアーカイブを生成するには Gradleの :program:`assemble` タスクを実行します。
 
 ..  code-block:: sh
-    
+
     ./gradlew assemble
 
 ..  hint::
@@ -254,14 +254,14 @@ Spark向けのバッチアプリケーションを実行する際には、次の
 Asakusa on Sparkの実行に環境変数を利用する場合、 :file:`$ASAKUSA_HOME/spark/conf/env.sh` 内でエクスポートして定義できます。
 
 ..  code-block:: sh
-    
+
     export SPARK_CMD=/opt/spark/bin/spark-submit
 
 ..  tip::
     バッチアプリケーション実行時の環境変数は、YAESSプロファイルで設定することも可能です。
-    
+
     Asakusa on Sparkを利用する場合、コマンドラインジョブのプロファイル ``command.spark`` が利用できます。 :file:`$ASAKUSA_HOME/yaess/conf/yaess.properties` に ``command.spark.env.SPARK_CMD`` といったような設定を追加することで、YAESSからSparkを実行する際に環境変数が設定されます。
-    
+
     YAESSのコマンドラインジョブの設定方法について詳しくは、 :asakusafw:`YAESSユーザーガイド - コマンドラインジョブの実行 <yaess/user-guide.html#yaess-profile-command-section>` などを参照してください。
 
 バッチアプリケーションの実行
@@ -295,7 +295,7 @@ Asakusa on Sparkの実行に環境変数を利用する場合、 :file:`$ASAKUSA
     ステージの特性（推定データサイズや処理内容）によって、この分割数を元に実際のタスク分割数が決定されます。
 
     標準的には、SparkのExecutorに割り当てた全コア数の1〜4倍程度を指定します。
-    
+
     このプロパティが設定されていない場合、 ``spark.default.parallelism`` の値を代わりに利用します。いずれのプロパティも設定されていない場合、下記の既定値を利用します。
 
     既定値: ``2``
