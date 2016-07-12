@@ -2,6 +2,25 @@
 Changelogs
 ==========
 
+Release 0.3.1
+=============
+
+(in development)
+
+* [ :milestone-asakusafw-spark:`0.3.1` ]
+* [ :milestone-asakusafw-compiler:`0.3.1` ]
+
+..  list-table:: Bundled Components
+    :widths: 7 3
+    :header-rows: 1
+
+    * - Component
+      - Version
+    * - Asakusa Framework Core
+      - 0.8.1 (|VERSION_UP|)
+    * - Asakusa Framework Language Toolset
+      - 0.3.1 (|VERSION_UP|)
+
 Release 0.3.0
 =============
 
@@ -11,7 +30,7 @@ Apr 08, 2016
 * [ :milestone-asakusafw-compiler:`0.3.0` ]
 
 ..  list-table:: Bundled Components
-    :widths: 8 2
+    :widths: 7 3
     :header-rows: 1
 
     * - Component
@@ -30,7 +49,7 @@ Feb 01, 2016
 * [ :milestone-asakusafw-compiler:`0.2.2` ]
 
 ..  list-table:: Bundled Components
-    :widths: 8 2
+    :widths: 7 3
     :header-rows: 1
 
     * - Component
@@ -49,7 +68,7 @@ Nov 19, 2015
 * [ :milestone-asakusafw-compiler:`0.2.1` ]
 
 ..  list-table:: Bundled Components
-    :widths: 8 2
+    :widths: 7 3
     :header-rows: 1
 
     * - Component
@@ -68,7 +87,7 @@ Sep 15, 2015
 * [ :milestone-asakusafw-compiler:`0.2.0` ]
 
 ..  list-table:: Bundled Components
-    :widths: 8 2
+    :widths: 7 3
     :header-rows: 1
 
     * - Component
@@ -94,7 +113,7 @@ Aug 25, 2015
 * [ :milestone-asakusafw-compiler:`0.1.1` ]
 
 ..  list-table:: Bundled Components
-    :widths: 8 2
+    :widths: 7 3
     :header-rows: 1
 
     * - Component
@@ -112,7 +131,7 @@ Jun 26, 2015
 * The first developer preview release of Asakusa on Spark.
 
 ..  list-table:: Bundled Components
-    :widths: 8 2
+    :widths: 7 3
     :header-rows: 1
 
     * - Component
