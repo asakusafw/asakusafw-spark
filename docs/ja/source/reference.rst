@@ -73,10 +73,10 @@ Asakusa on Spark Gradle Pluginは Batch Application Plugin に対して Asakusa 
 
 以下、 ``build.gradle`` の設定例です。
 
-**build.gradle**
-
 ..  code-block:: groovy
-    
+    :caption: build.gradle
+    :name: build.gradle-reference-1
+
     asakusafw {
         spark {
             include 'com.example.batch.*'
@@ -432,7 +432,7 @@ operator.estimator.* のデフォルト値
       - 既定値無し
     * - ``CoGroup``
       - 既定値無し
-    
+
 既定値がない演算子に対しては、有効なデータサイズの見積もりを行いません。
 
 制限事項
