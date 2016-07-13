@@ -192,10 +192,10 @@ Asakusa on Spark Gradle Pluginは、アプリケーションプロジェクト�
 
 以下はAsakusa on Spark Gradle Pluginの設定を追加したビルドスクリプトの例です。
 
-:download:`build.gradle <attachment/build.gradle>`
-
 ..  literalinclude:: attachment/build.gradle
     :language: groovy
+    :caption: build.gradle
+    :name: build.gradle-user-guide-1
     :emphasize-lines: 8,15
 
 アプリケーションのビルド

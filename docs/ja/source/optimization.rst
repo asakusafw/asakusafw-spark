@@ -19,9 +19,9 @@ Asakusa on Sparkに関するバッチアプリケーション実行時のパラ�
 
 設定ファイルはJavaのプロパティファイルのフォーマットと同様です。以下は ``spark.properties`` の設定例です。
 
-**spark.properties**
-
 ..  code-block:: properties
+    :caption: spark.properties
+    :name: spark.properties-optimization-1
 
     ## the number of parallel tasks of each Asakusa stage
     com.asakusafw.spark.parallelism=40
