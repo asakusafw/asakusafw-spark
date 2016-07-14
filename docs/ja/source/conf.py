@@ -35,13 +35,13 @@ todo_include_todos = True
 extlinks = {
     'milestone-asakusafw-spark': ("https://github.com/asakusafw/asakusafw-spark/issues?&q=milestone:%s", 'asakusafw-spark milestone:'),
     'milestone-asakusafw-compiler': ("https://github.com/asakusafw/asakusafw-compiler/issues?&q=milestone:%s", 'asakusafw-compiler milestone:'),
-    'asakusafw': ('http://docs.asakusafw.com/latest/release/ja/html/%s', None),
+    'asakusafw': ('http://docs.asakusafw.com/0.8.1/release/ja/html/%s', None),
     'jinrikisha': ('http://docs.asakusafw.com/jinrikisha/ja/html/%s', None),
 }
 javadoclinks = {
-    'asakusafw-javadoc': ('http://docs.asakusafw.com/latest/release/api/%s.html', ""),
-    'asakusafw-sdk-gradle-groovydoc': ('http://docs.asakusafw.com/latest/release/gradle-plugins/%s.html', ""),
-    'asakusa-spark-gradle-groovydoc': ('http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugins/%s.html', ""),
+    'asakusafw-javadoc': ('http://docs.asakusafw.com/0.8.1/release/api/%s.html', ""),
+    'asakusafw-sdk-gradle-groovydoc': ('http://docs.asakusafw.com/0.8.1/release/gradle-plugins/%s.html', ""),
+    'asakusa-spark-gradle-groovydoc': ('http://docs.asakusafw.com/asakusa-on-spark/0.3.1/release/gradle-plugins/%s.html', ""),
 }
 
 # The max depth of sidebar toctree.

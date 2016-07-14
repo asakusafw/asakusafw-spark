@@ -58,32 +58,8 @@ Asakusa DSL
 Hadoopディストリビューション
 ----------------------------
 
-Asakusa on Sparkは、以下のHadoopディストリビューションと組み合わせた運用環境で動作を検証しています。
-
-..  list-table:: 動作検証プラットフォーム(Hadoopディストリビューション)
-    :widths: 3 3 3 2
-    :header-rows: 1
-
-    * - Distribution
-      - Version
-      - OS
-      - JDK
-    * - Hortonworks Data Platform
-      - 2.4.0
-      - CentOS 7 (7.1)
-      - JDK 8 (1.8.0_60)
-    * - MapR
-      - 5.0.0 (MRv2)
-      - CentOS 6 (6.6)
-      - JDK 7 (1.7.0_75)
-    * - Amazon EMR
-      - 4.5.0
-      - Amazon Linux 2015.09
-      - JDK 8 (1.8.0_71)
-    * - Microsoft Azure HDInsight
-      - 3.4
-      - Ubuntu 14.04.4
-      - JDK 7 (1.7.0_95)
+Asakusa on Sparkが動作を検証しているHadoopディストリビューションは、
+:asakusafw:`対応プラットフォーム <product/target-platform.html>` の「Hadoopディストリビューション」を参照してください。
 
 Spark
 -----
