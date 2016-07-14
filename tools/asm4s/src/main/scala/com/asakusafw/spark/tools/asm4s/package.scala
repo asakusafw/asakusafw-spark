@@ -18,7 +18,7 @@ package com.asakusafw.spark.tools
 import scala.collection.GenTraversable
 import scala.collection.generic.Growable
 import scala.collection.mutable
-import scala.reflect.{ ClassTag, NameTransformer }
+import scala.reflect.{ AnyValManifest, ClassTag, NameTransformer }
 
 import org.objectweb.asm.Type
 
@@ -36,18 +36,50 @@ package object asm4s {
       .invokeV("apply", classOf[Option[_]].asType, value.asType(classOf[AnyRef].asType))
   }
 
-  def tuple2(_1: => Stack, _2: => Stack)(implicit mb: MethodBuilder): Stack = {
-    pushObject(Tuple2)
-      .invokeV(
-        "apply",
-        classOf[(_, _)].asType,
-        _1.asType(classOf[AnyRef].asType),
-        _2.asType(classOf[AnyRef].asType))
-  }
-
   def classTag(t: Type)(implicit mb: MethodBuilder): Stack = {
     pushObject(ClassTag)
       .invokeV("apply", classOf[ClassTag[_]].asType, ldc(t).asType(classOf[Class[_]].asType))
+  }
+
+  def manifest(t: Type)(implicit mb: MethodBuilder): Stack = {
+    t.getSort() match {
+      case Type.BOOLEAN =>
+        pushObject(Manifest)
+          .invokeV("Boolean", classOf[AnyValManifest[Boolean]].asType)
+          .asType(classOf[Manifest[Boolean]].asType)
+      case Type.CHAR =>
+        pushObject(Manifest)
+          .invokeV("Char", classOf[AnyValManifest[Char]].asType)
+          .asType(classOf[Manifest[Char]].asType)
+      case Type.BYTE =>
+        pushObject(Manifest)
+          .invokeV("Byte", classOf[AnyValManifest[Byte]].asType)
+          .asType(classOf[Manifest[Byte]].asType)
+      case Type.SHORT =>
+        pushObject(Manifest)
+          .invokeV("Short", classOf[AnyValManifest[Short]].asType)
+          .asType(classOf[Manifest[Short]].asType)
+      case Type.INT =>
+        pushObject(Manifest)
+          .invokeV("Int", classOf[AnyValManifest[Int]].asType)
+          .asType(classOf[Manifest[Int]].asType)
+      case Type.LONG =>
+        pushObject(Manifest)
+          .invokeV("Long", classOf[AnyValManifest[Long]].asType)
+          .asType(classOf[Manifest[Long]].asType)
+      case Type.FLOAT =>
+        pushObject(Manifest)
+          .invokeV("Float", classOf[AnyValManifest[Float]].asType)
+          .asType(classOf[Manifest[Float]].asType)
+      case Type.DOUBLE =>
+        pushObject(Manifest)
+          .invokeV("Double", classOf[AnyValManifest[Double]].asType)
+          .asType(classOf[Manifest[Double]].asType)
+      case _ =>
+        pushObject(Manifest)
+          .invokeV("classType", classOf[Manifest[_]].asType,
+            ldc(t).asType(classOf[Class[_]].asType))
+    }
   }
 
   def buildArray(t: Type)(block: ArrayBuilder => Unit)(implicit mb: MethodBuilder): Stack = {
@@ -233,4 +265,421 @@ package object asm4s {
       }
     }
   }
+
+  // scalastyle:off
+
+  /*
+  for (i <- 2 to 22) {
+    println(
+      s"""
+      |  def tuple${i}(${(1 to i).map(j => s"_${j}: => Stack").mkString(", ")})(implicit mb: MethodBuilder): Stack = {
+      |    pushObject(Tuple${i})
+      |      .invokeV(
+      |        "apply",
+      |        classOf[(${(1 to i).map(_ => "_").mkString(", ")})].asType,
+      |        ${(1 to i).map(j => s"_${j}.asType(classOf[AnyRef].asType)").mkString(",\n        ")})
+      |  }""".stripMargin)
+  }
+  */
+
+  def tuple2(_1: => Stack, _2: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple2)
+      .invokeV(
+        "apply",
+        classOf[(_, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple3(_1: => Stack, _2: => Stack, _3: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple3)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple4(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple4)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple5(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple5)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple6(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple6)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple7(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple7)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple8(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple8)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple9(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple9)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple10(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple10)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple11(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple11)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple12(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple12)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple13(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple13)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple14(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple14)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple15(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack, _15: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple15)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType),
+        _15.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple16(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack, _15: => Stack, _16: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple16)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType),
+        _15.asType(classOf[AnyRef].asType),
+        _16.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple17(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack, _15: => Stack, _16: => Stack, _17: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple17)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType),
+        _15.asType(classOf[AnyRef].asType),
+        _16.asType(classOf[AnyRef].asType),
+        _17.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple18(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack, _15: => Stack, _16: => Stack, _17: => Stack, _18: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple18)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType),
+        _15.asType(classOf[AnyRef].asType),
+        _16.asType(classOf[AnyRef].asType),
+        _17.asType(classOf[AnyRef].asType),
+        _18.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple19(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack, _15: => Stack, _16: => Stack, _17: => Stack, _18: => Stack, _19: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple19)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType),
+        _15.asType(classOf[AnyRef].asType),
+        _16.asType(classOf[AnyRef].asType),
+        _17.asType(classOf[AnyRef].asType),
+        _18.asType(classOf[AnyRef].asType),
+        _19.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple20(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack, _15: => Stack, _16: => Stack, _17: => Stack, _18: => Stack, _19: => Stack, _20: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple20)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType),
+        _15.asType(classOf[AnyRef].asType),
+        _16.asType(classOf[AnyRef].asType),
+        _17.asType(classOf[AnyRef].asType),
+        _18.asType(classOf[AnyRef].asType),
+        _19.asType(classOf[AnyRef].asType),
+        _20.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple21(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack, _15: => Stack, _16: => Stack, _17: => Stack, _18: => Stack, _19: => Stack, _20: => Stack, _21: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple21)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType),
+        _15.asType(classOf[AnyRef].asType),
+        _16.asType(classOf[AnyRef].asType),
+        _17.asType(classOf[AnyRef].asType),
+        _18.asType(classOf[AnyRef].asType),
+        _19.asType(classOf[AnyRef].asType),
+        _20.asType(classOf[AnyRef].asType),
+        _21.asType(classOf[AnyRef].asType))
+  }
+
+  def tuple22(_1: => Stack, _2: => Stack, _3: => Stack, _4: => Stack, _5: => Stack, _6: => Stack, _7: => Stack, _8: => Stack, _9: => Stack, _10: => Stack, _11: => Stack, _12: => Stack, _13: => Stack, _14: => Stack, _15: => Stack, _16: => Stack, _17: => Stack, _18: => Stack, _19: => Stack, _20: => Stack, _21: => Stack, _22: => Stack)(implicit mb: MethodBuilder): Stack = {
+    pushObject(Tuple22)
+      .invokeV(
+        "apply",
+        classOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)].asType,
+        _1.asType(classOf[AnyRef].asType),
+        _2.asType(classOf[AnyRef].asType),
+        _3.asType(classOf[AnyRef].asType),
+        _4.asType(classOf[AnyRef].asType),
+        _5.asType(classOf[AnyRef].asType),
+        _6.asType(classOf[AnyRef].asType),
+        _7.asType(classOf[AnyRef].asType),
+        _8.asType(classOf[AnyRef].asType),
+        _9.asType(classOf[AnyRef].asType),
+        _10.asType(classOf[AnyRef].asType),
+        _11.asType(classOf[AnyRef].asType),
+        _12.asType(classOf[AnyRef].asType),
+        _13.asType(classOf[AnyRef].asType),
+        _14.asType(classOf[AnyRef].asType),
+        _15.asType(classOf[AnyRef].asType),
+        _16.asType(classOf[AnyRef].asType),
+        _17.asType(classOf[AnyRef].asType),
+        _18.asType(classOf[AnyRef].asType),
+        _19.asType(classOf[AnyRef].asType),
+        _20.asType(classOf[AnyRef].asType),
+        _21.asType(classOf[AnyRef].asType),
+        _22.asType(classOf[AnyRef].asType))
+  }
+
+  // scalastyle:on
 }

@@ -74,6 +74,10 @@ target=jvm-${java.version}
     </dependency>
     <dependency>
       <groupId>com.asakusafw</groupId>
+      <artifactId>asakusa-directio-vocabulary</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.asakusafw</groupId>
       <artifactId>simple-graph</artifactId>
     </dependency>
     <dependency>

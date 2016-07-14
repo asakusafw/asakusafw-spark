@@ -464,6 +464,12 @@ encoding/<project>=UTF-8
       </dependency>
       <dependency>
         <groupId>com.asakusafw</groupId>
+        <artifactId>asakusa-directio-vocabulary</artifactId>
+        <version>${asakusafw.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw</groupId>
         <artifactId>simple-graph</artifactId>
         <version>${asakusafw.version}</version>
         <scope>provided</scope>

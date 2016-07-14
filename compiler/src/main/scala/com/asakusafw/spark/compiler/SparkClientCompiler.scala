@@ -118,6 +118,7 @@ object SparkClientCompiler {
   object Options {
     val SparkPlanVerify = "spark.plan.verify"
     val SparkInputDirect = "spark.input.direct"
+    val SparkOutputDirect = "spark.output.direct"
   }
 
   trait Context
@@ -134,6 +135,8 @@ object SparkClientCompiler {
 
     def branchKeys: BranchKeysClassBuilder
     def broadcastIds: BroadcastIdsClassBuilder
+
+    def options: CompilerOptions
 
     def nodeCompilerContext: NodeCompiler.Context
     def instantiatorCompilerContext: Instantiator.Context

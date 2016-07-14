@@ -20,35 +20,34 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.extension.directio.DirectFileIoModels
+import com.asakusafw.lang.compiler.extension.directio.{ DirectFileIoModels, OutputPattern }
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 
-class TemporaryOutputCompiler extends NodeCompiler {
+class DirectOutputPrepareCompiler extends NodeCompiler {
 
   override def support(
     subplan: SubPlan)(
       implicit context: NodeCompiler.Context): Boolean = {
-    val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
-    val primaryOperator = subPlanInfo.getPrimaryOperator
-    if (primaryOperator.isInstanceOf[ExternalOutput]) {
-      val operator = primaryOperator.asInstanceOf[ExternalOutput]
-      if (context.options.useOutputDirect) {
+    if (context.options.useOutputDirect) {
+      val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+      val primaryOperator = subPlanInfo.getPrimaryOperator
+      if (primaryOperator.isInstanceOf[ExternalOutput]) {
+        val operator = primaryOperator.asInstanceOf[ExternalOutput]
         Option(operator.getInfo).map { info =>
-          !DirectFileIoModels.isSupported(info)
-        }.getOrElse(true)
+          DirectFileIoModels.isSupported(info)
+        }.getOrElse(false)
       } else {
-        true
+        false
       }
     } else {
       false
     }
   }
 
-  override def instantiator: Instantiator = TemporaryOutputInstantiator
+  override def instantiator: Instantiator = DirectOutputPrepareInstantiator
 
   override def compile(
     subplan: SubPlan)(
@@ -61,15 +60,22 @@ class TemporaryOutputCompiler extends NodeCompiler {
       s"The primary operator should be external output: ${primaryOperator} [${subplan}]")
     val operator = primaryOperator.asInstanceOf[ExternalOutput]
 
-    context.addExternalOutput(
-      operator.getName, operator.getInfo,
-      Seq(context.options.getRuntimeWorkingPath(
-        s"${operator.getName}/*/${TemporaryOutputFormat.DEFAULT_FILE_NAME}-*")))
+    val model = DirectFileIoModels.resolve(operator.getInfo)
+    val dataModelRef = operator.getOperatorPort.dataModelRef
+    val pattern = OutputPattern.compile(dataModelRef, model.getResourcePattern, model.getOrder)
 
-    val builder =
-      new TemporaryOutputClassBuilder(
+    val builder = if (pattern.isGatherRequired) {
+      new DirectOutputPrepareGroupClassBuilder(
         operator)(
-        subPlanInfo.getLabel)
+        pattern,
+        model)(
+        subPlanInfo.getLabel) with CacheOnce
+    } else {
+      new DirectOutputPrepareFlatClassBuilder(
+        operator)(
+        model)(
+        subPlanInfo.getLabel) with CacheOnce
+    }
 
     context.addClass(builder)
   }

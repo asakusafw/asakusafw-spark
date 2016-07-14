@@ -27,8 +27,8 @@ import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.graph.{
   Instantiator,
-  OutputInstantiator,
-  TemporaryOutputClassBuilder
+  TemporaryOutputClassBuilder,
+  TemporaryOutputInstantiator
 }
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
@@ -41,7 +41,7 @@ class TemporaryOutputCompiler extends RoundAwareNodeCompiler {
     subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.OUTPUT
   }
 
-  override def instantiator: Instantiator = OutputInstantiator
+  override def instantiator: Instantiator = TemporaryOutputInstantiator
 
   override def compile(
     subplan: SubPlan)(
