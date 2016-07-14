@@ -11,7 +11,7 @@ Asakusa on Sparkの概要と利用方法は、 :doc:`user-guide` を参照して
 
 ..  toctree::
     :maxdepth: 1
-    
+
     user-guide
     optimization
     reference
@@ -34,14 +34,12 @@ Asakusa on Sparkの概要と利用方法は、 :doc:`user-guide` を参照して
 APIリファレンス
 ---------------
 
-* `Asakusa on Spark Gradle Plugins (Groovydoc)`_
-
-..  _`Asakusa on Spark Gradle Plugins (Groovydoc)`: http://docs.asakusafw.com/asakusa-on-spark/latest/release/gradle-plugins/index.html
+* :asakusa-spark-gradle-groovydoc:`Asakusa on Spark Gradle Plugins (Groovydoc) <index>`
 
 リンク
 ======
 
-* :asakusafw:`Asakusa Framework (latest document) <index.html>`
+* :asakusafw:`Asakusa Framework documentation <index.html>`
 * `Apache Spark`_
 
 ..  _`Apache Spark`: https://spark.apache.org/
