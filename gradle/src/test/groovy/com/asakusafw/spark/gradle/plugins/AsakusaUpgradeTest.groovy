@@ -50,10 +50,10 @@ class AsakusaUpgradeTest {
     }
 
     /**
-     * Test for {@code 2.14} (Asakusa on Spark {@code 0.3.1}).
+     * Test for {@code 2.14.1} (Asakusa on Spark {@code 0.3.1}).
      */
     @Test
-    void 'v2.14'() {
+    void 'v2.14.1'() {
         doUpgradeFromTestName()
     }
 
