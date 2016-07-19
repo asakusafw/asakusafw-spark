@@ -47,6 +47,9 @@ javadoclinks = {
 # The max depth of sidebar toctree.
 rst_prolog = """
 :tocdepth: 3
+
+..  |VERSION_UP| unicode:: U+2191
+
 """
 
 # ------------------------------------------------------------------------------

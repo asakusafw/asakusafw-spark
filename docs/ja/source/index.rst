@@ -17,6 +17,7 @@ Asakusa on Sparkの概要と利用方法は、 :doc:`user-guide` を参照して
     reference
     iterative-extension
     release-notes
+    previous-release-notes
     changelogs
 
 リソース
