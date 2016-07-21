@@ -22,4 +22,17 @@ package object backdoor {
     def incMemoryBytesSpilled(value: Long): Unit = metrics.incMemoryBytesSpilled(value)
     def incDiskBytesSpilled(value: Long): Unit = metrics.incDiskBytesSpilled(value)
   }
+
+  implicit class InputMetricsBackdoor(val metrics: InputMetrics) extends AnyVal {
+
+    def incBytesRead(v: Long): Unit = metrics.incBytesRead(v)
+    def incRecordsRead(v: Long): Unit = metrics.incRecordsRead(v)
+    def setBytesRead(v: Long): Unit = metrics.setBytesRead(v)
+  }
+
+  implicit class OutputMetricsBackdoor(val metrics: OutputMetrics) extends AnyVal {
+
+    def setBytesWritten(v: Long): Unit = metrics.setBytesWritten(v)
+    def setRecordsWritten(v: Long): Unit = metrics.setRecordsWritten(v)
+  }
 }

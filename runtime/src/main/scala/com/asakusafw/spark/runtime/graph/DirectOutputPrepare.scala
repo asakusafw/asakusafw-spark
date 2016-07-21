@@ -28,6 +28,7 @@ import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
 import org.apache.spark.backdoor._
+import org.apache.spark.executor.backdoor._
 import org.apache.spark.util.backdoor._
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -93,7 +94,7 @@ abstract class DirectOutputPrepare[T: Manifest](
 
   protected def doPreparePartition(
     rc: RoundContext)(
-      block: (StageInfo, OutputAttemptContext, String => (ModelOutput[T] => Unit) => Unit) => Unit): Unit = { // scalastyle:ignore
+      block: (StageInfo, OutputAttemptContext, String => (ModelOutput[T] => Long) => Unit) => Unit): Unit = { // scalastyle:ignore
     val conf = rc.hadoopConf.value
     val stageInfo = StageInfo.deserialize(conf.get(StageInfo.KEY_NAME))
     val repository = HadoopDataSourceUtil.loadRepository(conf)
@@ -113,17 +114,24 @@ abstract class DirectOutputPrepare[T: Manifest](
     dataSource.setupAttemptOutput(context)
 
     try {
+      val bytes = new Counter()
+      val records = new Counter()
       block(stageInfo, context, { resourcePath =>
         withOutput =>
           for {
             output <- managed(
               dataSource.openOutput(
-                context, definition, componentPath, resourcePath, new Counter()))
+                context, definition, componentPath, resourcePath, bytes))
           } {
-            withOutput(output)
+            records.add(withOutput(output))
           }
       })
       dataSource.commitAttemptOutput(context)
+
+      taskContext.taskMetrics.outputMetrics.setBytesWritten(
+        taskContext.taskMetrics.outputMetrics.bytesWritten + bytes.get)
+      taskContext.taskMetrics.outputMetrics.setRecordsWritten(
+        taskContext.taskMetrics.outputMetrics.recordsWritten + records.get)
     } catch {
       case t: Throwable =>
         Logger.error(
@@ -171,7 +179,12 @@ abstract class DirectOutputPrepareFlat[T: Manifest](
             .toString
 
           withOutput(resolvedPath) { output =>
-            iter.foreach(output.write)
+            var records = 0L
+            while (iter.hasNext) {
+              records += 1L
+              output.write(iter.next())
+            }
+            records
           }
         }
       }
@@ -221,10 +234,13 @@ abstract class DirectOutputPrepareGroup[T <: DataModel[T] with Writable: Manifes
               val currentPath = buff.head._1.grouping
               WritableSerDe.deserialize(buff.head._1.grouping, pathOpt)
               withOutput(pathOpt.getAsString) { output =>
+                var records = 0L
                 while (buff.hasNext && Arrays.equals(buff.head._1.grouping, currentPath)) {
+                  records += 1L
                   WritableSerDe.deserialize(buff.next()._2, data)
                   output.write(data)
                 }
+                records
               }
             }
           }
