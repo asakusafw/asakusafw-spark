@@ -52,7 +52,7 @@ eclipse.preferences.version=1
 scala.compiler.additionalParams=\ -Xsource\:2.10 -Ymacro-expand\:none
 scala.compiler.installation=2.10
 scala.compiler.useProjectSettings=true
-target=jvm-1.7
+target=jvm-${java.version}
 ]]>
               </content>
             </file>
