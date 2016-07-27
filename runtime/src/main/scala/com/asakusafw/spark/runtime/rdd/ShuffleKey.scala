@@ -24,7 +24,9 @@ class ShuffleKey(
   val grouping: Array[Byte],
   val ordering: Array[Byte]) extends Equals {
 
-  def this() = this(Array.emptyByteArray, Array.emptyByteArray)
+  def this(grouping: Array[Byte]) = this(grouping, Array.emptyByteArray)
+
+  def this() = this(Array.emptyByteArray)
 
   override def hashCode: Int = Arrays.hashCode(grouping)
 
@@ -42,5 +44,5 @@ class ShuffleKey(
     obj.isInstanceOf[ShuffleKey]
   }
 
-  def dropOrdering: ShuffleKey = new ShuffleKey(grouping, Array.emptyByteArray)
+  def dropOrdering: ShuffleKey = new ShuffleKey(grouping)
 }

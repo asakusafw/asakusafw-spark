@@ -26,9 +26,7 @@ class WritableSerDe {
   private[this] val buffer = new DataBuffer()
 
   def serialize(value: Writable): Array[Byte] = {
-    buffer.reset(0, 0)
-    value.write(buffer)
-    Arrays.copyOfRange(buffer.getData, buffer.getReadPosition, buffer.getReadLimit)
+    serialize(Seq(value))
   }
 
   def serialize(values: Seq[Writable]): Array[Byte] = {
@@ -38,12 +36,19 @@ class WritableSerDe {
   }
 
   def deserialize(bytes: Array[Byte], value: Writable): Unit = {
-    buffer.reset(bytes, 0, bytes.length)
-    value.readFields(buffer)
+    deserialize(bytes, Seq(value))
+  }
+
+  def deserialize(bytes: Array[Byte], off: Int, value: Writable): Unit = {
+    deserialize(bytes, off, Seq(value))
   }
 
   def deserialize(bytes: Array[Byte], values: Seq[Writable]): Unit = {
-    buffer.reset(bytes, 0, bytes.length)
+    deserialize(bytes, 0, values)
+  }
+
+  def deserialize(bytes: Array[Byte], off: Int, values: Seq[Writable]): Unit = {
+    buffer.reset(bytes, off, bytes.length - off)
     values.foreach(_.readFields(buffer))
   }
 }
@@ -66,7 +71,15 @@ object WritableSerDe {
     serdes.get.deserialize(bytes, value)
   }
 
+  def deserialize(bytes: Array[Byte], off: Int, value: Writable): Unit = {
+    serdes.get.deserialize(bytes, off, value)
+  }
+
   def deserialize(bytes: Array[Byte], values: Seq[Writable]): Unit = {
     serdes.get.deserialize(bytes, values)
+  }
+
+  def deserialize(bytes: Array[Byte], off: Int, values: Seq[Writable]): Unit = {
+    serdes.get.deserialize(bytes, off, values)
   }
 }

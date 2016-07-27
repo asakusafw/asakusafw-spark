@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark
+package com.asakusafw.spark.extensions.iterativebatch.runtime.graph
 
-import org.apache.spark.util.CallSite
+import scala.concurrent.{ ExecutionContext, Future }
 
-package object backdoor {
+import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.graph._
 
-  implicit class SparkContextBackdoor(val sc: SparkContext) extends AnyVal {
+trait IterativeAction[T] extends Node {
+  self: CacheStrategy[Seq[RoundContext], Future[T]] =>
 
-    def clean[F <: AnyRef](f: F, checkSerializable: Boolean = true): F = {
-      sc.clean(f, checkSerializable)
-    }
+  protected def doPerform(
+    origin: RoundContext, rcs: Seq[RoundContext])(implicit ec: ExecutionContext): Future[T]
 
-    def submitMapStage[K, V, C](
-      dependency: ShuffleDependency[K, V, C]): SimpleFutureAction[MapOutputStatistics] = {
-      sc.submitMapStage(dependency)
-    }
-
-    def setCallSite(callSite: CallSite): Unit = sc.setCallSite(callSite)
+  final def perform(
+    origin: RoundContext, rcs: Seq[RoundContext])(implicit ec: ExecutionContext): Future[T] = {
+    getOrCache(rcs, doPerform(origin, rcs))
   }
 }
