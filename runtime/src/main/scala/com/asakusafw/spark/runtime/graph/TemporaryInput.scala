@@ -25,7 +25,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.SparkContext
 
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 
 abstract class TemporaryInput[V: ClassTag](
@@ -36,7 +35,7 @@ abstract class TemporaryInput[V: ClassTag](
   def paths: Set[String]
 
   override def newJob(rc: RoundContext): MRJob = {
-    val job = JobCompatibility.newJob(rc.hadoopConf.value)
+    val job = MRJob.getInstance(rc.hadoopConf.value)
     val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
     FileInputFormat.setInputPaths(job, paths.map { path =>
       new Path(stageInfo.resolveUserVariables(path))

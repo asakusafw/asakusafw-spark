@@ -28,6 +28,7 @@ import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
+import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
@@ -47,7 +48,6 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
-import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants
@@ -88,7 +88,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     }
 
     def prepareData[T: ClassTag](name: String, path: File)(rdd: RDD[T])(implicit sc: SparkContext): Unit = {
-      val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+      val job = MRJob.getInstance(sc.hadoopConfiguration)
       job.setOutputKeyClass(classOf[NullWritable])
       job.setOutputValueClass(classTag[T].runtimeClass)
       job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
@@ -97,7 +97,7 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     }
 
     def readResult[T: ClassTag](name: String, path: File)(implicit sc: SparkContext): RDD[T] = {
-      val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+      val job = MRJob.getInstance(sc.hadoopConfiguration)
       TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/-/part-*")))
       sc.newAPIHadoopRDD(
         job.getConfiguration,

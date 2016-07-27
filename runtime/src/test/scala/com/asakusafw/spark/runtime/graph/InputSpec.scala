@@ -29,11 +29,11 @@ import scala.concurrent.duration.Duration
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
+import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.{ Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
-import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
@@ -49,7 +49,7 @@ abstract class InputSpec extends FlatSpec with SparkForAll {
   import InputSpec._
 
   def prepareRound(path: String, ints: Seq[Int]): Unit = {
-    val job = JobCompatibility.newJob(sc.hadoopConfiguration)
+    val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classOf[Foo])
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
@@ -191,7 +191,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
   }
 
   private def mkExtraConfigurations(basePaths: Set[String]): Map[String, String] = {
-    val job = JobCompatibility.newJob(new Configuration(false))
+    val job = MRJob.getInstance(new Configuration(false))
     FileInputFormat.setInputPaths(job, basePaths.map(path => new Path(path + "/part-*")).toSeq: _*)
     Map(FileInputFormat.INPUT_DIR -> job.getConfiguration.get(FileInputFormat.INPUT_DIR))
   }
