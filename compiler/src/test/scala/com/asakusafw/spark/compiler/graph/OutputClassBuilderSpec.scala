@@ -29,6 +29,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
+import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.SparkContext
 
@@ -38,7 +39,6 @@ import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.{ ExternalOutput, MarkerOperator }
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
-import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.value.IntOption
@@ -60,7 +60,7 @@ abstract class OutputClassBuilderSpec extends FlatSpec with ClassServerForAll wi
   import OutputClassBuilderSpec._
 
   def readResult(path: String, rc: RoundContext): Seq[Int] = {
-    val job = JobCompatibility.newJob(rc.hadoopConf.value)
+    val job = MRJob.getInstance(rc.hadoopConf.value)
 
     val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
     FileInputFormat.setInputPaths(job, new Path(stageInfo.resolveUserVariables(path + "/-/part-*")))

@@ -29,11 +29,11 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
+import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.{ SparkConf, SparkContext }
 
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
@@ -47,7 +47,7 @@ abstract class OutputSpec extends FlatSpec with SparkForAll {
   import OutputSpec._
 
   def readResult(path: String, rc: RoundContext): Seq[Int] = {
-    val job = JobCompatibility.newJob(rc.hadoopConf.value)
+    val job = MRJob.getInstance(rc.hadoopConf.value)
 
     val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
     FileInputFormat.setInputPaths(job, new Path(stageInfo.resolveUserVariables(path + "/*/part-*")))

@@ -24,7 +24,6 @@ import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.spark.SparkContext
 
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.runtime.compatibility.JobCompatibility
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
@@ -36,7 +35,7 @@ abstract class TemporaryOutput[T: ClassTag](
   def path: String
 
   override def newJob(rc: RoundContext): MRJob = {
-    val job = JobCompatibility.newJob(rc.hadoopConf.value)
+    val job = MRJob.getInstance(rc.hadoopConf.value)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])
     job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
