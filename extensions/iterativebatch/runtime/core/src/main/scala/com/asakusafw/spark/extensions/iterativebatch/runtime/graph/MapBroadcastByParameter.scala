@@ -21,13 +21,12 @@ import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 class MapBroadcastByParameter(
-  source: Source,
-  branchKey: BranchKey,
+  prevs: Seq[(Source, BranchKey)],
   sort: Option[SortOrdering],
   group: GroupOrdering,
   partitioner: Partitioner)(
     label: String)(
       val parameters: Set[String])(
         implicit sc: SparkContext)
-  extends MapBroadcast(source, branchKey, sort, group, partitioner)(label)
+  extends MapBroadcast(prevs, sort, group, partitioner)(label)
   with BroadcastByParameter
