@@ -218,8 +218,11 @@ class IterativeBatchExecutorClassBuilder(
           }
           broadcast.dup()
           val arguments = Seq.newBuilder[Stack]
-          arguments += nodeVar.push().asType(classOf[Source].asType)
-          arguments += context.branchKeys.getField(subPlanOutput.getOperator)
+          arguments += buildSeq { builder =>
+            builder += tuple2(
+              nodeVar.push().asType(classOf[Source].asType),
+              context.branchKeys.getField(subPlanOutput.getOperator))
+          }
           arguments += option(
             sortOrdering(
               dataModelRef.groupingTypes(group.getGrouping),

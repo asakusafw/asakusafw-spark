@@ -152,8 +152,11 @@ class SparkClientClassBuilder(
               context.broadcastIds.getField(subPlanOutput.getOperator), {
                 val broadcast = pushNew(classOf[MapBroadcastOnce].asType)
                 broadcast.dup().invokeInit(
-                  nodeVar.push().asType(classOf[Source].asType),
-                  context.branchKeys.getField(subPlanOutput.getOperator),
+                  buildSeq { builder =>
+                    builder += tuple2(
+                      nodeVar.push().asType(classOf[Source].asType),
+                      context.branchKeys.getField(subPlanOutput.getOperator))
+                  },
                   option(
                     sortOrdering(
                       dataModelRef.groupingTypes(group.getGrouping),
