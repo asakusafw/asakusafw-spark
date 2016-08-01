@@ -23,7 +23,7 @@ import org.objectweb.asm.{ Opcodes, Type }
 
 import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
 import com.asakusafw.lang.compiler.model.description.TypeDescription
-import com.asakusafw.lang.compiler.model.graph.Operator
+import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, Operator }
 import com.asakusafw.lang.compiler.planning.{ Plan, Planning, SubPlan }
 import com.asakusafw.spark.compiler.planning.{
   BroadcastInfo,
@@ -114,18 +114,34 @@ class SparkClientClassBuilder(
                 subPlanInput <- subplan.getInputs
                 inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
                 if inputInfo.getInputType == SubPlanInputInfo.InputType.BROADCAST
+                broadcastInfo <- Option(subPlanInput.getAttribute(classOf[BroadcastInfo]))
               } {
                 val prevSubPlanOutputs = subPlanInput.getOpposites
-                assert(prevSubPlanOutputs.size == 1,
-                  s"The number of input for broadcast should be 1: ${prevSubPlanOutputs.size}")
-                val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
+                if (prevSubPlanOutputs.size == 1) {
+                  val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
 
-                builder += (
-                  context.broadcastIds.getField(subPlanInput.getOperator),
-                  applyMap(
-                    allBroadcastsVar.push(),
-                    context.broadcastIds.getField(prevSubPlanOperator))
-                  .cast(classOf[Broadcast].asType))
+                  builder += (
+                    context.broadcastIds.getField(subPlanInput.getOperator),
+                    applyMap(
+                      allBroadcastsVar.push(),
+                      context.broadcastIds.getField(prevSubPlanOperator))
+                    .cast(classOf[Broadcast].asType))
+                } else {
+                  val marker = subPlanInput.getOperator
+                  builder += (
+                    context.broadcastIds.getField(marker),
+                    newBroadcast(
+                      marker,
+                      broadcastInfo)(
+                        () => buildSeq { builder =>
+                          prevSubPlanOutputs.foreach { subPlanOutput =>
+                            builder += tuple2(
+                              nodesVar.push().aload(ldc(subplanToIdx(subPlanOutput.getOwner))),
+                              context.branchKeys.getField(subPlanOutput.getOperator))
+                          }
+                        },
+                        scVar.push))
+                }
               }
             }.store()
 
@@ -143,30 +159,21 @@ class SparkClientClassBuilder(
             outputInfo <- Option(subPlanOutput.getAttribute(classOf[SubPlanOutputInfo]))
             if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
             broadcastInfo <- Option(subPlanOutput.getAttribute(classOf[BroadcastInfo]))
+            if subPlanOutput.getOpposites.exists(_.getOpposites.size == 1)
           } {
-            val dataModelRef = subPlanOutput.getOperator.getInput.dataModelRef
-            val group = broadcastInfo.getFormatInfo
-
+            val marker = subPlanOutput.getOperator
             addToMap(
               allBroadcastsVar.push(),
-              context.broadcastIds.getField(subPlanOutput.getOperator), {
-                val broadcast = pushNew(classOf[MapBroadcastOnce].asType)
-                broadcast.dup().invokeInit(
-                  buildSeq { builder =>
+              context.broadcastIds.getField(marker),
+              newBroadcast(
+                marker,
+                broadcastInfo)(
+                  () => buildSeq { builder =>
                     builder += tuple2(
                       nodeVar.push().asType(classOf[Source].asType),
-                      context.branchKeys.getField(subPlanOutput.getOperator))
+                      context.branchKeys.getField(marker))
                   },
-                  option(
-                    sortOrdering(
-                      dataModelRef.groupingTypes(group.getGrouping),
-                      dataModelRef.orderingTypes(group.getOrdering))),
-                  groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
-                  partitioner(ldc(1)),
-                  ldc(broadcastInfo.getLabel),
-                  scVar.push())
-                broadcast
-              })
+                  scVar.push))
           }
           `return`()
         }
@@ -186,5 +193,27 @@ class SparkClientClassBuilder(
     methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(registrator.getClassName))
     }
+  }
+
+  private def newBroadcast(
+    marker: MarkerOperator,
+    broadcastInfo: BroadcastInfo)(
+      nodes: () => Stack,
+      sc: () => Stack)(
+        implicit mb: MethodBuilder): Stack = {
+    val dataModelRef = marker.getInput.dataModelRef
+    val group = broadcastInfo.getFormatInfo
+    val broadcast = pushNew(classOf[MapBroadcastOnce].asType)
+    broadcast.dup().invokeInit(
+      nodes(),
+      option(
+        sortOrdering(
+          dataModelRef.groupingTypes(group.getGrouping),
+          dataModelRef.orderingTypes(group.getOrdering))),
+      groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
+      partitioner(ldc(1)),
+      ldc(broadcastInfo.getLabel),
+      sc())
+    broadcast
   }
 }
