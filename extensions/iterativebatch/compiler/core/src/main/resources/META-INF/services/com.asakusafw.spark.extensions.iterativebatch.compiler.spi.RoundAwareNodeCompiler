@@ -2,5 +2,6 @@ com.asakusafw.spark.extensions.iterativebatch.compiler.graph.ExtractCompiler
 com.asakusafw.spark.extensions.iterativebatch.compiler.graph.AggregateCompiler
 com.asakusafw.spark.extensions.iterativebatch.compiler.graph.CoGroupCompiler
 com.asakusafw.spark.extensions.iterativebatch.compiler.graph.DirectInputCompiler
+com.asakusafw.spark.extensions.iterativebatch.compiler.graph.DirectOutputPrepareEachForIterativeCompiler
 com.asakusafw.spark.extensions.iterativebatch.compiler.graph.TemporaryInputCompiler
 com.asakusafw.spark.extensions.iterativebatch.compiler.graph.TemporaryOutputCompiler

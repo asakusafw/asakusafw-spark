@@ -40,16 +40,19 @@ class TemporaryInputCompiler extends RoundAwareNodeCompiler {
   override def support(
     subplan: SubPlan)(
       implicit context: NodeCompiler.Context): Boolean = {
-    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.INPUT && {
-      val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
-      val primaryOperator = subPlanInfo.getPrimaryOperator
-      if (primaryOperator.isInstanceOf[ExternalInput]) {
-        val operator = primaryOperator.asInstanceOf[ExternalInput]
-        val inputFormatInfo = context.getInputFormatInfo(operator.getName, operator.getInfo)
-        !context.options.useInputDirect || inputFormatInfo.isEmpty
+    val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+    val primaryOperator = subPlanInfo.getPrimaryOperator
+    if (primaryOperator.isInstanceOf[ExternalInput]) {
+      val operator = primaryOperator.asInstanceOf[ExternalInput]
+      if (context.options.useInputDirect) {
+        Option(operator.getInfo).flatMap { info =>
+          context.getInputFormatInfo(operator.getName, info)
+        }.isEmpty
       } else {
-        false
+        true
       }
+    } else {
+      false
     }
   }
 
