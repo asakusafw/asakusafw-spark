@@ -163,6 +163,7 @@ target=jvm-${java.version}
               <artifactId>scala-maven-plugin</artifactId>
               <configuration>
                 <args>
+                  <arg>-target:jvm-${java.version}</arg>
                   <arg>-Xdisable-assertions</arg>
                 </args>
               </configuration>
