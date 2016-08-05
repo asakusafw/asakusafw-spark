@@ -17,6 +17,7 @@ package com.asakusafw.spark.compiler
 package operator
 package user
 
+import scala.language.existentials
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type

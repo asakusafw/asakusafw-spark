@@ -51,8 +51,7 @@ encoding/<project>=UTF-8
               <content>
 <![CDATA[
 eclipse.preferences.version=1
-scala.compiler.additionalParams=\ -Xsource\:2.10 -Ymacro-expand\:none
-scala.compiler.installation=2.10
+scala.compiler.installation=${scala.compat.version}
 scala.compiler.useProjectSettings=true
 target=jvm-${java.version}
 ]]>
@@ -164,6 +163,7 @@ target=jvm-${java.version}
               <artifactId>scala-maven-plugin</artifactId>
               <configuration>
                 <args>
+                  <arg>-target:jvm-${java.version}</arg>
                   <arg>-Xdisable-assertions</arg>
                 </args>
               </configuration>

@@ -16,6 +16,7 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import scala.annotation.meta.param
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
@@ -30,9 +31,9 @@ import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class Aggregate[V: ClassTag, C: ClassTag](
-  @transient prevs: Seq[(Source, BranchKey)],
-  @transient sort: Option[SortOrdering],
-  @transient partitioner: Partitioner)(
+  @(transient @param) prevs: Seq[(Source, BranchKey)],
+  @(transient @param) sort: Option[SortOrdering],
+  @(transient @param) partitioner: Partitioner)(
     @transient val broadcasts: Map[BroadcastId, Broadcast])(
       implicit @transient val sc: SparkContext)
   extends Source
