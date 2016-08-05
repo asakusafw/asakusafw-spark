@@ -22,6 +22,7 @@ import scala.concurrent.ExecutionContext
 import org.apache.spark.SparkContext
 import org.objectweb.asm.{ Opcodes, Type }
 
+import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.{ SubPlan, Plan, Planning }
 import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
@@ -167,18 +168,37 @@ class IterativeBatchExecutorClassBuilder(
           subPlanInput <- subplan.getInputs
           inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
           if inputInfo.getInputType == SubPlanInputInfo.InputType.BROADCAST
+          broadcastInfo <- Option(subPlanInput.getAttribute(classOf[BroadcastInfo]))
         } {
           val prevSubPlanOutputs = subPlanInput.getOpposites
-          assert(prevSubPlanOutputs.size == 1,
-            s"The number of input for broadcast should be 1: ${prevSubPlanOutputs.size}")
-          val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
+          if (prevSubPlanOutputs.size == 1) {
+            val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
 
-          builder += (
-            context.broadcastIds.getField(subPlanInput.getOperator),
-            applyMap(
-              allBroadcastsVar.push(),
-              context.broadcastIds.getField(prevSubPlanOperator))
-            .cast(classOf[Broadcast].asType))
+            builder += (
+              context.broadcastIds.getField(subPlanInput.getOperator),
+              applyMap(
+                allBroadcastsVar.push(),
+                context.broadcastIds.getField(prevSubPlanOperator))
+              .cast(classOf[Broadcast].asType))
+          } else {
+            val marker = subPlanInput.getOperator
+            val iterativeInfo = IterativeInfo.get(subPlanInput)
+
+            builder += (
+              context.broadcastIds.getField(marker),
+              newBroadcast(
+                marker,
+                broadcastInfo,
+                iterativeInfo)(
+                  () => buildSeq { builder =>
+                    prevSubPlanOutputs.foreach { subPlanOutput =>
+                      builder += tuple2(
+                        nodesVar.push().aload(ldc(subplanToIdx(subPlanOutput.getOwner))),
+                        context.branchKeys.getField(subPlanOutput.getOperator))
+                    }
+                  },
+                  scVar.push))
+          }
         }
       }.store()
 
@@ -199,47 +219,65 @@ class IterativeBatchExecutorClassBuilder(
       outputInfo <- Option(subPlanOutput.getAttribute(classOf[SubPlanOutputInfo]))
       if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
       broadcastInfo <- Option(subPlanOutput.getAttribute(classOf[BroadcastInfo]))
+      if subPlanOutput.getOpposites.exists(_.getOpposites.size == 1)
     } {
-      val dataModelRef = subPlanOutput.getOperator.getInput.dataModelRef
-      val group = broadcastInfo.getFormatInfo
-
+      val marker = subPlanOutput.getOperator
       val iterativeInfo = IterativeInfo.get(subPlanOutput)
 
       addToMap(
         allBroadcastsVar.push(),
-        context.broadcastIds.getField(subPlanOutput.getOperator), {
-          val broadcast = iterativeInfo.getRecomputeKind match {
-            case IterativeInfo.RecomputeKind.ALWAYS =>
-              pushNew(classOf[MapBroadcastAlways].asType)
-            case IterativeInfo.RecomputeKind.PARAMETER =>
-              pushNew(classOf[MapBroadcastByParameter].asType)
-            case IterativeInfo.RecomputeKind.NEVER =>
-              pushNew(classOf[MapBroadcastOnce].asType)
-          }
-          broadcast.dup()
-          val arguments = Seq.newBuilder[Stack]
-          arguments += nodeVar.push().asType(classOf[Source].asType)
-          arguments += context.branchKeys.getField(subPlanOutput.getOperator)
-          arguments += option(
-            sortOrdering(
-              dataModelRef.groupingTypes(group.getGrouping),
-              dataModelRef.orderingTypes(group.getOrdering)))
-          arguments += groupingOrdering(dataModelRef.groupingTypes(group.getGrouping))
-          arguments += partitioner(ldc(1))
-          arguments += ldc(broadcastInfo.getLabel)
-          if (iterativeInfo.getRecomputeKind == IterativeInfo.RecomputeKind.PARAMETER) {
-            arguments +=
-              buildSet { builder =>
-                iterativeInfo.getParameters.foreach { parameter =>
-                  builder += ldc(parameter)
-                }
-              }
-          }
-          arguments += scVar.push()
-          broadcast.invokeInit(arguments.result: _*)
-          broadcast
-        })
+        context.broadcastIds.getField(marker),
+        newBroadcast(
+          marker,
+          broadcastInfo,
+          iterativeInfo)(
+            () => buildSeq { builder =>
+              builder += tuple2(
+                nodeVar.push().asType(classOf[Source].asType),
+                context.branchKeys.getField(marker))
+            },
+            scVar.push))
     }
     `return`()
+  }
+
+  private def newBroadcast(
+    marker: MarkerOperator,
+    broadcastInfo: BroadcastInfo,
+    iterativeInfo: IterativeInfo)(
+      nodes: () => Stack,
+      sc: () => Stack)(
+        implicit mb: MethodBuilder): Stack = {
+    val dataModelRef = marker.getInput.dataModelRef
+    val group = broadcastInfo.getFormatInfo
+    val broadcast = iterativeInfo.getRecomputeKind match {
+      case IterativeInfo.RecomputeKind.ALWAYS =>
+        pushNew(classOf[MapBroadcastAlways].asType)
+      case IterativeInfo.RecomputeKind.PARAMETER =>
+        pushNew(classOf[MapBroadcastByParameter].asType)
+      case IterativeInfo.RecomputeKind.NEVER =>
+        pushNew(classOf[MapBroadcastOnce].asType)
+    }
+    broadcast.dup()
+    val arguments = Seq.newBuilder[Stack]
+    arguments += nodes()
+    arguments += option(
+      sortOrdering(
+        dataModelRef.groupingTypes(group.getGrouping),
+        dataModelRef.orderingTypes(group.getOrdering)))
+    arguments += groupingOrdering(dataModelRef.groupingTypes(group.getGrouping))
+    arguments += partitioner(ldc(1))
+    arguments += ldc(broadcastInfo.getLabel)
+    if (iterativeInfo.getRecomputeKind == IterativeInfo.RecomputeKind.PARAMETER) {
+      arguments +=
+        buildSet { builder =>
+          iterativeInfo.getParameters.foreach { parameter =>
+            builder += ldc(parameter)
+          }
+        }
+    }
+    arguments += sc()
+    broadcast.invokeInit(arguments.result: _*)
+    broadcast
   }
 }

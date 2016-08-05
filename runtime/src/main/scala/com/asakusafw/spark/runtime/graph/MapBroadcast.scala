@@ -28,25 +28,32 @@ import org.apache.spark.util.backdoor._
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class MapBroadcast(
-  source: Source,
-  branchKey: BranchKey,
+  prevs: Seq[(Source, BranchKey)],
   sort: Option[SortOrdering],
   group: GroupOrdering,
-  partitioner: Partitioner)(
+  part: Partitioner)(
     val label: String)(
       implicit val sc: SparkContext) extends Broadcast {
 
   override def broadcast(
     rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
 
-    source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]]).map { rdd =>
+    val rdds = prevs.map {
+      case (source, branchKey) =>
+        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]])
+    }
+
+    Future.sequence(rdds).map { prevs =>
 
       sc.clearCallSite()
       sc.setCallSite(
         CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
       sc.broadcast(
-        sc.smcogroup(Seq((rdd, sort)), partitioner, group)
+        sc.smcogroup(
+          Seq((sc.confluent[ShuffleKey, Any](prevs, part, sort.orElse(Option(group))), sort)),
+          part,
+          group)
           .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[_]]) }
           .collect()
           .toMap)
@@ -55,12 +62,11 @@ abstract class MapBroadcast(
 }
 
 class MapBroadcastOnce(
-  source: Source,
-  branchKey: BranchKey,
+  prevs: Seq[(Source, BranchKey)],
   sort: Option[SortOrdering],
   group: GroupOrdering,
   partitioner: Partitioner)(
     label: String)(
       implicit sc: SparkContext)
-  extends MapBroadcast(source, branchKey, sort, group, partitioner)(label)
+  extends MapBroadcast(prevs, sort, group, partitioner)(label)
   with BroadcastOnce

@@ -834,6 +834,98 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     it should s"compile IterativeBatchExecutor with MasterCheck: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
+      prepareData("foos", path) {
+        sc.parallelize(0 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
+      }
+
+      val fooInputOperator = ExternalInput
+        .newInstance("foos/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "foos",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), fooInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val barInputOperator = ExternalInput
+        .newInstance("bars/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Bar]),
+            "bars",
+            ClassDescription.of(classOf[Bar]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val masterCheckOperator = OperatorExtractor
+        .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
+        .input("foos", ClassDescription.of(classOf[Foo]),
+          Groups.parse(Seq("id")),
+          roundFoo1.findOutput("output"))
+        .input("bars", ClassDescription.of(classOf[Bar]),
+          Groups.parse(Seq("fooId"), Seq("+id")),
+          roundBar.findOutput("output"))
+        .output("found", ClassDescription.of(classOf[Bar]))
+        .output("missed", ClassDescription.of(classOf[Bar]))
+        .build()
+
+      val foundOutputOperator = ExternalOutput
+        .newInstance("found", masterCheckOperator.findOutput("found"))
+
+      val missedOutputOperator = ExternalOutput
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
+
+      val graph = new OperatorGraph(Seq(
+        fooInputOperator, barInputOperator,
+        masterCheckOperator,
+        foundOutputOperator, missedOutputOperator))
+
+      val executorType = compile(flowId, graph, 5, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
+      execute(flowId, executorType, rounds)
+
+      for {
+        round <- rounds
+      } {
+        {
+          val found = readResult[Bar](foundOutputOperator.getName, round, path)
+            .map { bar =>
+              (bar.id.get, bar.fooId.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(found.size === 5)
+          assert(found ===
+            (5 until 10).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
+        }
+        {
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
+            .map { bar =>
+              (bar.id.get, bar.fooId.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(missed.size === 5)
+          assert(missed ===
+            (10 until 15).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
+        }
+      }
+    }
+
+    it should s"compile IterativeBatchExecutor with MasterCheck with multiple masters: [${conf}]" in { implicit sc =>
+      val path = createTempDirectoryForEach("test-").toFile
+
       prepareData("foos1", path) {
         sc.parallelize(0 until 5).map(Foo.intToFoo)
       }
@@ -1115,7 +1207,121 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      val executorType = compile(
+        flowId, graph, 4, path, classServer.root.toFile,
+        Map("operator.estimator.Update" -> "1.0"))
+
+      val rounds = 0 to 1
+      execute(flowId, executorType, rounds)
+
+      for {
+        round <- rounds
+      } {
+        {
+          val found = readResult[Bar](foundOutputOperator.getName, round, path)
+            .map { bar =>
+              (bar.id.get, bar.fooId.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(found.size === 5)
+          assert(found ===
+            (5 until 10).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
+        }
+        {
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
+            .map { bar =>
+              (bar.id.get, bar.fooId.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(missed.size === 5)
+          assert(missed ===
+            (10 until 15).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
+        }
+      }
+    }
+
+    it should s"compile IterativeBatchExecutor with broadcast MasterCheck with multiple masters: [${conf}]" in { implicit sc =>
+      val path = createTempDirectoryForEach("test-").toFile
+
+      prepareData("foos1", path) {
+        sc.parallelize(0 until 5).map(Foo.intToFoo)
+      }
+      prepareData("foos2", path) {
+        sc.parallelize(5 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
+      }
+
+      val foo1InputOperator = ExternalInput
+        .newInstance("foos1/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "foos1",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.TINY))
+
+      val roundFoo1 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo1", ClassDescription.of(classOf[Foo]), foo1InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val foo2InputOperator = ExternalInput
+        .newInstance("foos2/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "foos2",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.TINY))
+
+      val roundFoo2 = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo2", ClassDescription.of(classOf[Foo]), foo2InputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val barInputOperator = ExternalInput
+        .newInstance("bars/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Bar]),
+            "bars",
+            ClassDescription.of(classOf[Bar]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val masterCheckOperator = OperatorExtractor
+        .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
+        .input("foos", ClassDescription.of(classOf[Foo]),
+          Groups.parse(Seq("id")),
+          roundFoo1.findOutput("output"), roundFoo2.findOutput("output"))
+        .input("bars", ClassDescription.of(classOf[Bar]),
+          Groups.parse(Seq("fooId"), Seq("+id")),
+          roundBar.findOutput("output"))
+        .output("found", ClassDescription.of(classOf[Bar]))
+        .output("missed", ClassDescription.of(classOf[Bar]))
+        .build()
+
+      val foundOutputOperator = ExternalOutput
+        .newInstance("found", masterCheckOperator.findOutput("found"))
+
+      val missedOutputOperator = ExternalOutput
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
+
+      val graph = new OperatorGraph(Seq(
+        foo1InputOperator, foo2InputOperator, barInputOperator,
+        masterCheckOperator,
+        foundOutputOperator, missedOutputOperator))
+
+      val executorType = compile(
+        flowId, graph, 5, path, classServer.root.toFile,
+        Map("operator.estimator.Update" -> "1.0"))
 
       val rounds = 0 to 1
       execute(flowId, executorType, rounds)
@@ -2068,9 +2274,12 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     }
   }
 
-  def newJPContext(path: File, classpath: File): MockJobflowProcessorContext = {
+  def newJPContext(
+    path: File,
+    classpath: File,
+    properties: Map[String, String] = Map.empty): MockJobflowProcessorContext = {
     val jpContext = new MockJobflowProcessorContext(
-      new CompilerOptions("buildid", path.getPath, Map.empty[String, String]),
+      new CompilerOptions("buildid", path.getPath, properties),
       Thread.currentThread.getContextClassLoader,
       classpath)
     jpContext.registerExtension(
@@ -2088,8 +2297,13 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     new Jobflow(flowId, ClassDescription.of(classOf[IterativeBatchExecutorCompilerSpec]), graph)
   }
 
-  def compile(flowId: String, graph: OperatorGraph, subplans: Int, path: File, classpath: File): Type = {
-    val jpContext = newJPContext(path, classpath)
+  def compile(
+    flowId: String,
+    graph: OperatorGraph,
+    subplans: Int, path: File,
+    classpath: File,
+    properties: Map[String, String] = Map.empty): Type = {
+    val jpContext = newJPContext(path, classpath, properties)
     val jobflow = newJobflow(flowId, graph)
     val plan = SparkPlanning.plan(jpContext, jobflow).getPlan
     assert(plan.getElements.size === subplans)

@@ -56,8 +56,7 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
         .map[(Int, String), (_, Foo)](Input)(Foo.intToFoo)
 
     val broadcast = new MapBroadcastOnce(
-      source,
-      Input,
+      Seq((source, Input)),
       None,
       new GroupingOrdering(),
       new HashPartitioner(1))("broadcast")
@@ -89,8 +88,47 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
         .map[(Int, String), (_, Foo)](Input)(Foo.intToFoo)
 
     val broadcast = new MapBroadcastOnce(
-      source,
-      Input,
+      Seq((source, Input)),
+      Some(new SortOrdering()),
+      new GroupingOrdering(),
+      new HashPartitioner(1))("broadcast")
+
+    val rc = newRoundContext()
+
+    val result = Await.result(
+      broadcast.getOrBroadcast(rc).map(_.asInstanceOf[Broadcasted[Map[ShuffleKey, Seq[Foo]]]]),
+      Duration.Inf).value
+    assert(result.size === 10)
+    (0 until 10).foreach { i =>
+      val key = new StringOption()
+      key.modify("%02d".format(i))
+      val shuffleKey = new ShuffleKey(
+        WritableSerDe.serialize(key),
+        Array.emptyByteArray)
+      assert(result(shuffleKey).map(_.id.get) === (0 to i).reverse.map((i * (i + 1)) / 2 + _))
+    }
+  }
+
+  it should "broadcast as map with multiple inputs" in { implicit sc =>
+    val source1 =
+      new ParallelCollectionSource[(Int, String)](Input,
+        (0 until 10).flatMap { i =>
+          (0 to i).filter(j => (i + j) % 2 == 0).map { j =>
+            (((i * (i + 1)) / 2 + j, "%02d".format(i)), math.random)
+          }
+        }.sortBy(_._2).map(_._1))("input")
+        .map[(Int, String), (_, Foo)](Input)(Foo.intToFoo)
+    val source2 =
+      new ParallelCollectionSource[(Int, String)](Input,
+        (0 until 10).flatMap { i =>
+          (0 to i).filter(j => (i + j) % 2 == 1).map { j =>
+            (((i * (i + 1)) / 2 + j, "%02d".format(i)), math.random)
+          }
+        }.sortBy(_._2).map(_._1))("input")
+        .map[(Int, String), (_, Foo)](Input)(Foo.intToFoo)
+
+    val broadcast = new MapBroadcastOnce(
+      Seq((source1, Input), (source2, Input)),
       Some(new SortOrdering()),
       new GroupingOrdering(),
       new HashPartitioner(1))("broadcast")
