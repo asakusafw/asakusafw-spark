@@ -1350,6 +1350,104 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       }
     }
 
+    it should s"compile IterativeBatchExecutor with Checkpoint and broadcast MasterCheck: [${conf}]" in { implicit sc =>
+      val path = createTempDirectoryForEach("test-").toFile
+
+      prepareData("foos", path) {
+        sc.parallelize(0 until 10).map(Foo.intToFoo)
+      }
+      prepareData("bars", path) {
+        sc.parallelize(5 until 15).map(Bar.intToBar)
+      }
+
+      val fooInputOperator = ExternalInput
+        .newInstance("foos/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "foos",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.TINY))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), fooInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val barInputOperator = ExternalInput
+        .newInstance("bars/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Bar]),
+            "bars",
+            ClassDescription.of(classOf[Bar]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBar = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBar")
+        .input("bar", ClassDescription.of(classOf[Bar]), barInputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Bar]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val checkpointOperator = CoreOperator
+        .builder(CoreOperator.CoreOperatorKind.CHECKPOINT)
+        .input("input", ClassDescription.of(classOf[Bar]), roundBar.findOutput("output"))
+        .output("output", ClassDescription.of(classOf[Bar]))
+        .build()
+
+      val masterCheckOperator = OperatorExtractor
+        .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
+        .input("foos", ClassDescription.of(classOf[Foo]),
+          Groups.parse(Seq("id")),
+          roundFoo.findOutput("output"))
+        .input("bars", ClassDescription.of(classOf[Bar]),
+          Groups.parse(Seq("fooId"), Seq("+id")),
+          checkpointOperator.findOutput("output"))
+        .output("found", ClassDescription.of(classOf[Bar]))
+        .output("missed", ClassDescription.of(classOf[Bar]))
+        .build()
+
+      val foundOutputOperator = ExternalOutput
+        .newInstance("found", masterCheckOperator.findOutput("found"))
+
+      val missedOutputOperator = ExternalOutput
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
+
+      val graph = new OperatorGraph(Seq(
+        fooInputOperator, barInputOperator,
+        masterCheckOperator,
+        foundOutputOperator, missedOutputOperator))
+
+      val executorType = compile(flowId, graph, 5, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
+      execute(flowId, executorType, rounds)
+
+      for {
+        round <- rounds
+      } {
+        {
+          val found = readResult[Bar](foundOutputOperator.getName, round, path)
+            .map { bar =>
+              (bar.id.get, bar.fooId.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(found.size === 5)
+          assert(found ===
+            (5 until 10).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
+        }
+        {
+          val missed = readResult[Bar](missedOutputOperator.getName, round, path)
+            .map { bar =>
+              (bar.id.get, bar.fooId.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(missed.size === 5)
+          assert(missed ===
+            (10 until 15).map(i => (100 * round + 10 + i, 100 * round + i, s"bar${100 * round + 10 + i}")))
+        }
+      }
+    }
+
     it should s"compile IterativeBatchExecutor with broadcast MasterCheck with fixed master: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1

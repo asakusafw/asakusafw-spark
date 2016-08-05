@@ -48,11 +48,11 @@ class ExtractCompiler extends RoundAwareNodeCompiler {
     assert(support(subplan), s"The subplan is not supported: ${subplan}")
 
     val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+    val primaryInputs = subPlanInfo.getPrimaryInputs.toSet[SubPlan.Input]
+    assert(primaryInputs.size == 1,
+      s"The size of primary inputs should be 1: ${primaryInputs.size} [${subplan}]")
 
-    val inputs = subplan.getInputs.toSet[SubPlan.Input]
-    assert(inputs.size == 1)
-
-    val marker = inputs.head.getOperator
+    val marker = primaryInputs.head.getOperator
 
     val iterativeInfo = IterativeInfo.get(subplan)
 
