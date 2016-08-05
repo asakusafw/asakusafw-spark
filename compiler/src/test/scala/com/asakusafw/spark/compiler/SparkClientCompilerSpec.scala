@@ -635,6 +635,80 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
       val (path, classpath) = createTempDirs()
 
       spark { implicit sc =>
+        prepareData("foo", path) {
+          sc.parallelize(0 until 10).map(Foo.intToFoo)
+        }
+        prepareData("bar", path) {
+          sc.parallelize(5 until 15).map(Bar.intToBar)
+        }
+      }
+
+      val fooInputOperator = ExternalInput
+        .newInstance("foo/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "foos",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val barInputOperator = ExternalInput
+        .newInstance("bar/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Bar]),
+            "bars",
+            ClassDescription.of(classOf[Bar]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val masterCheckOperator = OperatorExtractor
+        .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
+        .input("foos", ClassDescription.of(classOf[Foo]),
+          Groups.parse(Seq("id")),
+          fooInputOperator.getOperatorPort)
+        .input("bars", ClassDescription.of(classOf[Bar]),
+          Groups.parse(Seq("fooId"), Seq("+id")),
+          barInputOperator.getOperatorPort)
+        .output("found", ClassDescription.of(classOf[Bar]))
+        .output("missed", ClassDescription.of(classOf[Bar]))
+        .build()
+
+      val foundOutputOperator = ExternalOutput
+        .newInstance("found", masterCheckOperator.findOutput("found"))
+
+      val missedOutputOperator = ExternalOutput
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
+
+      val graph = new OperatorGraph(Seq(
+        fooInputOperator, barInputOperator,
+        masterCheckOperator,
+        foundOutputOperator, missedOutputOperator))
+
+      compile(graph, 5, path, classpath)
+      execute(classpath, threshold, parallelism)
+
+      spark { implicit sc =>
+        {
+          val found = readResult[Bar]("found", path)
+            .map { bar =>
+              (bar.id.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(found.size === 5)
+          assert(found === (5 until 10).map(i => (10 + i, s"bar${10 + i}")))
+        }
+        {
+          val missed = readResult[Bar]("missed", path)
+            .map { bar =>
+              (bar.id.get, bar.fooId.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(missed.size === 5)
+          assert(missed === (10 until 15).map(i => (10 + i, i, s"bar${10 + i}")))
+        }
+      }
+    }
+
+    it should s"compile Spark client with MasterCheck with multiple masters: ${configuration}" in {
+      val (path, classpath) = createTempDirs()
+
+      spark { implicit sc =>
         prepareData("foo1", path) {
           sc.parallelize(0 until 5).map(Foo.intToFoo)
         }
@@ -768,6 +842,91 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
         foundOutputOperator, missedOutputOperator))
 
       compile(graph, 4, path, classpath)
+      execute(classpath, threshold, parallelism)
+
+      spark { implicit sc =>
+        {
+          val found = readResult[Bar]("found", path)
+            .map { bar =>
+              (bar.id.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(found.size === 5)
+          assert(found === (5 until 10).map(i => (10 + i, s"bar${10 + i}")))
+        }
+        {
+          val missed = readResult[Bar]("missed", path)
+            .map { bar =>
+              (bar.id.get, bar.fooId.get, bar.bar.getAsString)
+            }.collect.toSeq.sortBy(_._1)
+          assert(missed.size === 5)
+          assert(missed === (10 until 15).map(i => (10 + i, i, s"bar${10 + i}")))
+        }
+      }
+    }
+
+    it should s"compile Spark client with broadcast MasterCheck with multiple masters: ${configuration}" in {
+      val (path, classpath) = createTempDirs()
+
+      spark { implicit sc =>
+        prepareData("foo1", path) {
+          sc.parallelize(0 until 5).map(Foo.intToFoo)
+        }
+        prepareData("foo2", path) {
+          sc.parallelize(5 until 10).map(Foo.intToFoo)
+        }
+        prepareData("bar", path) {
+          sc.parallelize(5 until 15).map(Bar.intToBar)
+        }
+      }
+
+      val foo1InputOperator = ExternalInput
+        .newInstance("foo1/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "foos1",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.TINY))
+
+      val foo2InputOperator = ExternalInput
+        .newInstance("foo2/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "foos2",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.TINY))
+
+      val barInputOperator = ExternalInput
+        .newInstance("bar/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Bar]),
+            "bars",
+            ClassDescription.of(classOf[Bar]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val masterCheckOperator = OperatorExtractor
+        .extract(classOf[MasterCheck], classOf[Ops], "mastercheck")
+        .input("foos", ClassDescription.of(classOf[Foo]),
+          Groups.parse(Seq("id")),
+          foo1InputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
+        .input("bars", ClassDescription.of(classOf[Bar]),
+          Groups.parse(Seq("fooId"), Seq("+id")),
+          barInputOperator.getOperatorPort)
+        .output("found", ClassDescription.of(classOf[Bar]))
+        .output("missed", ClassDescription.of(classOf[Bar]))
+        .build()
+
+      val foundOutputOperator = ExternalOutput
+        .newInstance("found", masterCheckOperator.findOutput("found"))
+
+      val missedOutputOperator = ExternalOutput
+        .newInstance("missed", masterCheckOperator.findOutput("missed"))
+
+      val graph = new OperatorGraph(Seq(
+        foo1InputOperator, foo2InputOperator, barInputOperator,
+        masterCheckOperator,
+        foundOutputOperator, missedOutputOperator))
+
+      compile(graph, 5, path, classpath)
       execute(classpath, threshold, parallelism)
 
       spark { implicit sc =>

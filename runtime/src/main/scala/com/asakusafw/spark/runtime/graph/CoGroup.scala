@@ -29,7 +29,7 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class CoGroup(
   @transient prevs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
-  @transient grouping: GroupOrdering,
+  @transient group: GroupOrdering,
   @transient part: Partitioner)(
     @transient val broadcasts: Map[BroadcastId, Broadcast])(
       implicit @transient val sc: SparkContext)
@@ -63,10 +63,10 @@ abstract class CoGroup(
             val cogrouped = sc.smcogroup[ShuffleKey](
               prevs.map {
                 case (rdds, sort) =>
-                  (sc.confluent[ShuffleKey, Any](rdds, part, sort), sort)
+                  (sc.confluent[ShuffleKey, Any](rdds, part, sort.orElse(Option(group))), sort)
               },
               part,
-              grouping)
+              group)
 
             branch(
               cogrouped.asInstanceOf[RDD[(_, IndexedSeq[Iterator[_]])]],
