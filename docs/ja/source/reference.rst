@@ -246,7 +246,7 @@ Asakusa DSL Compiler for Sparkで利用可能なコンパイラプロパティ�
 
     ``true`` ならば除去し、 ``false`` ならば除去しない。
 
-    既定値: ``true``
+    既定値: ``false``
 
 ``operator.logging.level``
     DSLで指定した ``@Logging`` 演算子のうち、どのレベル以上を表示するか。
