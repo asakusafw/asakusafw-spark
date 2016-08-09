@@ -18,7 +18,11 @@ package graph
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class Job(nodes: Seq[Node]) {
+import org.apache.spark.SparkContext
+
+abstract class Job(val sc: SparkContext) {
+
+  def nodes: Seq[Node]
 
   def execute(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
     Future.sequence(

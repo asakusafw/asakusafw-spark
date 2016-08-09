@@ -61,16 +61,20 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
-    val job: Job = {
-      val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
-        .mapWithRoundContext(Branch) { rc =>
+    val job: Job = new Job(sc) {
 
-          val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-          val round = stageInfo.getBatchArguments()("round").toInt
+      val nodes = {
+        implicit val sc = this.sc
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
+          .mapWithRoundContext(Branch) { rc =>
 
-          { i: Int => 100 * round + i }
-        }
-      new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 100 * round + i }
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
     }
 
     val executor = new IterativeBatchExecutor(job)
@@ -129,20 +133,24 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
-    val job: Job = {
-      val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
-        .mapWithRoundContext(Branch) { rc =>
+    val job: Job = new Job(sc) {
 
-          val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-          val round = stageInfo.getBatchArguments()("round").toInt
+      val nodes = {
+        implicit val sc = this.sc
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
+          .mapWithRoundContext(Branch) { rc =>
 
-          { i: Int => 10 * round + i }
-        }
-        .map(Branch) { i: Int =>
-          Thread.sleep(10L)
-          i
-        }
-      new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 10 * round + i }
+          }
+          .map(Branch) { i: Int =>
+            Thread.sleep(10L)
+            i
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
     }
 
     val executor = new IterativeBatchExecutor(job)
@@ -185,16 +193,20 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
-    val job: Job = {
-      val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
-        .mapWithRoundContext(Branch) { rc =>
+    val job: Job = new Job(sc) {
 
-          val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-          val round = stageInfo.getBatchArguments()("round").toInt
+      val nodes = {
+        implicit val sc = this.sc
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
+          .mapWithRoundContext(Branch) { rc =>
 
-          { i: Int => 100 * round + i }
-        }
-      new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 100 * round + i }
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
     }
 
     val listener = new CallCountListener()
@@ -234,23 +246,27 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
     val maxRounds = 8
-    val job: Job = {
-      val max = maxRounds
-      val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
-        .mapWithRoundContext(Branch) { rc =>
+    val job: Job = new Job(sc) {
 
-          val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-          val round = stageInfo.getBatchArguments()("round").toInt
+      val nodes = {
+        implicit val sc = this.sc
+        val max = maxRounds
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
+          .mapWithRoundContext(Branch) { rc =>
 
-          { i: Int => 10 * round + i }
-        }
-        .map(Branch) { i: Int =>
-          if (i >= 10 * max) {
-            throw new Exception(s"The number of rounds should be less than ${max}: [${i / 10}].")
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 10 * round + i }
           }
-          i
-        }
-      new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
+          .map(Branch) { i: Int =>
+            if (i >= 10 * max) {
+              throw new Exception(s"The number of rounds should be less than ${max}: [${i / 10}].")
+            }
+            i
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
     }
 
     val listener = new CallCountListener()
@@ -297,23 +313,27 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
     val maxRounds = 8
-    val job: Job = {
-      val max = maxRounds
-      val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
-        .mapWithRoundContext(Branch) { rc =>
+    val job: Job = new Job(sc) {
 
-          val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-          val round = stageInfo.getBatchArguments()("round").toInt
+      val nodes = {
+        implicit val sc = this.sc
+        val max = maxRounds
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
+          .mapWithRoundContext(Branch) { rc =>
 
-          { i: Int => 10 * round + i }
-        }
-        .map(Branch) { i: Int =>
-          if (i >= 10 * max) {
-            throw new Exception(s"The number of rounds should be less than ${max}: [${i / 10}].")
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 10 * round + i }
           }
-          i
-        }
-      new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
+          .map(Branch) { i: Int =>
+            if (i >= 10 * max) {
+              throw new Exception(s"The number of rounds should be less than ${max}: [${i / 10}].")
+            }
+            i
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
     }
 
     val listener = new CallCountListener()

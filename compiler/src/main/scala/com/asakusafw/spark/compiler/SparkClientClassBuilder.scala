@@ -19,45 +19,22 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 import org.apache.spark.SparkContext
-import org.objectweb.asm.{ Opcodes, Type }
+import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
-import com.asakusafw.lang.compiler.extension.directio.DirectFileIoModels
 import com.asakusafw.lang.compiler.model.description.TypeDescription
-import com.asakusafw.lang.compiler.model.graph.{ ExternalOutput, MarkerOperator, Operator }
-import com.asakusafw.lang.compiler.planning.{ Plan, Planning, SubPlan }
-import com.asakusafw.spark.compiler.planning.{
-  BroadcastInfo,
-  SubPlanInfo,
-  SubPlanInputInfo,
-  SubPlanOutputInfo
-}
-import com.asakusafw.spark.compiler.graph.{
-  DirectOutputCommitCompiler,
-  DirectOutputSetupCompiler,
-  Instantiator
-}
+import com.asakusafw.lang.compiler.model.graph.Operator
+import com.asakusafw.lang.compiler.planning.{ Plan, SubPlan }
+import com.asakusafw.spark.compiler.graph.JobCompiler
 import com.asakusafw.spark.compiler.serializer.{
   BranchKeySerializerClassBuilder,
   BroadcastIdSerializerClassBuilder,
   KryoRegistratorCompiler
 }
-import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.DefaultClient
-import com.asakusafw.spark.runtime.graph.{
-  Broadcast,
-  BroadcastId,
-  Job,
-  MapBroadcastOnce,
-  Node,
-  Sink,
-  Source
-}
+import com.asakusafw.spark.runtime.graph.Job
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.spark.tools.asm4s._
-import com.asakusafw.utils.graph.Graphs
 
 class SparkClientClassBuilder(
   val plan: Plan)(
@@ -66,21 +43,8 @@ class SparkClientClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/SparkClient;"),
     classOf[DefaultClient].asType) {
 
-  val directOutputs = collectDirectOutputs(plan.getElements.toSet[SubPlan])
-
-  def useDirectOut: Boolean = directOutputs.nonEmpty
-
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
-
-    val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq
-    val subplanToIdx = if (useDirectOut) {
-      subplans.zipWithIndex.map {
-        case (subplan, i) => subplan -> (i + 1)
-      }.toMap
-    } else {
-      subplans.zipWithIndex.toMap
-    }
 
     methodDef.newMethod(
       "newJob",
@@ -89,37 +53,9 @@ class SparkClientClassBuilder(
 
         val thisVar :: scVar :: _ = mb.argVars
 
-        val nodesVar = pushNewArray(
-          classOf[Node].asType,
-          ldc(if (useDirectOut) subplans.size + 2 else subplans.size)).store()
-        val broadcastsVar = pushObject(mutable.Map)
-          .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType)
-          .store()
-
-        if (useDirectOut) {
-          defSetupNode(methodDef)
-          thisVar.push().invokeV("node0", nodesVar.push(), scVar.push())
-        }
-
-        subplans.foreach { subplan =>
-          defNode(methodDef)(subplan, subplanToIdx)
-          thisVar.push().invokeV(
-            s"node${subplanToIdx(subplan)}", nodesVar.push(), broadcastsVar.push(), scVar.push())
-        }
-
-        if (useDirectOut) {
-          defCommitNode(methodDef)(subplanToIdx)
-          thisVar.push().invokeV(s"node${subplans.size + 1}", nodesVar.push(), scVar.push())
-        }
-
-        val job = pushNew(classOf[Job].asType)
-        job.dup().invokeInit(
-          pushObject(Predef)
-            .invokeV(
-              "wrapRefArray",
-              classOf[mutable.WrappedArray[_]].asType,
-              nodesVar.push().asType(classOf[Array[AnyRef]].asType))
-            .asType(classOf[Seq[_]].asType))
+        val t = JobCompiler.compile(plan)(context.jobCompilerContext)
+        val job = pushNew(t)
+        job.dup().invokeInit(scVar.push())
         `return`(job)
       }
 
@@ -137,176 +73,5 @@ class SparkClientClassBuilder(
     methodDef.newMethod("kryoRegistrator", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(registrator.getClassName))
     }
-  }
-
-  private def collectDirectOutputs(subplans: Set[SubPlan]): Set[(SubPlan, ExternalOutput)] = {
-    if (context.options.useOutputDirect) {
-      for {
-        subplan <- subplans
-        subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
-        primaryOperator = subPlanInfo.getPrimaryOperator
-        if primaryOperator.isInstanceOf[ExternalOutput]
-        operator = primaryOperator.asInstanceOf[ExternalOutput]
-        info <- Option(operator.getInfo)
-        if DirectFileIoModels.isSupported(info)
-      } yield {
-        subplan -> operator
-      }
-    } else {
-      Set.empty
-    }
-  }
-
-  private def defSetupNode(methodDef: MethodDef): Unit = {
-    methodDef.newMethod(Opcodes.ACC_PRIVATE, "node0", Seq(
-      classOf[Array[Node]].asType,
-      classOf[SparkContext].asType)) { implicit mb =>
-
-      val thisVar :: nodesVar :: scVar :: _ = mb.argVars
-
-      nodesVar.push().astore(ldc(0), {
-        val setupType = DirectOutputSetupCompiler.compile(directOutputs.map(_._2))
-        val setup = pushNew(setupType)
-        setup.dup().invokeInit(scVar.push())
-        setup
-      })
-      `return`()
-    }
-  }
-
-  private def defCommitNode(
-    methodDef: MethodDef)(
-      subplanToIdx: Map[SubPlan, Int]): Unit = {
-    methodDef.newMethod(Opcodes.ACC_PRIVATE, s"node${subplanToIdx.size + 1}", Seq(
-      classOf[Array[Node]].asType,
-      classOf[SparkContext].asType)) { implicit mb =>
-
-      val thisVar :: nodesVar :: scVar :: _ = mb.argVars
-
-      nodesVar.push().astore(ldc(subplanToIdx.size + 1), {
-        val commitType = DirectOutputCommitCompiler.compile(directOutputs.map(_._2))
-        val commit = pushNew(commitType)
-        commit.dup().invokeInit(
-          buildSet { builder =>
-            directOutputs.toSeq.map(_._1).map(subplanToIdx).sorted.foreach { i =>
-              builder += nodesVar.push().aload(ldc(i))
-            }
-          },
-          scVar.push())
-        commit
-      })
-      `return`()
-    }
-  }
-
-  private def defNode(
-    methodDef: MethodDef)(
-      subplan: SubPlan, subplanToIdx: Map[SubPlan, Int]): Unit = {
-    val compiler = NodeCompiler.get(subplan)(context.nodeCompilerContext)
-    val nodeType = compiler.compile(subplan)(context.nodeCompilerContext)
-
-    methodDef.newMethod(Opcodes.ACC_PRIVATE, s"node${subplanToIdx(subplan)}", Seq(
-      classOf[Array[Node]].asType,
-      classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType,
-      classOf[SparkContext].asType)) { implicit mb =>
-
-      val thisVar :: nodesVar :: allBroadcastsVar :: scVar :: _ = mb.argVars
-
-      val broadcastsVar =
-        buildMap { builder =>
-          for {
-            subPlanInput <- subplan.getInputs
-            inputInfo <- Option(subPlanInput.getAttribute(classOf[SubPlanInputInfo]))
-            if inputInfo.getInputType == SubPlanInputInfo.InputType.BROADCAST
-            broadcastInfo <- Option(subPlanInput.getAttribute(classOf[BroadcastInfo]))
-          } {
-            val prevSubPlanOutputs = subPlanInput.getOpposites
-            if (prevSubPlanOutputs.size == 1) {
-              val prevSubPlanOperator = prevSubPlanOutputs.head.getOperator
-
-              builder += (
-                context.broadcastIds.getField(subPlanInput.getOperator),
-                applyMap(
-                  allBroadcastsVar.push(),
-                  context.broadcastIds.getField(prevSubPlanOperator))
-                .cast(classOf[Broadcast[_]].asType))
-            } else {
-              val marker = subPlanInput.getOperator
-              builder += (
-                context.broadcastIds.getField(marker),
-                newBroadcast(
-                  marker,
-                  broadcastInfo)(
-                    () => buildSeq { builder =>
-                      prevSubPlanOutputs.foreach { subPlanOutput =>
-                        builder += tuple2(
-                          nodesVar.push().aload(ldc(subplanToIdx(subPlanOutput.getOwner))),
-                          context.branchKeys.getField(subPlanOutput.getOperator))
-                      }
-                    },
-                    scVar.push))
-            }
-          }
-        }.store()
-
-      val setupVar = if (useDirectOut) {
-        Some(nodesVar.push().aload(ldc(0)).store())
-      } else {
-        None
-      }
-      val instantiator = compiler.instantiator
-      val nodeVar = instantiator.newInstance(
-        nodeType,
-        subplan,
-        subplanToIdx)(
-          Instantiator.Vars(scVar, nodesVar, broadcastsVar, setupVar))(
-            implicitly, context.instantiatorCompilerContext)
-      nodesVar.push().astore(ldc(subplanToIdx(subplan)), nodeVar.push())
-
-      for {
-        subPlanOutput <- subplan.getOutputs
-        outputInfo <- Option(subPlanOutput.getAttribute(classOf[SubPlanOutputInfo]))
-        if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.BROADCAST
-        broadcastInfo <- Option(subPlanOutput.getAttribute(classOf[BroadcastInfo]))
-        if subPlanOutput.getOpposites.exists(_.getOpposites.size == 1)
-      } {
-        val marker = subPlanOutput.getOperator
-        addToMap(
-          allBroadcastsVar.push(),
-          context.broadcastIds.getField(subPlanOutput.getOperator),
-          newBroadcast(
-            marker,
-            broadcastInfo)(
-              () => buildSeq { builder =>
-                builder += tuple2(
-                  nodeVar.push().asType(classOf[Source].asType),
-                  context.branchKeys.getField(marker))
-              },
-              scVar.push))
-      }
-      `return`()
-    }
-  }
-
-  private def newBroadcast(
-    marker: MarkerOperator,
-    broadcastInfo: BroadcastInfo)(
-      nodes: () => Stack,
-      sc: () => Stack)(
-        implicit mb: MethodBuilder): Stack = {
-    val dataModelRef = marker.getInput.dataModelRef
-    val group = broadcastInfo.getFormatInfo
-    val broadcast = pushNew(classOf[MapBroadcastOnce].asType)
-    broadcast.dup().invokeInit(
-      nodes(),
-      option(
-        sortOrdering(
-          dataModelRef.groupingTypes(group.getGrouping),
-          dataModelRef.orderingTypes(group.getOrdering))),
-      groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
-      partitioner(ldc(1)),
-      ldc(broadcastInfo.getLabel),
-      sc())
-    broadcast
   }
 }

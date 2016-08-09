@@ -27,9 +27,9 @@ import com.asakusafw.spark.compiler.{ UsingCompilerContext => UCC }
 
 trait UsingCompilerContext extends UCC {
 
-  def newIterativeBatchExecutorCompilerContext(
-    flowId: String, outputDir: File): MockCompilerContext.IterativeBatchExecutorCompiler = {
-    newIterativeBatchExecutorCompilerContext(
+  def newIterativeJobCompilerContext(
+    flowId: String, outputDir: File): MockCompilerContext.IterativeJobCompiler = {
+    newIterativeJobCompilerContext(
       flowId,
       new MockJobflowProcessorContext(
         new CompilerOptions("buildid", "", Map.empty[String, String]),
@@ -37,9 +37,9 @@ trait UsingCompilerContext extends UCC {
         outputDir))
   }
 
-  def newIterativeBatchExecutorCompilerContext(
+  def newIterativeJobCompilerContext(
     flowId: String,
-    jpContext: JPContext): MockCompilerContext.IterativeBatchExecutorCompiler = {
-    new MockCompilerContext.IterativeBatchExecutorCompiler(flowId)(jpContext)
+    jpContext: JPContext): MockCompilerContext.IterativeJobCompiler = {
+    new MockCompilerContext.IterativeJobCompiler(flowId)(jpContext)
   }
 }

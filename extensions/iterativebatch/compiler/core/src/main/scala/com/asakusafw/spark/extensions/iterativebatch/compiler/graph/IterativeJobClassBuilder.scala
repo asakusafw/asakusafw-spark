@@ -14,149 +14,133 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.extensions.iterativebatch.compiler
+package graph
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
 
 import org.apache.spark.SparkContext
 import org.objectweb.asm.{ Opcodes, Type }
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.MarkerOperator
-import com.asakusafw.lang.compiler.planning.{ SubPlan, Plan, Planning }
+import com.asakusafw.lang.compiler.planning.{ Plan, Planning, SubPlan }
+import com.asakusafw.spark.compiler.graph.Instantiator
 import com.asakusafw.spark.compiler.`package`._
-import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.planning.{
   BroadcastInfo,
   IterativeInfo,
+  SubPlanInfo,
   SubPlanInputInfo,
   SubPlanOutputInfo
 }
 import com.asakusafw.spark.compiler.util.SparkIdioms._
-import com.asakusafw.spark.runtime.graph.{ BroadcastId, MapBroadcastOnce }
+import com.asakusafw.spark.runtime.graph.{
+  Broadcast,
+  BroadcastId,
+  Job,
+  MapBroadcastOnce,
+  Node,
+  Source
+}
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.utils.graph.Graphs
 
-import com.asakusafw.spark.compiler.graph.Instantiator
-import com.asakusafw.spark.runtime.graph.{
-  Broadcast,
-  Job,
-  Node,
-  Sink,
-  Source
-}
-
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
-import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
 import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.{
   MapBroadcastAlways,
   MapBroadcastByParameter
 }
 
-class IterativeBatchExecutorClassBuilder(
+class IterativeJobClassBuilder(
   plan: Plan)(
-    implicit context: IterativeBatchExecutorCompiler.Context) extends ClassBuilder(
-  Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/IterativeBatchExecutor;"),
-  classOf[IterativeBatchExecutor].asType) {
+    implicit context: IterativeJobCompiler.Context)
+  extends ClassBuilder(
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/graph/Job;"),
+    classOf[Job].asType) {
+
+  private val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
+  private val subplanToIdx = subplans.toMap
 
   override def defFields(fieldDef: FieldDef): Unit = {
     fieldDef.newField(
-      Opcodes.ACC_PRIVATE,
+      Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
       "sc",
       classOf[SparkContext].asType)
     fieldDef.newField(
-      Opcodes.ACC_PRIVATE,
-      "job",
-      classOf[Job].asType)
+      Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
+      "nodes",
+      classOf[Seq[Node]].asType,
+      new TypeSignatureBuilder()
+        .newClassType(classOf[Seq[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Node].asType)
+        })
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
-      classOf[ExecutionContext].asType,
       classOf[SparkContext].asType)) { implicit mb =>
 
-      val thisVar :: ecVar :: scVar :: _ = mb.argVars
+      val thisVar :: scVar :: _ = mb.argVars
 
-      thisVar.push().invokeInit(ldc(Int.MaxValue), ldc(true), ecVar.push(), scVar.push())
-    }
+      thisVar.push().invokeInit(
+        superType,
+        scVar.push())
 
-    ctorDef.newInit(Seq(
-      Type.INT_TYPE,
-      classOf[ExecutionContext].asType,
-      classOf[SparkContext].asType)) { implicit mb =>
-
-      val thisVar :: numSlotsVar :: ecVar :: scVar :: _ = mb.argVars
-
-      thisVar.push().invokeInit(numSlotsVar.push(), ldc(true), ecVar.push(), scVar.push())
-    }
-
-    ctorDef.newInit(Seq(
-      Type.INT_TYPE,
-      Type.BOOLEAN_TYPE,
-      classOf[ExecutionContext].asType,
-      classOf[SparkContext].asType)) { implicit mb =>
-
-      val thisVar :: numSlotsVar :: stopOnFailVar :: ecVar :: scVar :: _ = mb.argVars
-
-      thisVar.push().invokeInit(superType, numSlotsVar.push(), stopOnFailVar.push(), ecVar.push())
       thisVar.push().putField("sc", scVar.push())
+
+      val nodesVar = pushNewArray(classOf[Node].asType, subplans.size).store()
+
+      val broadcastsVar = pushObject(mutable.Map)
+        .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType)
+        .store()
+
+      subplans.foreach {
+        case (_, i) =>
+          thisVar.push().invokeV(s"node${i}", nodesVar.push(), broadcastsVar.push())
+      }
+
+      thisVar.push().putField(
+        "nodes", pushObject(Predef)
+          .invokeV(
+            "wrapRefArray",
+            classOf[mutable.WrappedArray[_]].asType,
+            nodesVar.push().asType(classOf[Array[AnyRef]].asType))
+          .asType(classOf[Seq[_]].asType))
     }
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
-    val subplanToIdx = subplans.toMap
-
-    methodDef.newMethod(
-      "job",
-      classOf[Job].asType,
-      Seq.empty) { implicit mb =>
+    methodDef.newMethod("nodes", classOf[Seq[Node]].asType, Seq.empty,
+      new MethodSignatureBuilder()
+        .newReturnType {
+          _.newClassType(classOf[Seq[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Node].asType)
+          }
+        }) { implicit mb =>
 
         val thisVar :: _ = mb.argVars
 
-        thisVar.push().getField("job", classOf[Job].asType).unlessNotNull {
-          thisVar.push().putField("job", {
-            val nodesVar = pushNewArray(classOf[Node].asType, ldc(subplans.size)).store()
-            val broadcastsVar = pushObject(mutable.Map)
-              .invokeV("empty", classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType)
-              .store()
-
-            subplans.foreach {
-              case (_, i) =>
-                thisVar.push().invokeV(s"node${i}", nodesVar.push(), broadcastsVar.push())
-            }
-
-            val job = pushNew(classOf[Job].asType)
-            job.dup().invokeInit(
-              pushObject(Predef)
-                .invokeV(
-                  "wrapRefArray",
-                  classOf[mutable.WrappedArray[_]].asType,
-                  nodesVar.push().asType(classOf[Array[AnyRef]].asType))
-                .asType(classOf[Seq[_]].asType))
-            job
-          })
-        }
-        `return`(thisVar.push().getField("job", classOf[Job].asType))
+        `return`(thisVar.push().getField("nodes", classOf[Seq[_]].asType))
       }
 
     subplans.foreach {
       case (subplan, i) =>
-        methodDef.newMethod(Opcodes.ACC_PRIVATE, s"node${i}", Seq(
-          classOf[Array[Node]].asType,
-          classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType))(
-          defNodeMethod(subplan, i)(subplanToIdx)(_))
+        methodDef.newMethod(
+          Opcodes.ACC_PRIVATE,
+          s"node${i}",
+          Seq(classOf[Array[Node]].asType, classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType))(
+            defNodeMethod(subplan, i)(_))
     }
   }
 
   def defNodeMethod(
     subplan: SubPlan, i: Int)(
-      subplanToIdx: Map[SubPlan, Int])(
-        implicit mb: MethodBuilder): Unit = {
+      implicit mb: MethodBuilder): Unit = {
 
     val thisVar :: nodesVar :: allBroadcastsVar :: _ = mb.argVars
 

@@ -13,29 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.extensions.iterativebatch.compiler
+package com.asakusafw.spark.compiler
+package graph
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.planning.Plan
-import com.asakusafw.spark.compiler.{
-  ClassLoaderProvider,
-  CompilerContext,
-  DataModelLoaderProvider
-}
-import com.asakusafw.spark.compiler.graph.{ BranchKeys, BroadcastIds, Instantiator }
 import com.asakusafw.spark.compiler.planning.IterativeInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 
-object IterativeBatchExecutorCompiler {
+import resource._
+
+object JobCompiler {
 
   def support(plan: Plan): Boolean = {
-    IterativeInfo.isIterative(plan)
+    !IterativeInfo.isIterative(plan)
   }
 
-  def compile(plan: Plan)(implicit context: IterativeBatchExecutorCompiler.Context): Type = {
+  def compile(plan: Plan)(implicit context: JobCompiler.Context): Type = {
     assert(support(plan), s"The plan is not supported.")
-    context.addClass(new IterativeBatchExecutorClassBuilder(plan))
+    context.addClass(new JobClassBuilder(plan))
   }
 
   trait Context
@@ -45,6 +43,8 @@ object IterativeBatchExecutorCompiler {
 
     def branchKeys: BranchKeys
     def broadcastIds: BroadcastIds
+
+    def options: CompilerOptions
 
     def nodeCompilerContext: NodeCompiler.Context
     def instantiatorCompilerContext: Instantiator.Context

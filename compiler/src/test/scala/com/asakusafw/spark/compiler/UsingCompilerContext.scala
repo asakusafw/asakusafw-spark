@@ -29,6 +29,21 @@ trait UsingCompilerContext {
     new MockCompilerContext(flowId)
   }
 
+  def newJobCompilerContext(flowId: String, outputDir: File): MockCompilerContext.JobCompiler = {
+    newJobCompilerContext(
+      flowId,
+      new MockJobflowProcessorContext(
+        new CompilerOptions("buildid", "", Map.empty[String, String]),
+        Thread.currentThread.getContextClassLoader,
+        outputDir))
+  }
+
+  def newJobCompilerContext(
+    flowId: String,
+    jpContext: JPContext): MockCompilerContext.JobCompiler = {
+    new MockCompilerContext.JobCompiler(flowId)(jpContext)
+  }
+
   def newNodeCompilerContext(flowId: String, outputDir: File): MockCompilerContext.NodeCompiler = {
     newNodeCompilerContext(
       flowId,

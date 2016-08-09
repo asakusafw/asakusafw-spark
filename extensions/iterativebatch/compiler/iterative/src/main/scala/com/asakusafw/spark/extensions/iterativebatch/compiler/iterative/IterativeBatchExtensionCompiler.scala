@@ -49,6 +49,8 @@ import com.asakusafw.spark.compiler.spi.{
 }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
+import com.asakusafw.spark.extensions.iterativebatch.compiler.graph.IterativeJobCompiler
+
 import resource._
 
 class IterativeBatchExtensionCompiler extends ExtensionCompiler {
@@ -97,18 +99,18 @@ object IterativeBatchExtensionCompiler {
     def branchKeys: BranchKeysClassBuilder
     def broadcastIds: BroadcastIdsClassBuilder
 
-    def iterativeBatchExecutorCompilerContext: IterativeBatchExecutorCompiler.Context
+    def iterativeJobCompilerContext: IterativeJobCompiler.Context
   }
 
   class DefaultContext(val flowId: String)(jpContext: JPContext)
     extends Context
-    with IterativeBatchExecutorCompiler.Context
+    with IterativeJobCompiler.Context
     with NodeCompiler.Context
     with Instantiator.Context
     with OperatorCompiler.Context
     with AggregationCompiler.Context {
 
-    override def iterativeBatchExecutorCompilerContext: IterativeBatchExecutorCompiler.Context = this // scalastyle:ignore
+    override def iterativeJobCompilerContext: IterativeJobCompiler.Context = this
     override def nodeCompilerContext: NodeCompiler.Context = this
     override def instantiatorCompilerContext: Instantiator.Context = this
     override def operatorCompilerContext: OperatorCompiler.Context = this
