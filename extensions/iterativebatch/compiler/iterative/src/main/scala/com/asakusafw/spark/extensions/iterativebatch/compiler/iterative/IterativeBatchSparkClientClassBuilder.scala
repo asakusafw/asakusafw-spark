@@ -32,11 +32,11 @@ import com.asakusafw.spark.compiler.serializer.{
   BroadcastIdSerializerClassBuilder,
   KryoRegistratorCompiler
 }
-import com.asakusafw.spark.runtime.graph.Job
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.graph.IterativeJobCompiler
+import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.IterativeJob
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient
 
 class IterativeBatchSparkClientClassBuilder(
@@ -51,7 +51,7 @@ class IterativeBatchSparkClientClassBuilder(
 
     methodDef.newMethod(
       "newJob",
-      classOf[Job].asType,
+      classOf[IterativeJob].asType,
       Seq(classOf[SparkContext].asType)) { implicit mb =>
 
         val thisVar :: scVar :: _ = mb.argVars

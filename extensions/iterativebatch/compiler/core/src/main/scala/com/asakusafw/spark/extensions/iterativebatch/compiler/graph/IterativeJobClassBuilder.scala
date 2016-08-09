@@ -38,7 +38,6 @@ import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
-  Job,
   MapBroadcastOnce,
   Node,
   Source
@@ -50,6 +49,7 @@ import com.asakusafw.utils.graph.Graphs
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.{
+  IterativeJob,
   MapBroadcastAlways,
   MapBroadcastByParameter
 }
@@ -58,8 +58,8 @@ class IterativeJobClassBuilder(
   plan: Plan)(
     implicit context: IterativeJobCompiler.Context)
   extends ClassBuilder(
-    Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/graph/Job;"),
-    classOf[Job].asType) {
+    Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/graph/IterativeJob;"),
+    classOf[IterativeJob].asType) {
 
   private val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
   private val subplanToIdx = subplans.toMap

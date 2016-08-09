@@ -30,9 +30,9 @@ import org.slf4j.LoggerFactory
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
 import com.asakusafw.spark.runtime.{ Props, RoundContext, SparkClient }
-import com.asakusafw.spark.runtime.graph.Job
 import com.asakusafw.spark.runtime.SparkClient.Implicits.ec
 
+import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.IterativeJob
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient._
 
 abstract class IterativeBatchSparkClient extends SparkClient {
@@ -56,7 +56,7 @@ abstract class IterativeBatchSparkClient extends SparkClient {
   }
 
   def execute(
-    job: Job,
+    job: IterativeJob,
     stageInfo: IterativeStageInfo,
     numSlots: Int,
     stopOnFail: Boolean)(
@@ -65,11 +65,8 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     executor.addListener(Logger)
     executor.start()
     try {
-      val contexts = stageInfo.iterator.toSeq.map { stageInfo =>
-        val conf = new Configuration(sc.hadoopConfiguration)
-        conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
-        Context(sc.broadcast(conf))
-      }
+      val origin = newContext(stageInfo.getOrigin)
+      val contexts = stageInfo.iterator.toSeq.map(newContext)
       executor.submitAll(contexts)
       executor.stop(awaitExecution = true, gracefully = true)
 
@@ -79,6 +76,11 @@ abstract class IterativeBatchSparkClient extends SparkClient {
         }) {
         1
       } else {
+        val contextsToCommit = contexts.filter { context =>
+          val result = executor.result(context)
+          result.isDefined && result.get.isSuccess
+        }
+        job.commit(origin, contextsToCommit)
         0
       }
     } catch {
@@ -88,9 +90,15 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     }
   }
 
-  def newJob(sc: SparkContext): Job
+  def newJob(sc: SparkContext): IterativeJob
 
   def kryoRegistrator: String
+
+  private def newContext(stageInfo: StageInfo)(implicit sc: SparkContext): Context = {
+    val conf = new Configuration(sc.hadoopConfiguration)
+    conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
+    Context(sc.broadcast(conf))
+  }
 }
 
 object IterativeBatchSparkClient {
