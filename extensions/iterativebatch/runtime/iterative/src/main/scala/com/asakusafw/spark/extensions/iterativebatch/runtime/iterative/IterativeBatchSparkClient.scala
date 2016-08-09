@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
 import com.asakusafw.spark.runtime.{ Props, RoundContext, SparkClient }
+import com.asakusafw.spark.runtime.graph.Job
 import com.asakusafw.spark.runtime.SparkClient.Implicits.ec
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient._
@@ -45,21 +46,23 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     try {
       val numSlots = conf.getInt(Props.NumSlots, Props.DefaultNumSlots)
       val stopOnFail = conf.getBoolean(Props.StopOnFail, Props.DefaultStopOnFail)
-      val executor = newIterativeBatchExecutor(numSlots, stopOnFail)
 
-      executor.addListener(Logger)
+      val job = newJob(sc)
 
-      execute(executor, stageInfo, stopOnFail)
+      execute(job, stageInfo, numSlots, stopOnFail)
     } finally {
       sc.stop()
     }
   }
 
   def execute(
-    executor: IterativeBatchExecutor,
+    job: Job,
     stageInfo: IterativeStageInfo,
+    numSlots: Int,
     stopOnFail: Boolean)(
       implicit sc: SparkContext): Int = {
+    val executor = new IterativeBatchExecutor(numSlots, stopOnFail)(job)
+    executor.addListener(Logger)
     executor.start()
     try {
       val contexts = stageInfo.iterator.toSeq.map { stageInfo =>
@@ -85,9 +88,7 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     }
   }
 
-  def newIterativeBatchExecutor(
-    numSlots: Int, stopOnFail: Boolean)(
-      implicit ec: ExecutionContext, sc: SparkContext): IterativeBatchExecutor
+  def newJob(sc: SparkContext): Job
 
   def kryoRegistrator: String
 }
