@@ -34,7 +34,11 @@ import com.asakusafw.lang.compiler.api.reference.{
   TaskReference
 }
 import com.asakusafw.lang.compiler.common.Location
-import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
+import com.asakusafw.lang.compiler.hadoop.{
+  HadoopCommandRequired,
+  InputFormatInfo,
+  InputFormatInfoExtension
+}
 import com.asakusafw.lang.compiler.inspection.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.Jobflow
@@ -88,7 +92,7 @@ class SparkClientCompiler extends JobflowProcessor {
           val builder = new SparkClientClassBuilder(plan)
           val client = context.addClass(builder)
 
-          context.addTask(
+          val task = context.addTask(
             SparkClientCompiler.ModuleName,
             SparkClientCompiler.ProfileName,
             SparkClientCompiler.Command,
@@ -98,6 +102,7 @@ class SparkClientCompiler extends JobflowProcessor {
               CommandToken.EXECUTION_ID,
               CommandToken.BATCH_ARGUMENTS,
               CommandToken.of(client.getClassName)))
+          HadoopCommandRequired.put(task, false)
       }
     }
   }
