@@ -30,7 +30,11 @@ import com.asakusafw.lang.compiler.api.reference.{
   TaskReference
 }
 import com.asakusafw.lang.compiler.common.Location
-import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
+import com.asakusafw.lang.compiler.hadoop.{
+  HadoopCommandRequired,
+  InputFormatInfo,
+  InputFormatInfoExtension
+}
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.Plan
@@ -67,7 +71,7 @@ class IterativeBatchExtensionCompiler extends ExtensionCompiler {
     val builder = new IterativeBatchSparkClientClassBuilder(plan)
     val client = context.addClass(builder)
 
-    context.addTask(
+    val task = context.addTask(
       SparkClientCompiler.ModuleName,
       SparkClientCompiler.ProfileName,
       SparkClientCompiler.Command,
@@ -78,6 +82,7 @@ class IterativeBatchExtensionCompiler extends ExtensionCompiler {
         CommandToken.BATCH_ARGUMENTS,
         CommandToken.of(client.getClassName)),
       Seq(IterativeExtensions.EXTENSION_NAME))
+    HadoopCommandRequired.put(task, false)
   }
 }
 
