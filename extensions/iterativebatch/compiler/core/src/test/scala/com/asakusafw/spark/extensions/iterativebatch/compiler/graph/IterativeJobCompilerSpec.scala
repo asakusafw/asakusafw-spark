@@ -31,7 +31,7 @@ import scala.reflect.{ classTag, ClassTag }
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.input.{ FileInputFormat, SequenceFileInputFormat }
 import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
@@ -43,11 +43,15 @@ import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.common.Location
+import com.asakusafw.lang.compiler.extension.directio.{
+  DirectFileIoConstants,
+  DirectFileOutputModel
+}
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.inspection.{ AbstractInspectionExtension, InspectionExtension }
-import com.asakusafw.lang.compiler.model.description.ClassDescription
+import com.asakusafw.lang.compiler.model.description.{ ClassDescription, Descriptions }
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
+import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
@@ -58,16 +62,17 @@ import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
+import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.fixture.SparkForAll
-import com.asakusafw.spark.runtime.graph.Job
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.model.{ Key, Joined, Summarized }
 import com.asakusafw.vocabulary.operator._
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
+import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.IterativeJob
 
 @RunWith(classOf[JUnitRunner])
 class IterativeJobCompilerSpecTest extends IterativeJobCompilerSpec
@@ -85,6 +90,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   with ClassServerForAll
   with SparkForAll
   with FlowIdForEach
+  with TempDirForAll
   with TempDirForEach
   with UsingCompilerContext
   with RoundContextSugar {
@@ -98,7 +104,17 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
       s"${threshold.map(t => s", threshold=${t}").getOrElse("")}" +
       s"${parallelism.map(p => s", parallelism=${p}").getOrElse("")}"
 
+  private var root: File = _
+
   override def configure(conf: SparkConf): SparkConf = {
+    val tmpDir = createTempDirectoryForAll("directio-").toFile()
+    val system = new File(tmpDir, "system")
+    root = new File(tmpDir, "directio")
+    conf.setHadoopConf("com.asakusafw.output.system.dir", system.getAbsolutePath)
+    conf.setHadoopConf("com.asakusafw.directio.test", classOf[HadoopDataSource].getName)
+    conf.setHadoopConf("com.asakusafw.directio.test.path", "test")
+    conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
+
     threshold.foreach(i => conf.set("spark.shuffle.sort.bypassMergeThreshold", i.toString))
     parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
     super.configure(conf)
@@ -188,14 +204,14 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   }
 
   for {
-    iterativeExtension <- Seq(
+    (iterativeExtension, i) <- Seq(
       new IterativeExtension(),
-      new IterativeExtension("round"))
+      new IterativeExtension("round")).zipWithIndex
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
     it should s"compile IterativeJob from simple plan with InputFormatInfo: [${conf}]" in { implicit sc =>
-      val path = createTempDirectoryForEach("test-").toFile
+      val path = new File(root, s"foos${i}")
 
       val configurePath: (MRJob, File, String) => Unit = { (job, path, name) =>
         job.setOutputFormatClass(classOf[SequenceFileOutputFormat[NullWritable, Foo]])
@@ -238,10 +254,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
                 ClassDescription.of(classOf[NullWritable]),
                 ClassDescription.of(classOf[Foo]),
                 Map(
-                  "com.asakusafw.directio.test" -> classOf[HadoopDataSource].getName,
-                  "com.asakusafw.directio.test.path" -> "test",
-                  "com.asakusafw.directio.test.fs.path" -> path.getAbsolutePath,
-                  DirectFileInputFormat.KEY_BASE_PATH -> "test",
+                  DirectFileInputFormat.KEY_BASE_PATH -> s"test/foos${i}",
                   DirectFileInputFormat.KEY_RESOURCE_PATH -> "foos_${round}/part-*",
                   DirectFileInputFormat.KEY_DATA_CLASS -> classOf[Foo].getName,
                   DirectFileInputFormat.KEY_FORMAT_CLASS -> classOf[FooSequenceFileFormat].getName))
@@ -268,6 +281,151 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
             (foo.id.get, foo.foo.getAsString)
           }.collect.toSeq.sortBy(_._1)
         assert(result === (0 until 100).map(i => (100 * round + i, s"foo${100 * round + i}")))
+      }
+    }
+  }
+
+  for {
+    (iterativeExtension, i) <- Seq(
+      new IterativeExtension(),
+      new IterativeExtension("round")).zipWithIndex
+  } {
+    val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
+
+    it should s"compile Job from simple plan with DirectOutput flat: [${conf}]" in { implicit sc =>
+      val path = createTempDirectoryForEach("test-").toFile
+
+      prepareData("foo", path) {
+        sc.parallelize(0 until 100).map(Foo.intToFoo)
+      }
+
+      val inputOperator = ExternalInput
+        .newInstance("foo/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "test",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundFoo = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundFoo")
+        .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Foo]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val outputOperator = ExternalOutput
+        .builder("output",
+          new ExternalOutputInfo.Basic(
+            ClassDescription.of(classOf[DirectFileOutputModel]),
+            DirectFileIoConstants.MODULE_NAME,
+            ClassDescription.of(classOf[Foo]),
+            Descriptions.valueOf(
+              new DirectFileOutputModel(
+                DirectOutputDescription(
+                  basePath = s"test/flat${i}_$${round}",
+                  resourcePattern = "*.bin",
+                  order = Seq.empty,
+                  deletePatterns = Seq("*.bin"),
+                  formatType = classOf[FooSequenceFileFormat])))))
+        .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), roundFoo.findOutput("output"))
+        .build()
+
+      val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
+
+      val jobType = compile(flowId, graph, 2, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
+      executeJob(flowId, jobType)(rounds)
+
+      for {
+        round <- rounds
+      } {
+        val result = sc.newAPIHadoopFile[NullWritable, Foo, SequenceFileInputFormat[NullWritable, Foo]](
+          new File(root, s"flat${i}_${round}/*.bin").getAbsolutePath)
+          .map(_._2)
+          .map { foo =>
+            (foo.id.get, foo.foo.getAsString)
+          }.collect.toSeq.sortBy(_._1)
+        assert(result === (0 until 100).map(i => (100 * round + i, s"foo${100 * round + i}")))
+      }
+    }
+  }
+
+  for {
+    (iterativeExtension, i) <- Seq(
+      new IterativeExtension(),
+      new IterativeExtension("round")).zipWithIndex
+  } {
+    val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
+
+    it should s"compile Job from simple plan with DirectOutput group: [${conf}]" in { implicit sc =>
+      val path = createTempDirectoryForEach("test-").toFile
+
+      prepareData("baz", path) {
+        sc.parallelize(0 until 100).map(Baz.intToBaz)
+      }
+
+      val inputOperator = ExternalInput
+        .newInstance("baz/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Baz]),
+            "test",
+            ClassDescription.of(classOf[Baz]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val outputOperator = ExternalOutput
+        .builder("output",
+          new ExternalOutputInfo.Basic(
+            ClassDescription.of(classOf[DirectFileOutputModel]),
+            DirectFileIoConstants.MODULE_NAME,
+            ClassDescription.of(classOf[Baz]),
+            Descriptions.valueOf(
+              new DirectFileOutputModel(
+                DirectOutputDescription(
+                  basePath = s"test/group${i}",
+                  resourcePattern = "baz_{id}.bin",
+                  order = Seq("-n"),
+                  deletePatterns = Seq("*.bin"),
+                  formatType = classOf[BazSequenceFileFormat])))))
+        .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Baz]), roundBaz.findOutput("output"))
+        .build()
+
+      val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
+
+      val jobType = compile(flowId, graph, 2, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
+      executeJob(flowId, jobType)(rounds)
+
+      for {
+        round <- rounds
+      } {
+        {
+          val result = sc.newAPIHadoopFile[NullWritable, Baz, SequenceFileInputFormat[NullWritable, Baz]](
+            new File(root, s"group${i}/baz_${100 * round + 0}.bin").getAbsolutePath)
+            .map(_._2)
+            .map { baz =>
+              (baz.id.get, baz.n.get)
+            }.collect.toSeq
+          assert(result === (0 until 100 by 2).reverse.map(i => (100 * round + 0, 100 * round + i * 100)))
+        }
+        {
+          val result = sc.newAPIHadoopFile[NullWritable, Baz, SequenceFileInputFormat[NullWritable, Baz]](
+            new File(root, s"group${i}/baz_${100 * round + 1}.bin").getAbsolutePath)
+            .map(_._2)
+            .map { baz =>
+              (baz.id.get, baz.n.get)
+            }.collect.toSeq
+          assert(result === (1 until 100 by 2).reverse.map(i => (100 * round + 1, 100 * round + i * 100)))
+        }
       }
     }
   }
@@ -2440,21 +2598,25 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   def executeJob(flowId: String, jobType: Type)(rounds: Seq[Int])(implicit sc: SparkContext): Unit = {
     val cls = Class.forName(
       jobType.getClassName, true, Thread.currentThread.getContextClassLoader)
-      .asSubclass(classOf[Job])
+      .asSubclass(classOf[IterativeJob])
     val job = cls.getConstructor(classOf[SparkContext]).newInstance(sc)
+
+    val origin = newRoundContext(flowId = flowId)
+    val rcs = rounds.map { round =>
+      newRoundContext(
+        flowId = flowId,
+        stageId = s"round_${round}",
+        batchArguments = Map("round" -> round.toString))
+    }
 
     val executor = new IterativeBatchExecutor(numSlots = 1)(job)
     try {
       executor.start()
-      executor.submitAll(rounds.map { round =>
-        newRoundContext(
-          flowId = flowId,
-          stageId = s"round_${round}",
-          batchArguments = Map("round" -> round.toString))
-      })
+      executor.submitAll(rcs)
     } finally {
       executor.stop(awaitExecution = true, gracefully = true)
     }
+    job.commit(origin, rcs)
   }
 }
 
@@ -2790,6 +2952,23 @@ object IterativeJobCompilerSpec {
     }
 
     override def copyFromModel(model: Foo, key: NullWritable, value: Foo): Unit = {
+      value.copyFrom(model)
+    }
+  }
+
+  class BazSequenceFileFormat extends SequenceFileFormat[NullWritable, Baz, Baz] {
+
+    override def getSupportedType(): Class[Baz] = classOf[Baz]
+
+    override def createKeyObject(): NullWritable = NullWritable.get()
+
+    override def createValueObject(): Baz = new Baz()
+
+    override def copyToModel(key: NullWritable, value: Baz, model: Baz): Unit = {
+      model.copyFrom(value)
+    }
+
+    override def copyFromModel(model: Baz, key: NullWritable, value: Baz): Unit = {
       value.copyFrom(model)
     }
   }

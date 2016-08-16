@@ -18,12 +18,15 @@ package graph
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.runtime.BoxedUnit
 
 import org.apache.spark.SparkContext
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.lang.compiler.extension.directio.DirectFileIoModels
+import com.asakusafw.lang.compiler.model.graph.{ ExternalOutput, MarkerOperator }
 import com.asakusafw.lang.compiler.planning.{ Plan, Planning, SubPlan }
 import com.asakusafw.spark.compiler.graph.Instantiator
 import com.asakusafw.spark.compiler.`package`._
@@ -35,6 +38,7 @@ import com.asakusafw.spark.compiler.planning.{
   SubPlanOutputInfo
 }
 import com.asakusafw.spark.compiler.util.SparkIdioms._
+import com.asakusafw.spark.runtime.RoundContext
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -49,6 +53,11 @@ import com.asakusafw.utils.graph.Graphs
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.{
+  DirectOutputCommitForIterative,
+  DirectOutputPrepareEachForIterative,
+  DirectOutputPrepareForIterative,
+  DirectOutputSetupForIterative,
+  IterativeAction,
   IterativeJob,
   MapBroadcastAlways,
   MapBroadcastByParameter
@@ -60,6 +69,10 @@ class IterativeJobClassBuilder(
   extends ClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/graph/IterativeJob;"),
     classOf[IterativeJob].asType) {
+
+  private val directOutputs = collectDirectOutputs(plan.getElements.toSet[SubPlan])
+
+  private def useDirectOut: Boolean = directOutputs.nonEmpty
 
   private val subplans = Graphs.sortPostOrder(Planning.toDependencyGraph(plan)).toSeq.zipWithIndex
   private val subplanToIdx = subplans.toMap
@@ -77,6 +90,13 @@ class IterativeJobClassBuilder(
         .newClassType(classOf[Seq[_]].asType) {
           _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Node].asType)
         })
+
+    if (useDirectOut) {
+      fieldDef.newField(
+        Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
+        "commit",
+        classOf[DirectOutputCommitForIterative].asType)
+    }
   }
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
@@ -109,6 +129,30 @@ class IterativeJobClassBuilder(
             classOf[mutable.WrappedArray[_]].asType,
             nodesVar.push().asType(classOf[Array[AnyRef]].asType))
           .asType(classOf[Seq[_]].asType))
+
+      if (useDirectOut) {
+        val setupVar = thisVar.push()
+          .invokeV("setup", classOf[DirectOutputSetupForIterative].asType)
+          .store()
+
+        val preparesVar = buildSet { builder =>
+          (0 until directOutputs.size).foreach { i =>
+            builder += thisVar.push()
+              .invokeV(
+                s"prepare${i}",
+                classOf[DirectOutputPrepareForIterative[_]].asType,
+                setupVar.push())
+          }
+        }.store()
+
+        val commitVar = thisVar.push()
+          .invokeV("commit", classOf[DirectOutputCommitForIterative].asType, preparesVar.push())
+          .store()
+
+        thisVar.push().putField(
+          "commit",
+          commitVar.push().asType(classOf[DirectOutputCommitForIterative].asType))
+      }
     }
   }
 
@@ -128,6 +172,43 @@ class IterativeJobClassBuilder(
         `return`(thisVar.push().getField("nodes", classOf[Seq[_]].asType))
       }
 
+    methodDef.newMethod("doCommit", classOf[Future[Unit]].asType,
+      Seq(
+        classOf[RoundContext].asType,
+        classOf[Seq[RoundContext]].asType,
+        classOf[ExecutionContext].asType),
+      new MethodSignatureBuilder()
+        .newParameterType(classOf[RoundContext].asType)
+        .newParameterType {
+          _.newClassType(classOf[Seq[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[RoundContext].asType)
+          }
+        }
+        .newParameterType(classOf[ExecutionContext].asType)
+        .newReturnType {
+          _.newClassType(classOf[Future[_]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BoxedUnit].asType)
+          }
+        }) { implicit mb =>
+
+        val thisVar :: originVar :: rcsVar :: ecVar :: _ = mb.argVars
+
+        if (useDirectOut) {
+          `return`(
+            thisVar.push().getField("commit", classOf[DirectOutputCommitForIterative].asType)
+              .invokeV(
+                "perform",
+                classOf[Future[Unit]].asType,
+                originVar.push(), rcsVar.push(), ecVar.push()))
+        } else {
+          `return`(
+            pushObject(Future)
+              .invokeV("successful", classOf[Future[_]].asType,
+                getStatic(classOf[BoxedUnit].asType, "UNIT", classOf[BoxedUnit].asType)
+                  .asType(classOf[AnyRef].asType)))
+        }
+      }
+
     subplans.foreach {
       case (subplan, i) =>
         methodDef.newMethod(
@@ -136,9 +217,83 @@ class IterativeJobClassBuilder(
           Seq(classOf[Array[Node]].asType, classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType))(
             defNodeMethod(subplan, i)(_))
     }
+
+    if (useDirectOut) {
+      methodDef.newMethod(
+        Opcodes.ACC_PRIVATE,
+        "setup",
+        classOf[DirectOutputSetupForIterative].asType,
+        Seq.empty) { implicit mb =>
+
+          val thisVar :: _ = mb.argVars
+
+          val t = DirectOutputSetupForIterativeCompiler.compile(directOutputs.map(_._2))
+          val setup = pushNew(t)
+          setup.dup().invokeInit(thisVar.push().getField("sc", classOf[SparkContext].asType))
+          `return`(setup)
+        }
+
+      directOutputs.toSeq.map(_._1).sortBy(subplanToIdx).zipWithIndex.foreach {
+        case (subplan, i) =>
+          methodDef.newMethod(
+            Opcodes.ACC_PRIVATE,
+            s"prepare${i}",
+            classOf[DirectOutputPrepareForIterative[_]].asType,
+            Seq(classOf[DirectOutputSetupForIterative].asType)) { implicit mb =>
+
+              val thisVar :: setupVar :: _ = mb.argVars
+
+              val t = DirectOutputPrepareForIterativeCompiler
+                .compile(subplan)(context.nodeCompilerContext)
+              val prepare = pushNew(t)
+              prepare.dup().invokeInit(
+                setupVar.push().asType(classOf[IterativeAction[_]].asType),
+                applySeq(
+                  thisVar.push().getField("nodes", classOf[Seq[_]].asType),
+                  ldc(subplanToIdx(subplan)))
+                  .cast(classOf[DirectOutputPrepareEachForIterative[_]].asType),
+                thisVar.push().getField("sc", classOf[SparkContext].asType))
+              `return`(prepare)
+            }
+      }
+
+      methodDef.newMethod(
+        Opcodes.ACC_PRIVATE,
+        "commit",
+        classOf[DirectOutputCommitForIterative].asType,
+        Seq(classOf[Set[DirectOutputPrepareForIterative[_]]].asType)) { implicit mb =>
+
+          val thisVar :: preparesVar :: _ = mb.argVars
+
+          val t = DirectOutputCommitForIterativeCompiler.compile(directOutputs.map(_._2))
+          val commit = pushNew(t)
+          commit.dup().invokeInit(
+            preparesVar.push(),
+            thisVar.push().getField("sc", classOf[SparkContext].asType))
+          `return`(commit)
+        }
+    }
   }
 
-  def defNodeMethod(
+  private def collectDirectOutputs(subplans: Set[SubPlan]): Set[(SubPlan, ExternalOutput)] = {
+    if (context.options.useOutputDirect) {
+      for {
+        subplan <- subplans
+        subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+        primaryOperator = subPlanInfo.getPrimaryOperator
+        if primaryOperator.isInstanceOf[ExternalOutput]
+        operator = primaryOperator.asInstanceOf[ExternalOutput]
+        info <- Option(operator.getInfo)
+        if DirectFileIoModels.isSupported(info)
+      } yield {
+        subplan -> operator
+      }
+    } else {
+      Set.empty
+    }
+  }
+
+  private def defNodeMethod(
     subplan: SubPlan, i: Int)(
       implicit mb: MethodBuilder): Unit = {
 

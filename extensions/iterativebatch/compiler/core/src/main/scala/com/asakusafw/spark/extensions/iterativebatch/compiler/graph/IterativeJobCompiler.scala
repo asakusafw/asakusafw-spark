@@ -18,6 +18,7 @@ package graph
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.spark.compiler.{
   ClassLoaderProvider,
@@ -46,6 +47,8 @@ object IterativeJobCompiler {
 
     def branchKeys: BranchKeys
     def broadcastIds: BroadcastIds
+
+    def options: CompilerOptions
 
     def nodeCompilerContext: NodeCompiler.Context
     def instantiatorCompilerContext: Instantiator.Context
