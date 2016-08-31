@@ -65,6 +65,7 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
                     "com.asakusafw.spark:asakusa-spark-runtime:${base.featureVersion}@jar",
                     "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.featureVersion}@jar",
                     "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.featureVersion}@jar",
+                    "com.jsuereth:scala-arm_2.11:1.4@jar",
                 ],
             ])
         }
