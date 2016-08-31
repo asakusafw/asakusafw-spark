@@ -200,7 +200,7 @@ class CoGroupClassBuilderSpec
         classOf[Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])]],
         classOf[GroupOrdering],
         classOf[Partitioner],
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Seq(
@@ -221,7 +221,7 @@ class CoGroupClassBuilderSpec
 
       val rc = newRoundContext()
 
-      val results = cogroup.getOrCompute(rc)
+      val results = cogroup.compute(rc)
 
       val (((fooResult, barResult), (fooError, barError)), ((fooAll, barAll), nResult)) =
         Await.result(

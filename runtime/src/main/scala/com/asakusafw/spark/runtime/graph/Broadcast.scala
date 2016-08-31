@@ -20,9 +20,12 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
-trait Broadcast extends Node {
+trait Broadcast[T] extends Node {
+  self: CacheStrategy[RoundContext, Future[Broadcasted[T]]] =>
 
-  def broadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]]
+  protected def doBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[T]]
 
-  def getOrBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]]
+  final def broadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[T]] = {
+    getOrCache(rc, doBroadcast(rc))
+  }
 }

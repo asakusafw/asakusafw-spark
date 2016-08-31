@@ -24,6 +24,7 @@ import java.util.concurrent.{ ArrayBlockingQueue, BlockingQueue, TimeUnit }
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
 import org.apache.spark.{ SparkConf, SparkContext }
@@ -52,7 +53,6 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
   behavior of classOf[IterativeBatchExecutor].getSimpleName
 
   it should "handle RoundContexts" in { implicit sc =>
-    import Simple._
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -61,7 +61,23 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
-    val executor = new Executor(collection)(implicitly, ExecutionContext.global)
+    val job: Job = new Job(sc) {
+
+      val nodes = {
+        implicit val sc = this.sc
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
+          .mapWithRoundContext(Branch) { rc =>
+
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 100 * round + i }
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
+    }
+
+    val executor = new IterativeBatchExecutor(job)
     assert(executor.running === false)
     assert(executor.terminating === false)
     assert(executor.stopped === false)
@@ -108,7 +124,6 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
   }
 
   it should "handle `awaitExecution()`" in { implicit sc =>
-    import Long._
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -118,7 +133,27 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
-    val executor = new Executor(10L, collection)(implicitly, ExecutionContext.global)
+    val job: Job = new Job(sc) {
+
+      val nodes = {
+        implicit val sc = this.sc
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
+          .mapWithRoundContext(Branch) { rc =>
+
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 10 * round + i }
+          }
+          .map(Branch) { i: Int =>
+            Thread.sleep(10L)
+            i
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
+    }
+
+    val executor = new IterativeBatchExecutor(job)
     try {
       executor.start()
 
@@ -150,7 +185,6 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
   }
 
   it should "handle event listener" in { implicit sc =>
-    import Simple._
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -159,9 +193,25 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
+    val job: Job = new Job(sc) {
+
+      val nodes = {
+        implicit val sc = this.sc
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
+          .mapWithRoundContext(Branch) { rc =>
+
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 100 * round + i }
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
+    }
+
     val listener = new CallCountListener()
 
-    val executor = new Executor(collection)(implicitly, ExecutionContext.global)
+    val executor = new IterativeBatchExecutor(job)(ExecutionContext.global)
     executor.addListener(listener)
     executor.submitAll(rcs)
 
@@ -187,7 +237,6 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
   }
 
   it should "handle exception to stop on fail" in { implicit sc =>
-    import Exception._
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -196,10 +245,33 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
+    val maxRounds = 8
+    val job: Job = new Job(sc) {
+
+      val nodes = {
+        implicit val sc = this.sc
+        val max = maxRounds
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
+          .mapWithRoundContext(Branch) { rc =>
+
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 10 * round + i }
+          }
+          .map(Branch) { i: Int =>
+            if (i >= 10 * max) {
+              throw new Exception(s"The number of rounds should be less than ${max}: [${i / 10}].")
+            }
+            i
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
+    }
+
     val listener = new CallCountListener()
 
-    val maxRounds = 8
-    val executor = new Executor(maxRounds, collection, stopOnFail = true)(implicitly, ExecutionContext.global)
+    val executor = new IterativeBatchExecutor(numSlots = 1, stopOnFail = true)(job)
     executor.addListener(listener)
     executor.submitAll(rcs)
 
@@ -232,7 +304,6 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
   }
 
   it should "handle exception not to stop on fail" in { implicit sc =>
-    import Exception._
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -241,10 +312,33 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
+    val maxRounds = 8
+    val job: Job = new Job(sc) {
+
+      val nodes = {
+        implicit val sc = this.sc
+        val max = maxRounds
+        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
+          .mapWithRoundContext(Branch) { rc =>
+
+            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+            val round = stageInfo.getBatchArguments()("round").toInt
+
+            { i: Int => 10 * round + i }
+          }
+          .map(Branch) { i: Int =>
+            if (i >= 10 * max) {
+              throw new Exception(s"The number of rounds should be less than ${max}: [${i / 10}].")
+            }
+            i
+          }
+        Seq(source, new PrintSink(source), new CollectSink(collection)(source))
+      }
+    }
+
     val listener = new CallCountListener()
 
-    val maxRounds = 8
-    val executor = new Executor(maxRounds, collection, stopOnFail = false)(implicitly, ExecutionContext.global)
+    val executor = new IterativeBatchExecutor(numSlots = 1, stopOnFail = false)(job)
     executor.addListener(listener)
     executor.submitAll(rcs)
 
@@ -284,7 +378,7 @@ object IterativeBatchExecutorSpec {
     override val label: String = "print"
 
     override def submitJob(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
-      prev.getOrCompute(rc).apply(Branch).map {
+      prev.compute(rc).apply(Branch).map {
         _.foreach(println)
       }
     }
@@ -297,99 +391,11 @@ object IterativeBatchExecutorSpec {
     override val label: String = "collect"
 
     override def submitJob(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
-      prev.getOrCompute(rc).apply(Branch).map { rdd =>
+      prev.compute(rc).apply(Branch).map { rdd =>
         collection +=
           rc -> rdd.map {
             case i: Int => i
           }.collect()
-      }
-    }
-  }
-
-  object Simple {
-
-    class Executor(
-      slots: Int,
-      collection: mutable.Map[RoundContext, Array[Int]])(
-        implicit sc: SparkContext, ec: ExecutionContext)
-      extends IterativeBatchExecutor(slots) {
-
-      def this(collection: mutable.Map[RoundContext, Array[Int]])(
-        implicit sc: SparkContext, ec: ExecutionContext) =
-        this(Int.MaxValue, collection)
-
-      override val job: Job = {
-        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
-          .mapWithRoundContext(Branch) { rc =>
-
-            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-            val round = stageInfo.getBatchArguments()("round").toInt
-
-            { i: Int => 100 * round + i }
-          }
-        new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
-      }
-    }
-  }
-
-  object Long {
-
-    class Executor(
-      duration: Long,
-      slots: Int,
-      collection: mutable.Map[RoundContext, Array[Int]])(
-        implicit sc: SparkContext, ec: ExecutionContext)
-      extends IterativeBatchExecutor(slots) {
-
-      def this(duration: Long, collection: mutable.Map[RoundContext, Array[Int]])(
-        implicit sc: SparkContext, ec: ExecutionContext) =
-        this(duration, Int.MaxValue, collection)
-
-      override val job: Job = {
-        val d = duration
-        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
-          .mapWithRoundContext(Branch) { rc =>
-
-            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-            val round = stageInfo.getBatchArguments()("round").toInt
-
-            { i: Int => 10 * round + i }
-          }
-          .map(Branch) { i: Int =>
-            Thread.sleep(d)
-            i
-          }
-        new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
-      }
-    }
-  }
-
-  object Exception {
-
-    class Executor(
-      maxRounds: Int,
-      collection: mutable.Map[RoundContext, Array[Int]],
-      stopOnFail: Boolean)(
-        implicit sc: SparkContext, ec: ExecutionContext)
-      extends IterativeBatchExecutor(numSlots = 1, stopOnFail = stopOnFail) {
-
-      override val job: Job = {
-        val max = maxRounds
-        val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
-          .mapWithRoundContext(Branch) { rc =>
-
-            val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-            val round = stageInfo.getBatchArguments()("round").toInt
-
-            { i: Int => 10 * round + i }
-          }
-          .map(Branch) { i: Int =>
-            if (i >= 10 * max) {
-              throw new Exception(s"The number of rounds should be less than ${max}: [${i / 10}].")
-            }
-            i
-          }
-        new Job(Seq(source, new PrintSink(source), new CollectSink(collection)(source)))
       }
     }
   }

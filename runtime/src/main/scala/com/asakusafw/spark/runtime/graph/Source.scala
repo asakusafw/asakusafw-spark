@@ -24,12 +24,15 @@ import org.apache.spark.rdd.RDD
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 trait Source extends Node {
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
-  def compute(
+  protected def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]]
 
-  def getOrCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]]
+  final def compute(
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    getOrCache(rc, doCompute(rc))
+  }
 }
 
 object Source {

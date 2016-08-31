@@ -24,14 +24,14 @@ import com.asakusafw.spark.runtime.rdd._
 
 trait UsingBroadcasts {
 
-  def broadcasts: Map[BroadcastId, Broadcast]
+  def broadcasts: Map[BroadcastId, Broadcast[_]]
 
   final def zipBroadcasts(
     rc: RoundContext)(
       implicit ec: ExecutionContext): Future[Map[BroadcastId, Broadcasted[_]]] = {
     broadcasts.foldLeft(Future.successful(Map.empty[BroadcastId, Broadcasted[_]])) {
       case (broadcasts, (broadcastId, broadcast)) =>
-        broadcasts.zip(broadcast.getOrBroadcast(rc)).map {
+        broadcasts.zip(broadcast.broadcast(rc)).map {
           case (broadcasts, broadcast) =>
             broadcasts + (broadcastId -> broadcast)
         }

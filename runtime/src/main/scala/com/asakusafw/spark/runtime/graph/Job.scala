@@ -18,15 +18,21 @@ package graph
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-class Job(nodes: Seq[Node]) {
+import org.apache.spark.SparkContext
+
+abstract class Job(val sc: SparkContext) {
+
+  def nodes: Seq[Node]
 
   def execute(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
     Future.sequence(
       nodes.flatMap {
         case source: Source =>
-          source.getOrCompute(rc).values
-        case broadcast: Broadcast =>
-          Seq(broadcast.getOrBroadcast(rc))
+          source.compute(rc).values
+        case broadcast: Broadcast[_] =>
+          Seq(broadcast.broadcast(rc))
+        case action: Action[_] =>
+          Seq(action.perform(rc))
         case sink: Sink =>
           Seq(sink.submitJob(rc))
       }).map(_ => ())

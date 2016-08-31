@@ -36,14 +36,14 @@ abstract class NewHadoopOutput(
 
   private[this] val Logger = LoggerFactory.getLogger(getClass())
 
-  def newJob(rc: RoundContext): MRJob
+  protected def newJob(rc: RoundContext): MRJob
 
   override def submitJob(
     rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, _)]])
+        source.compute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, _)]])
     }
 
     (if (rdds.size == 1) {

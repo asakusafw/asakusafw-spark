@@ -22,13 +22,14 @@ import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
 
-import scala.concurrent.Await
+import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.runtime.model.DataModel
@@ -58,7 +59,7 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkForAll with RoundCo
     val rc = newRoundContext(batchArguments = Map("batcharg" -> "test"))
 
     val result = Await.result(
-      extract.getOrCompute(rc).apply(Result).map {
+      extract.compute(rc).apply(Result).map {
         _.map {
           case (_, foo: Foo) => (foo.id.get, foo.str.getAsString)
         }.collect.toSeq
@@ -115,7 +116,7 @@ object ResourceBrokingIteratorSpec {
       val label: String)(
         implicit sc: SparkContext)
     extends Extract[Foo](prevs)(Map.empty)
-    with ComputeOnce {
+    with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
     def this(
       prev: (Source, BranchKey))(

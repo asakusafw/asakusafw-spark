@@ -23,13 +23,14 @@ import org.scalatest.junit.JUnitRunner
 import java.io.{ DataInput, DataOutput }
 
 import scala.collection.JavaConversions._
-import scala.concurrent.Await
+import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
@@ -65,7 +66,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val rc = newRoundContext()
 
       val result = Await.result(
-        extract.getOrCompute(rc).apply(Result).map {
+        extract.compute(rc).apply(Result).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq
@@ -89,7 +90,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val rc = newRoundContext()
 
       val result = Await.result(
-        extract.getOrCompute(rc).apply(Result).map {
+        extract.compute(rc).apply(Result).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -110,12 +111,12 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val rc = newRoundContext()
 
       val (result1, result2) = Await.result(
-        branch.getOrCompute(rc).apply(Result1).map {
+        branch.compute(rc).apply(Result1).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }.zip {
-          branch.getOrCompute(rc).apply(Result2).map {
+          branch.compute(rc).apply(Result2).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq.sorted
@@ -141,12 +142,12 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val rc = newRoundContext()
 
       val (result1, result2) = Await.result(
-        branch.getOrCompute(rc).apply(Result1).map {
+        branch.compute(rc).apply(Result1).map {
           _.map {
             case (_, bar: Bar) => (bar.id.get, bar.ord.get)
           }.collect.toSeq
         }.zip {
-          branch.getOrCompute(rc).apply(Result2).map {
+          branch.compute(rc).apply(Result2).map {
             _.map {
               case (_, bar: Bar) => (bar.id.get, bar.ord.get)
             }.collect.toSeq
@@ -257,7 +258,7 @@ object ExtractSpec {
         val label: String)(
           implicit sc: SparkContext)
       extends Extract[Foo](prevs)(Map.empty)
-      with ComputeOnce {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       def this(
         prev: (Source, BranchKey))(
@@ -301,7 +302,7 @@ object ExtractSpec {
         val label: String)(
           implicit sc: SparkContext)
       extends Extract[Foo](prevs)(Map.empty)
-      with ComputeOnce {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
 
@@ -364,7 +365,7 @@ object ExtractSpec {
         val label: String)(
           implicit sc: SparkContext)
       extends Extract[Bar](prevs)(Map.empty)
-      with ComputeOnce {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
 

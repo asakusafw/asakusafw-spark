@@ -13,26 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime
-package graph
+package com.asakusafw.spark.extensions.iterativebatch.runtime.graph
 
-import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.graph._
 
-trait BroadcastOnce {
-  self: Broadcast =>
+trait IterativeAction[T] extends Node {
+  self: CacheStrategy[Seq[RoundContext], Future[T]] =>
 
-  @transient
-  private var broadcasted: Future[Broadcasted[_]] = _
+  protected def doPerform(
+    origin: RoundContext, rcs: Seq[RoundContext])(implicit ec: ExecutionContext): Future[T]
 
-  def getOrBroadcast(rc: RoundContext)(implicit ec: ExecutionContext): Future[Broadcasted[_]] = {
-    synchronized {
-      if (broadcasted == null) { // scalastyle:ignore
-        broadcasted = broadcast(rc)
-      }
-      broadcasted
-    }
+  final def perform(
+    origin: RoundContext, rcs: Seq[RoundContext])(implicit ec: ExecutionContext): Future[T] = {
+    getOrCache(rcs, doPerform(origin, rcs))
   }
 }

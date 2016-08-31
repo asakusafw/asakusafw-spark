@@ -25,6 +25,11 @@ package object backdoor {
       sc.clean(f, checkSerializable)
     }
 
+    def submitMapStage[K, V, C](
+      dependency: ShuffleDependency[K, V, C]): SimpleFutureAction[MapOutputStatistics] = {
+      sc.submitMapStage(dependency)
+    }
+
     def setCallSite(callSite: CallSite): Unit = sc.setCallSite(callSite)
   }
 }

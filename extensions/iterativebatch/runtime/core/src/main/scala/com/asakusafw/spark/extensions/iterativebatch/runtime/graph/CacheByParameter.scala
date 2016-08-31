@@ -18,30 +18,20 @@ package graph
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.concurrent.{ ExecutionContext, Future }
-
-import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.spark.runtime.RoundContext
-import com.asakusafw.spark.runtime.graph.Source
-import com.asakusafw.spark.runtime.rdd.BranchKey
+import com.asakusafw.spark.runtime.graph.CacheStrategy
 
-trait ComputeByParameter {
-  self: Source =>
+trait CacheByParameter[T] extends CacheStrategy[RoundContext, T] {
 
   @transient
-  private val generatedRDDs: mutable.Map[Seq[String], Map[BranchKey, Future[RDD[_]]]] =
-    mutable.Map.empty
+  private val values: mutable.Map[Seq[String], T] = mutable.Map.empty
 
-  override def getOrCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-    synchronized {
-      val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
-      val batchArguments = stageInfo.getBatchArguments.toMap
-      generatedRDDs
-        .getOrElseUpdate(parameters.toSeq.sorted.map(batchArguments), compute(rc))
-    }
+  override def getOrCache(rc: RoundContext, v: => T): T = synchronized {
+    val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
+    val batchArguments = stageInfo.getBatchArguments.toMap
+    values.getOrElseUpdate(parameters.toSeq.sorted.map(batchArguments), v)
   }
 
   def parameters: Set[String]

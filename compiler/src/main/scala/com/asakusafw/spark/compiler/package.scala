@@ -92,6 +92,10 @@ package object compiler {
     def useInputDirect: Boolean = {
       JBoolean.parseBoolean(options.get(SparkInputDirect, true.toString))
     }
+
+    def useOutputDirect: Boolean = {
+      JBoolean.parseBoolean(options.get(SparkOutputDirect, true.toString))
+    }
   }
 
   implicit class AugmentedOperator(val operator: Operator) extends AnyVal {

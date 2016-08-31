@@ -210,7 +210,7 @@ class CoGroupClassBuilderSpec
         classOf[Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])]],
         classOf[GroupOrdering],
         classOf[Partitioner],
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Seq(
@@ -237,7 +237,7 @@ class CoGroupClassBuilderSpec
           batchArguments = Map("round" -> round.toString))
         val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
-        val results = cogroup.getOrCompute(rc)
+        val results = cogroup.compute(rc)
 
         val (((fooResult, barResult), (fooError, barError)), ((fooAll, barAll), nResult)) =
           Await.result(

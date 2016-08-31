@@ -38,10 +38,11 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
   extends Input
   with UsingBroadcasts
   with Branching[V] {
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
-  def newJob(rc: RoundContext): MRJob
+  protected def newJob(rc: RoundContext): MRJob
 
-  override def compute(
+  override protected def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 
     val future = zipBroadcasts(rc).map { broadcasts =>

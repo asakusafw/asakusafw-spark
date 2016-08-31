@@ -69,14 +69,14 @@ abstract class AggregateClassBuilder(
     classOf[Aggregate[_, _]].asType)
   with Branching
   with LabelField {
-  self: ComputationStrategy =>
+  self: CacheStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[Seq[(Source, BranchKey)]].asType,
       classOf[Option[SortOrdering]].asType,
       classOf[Partitioner].asType,
-      classOf[Map[BroadcastId, Future[Broadcast]]].asType,
+      classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType,
       classOf[SparkContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
@@ -102,7 +102,11 @@ abstract class AggregateClassBuilder(
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Broadcast].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcast[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
           }
         }
         .newParameterType(classOf[SparkContext].asType)

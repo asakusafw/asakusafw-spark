@@ -166,7 +166,7 @@ class ExtractClassBuilderSpec
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
         classOf[Seq[(Source, BranchKey)]],
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Seq((source, getBranchKey(foosMarker))),
@@ -186,7 +186,7 @@ class ExtractClassBuilderSpec
           batchArguments = Map("round" -> round.toString))
         val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
-        val results = extract.getOrCompute(rc)
+        val results = extract.compute(rc)
 
         val ((fooResult, barResult), nResult) =
           Await.result(
@@ -298,7 +298,7 @@ class ExtractClassBuilderSpec
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
         classOf[Seq[(Source, BranchKey)]],
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Seq((source, getBranchKey(foosMarker))),
@@ -318,7 +318,7 @@ class ExtractClassBuilderSpec
           batchArguments = Map("round" -> round.toString))
         val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
-        val results = extract.getOrCompute(rc)
+        val results = extract.compute(rc)
 
         val fooResult = Await.result(
           results(getBranchKey(fooResultMarker)).map {

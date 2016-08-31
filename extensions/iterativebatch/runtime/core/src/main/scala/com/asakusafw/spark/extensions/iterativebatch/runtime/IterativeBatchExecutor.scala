@@ -33,14 +33,18 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.util.{
   ReadWriteLockedMap
 }
 
-abstract class IterativeBatchExecutor(
-  numSlots: Int, stopOnFail: Boolean)(implicit ec: ExecutionContext) {
+class IterativeBatchExecutor(
+  numSlots: Int, stopOnFail: Boolean)(
+    job: Job)(implicit ec: ExecutionContext) {
 
-  def this(numSlots: Int)(implicit ec: ExecutionContext) = this(numSlots, true)
+  def this(numSlots: Int)(job: Job)(implicit ec: ExecutionContext) =
+    this(numSlots, true)(job)
 
-  def this()(implicit ec: ExecutionContext) = this(Int.MaxValue, true)
+  def this(stopOnFail: Boolean)(job: Job)(implicit ec: ExecutionContext) =
+    this(Int.MaxValue, stopOnFail)(job)
 
-  def job: Job
+  def this(job: Job)(implicit ec: ExecutionContext) =
+    this(Int.MaxValue, true)(job)
 
   private val results =
     new WeakHashMap[RoundContext, Try[Unit]] with ReadWriteLockedMap[RoundContext, Try[Unit]]
@@ -53,8 +57,6 @@ abstract class IterativeBatchExecutor(
   }
 
   private val queue = {
-    lazy val job = this.job
-
     new MessageQueue[RoundContext](
       "iterativebatch-executor", numSlots = numSlots, stopOnFail = stopOnFail) {
 

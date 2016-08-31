@@ -73,6 +73,10 @@ target=jvm-${java.version}
       <artifactId>asakusa-bridge-runtime</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.asakusafw.bridge</groupId>
+      <artifactId>asakusa-bridge-runtime-hadoop</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.asakusafw.iterative</groupId>
       <artifactId>asakusa-iterative-launch</artifactId>
     </dependency>
@@ -114,6 +118,10 @@ target=jvm-${java.version}
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.jsuereth</groupId>
+      <artifactId>scala-arm_${scala.compat.version}</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -139,11 +147,6 @@ target=jvm-${java.version}
     <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.compat.version}</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.jsuereth</groupId>
-      <artifactId>scala-arm_${scala.compat.version}</artifactId>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 

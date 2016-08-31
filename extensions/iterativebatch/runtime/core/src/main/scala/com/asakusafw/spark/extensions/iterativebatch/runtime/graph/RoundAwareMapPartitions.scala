@@ -23,7 +23,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.RoundContext
-import com.asakusafw.spark.runtime.graph.Source
+import com.asakusafw.spark.runtime.graph.{ CacheStrategy, Source }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class RoundAwareMapPartitions[T, U: ClassTag](
@@ -32,12 +32,13 @@ abstract class RoundAwareMapPartitions[T, U: ClassTag](
   f: RoundContext => (Int, Iterator[T]) => Iterator[U],
   preservesPartitioning: Boolean = false)(
     implicit val sc: SparkContext) extends Source with RoundAwareSource.Ops {
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
   override val label: String = parent.label
 
-  override def compute(
+  override def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-    val prevs = parent.getOrCompute(rc)
+    val prevs = parent.compute(rc)
     prevs.updated(
       branchKey,
       prevs(branchKey).map {

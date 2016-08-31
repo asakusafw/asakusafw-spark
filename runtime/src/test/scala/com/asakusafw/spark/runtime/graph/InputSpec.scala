@@ -22,18 +22,23 @@ import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
 
-import scala.concurrent.Await
+import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.hadoop.mapreduce.{ Job => MRJob }
+import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
 import org.apache.spark.{ Partitioner, SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.apache.spark.rdd.RDD
 
+import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
+import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
@@ -48,14 +53,14 @@ abstract class InputSpec extends FlatSpec with SparkForAll {
 
   import InputSpec._
 
-  def prepareRound(path: String, ints: Seq[Int]): Unit = {
+  def prepareRound(
+    path: String,
+    configurePath: (MRJob, String) => Unit)(
+      ints: Seq[Int]): Unit = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classOf[Foo])
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
-
-    TemporaryOutputFormat.setOutputPath(job, new Path(path))
-
+    configurePath(job, path)
     val foos = sc.parallelize(ints).map(Foo.intToFoo)
     foos.saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
@@ -70,6 +75,11 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
 
   behavior of classOf[TemporaryInput[_]].getSimpleName
 
+  val configurePath: (MRJob, String) => Unit = { (job, path) =>
+    job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
+    TemporaryOutputFormat.setOutputPath(job, new Path(path))
+  }
+
   for {
     numSlices <- Seq(None, Some(8), Some(4))
   } {
@@ -81,12 +91,12 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
 
       val input = new Temporary.Input(path)("input")
 
-      prepareRound(path, 0 until 100)
+      prepareRound(path, configurePath)(0 until 100)
 
       val rc = newRoundContext()
 
       val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
+        input.compute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -102,13 +112,13 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
 
       val input = new Temporary.Input(Set(path1, path2))("input")
 
-      prepareRound(path1, 0 until 50)
-      prepareRound(path2, 50 until 100)
+      prepareRound(path1, configurePath)(0 until 50)
+      prepareRound(path2, configurePath)(50 until 100)
 
       val rc = newRoundContext()
 
       val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
+        input.compute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -138,6 +148,11 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
 
   behavior of classOf[DirectInput[_, _, _]].getSimpleName
 
+  val configurePath: (MRJob, String) => Unit = { (job, path) =>
+    job.setOutputFormatClass(classOf[SequenceFileOutputFormat[NullWritable, Foo]])
+    FileOutputFormat.setOutputPath(job, new Path(path))
+  }
+
   for {
     numSlices <- Seq(None, Some(8), Some(4))
   } {
@@ -147,14 +162,14 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path = new File(tmpDir, "foos").getAbsolutePath
 
-      val input = new Direct.Input(mkExtraConfigurations(path))("input")
+      val input = new Direct.Input(mkExtraConfigurations(tmpDir))("input")
 
-      prepareRound(path, 0 until 100)
+      prepareRound(path, configurePath)(0 until 100)
 
       val rc = newRoundContext()
 
       val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
+        input.compute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -168,15 +183,15 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
       val path1 = new File(tmpDir, "foos1").getAbsolutePath
       val path2 = new File(tmpDir, "foos2").getAbsolutePath
 
-      val input = new Direct.Input(mkExtraConfigurations(Set(path1, path2)))("input")
+      val input = new Direct.Input(mkExtraConfigurations(tmpDir))("input")
 
-      prepareRound(path1, 0 until 50)
-      prepareRound(path2, 50 until 100)
+      prepareRound(path1, configurePath)(0 until 50)
+      prepareRound(path2, configurePath)(50 until 100)
 
       val rc = newRoundContext()
 
       val result = Await.result(
-        input.getOrCompute(rc).apply(Input).map {
+        input.compute(rc).apply(Input).map {
           _.map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
@@ -186,14 +201,15 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
     }
   }
 
-  private def mkExtraConfigurations(basePath: String): Map[String, String] = {
-    mkExtraConfigurations(Set(basePath))
-  }
-
-  private def mkExtraConfigurations(basePaths: Set[String]): Map[String, String] = {
-    val job = MRJob.getInstance(new Configuration(false))
-    FileInputFormat.setInputPaths(job, basePaths.map(path => new Path(path + "/part-*")).toSeq: _*)
-    Map(FileInputFormat.INPUT_DIR -> job.getConfiguration.get(FileInputFormat.INPUT_DIR))
+  private def mkExtraConfigurations(root: String): Map[String, String] = {
+    Map(
+      "com.asakusafw.directio.test" -> classOf[HadoopDataSource].getName,
+      "com.asakusafw.directio.test.path" -> "test",
+      "com.asakusafw.directio.test.fs.path" -> root,
+      DirectFileInputFormat.KEY_BASE_PATH -> "test",
+      DirectFileInputFormat.KEY_RESOURCE_PATH -> "foos*/part-*",
+      DirectFileInputFormat.KEY_DATA_CLASS -> classOf[Foo].getName,
+      DirectFileInputFormat.KEY_FORMAT_CLASS -> classOf[FooSequenceFileFormat].getName)
   }
 }
 
@@ -249,7 +265,7 @@ object InputSpec {
         val label: String)(
           implicit sc: SparkContext)
       extends TemporaryInput[Foo](Map.empty)
-      with ComputeOnce {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       def this(path: String)(label: String)(implicit sc: SparkContext) = this(Set(path))(label)
 
@@ -289,8 +305,11 @@ object InputSpec {
       val extraConfigurations: Map[String, String])(
         val label: String)(
           implicit sc: SparkContext)
-      extends DirectInput[TemporaryInputFormat[Foo], NullWritable, Foo](Map.empty)
-      with ComputeOnce {
+      extends DirectInput(
+        Map.empty)(
+        classTag[DirectFileInputFormat].asInstanceOf[ClassTag[InputFormat[NullWritable, Foo]]],
+        classTag[NullWritable], classTag[Foo], implicitly)
+      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Input)
 
@@ -317,6 +336,23 @@ object InputSpec {
         val outputs = Map(Input -> fragment)
         (fragment, outputs)
       }
+    }
+  }
+
+  class FooSequenceFileFormat extends SequenceFileFormat[NullWritable, Foo, Foo] {
+
+    override def getSupportedType(): Class[Foo] = classOf[Foo]
+
+    override def createKeyObject(): NullWritable = NullWritable.get()
+
+    override def createValueObject(): Foo = new Foo()
+
+    override def copyToModel(key: NullWritable, value: Foo, model: Foo): Unit = {
+      model.copyFrom(value)
+    }
+
+    override def copyFromModel(model: Foo, key: NullWritable, value: Foo): Unit = {
+      value.copyFrom(model)
     }
   }
 }

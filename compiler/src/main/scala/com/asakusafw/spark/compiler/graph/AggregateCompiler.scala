@@ -60,7 +60,7 @@ class AggregateCompiler extends NodeCompiler {
         combinerType,
         operator)(
         subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq) with ComputeOnce
+        subplan.getOutputs.toSeq) with CacheOnce
 
     context.addClass(builder)
   }

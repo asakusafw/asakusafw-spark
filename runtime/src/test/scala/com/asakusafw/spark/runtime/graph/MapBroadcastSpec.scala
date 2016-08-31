@@ -64,7 +64,7 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
     val rc = newRoundContext()
 
     val result = Await.result(
-      broadcast.getOrBroadcast(rc).map(_.asInstanceOf[Broadcasted[Map[ShuffleKey, Seq[Foo]]]]),
+      broadcast.broadcast(rc).map(_.asInstanceOf[Broadcasted[Map[ShuffleKey, Seq[Foo]]]]),
       Duration.Inf).value
     assert(result.size === 10)
     (0 until 10).foreach { i =>
@@ -96,7 +96,7 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
     val rc = newRoundContext()
 
     val result = Await.result(
-      broadcast.getOrBroadcast(rc).map(_.asInstanceOf[Broadcasted[Map[ShuffleKey, Seq[Foo]]]]),
+      broadcast.broadcast(rc).map(_.asInstanceOf[Broadcasted[Map[ShuffleKey, Seq[Foo]]]]),
       Duration.Inf).value
     assert(result.size === 10)
     (0 until 10).foreach { i =>
@@ -136,7 +136,7 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
     val rc = newRoundContext()
 
     val result = Await.result(
-      broadcast.getOrBroadcast(rc).map(_.asInstanceOf[Broadcasted[Map[ShuffleKey, Seq[Foo]]]]),
+      broadcast.broadcast(rc).map(_.asInstanceOf[Broadcasted[Map[ShuffleKey, Seq[Foo]]]]),
       Duration.Inf).value
     assert(result.size === 10)
     (0 until 10).foreach { i =>

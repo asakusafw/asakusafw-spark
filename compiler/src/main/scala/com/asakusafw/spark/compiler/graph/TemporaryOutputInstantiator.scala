@@ -26,7 +26,7 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 
-object OutputInstantiator extends Instantiator {
+object TemporaryOutputInstantiator extends Instantiator {
 
   override def newInstance(
     nodeType: Type,

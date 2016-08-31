@@ -34,12 +34,14 @@ import com.asakusafw.spark.compiler.graph.{
 import com.asakusafw.spark.compiler.spi.{ AggregationCompiler, NodeCompiler, OperatorCompiler }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
+import com.asakusafw.spark.extensions.iterativebatch.compiler.graph.IterativeJobCompiler
+
 import resource._
 
 object MockCompilerContext {
 
-  class IterativeBatchExecutorCompiler(val flowId: String)(jpContext: JPContext)
-    extends IterativeBatchExecutorCompiler.Context
+  class IterativeJobCompiler(val flowId: String)(jpContext: JPContext)
+    extends IterativeJobCompiler.Context
     with NodeCompiler.Context
     with Instantiator.Context
     with OperatorCompiler.Context

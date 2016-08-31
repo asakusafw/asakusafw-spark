@@ -35,7 +35,8 @@ import com.asakusafw.spark.compiler.serializer.{
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
-import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
+import com.asakusafw.spark.extensions.iterativebatch.compiler.graph.IterativeJobCompiler
+import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.IterativeJob
 import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient
 
 class IterativeBatchSparkClientClassBuilder(
@@ -45,30 +46,20 @@ class IterativeBatchSparkClientClassBuilder(
     Type.getType(s"L${GeneratedClassPackageInternalName}/${context.flowId}/IterativeBatchSparkClient;"), // scalastyle:ignore
     classOf[IterativeBatchSparkClient].asType) {
 
-  override def defFields(fieldDef: FieldDef): Unit = {
-    fieldDef.newField("executor", classOf[IterativeBatchExecutor].asType)
-  }
-
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
     methodDef.newMethod(
-      "newIterativeBatchExecutor",
-      classOf[IterativeBatchExecutor].asType,
-      Seq(
-        Type.INT_TYPE,
-        Type.BOOLEAN_TYPE,
-        classOf[ExecutionContext].asType,
-        classOf[SparkContext].asType)) { implicit mb =>
+      "newJob",
+      classOf[IterativeJob].asType,
+      Seq(classOf[SparkContext].asType)) { implicit mb =>
 
-        val thisVar :: numSlotsVar :: stopOnFailVar :: ecVar :: scVar :: _ = mb.argVars
+        val thisVar :: scVar :: _ = mb.argVars
 
-        val t = IterativeBatchExecutorCompiler.compile(plan)(
-          context.iterativeBatchExecutorCompilerContext)
-        val executor = pushNew(t)
-        executor.dup().invokeInit(
-          numSlotsVar.push(), stopOnFailVar.push(), ecVar.push(), scVar.push())
-        `return`(executor)
+        val t = IterativeJobCompiler.compile(plan)(context.iterativeJobCompilerContext)
+        val job = pushNew(t)
+        job.dup().invokeInit(scVar.push())
+        `return`(job)
       }
 
     val branchKeysType = context.addClass(context.branchKeys)

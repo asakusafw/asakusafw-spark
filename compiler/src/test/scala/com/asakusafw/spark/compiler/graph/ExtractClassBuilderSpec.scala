@@ -155,7 +155,7 @@ class ExtractClassBuilderSpec
           .map(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
         classOf[Seq[(Source, BranchKey)]],
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Seq((source, getBranchKey(foosMarker))),
@@ -169,7 +169,7 @@ class ExtractClassBuilderSpec
 
       val rc = newRoundContext()
 
-      val results = extract.getOrCompute(rc)
+      val results = extract.compute(rc)
 
       val ((fooResult, barResult), nResult) =
         Await.result(
@@ -273,7 +273,7 @@ class ExtractClassBuilderSpec
           .map(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
         classOf[Seq[(Source, BranchKey)]],
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Seq((source, getBranchKey(foosMarker))),
@@ -287,7 +287,7 @@ class ExtractClassBuilderSpec
 
       val rc = newRoundContext()
 
-      val results = extract.getOrCompute(rc)
+      val results = extract.compute(rc)
 
       val fooResult = Await.result(
         results(getBranchKey(fooResultMarker)).map {

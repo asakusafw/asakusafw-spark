@@ -33,4 +33,4 @@ class RoundAwareParallelCollectionSource[T: ClassTag](
     label: String)(
       implicit sc: SparkContext)
   extends ParallelCollectionSource[T](branchKey, data, numSlices)(label)
-  with RoundAwareComputeOnce.Ops
+  with RoundAwareCacheOnce.Ops

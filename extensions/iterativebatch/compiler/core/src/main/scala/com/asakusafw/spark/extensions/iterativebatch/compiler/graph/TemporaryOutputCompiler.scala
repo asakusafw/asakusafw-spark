@@ -20,15 +20,17 @@ import scala.collection.JavaConversions._
 
 import org.objectweb.asm.Type
 
+import com.asakusafw.lang.compiler.extension.directio.DirectFileIoModels
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
+import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.graph.{
   Instantiator,
-  OutputInstantiator,
-  TemporaryOutputClassBuilder
+  TemporaryOutputClassBuilder,
+  TemporaryOutputInstantiator
 }
 
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
@@ -38,10 +40,23 @@ class TemporaryOutputCompiler extends RoundAwareNodeCompiler {
   override def support(
     subplan: SubPlan)(
       implicit context: NodeCompiler.Context): Boolean = {
-    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.OUTPUT
+    val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
+    val primaryOperator = subPlanInfo.getPrimaryOperator
+    if (primaryOperator.isInstanceOf[ExternalOutput]) {
+      val operator = primaryOperator.asInstanceOf[ExternalOutput]
+      if (context.options.useOutputDirect) {
+        Option(operator.getInfo).map { info =>
+          !DirectFileIoModels.isSupported(info)
+        }.getOrElse(true)
+      } else {
+        true
+      }
+    } else {
+      false
+    }
   }
 
-  override def instantiator: Instantiator = OutputInstantiator
+  override def instantiator: Instantiator = TemporaryOutputInstantiator
 
   override def compile(
     subplan: SubPlan)(

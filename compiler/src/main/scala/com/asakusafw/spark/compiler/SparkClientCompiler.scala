@@ -34,7 +34,11 @@ import com.asakusafw.lang.compiler.api.reference.{
   TaskReference
 }
 import com.asakusafw.lang.compiler.common.Location
-import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
+import com.asakusafw.lang.compiler.hadoop.{
+  HadoopCommandRequired,
+  InputFormatInfo,
+  InputFormatInfoExtension
+}
 import com.asakusafw.lang.compiler.inspection.InspectionExtension
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.Jobflow
@@ -43,7 +47,8 @@ import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.spark.compiler.graph.{
   BranchKeysClassBuilder,
   BroadcastIdsClassBuilder,
-  Instantiator
+  Instantiator,
+  JobCompiler
 }
 import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.compiler.spi.{
@@ -88,7 +93,7 @@ class SparkClientCompiler extends JobflowProcessor {
           val builder = new SparkClientClassBuilder(plan)
           val client = context.addClass(builder)
 
-          context.addTask(
+          val task = context.addTask(
             SparkClientCompiler.ModuleName,
             SparkClientCompiler.ProfileName,
             SparkClientCompiler.Command,
@@ -98,6 +103,7 @@ class SparkClientCompiler extends JobflowProcessor {
               CommandToken.EXECUTION_ID,
               CommandToken.BATCH_ARGUMENTS,
               CommandToken.of(client.getClassName)))
+          HadoopCommandRequired.put(task, false)
       }
     }
   }
@@ -118,6 +124,7 @@ object SparkClientCompiler {
   object Options {
     val SparkPlanVerify = "spark.plan.verify"
     val SparkInputDirect = "spark.input.direct"
+    val SparkOutputDirect = "spark.output.direct"
   }
 
   trait Context
@@ -135,17 +142,18 @@ object SparkClientCompiler {
     def branchKeys: BranchKeysClassBuilder
     def broadcastIds: BroadcastIdsClassBuilder
 
-    def nodeCompilerContext: NodeCompiler.Context
-    def instantiatorCompilerContext: Instantiator.Context
+    def jobCompilerContext: JobCompiler.Context
   }
 
   class DefaultContext(val flowId: String)(jpContext: JPContext)
     extends Context
+    with JobCompiler.Context
     with NodeCompiler.Context
     with Instantiator.Context
     with OperatorCompiler.Context
     with AggregationCompiler.Context {
 
+    override def jobCompilerContext: JobCompiler.Context = this
     override def nodeCompilerContext: NodeCompiler.Context = this
     override def instantiatorCompilerContext: Instantiator.Context = this
     override def operatorCompilerContext: OperatorCompiler.Context = this

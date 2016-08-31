@@ -16,21 +16,24 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import scala.concurrent.Future
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.rdd.ShuffleKey
+import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: ClassTag](
-  @transient val broadcasts: Map[BroadcastId, Broadcast])(
+  @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
     implicit sc: SparkContext)
   extends NewHadoopInput[IF, K, V] {
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
-  def extraConfigurations: Map[String, String]
+  protected def extraConfigurations: Map[String, String]
 
-  override def newJob(rc: RoundContext): MRJob = {
+  override protected def newJob(rc: RoundContext): MRJob = {
     val job = MRJob.getInstance(rc.hadoopConf.value)
     extraConfigurations.foreach {
       case (k, v) => job.getConfiguration.set(k, v)

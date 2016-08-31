@@ -32,17 +32,18 @@ abstract class CoGroup(
   @(transient @param) prevs: Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])],
   @(transient @param) group: GroupOrdering,
   @(transient @param) part: Partitioner)(
-    @transient val broadcasts: Map[BroadcastId, Broadcast])(
+    @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
       implicit @transient val sc: SparkContext)
   extends Source
   with UsingBroadcasts
   with Branching[IndexedSeq[Iterator[_]]] {
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
   @transient
   private val fragmentBufferSize =
     sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
-  override def compute(
+  override protected def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 
     val future =
@@ -51,7 +52,7 @@ abstract class CoGroup(
           case (targets, sort) =>
             val rdds = targets.map {
               case (source, branchKey) =>
-                source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]])
+                source.compute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]])
             }
             Future.sequence(rdds).map((_, sort))
         }).zip(zipBroadcasts(rc)).map {

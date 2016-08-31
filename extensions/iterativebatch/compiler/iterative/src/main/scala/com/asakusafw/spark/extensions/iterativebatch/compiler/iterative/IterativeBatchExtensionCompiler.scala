@@ -30,7 +30,11 @@ import com.asakusafw.lang.compiler.api.reference.{
   TaskReference
 }
 import com.asakusafw.lang.compiler.common.Location
-import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
+import com.asakusafw.lang.compiler.hadoop.{
+  HadoopCommandRequired,
+  InputFormatInfo,
+  InputFormatInfoExtension
+}
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.planning.Plan
@@ -49,6 +53,8 @@ import com.asakusafw.spark.compiler.spi.{
 }
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
+import com.asakusafw.spark.extensions.iterativebatch.compiler.graph.IterativeJobCompiler
+
 import resource._
 
 class IterativeBatchExtensionCompiler extends ExtensionCompiler {
@@ -65,7 +71,7 @@ class IterativeBatchExtensionCompiler extends ExtensionCompiler {
     val builder = new IterativeBatchSparkClientClassBuilder(plan)
     val client = context.addClass(builder)
 
-    context.addTask(
+    val task = context.addTask(
       SparkClientCompiler.ModuleName,
       SparkClientCompiler.ProfileName,
       SparkClientCompiler.Command,
@@ -76,6 +82,7 @@ class IterativeBatchExtensionCompiler extends ExtensionCompiler {
         CommandToken.BATCH_ARGUMENTS,
         CommandToken.of(client.getClassName)),
       Seq(IterativeExtensions.EXTENSION_NAME))
+    HadoopCommandRequired.put(task, false)
   }
 }
 
@@ -97,18 +104,18 @@ object IterativeBatchExtensionCompiler {
     def branchKeys: BranchKeysClassBuilder
     def broadcastIds: BroadcastIdsClassBuilder
 
-    def iterativeBatchExecutorCompilerContext: IterativeBatchExecutorCompiler.Context
+    def iterativeJobCompilerContext: IterativeJobCompiler.Context
   }
 
   class DefaultContext(val flowId: String)(jpContext: JPContext)
     extends Context
-    with IterativeBatchExecutorCompiler.Context
+    with IterativeJobCompiler.Context
     with NodeCompiler.Context
     with Instantiator.Context
     with OperatorCompiler.Context
     with AggregationCompiler.Context {
 
-    override def iterativeBatchExecutorCompilerContext: IterativeBatchExecutorCompiler.Context = this // scalastyle:ignore
+    override def iterativeJobCompilerContext: IterativeJobCompiler.Context = this
     override def nodeCompilerContext: NodeCompiler.Context = this
     override def instantiatorCompilerContext: Instantiator.Context = this
     override def operatorCompilerContext: OperatorCompiler.Context = this

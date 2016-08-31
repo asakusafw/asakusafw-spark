@@ -16,32 +16,27 @@
 package com.asakusafw.spark.runtime
 package graph
 
-import scala.collection.mutable
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.Future
 import scala.reflect.ClassTag
 
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
-trait ComputeOnce {
-  self: Source =>
+trait CacheOnce[K, V] extends CacheStrategy[K, V] {
 
   @transient
-  private var generatedRDD: Map[BranchKey, Future[RDD[_]]] = _
+  private var value: V = _
 
-  override def getOrCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-    synchronized {
-      if (generatedRDD == null) { // scalastyle:ignore
-        generatedRDD = compute(rc)
-      }
-      generatedRDD
+  def getOrCache(key: K, v: => V): V = synchronized {
+    if (value == null) { // scalastyle:ignore
+      value = v
     }
+    value
   }
 }
 
-object ComputeOnce {
+object CacheOnce {
 
   trait Ops extends Source.Ops {
     self: Source =>
@@ -50,14 +45,14 @@ object ComputeOnce {
       f: T => U): Source with Source.Ops = {
       new MapPartitions(this, branchKey, {
         (Int, iter: Iterator[T]) => iter.map(f)
-      }, preservesPartitioning = false) with ComputeOnce with Ops
+      }, preservesPartitioning = false) with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     override def flatMap[T, U: ClassTag](branchKey: BranchKey)(
       f: T => TraversableOnce[U]): Source with Source.Ops = {
       new MapPartitions(this, branchKey, {
         (Int, iter: Iterator[T]) => iter.flatMap(f)
-      }, preservesPartitioning = false) with ComputeOnce with Ops
+      }, preservesPartitioning = false) with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     override def mapPartitions[T, U: ClassTag](branchKey: BranchKey)(
@@ -65,7 +60,7 @@ object ComputeOnce {
       preservesPartitioning: Boolean = false): Source with Source.Ops = {
       new MapPartitions(this, branchKey, {
         (index: Int, iter: Iterator[T]) => f(iter)
-      }, preservesPartitioning) with ComputeOnce with Ops
+      }, preservesPartitioning) with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     override def mapPartitionsWithIndex[T, U: ClassTag](branchKey: BranchKey)(
@@ -73,7 +68,7 @@ object ComputeOnce {
       preservesPartitioning: Boolean = false): Source with Source.Ops = {
       new MapPartitions(this, branchKey, {
         (index: Int, iter: Iterator[T]) => f(index, iter)
-      }, preservesPartitioning) with ComputeOnce with Ops
+      }, preservesPartitioning) with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
     }
   }
 }

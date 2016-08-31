@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.extensions.iterativebatch.compiler
+package graph
 
 import org.junit.runner.RunWith
 import org.scalatest.Suites
@@ -24,36 +25,44 @@ import java.io.{ File, DataInput, DataOutput }
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.input.{ FileInputFormat, SequenceFileInputFormat }
+import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
 import com.asakusafw.bridge.api.BatchContext
+import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.common.Location
+import com.asakusafw.lang.compiler.extension.directio.{
+  DirectFileIoConstants,
+  DirectFileOutputModel
+}
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.inspection.{ AbstractInspectionExtension, InspectionExtension }
-import com.asakusafw.lang.compiler.model.description.ClassDescription
+import com.asakusafw.lang.compiler.model.description.{ ClassDescription, Descriptions }
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
+import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.runtime.core.Result
+import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
+import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.fixture.SparkForAll
@@ -63,50 +72,71 @@ import com.asakusafw.vocabulary.model.{ Key, Joined, Summarized }
 import com.asakusafw.vocabulary.operator._
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor
+import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.IterativeJob
 
 @RunWith(classOf[JUnitRunner])
-class IterativeBatchExecutorCompilerSpecTest extends IterativeBatchExecutorCompilerSpec
+class IterativeJobCompilerSpecTest extends IterativeJobCompilerSpec
 
-class IterativeBatchExecutorCompilerSpec extends Suites(
+class IterativeJobCompilerSpec extends Suites(
   (for {
     threshold <- Seq(None, Some(0))
     parallelism <- Seq(None, Some(8), Some(0))
   } yield {
-    new IterativeBatchExecutorCompilerSpecBase(threshold, parallelism)
+    new IterativeJobCompilerSpecBase(threshold, parallelism)
   }): _*)
 
-class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
+class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
   extends FlatSpec
   with ClassServerForAll
   with SparkForAll
   with FlowIdForEach
+  with TempDirForAll
   with TempDirForEach
   with UsingCompilerContext
   with RoundContextSugar {
 
-  import IterativeBatchExecutorCompilerSpec._
+  import IterativeJobCompilerSpec._
 
-  behavior of IterativeBatchExecutorCompiler.getClass.getSimpleName
+  behavior of IterativeJobCompiler.getClass.getSimpleName
 
   val configuration =
     "master=local[8]" +
       s"${threshold.map(t => s", threshold=${t}").getOrElse("")}" +
       s"${parallelism.map(p => s", parallelism=${p}").getOrElse("")}"
 
+  private var root: File = _
+
   override def configure(conf: SparkConf): SparkConf = {
+    val tmpDir = createTempDirectoryForAll("directio-").toFile()
+    val system = new File(tmpDir, "system")
+    root = new File(tmpDir, "directio")
+    conf.setHadoopConf("com.asakusafw.output.system.dir", system.getAbsolutePath)
+    conf.setHadoopConf("com.asakusafw.directio.test", classOf[HadoopDataSource].getName)
+    conf.setHadoopConf("com.asakusafw.directio.test.path", "test")
+    conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
+
     threshold.foreach(i => conf.set("spark.shuffle.sort.bypassMergeThreshold", i.toString))
     parallelism.foreach(para => conf.set(Props.Parallelism, para.toString))
     super.configure(conf)
   }
 
-  def prepareData[T: ClassTag](name: String, path: File)(rdd: RDD[T])(implicit sc: SparkContext): Unit = {
-    val job = MRJob.getInstance(sc.hadoopConfiguration)
-    job.setOutputKeyClass(classOf[NullWritable])
-    job.setOutputValueClass(classTag[T].runtimeClass)
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
+  val configurePath: (MRJob, File, String) => Unit = { (job, path, name) =>
+    job.setOutputFormatClass(classOf[TemporaryOutputFormat[_]])
     TemporaryOutputFormat.setOutputPath(
       job,
       new Path(path.getPath, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}${name}"))
+  }
+
+  def prepareData[T: ClassTag](
+    name: String,
+    path: File,
+    configurePath: (MRJob, File, String) => Unit = configurePath)(
+      rdd: RDD[T])(
+        implicit sc: SparkContext): Unit = {
+    val job = MRJob.getInstance(sc.hadoopConfiguration)
+    job.setOutputKeyClass(classOf[NullWritable])
+    job.setOutputValueClass(classTag[T].runtimeClass)
+    configurePath(job, path, name)
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
 
@@ -129,7 +159,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor from simple plan: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob from simple plan: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -156,10 +186,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
-      val executorType = compile(flowId, graph, 2, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 2, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -174,21 +204,103 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   }
 
   for {
-    iterativeExtension <- Seq(
+    (iterativeExtension, i) <- Seq(
       new IterativeExtension(),
-      new IterativeExtension("round"))
+      new IterativeExtension("round")).zipWithIndex
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor from simple plan with InputFormatInfo: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob from simple plan with InputFormatInfo: [${conf}]" in { implicit sc =>
+      val path = new File(root, s"foos${i}")
+
+      val configurePath: (MRJob, File, String) => Unit = { (job, path, name) =>
+        job.setOutputFormatClass(classOf[SequenceFileOutputFormat[NullWritable, Foo]])
+        FileOutputFormat.setOutputPath(job, new Path(path.getPath, name))
+      }
+
+      val rounds = 0 to 1
+      for {
+        round <- rounds
+      } {
+        prepareData(s"foos_${round}", path, configurePath) {
+          sc.parallelize(0 until 100).map(Foo.intToFoo).map(Foo.round(_, round))
+        }
+      }
+
+      val inputOperator = ExternalInput
+        .newWithAttributes("foos",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Foo]),
+            "test",
+            ClassDescription.of(classOf[Foo]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val outputOperator = ExternalOutput
+        .newInstance("output", inputOperator.findOutput(ExternalInput.PORT_NAME))
+
+      val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
+
+      val jobType = {
+        val jpContext = newJPContext(path, classServer.root.toFile)
+        jpContext.registerExtension(
+          classOf[InputFormatInfoExtension],
+          new InputFormatInfoExtension() {
+
+            override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
+              new InputFormatInfo(
+                ClassDescription.of(classOf[DirectFileInputFormat]),
+                ClassDescription.of(classOf[NullWritable]),
+                ClassDescription.of(classOf[Foo]),
+                Map(
+                  DirectFileInputFormat.KEY_BASE_PATH -> s"test/foos${i}",
+                  DirectFileInputFormat.KEY_RESOURCE_PATH -> "foos_${round}/part-*",
+                  DirectFileInputFormat.KEY_DATA_CLASS -> classOf[Foo].getName,
+                  DirectFileInputFormat.KEY_FORMAT_CLASS -> classOf[FooSequenceFileFormat].getName))
+            }
+          })
+        val jobflow = newJobflow(flowId, graph)
+        val plan = SparkPlanning.plan(jpContext, jobflow).getPlan
+        assert(plan.getElements.size === 2)
+
+        implicit val context = newIterativeJobCompilerContext(flowId, jpContext)
+        val jobType = IterativeJobCompiler.compile(plan)
+        context.addClass(context.branchKeys)
+        context.addClass(context.broadcastIds)
+        jobType
+      }
+
+      executeJob(flowId, jobType)(rounds)
+
+      for {
+        round <- rounds
+      } {
+        val result = readResult[Foo](outputOperator.getName, round, path)
+          .map { foo =>
+            (foo.id.get, foo.foo.getAsString)
+          }.collect.toSeq.sortBy(_._1)
+        assert(result === (0 until 100).map(i => (100 * round + i, s"foo${100 * round + i}")))
+      }
+    }
+  }
+
+  for {
+    (iterativeExtension, i) <- Seq(
+      new IterativeExtension(),
+      new IterativeExtension("round")).zipWithIndex
+  } {
+    val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
+
+    it should s"compile Job from simple plan with DirectOutput flat: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
-      prepareData("foos", path) {
+      prepareData("foo", path) {
         sc.parallelize(0 until 100).map(Foo.intToFoo)
       }
 
       val inputOperator = ExternalInput
-        .newInstance("foos",
+        .newInstance("foo/part-*",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "test",
@@ -203,48 +315,117 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         .build()
 
       val outputOperator = ExternalOutput
-        .newInstance("output", roundFoo.findOutput("output"))
+        .builder("output",
+          new ExternalOutputInfo.Basic(
+            ClassDescription.of(classOf[DirectFileOutputModel]),
+            DirectFileIoConstants.MODULE_NAME,
+            ClassDescription.of(classOf[Foo]),
+            Descriptions.valueOf(
+              new DirectFileOutputModel(
+                DirectOutputDescription(
+                  basePath = s"test/flat${i}_$${round}",
+                  resourcePattern = "*.bin",
+                  order = Seq.empty,
+                  deletePatterns = Seq("*.bin"),
+                  formatType = classOf[FooSequenceFileFormat])))))
+        .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), roundFoo.findOutput("output"))
+        .build()
 
       val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
 
-      val executorType = {
-        val jpContext = newJPContext(path, classServer.root.toFile)
-        jpContext.registerExtension(
-          classOf[InputFormatInfoExtension],
-          new InputFormatInfoExtension() {
+      val jobType = compile(flowId, graph, 2, path, classServer.root.toFile)
 
-            override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
-              new InputFormatInfo(
-                ClassDescription.of(classOf[TemporaryInputFormat[_]]),
-                ClassDescription.of(classOf[NullWritable]),
-                ClassDescription.of(classOf[Foo]),
-                Map(FileInputFormat.INPUT_DIR ->
-                  /*s"${path.getPath}/${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foos/part-*"*/
-                  s"${path.getPath}/${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}foos/part-*"))
-            }
-          })
-        val jobflow = newJobflow(flowId, graph)
-        val plan = SparkPlanning.plan(jpContext, jobflow).getPlan
-        assert(plan.getElements.size === 2)
-
-        implicit val context = newIterativeBatchExecutorCompilerContext(flowId, jpContext)
-        val executorType = IterativeBatchExecutorCompiler.compile(plan)
-        context.addClass(context.branchKeys)
-        context.addClass(context.broadcastIds)
-        executorType
-      }
-
-      val rounds = 0 to 0 // 1
-      execute(flowId, executorType, rounds)
+      val rounds = 0 to 1
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
       } {
-        val result = readResult[Foo](outputOperator.getName, round, path)
+        val result = sc.newAPIHadoopFile[NullWritable, Foo, SequenceFileInputFormat[NullWritable, Foo]](
+          new File(root, s"flat${i}_${round}/*.bin").getAbsolutePath)
+          .map(_._2)
           .map { foo =>
             (foo.id.get, foo.foo.getAsString)
           }.collect.toSeq.sortBy(_._1)
         assert(result === (0 until 100).map(i => (100 * round + i, s"foo${100 * round + i}")))
+      }
+    }
+  }
+
+  for {
+    (iterativeExtension, i) <- Seq(
+      new IterativeExtension(),
+      new IterativeExtension("round")).zipWithIndex
+  } {
+    val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
+
+    it should s"compile Job from simple plan with DirectOutput group: [${conf}]" in { implicit sc =>
+      val path = createTempDirectoryForEach("test-").toFile
+
+      prepareData("baz", path) {
+        sc.parallelize(0 until 100).map(Baz.intToBaz)
+      }
+
+      val inputOperator = ExternalInput
+        .newInstance("baz/part-*",
+          new ExternalInputInfo.Basic(
+            ClassDescription.of(classOf[Baz]),
+            "test",
+            ClassDescription.of(classOf[Baz]),
+            ExternalInputInfo.DataSize.UNKNOWN))
+
+      val roundBaz = OperatorExtractor
+        .extract(classOf[Update], classOf[Ops], "roundBaz")
+        .input("baz", ClassDescription.of(classOf[Baz]), inputOperator.getOperatorPort)
+        .output("output", ClassDescription.of(classOf[Baz]))
+        .attribute(classOf[IterativeExtension], iterativeExtension)
+        .build()
+
+      val outputOperator = ExternalOutput
+        .builder("output",
+          new ExternalOutputInfo.Basic(
+            ClassDescription.of(classOf[DirectFileOutputModel]),
+            DirectFileIoConstants.MODULE_NAME,
+            ClassDescription.of(classOf[Baz]),
+            Descriptions.valueOf(
+              new DirectFileOutputModel(
+                DirectOutputDescription(
+                  basePath = s"test/group${i}",
+                  resourcePattern = "baz_{id}.bin",
+                  order = Seq("-n"),
+                  deletePatterns = Seq("*.bin"),
+                  formatType = classOf[BazSequenceFileFormat])))))
+        .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Baz]), roundBaz.findOutput("output"))
+        .build()
+
+      val graph = new OperatorGraph(Seq(inputOperator, outputOperator))
+
+      val jobType = compile(flowId, graph, 2, path, classServer.root.toFile)
+
+      val rounds = 0 to 1
+      executeJob(flowId, jobType)(rounds)
+
+      for {
+        round <- rounds
+      } {
+        {
+          val result = sc.newAPIHadoopFile[NullWritable, Baz, SequenceFileInputFormat[NullWritable, Baz]](
+            new File(root, s"group${i}/baz_${100 * round + 0}.bin").getAbsolutePath)
+            .map(_._2)
+            .map { baz =>
+              (baz.id.get, baz.n.get)
+            }.collect.toSeq
+          assert(result === (0 until 100 by 2).reverse.map(i => (100 * round + 0, 100 * round + i * 100)))
+        }
+        {
+          val result = sc.newAPIHadoopFile[NullWritable, Baz, SequenceFileInputFormat[NullWritable, Baz]](
+            new File(root, s"group${i}/baz_${100 * round + 1}.bin").getAbsolutePath)
+            .map(_._2)
+            .map { baz =>
+              (baz.id.get, baz.n.get)
+            }.collect.toSeq
+          assert(result === (1 until 100 by 2).reverse.map(i => (100 * round + 1, 100 * round + i * 100)))
+        }
       }
     }
   }
@@ -256,7 +437,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with Logging: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Logging: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -289,10 +470,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
 
       val graph = new OperatorGraph(Seq(inputOperator, loggingOperator, outputOperator))
 
-      val executorType = compile(flowId, graph, 2, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 2, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -313,7 +494,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with Extract: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Extract: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -354,10 +535,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         evenOutputOperator,
         oddOutputOperator))
 
-      val executorType = compile(flowId, graph, 3, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 3, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -389,7 +570,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with Checkpoint and Extract: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Checkpoint and Extract: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -437,10 +618,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         evenOutputOperator,
         oddOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -472,7 +653,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with StopFragment: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with StopFragment: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -509,10 +690,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         extractOperator,
         evenOutputOperator))
 
-      val executorType = compile(flowId, graph, 2, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 2, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -536,7 +717,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with CoGroup: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with CoGroup: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -625,10 +806,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         cogroupOperator,
         fooResultOutputOperator, barResultOutputOperator, fooErrorOutputOperator, barErrorOutputOperator))
 
-      val executorType = compile(flowId, graph, 8, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 8, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -685,7 +866,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with CoGroup with grouping is empty: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with CoGroup with grouping is empty: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -774,10 +955,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         cogroupOperator,
         fooResultOutputOperator, barResultOutputOperator, fooErrorOutputOperator, barErrorOutputOperator))
 
-      val executorType = compile(flowId, graph, 8, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 8, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -831,7 +1012,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with MasterCheck: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterCheck: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -894,10 +1075,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 5, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 5, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -923,7 +1104,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       }
     }
 
-    it should s"compile IterativeBatchExecutor with MasterCheck with multiple masters: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterCheck with multiple masters: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -1004,10 +1185,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 6, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 6, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1033,7 +1214,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       }
     }
 
-    it should s"compile IterativeBatchExecutor with MasterCheck with fixed master: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterCheck with fixed master: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
@@ -1109,8 +1290,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 6, path, classServer.root.toFile)
-      execute(flowId, executorType, rounds)
+      val jobType = compile(flowId, graph, 6, path, classServer.root.toFile)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1144,7 +1325,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with broadcast MasterCheck: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterCheck: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -1207,12 +1388,12 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(
+      val jobType = compile(
         flowId, graph, 4, path, classServer.root.toFile,
         Map("operator.estimator.Update" -> "1.0"))
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1238,7 +1419,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       }
     }
 
-    it should s"compile IterativeBatchExecutor with broadcast MasterCheck with multiple masters: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterCheck with multiple masters: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -1319,12 +1500,12 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(
+      val jobType = compile(
         flowId, graph, 5, path, classServer.root.toFile,
         Map("operator.estimator.Update" -> "1.0"))
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1350,7 +1531,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       }
     }
 
-    it should s"compile IterativeBatchExecutor with Checkpoint and broadcast MasterCheck: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Checkpoint and broadcast MasterCheck: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -1419,10 +1600,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 5, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 5, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1448,7 +1629,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       }
     }
 
-    it should s"compile IterativeBatchExecutor with broadcast MasterCheck with fixed master: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterCheck with fixed master: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
@@ -1509,8 +1690,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
-      execute(flowId, executorType, rounds)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1544,7 +1725,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with MasterJoin: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterJoin: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -1625,10 +1806,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterJoinOperator,
         joinedOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 6, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 6, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1654,7 +1835,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       }
     }
 
-    it should s"compile IterativeBatchExecutor with MasterJoin with fixed master: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterJoin with fixed master: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
@@ -1730,8 +1911,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterJoinOperator,
         joinedOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 6, path, classServer.root.toFile)
-      execute(flowId, executorType, rounds)
+      val jobType = compile(flowId, graph, 6, path, classServer.root.toFile)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1765,7 +1946,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with broadcast MasterJoin: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterJoin: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -1828,10 +2009,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterJoinOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1857,7 +2038,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
       }
     }
 
-    it should s"compile IterativeBatchExecutor with broadcast MasterJoin with fixed master: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterJoin with fixed master: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
@@ -1918,8 +2099,8 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterJoinOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
-      execute(flowId, executorType, rounds)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -1953,7 +2134,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with broadcast self MasterCheck: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast self MasterCheck: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -1998,10 +2179,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         masterCheckOperator,
         foundOutputOperator, missedOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -2032,7 +2213,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with Fold: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Fold: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("bazs1", path) {
@@ -2088,10 +2269,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         foldOperator,
         resultOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -2118,7 +2299,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with Fold with grouping is empty: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Fold with grouping is empty: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("bazs1", path) {
@@ -2174,10 +2355,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         foldOperator,
         resultOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -2201,7 +2382,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with Summarize: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Summarize: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("bazs1", path) {
@@ -2257,10 +2438,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         summarizeOperator,
         resultOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -2293,7 +2474,7 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeBatchExecutor with Summarize with grouping is empty: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Summarize with grouping is empty: [${conf}]" in { implicit sc =>
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("bazs1", path) {
@@ -2349,10 +2530,10 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
         summarizeOperator,
         resultOutputOperator))
 
-      val executorType = compile(flowId, graph, 4, path, classServer.root.toFile)
+      val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
 
       val rounds = 0 to 1
-      execute(flowId, executorType, rounds)
+      executeJob(flowId, jobType)(rounds)
 
       for {
         round <- rounds
@@ -2392,13 +2573,14 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
   }
 
   def newJobflow(flowId: String, graph: OperatorGraph): Jobflow = {
-    new Jobflow(flowId, ClassDescription.of(classOf[IterativeBatchExecutorCompilerSpec]), graph)
+    new Jobflow(flowId, ClassDescription.of(classOf[IterativeJobCompilerSpec]), graph)
   }
 
   def compile(
     flowId: String,
     graph: OperatorGraph,
-    subplans: Int, path: File,
+    subplans: Int,
+    path: File,
     classpath: File,
     properties: Map[String, String] = Map.empty): Type = {
     val jpContext = newJPContext(path, classpath, properties)
@@ -2406,35 +2588,39 @@ class IterativeBatchExecutorCompilerSpecBase(threshold: Option[Int], parallelism
     val plan = SparkPlanning.plan(jpContext, jobflow).getPlan
     assert(plan.getElements.size === subplans)
 
-    implicit val context = newIterativeBatchExecutorCompilerContext(flowId, jpContext)
-    val executorType = IterativeBatchExecutorCompiler.compile(plan)
+    implicit val context = newIterativeJobCompilerContext(flowId, jpContext)
+    val jobType = IterativeJobCompiler.compile(plan)
     context.addClass(context.branchKeys)
     context.addClass(context.broadcastIds)
-    executorType
+    jobType
   }
 
-  def execute(flowId: String, executorType: Type, rounds: Seq[Int])(implicit sc: SparkContext): Unit = {
+  def executeJob(flowId: String, jobType: Type)(rounds: Seq[Int])(implicit sc: SparkContext): Unit = {
     val cls = Class.forName(
-      executorType.getClassName, true, Thread.currentThread.getContextClassLoader)
-      .asSubclass(classOf[IterativeBatchExecutor])
-    val executor = cls.getConstructor(classOf[Int], classOf[ExecutionContext], classOf[SparkContext])
-      .newInstance(Int.box(1), ExecutionContext.global, sc)
+      jobType.getClassName, true, Thread.currentThread.getContextClassLoader)
+      .asSubclass(classOf[IterativeJob])
+    val job = cls.getConstructor(classOf[SparkContext]).newInstance(sc)
 
+    val origin = newRoundContext(flowId = flowId)
+    val rcs = rounds.map { round =>
+      newRoundContext(
+        flowId = flowId,
+        stageId = s"round_${round}",
+        batchArguments = Map("round" -> round.toString))
+    }
+
+    val executor = new IterativeBatchExecutor(numSlots = 1)(job)
     try {
       executor.start()
-      executor.submitAll(rounds.map { round =>
-        newRoundContext(
-          flowId = flowId,
-          stageId = s"round_${round}",
-          batchArguments = Map("round" -> round.toString))
-      })
+      executor.submitAll(rcs)
     } finally {
       executor.stop(awaitExecution = true, gracefully = true)
     }
+    job.commit(origin, rcs)
   }
 }
 
-object IterativeBatchExecutorCompilerSpec {
+object IterativeJobCompilerSpec {
 
   class Foo extends DataModel[Foo] with Writable {
 
@@ -2751,5 +2937,39 @@ object IterativeBatchExecutorCompilerSpec {
 
     @Summarize
     def summarize(value: Baz): SummarizedBaz = ???
+  }
+
+  class FooSequenceFileFormat extends SequenceFileFormat[NullWritable, Foo, Foo] {
+
+    override def getSupportedType(): Class[Foo] = classOf[Foo]
+
+    override def createKeyObject(): NullWritable = NullWritable.get()
+
+    override def createValueObject(): Foo = new Foo()
+
+    override def copyToModel(key: NullWritable, value: Foo, model: Foo): Unit = {
+      model.copyFrom(value)
+    }
+
+    override def copyFromModel(model: Foo, key: NullWritable, value: Foo): Unit = {
+      value.copyFrom(model)
+    }
+  }
+
+  class BazSequenceFileFormat extends SequenceFileFormat[NullWritable, Baz, Baz] {
+
+    override def getSupportedType(): Class[Baz] = classOf[Baz]
+
+    override def createKeyObject(): NullWritable = NullWritable.get()
+
+    override def createValueObject(): Baz = new Baz()
+
+    override def copyToModel(key: NullWritable, value: Baz, model: Baz): Unit = {
+      model.copyFrom(value)
+    }
+
+    override def copyFromModel(model: Baz, key: NullWritable, value: Baz): Unit = {
+      value.copyFrom(model)
+    }
   }
 }

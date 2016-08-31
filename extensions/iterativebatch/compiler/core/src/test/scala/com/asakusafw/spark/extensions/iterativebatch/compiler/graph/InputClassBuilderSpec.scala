@@ -32,8 +32,10 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
 import org.apache.spark.SparkContext
 
+import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.common.DiagnosticException
@@ -43,6 +45,7 @@ import com.asakusafw.lang.compiler.model.graph.{ ExternalInput, MarkerOperator }
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
+import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
@@ -68,14 +71,15 @@ abstract class InputClassBuilderSpec extends FlatSpec with ClassServerForAll wit
 
   import InputClassBuilderSpec._
 
-  def prepareRound(parent: String, ints: Seq[Int], round: Int): Unit = {
+  def prepareRound(
+    parent: String,
+    configurePath: (MRJob, String, Int) => Unit)(
+      ints: Seq[Int],
+      round: Int): Unit = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classOf[Foo])
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
-
-    TemporaryOutputFormat.setOutputPath(job, new Path(parent, s"foos_round_${round}"))
-
+    configurePath(job, parent, round)
     val foos = sc.parallelize(ints).map(Foo.intToFoo(round))
     foos.saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
@@ -94,6 +98,11 @@ class TemporaryInputClassBuilderSpec
   import InputClassBuilderSpec._
 
   behavior of classOf[TemporaryInputClassBuilder].getSimpleName
+
+  val configurePath: (MRJob, String, Int) => Unit = { (job, parent, round) =>
+    job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
+    TemporaryOutputFormat.setOutputPath(job, new Path(parent, s"foos_round_${round}"))
+  }
 
   for {
     iterativeExtension <- Seq(
@@ -175,7 +184,7 @@ class TemporaryInputClassBuilderSpec
         }
 
         val input = cls.getConstructor(
-          classOf[Map[BroadcastId, Broadcast]],
+          classOf[Map[BroadcastId, Broadcast[_]]],
           classOf[SparkContext])
           .newInstance(
             Map.empty,
@@ -186,7 +195,7 @@ class TemporaryInputClassBuilderSpec
         for {
           round <- 0 to 1
         } {
-          prepareRound(new File(tmpDir, "external/input").getAbsolutePath, 0 until 100, round)
+          prepareRound(new File(tmpDir, "external/input").getAbsolutePath, configurePath)(0 until 100, round)
 
           val rc = newRoundContext(
             stageId = s"round_${round}",
@@ -194,7 +203,7 @@ class TemporaryInputClassBuilderSpec
           val bias = if (iterativeInfo.isIterative) 100 * round else 0
 
           val result = Await.result(
-            input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
+            input.compute(rc).apply(getBranchKey(inputMarker)).map {
               _.map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
@@ -221,6 +230,11 @@ class DirectInputClassBuilderSpec
 
   behavior of classOf[DirectInputClassBuilder].getSimpleName
 
+  val configurePath: (MRJob, String, Int) => Unit = { (job, parent, round) =>
+    job.setOutputFormatClass(classOf[SequenceFileOutputFormat[NullWritable, Foo]])
+    FileOutputFormat.setOutputPath(job, new Path(parent, s"foos_round_${round}"))
+  }
+
   for {
     iterativeExtension <- Seq(
       Some(new IterativeExtension()),
@@ -238,7 +252,7 @@ class DirectInputClassBuilderSpec
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
       val inputOperator = {
-        val op = ExternalInput.builder( /*"foos_${round}"*/ "foos_0",
+        val op = ExternalInput.builder("foos_${round}",
           new ExternalInputInfo.Basic(
             ClassDescription.of(classOf[Foo]),
             "test",
@@ -280,13 +294,20 @@ class DirectInputClassBuilderSpec
         new InputFormatInfoExtension {
 
           override def resolve(name: String, info: ExternalInputInfo): InputFormatInfo = {
-            assert(name === /*"foos_${round}"*/ "foos_0")
+            assert(name === "foos_${round}")
             assert(info.getModuleName === "test")
             new InputFormatInfo(
-              ClassDescription.of(classOf[TemporaryInputFormat[Foo]]),
+              ClassDescription.of(classOf[DirectFileInputFormat]),
               ClassDescription.of(classOf[NullWritable]),
               ClassDescription.of(classOf[Foo]),
-              mkExtraConfigurations(new File(tmpDir, /*"foos_round_${round}"*/ "foos_round_0").getAbsolutePath))
+              Map(
+                "com.asakusafw.directio.test" -> classOf[HadoopDataSource].getName,
+                "com.asakusafw.directio.test.path" -> "test",
+                "com.asakusafw.directio.test.fs.path" -> tmpDir,
+                DirectFileInputFormat.KEY_BASE_PATH -> "test",
+                DirectFileInputFormat.KEY_RESOURCE_PATH -> "foos_round_${round}/part-*",
+                DirectFileInputFormat.KEY_DATA_CLASS -> classOf[Foo].getName,
+                DirectFileInputFormat.KEY_FORMAT_CLASS -> classOf[FooSequenceFileFormat].getName))
           }
         })
 
@@ -306,7 +327,7 @@ class DirectInputClassBuilderSpec
       }
 
       val input = cls.getConstructor(
-        classOf[Map[BroadcastId, Broadcast]],
+        classOf[Map[BroadcastId, Broadcast[_]]],
         classOf[SparkContext])
         .newInstance(
           Map.empty,
@@ -315,9 +336,9 @@ class DirectInputClassBuilderSpec
       assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
 
       for {
-        round <- 0 to 0 // 1
+        round <- 0 to 1
       } {
-        prepareRound(tmpDir, 0 until 100, round)
+        prepareRound(tmpDir, configurePath)(0 until 100, round)
 
         val rc = newRoundContext(
           stageId = s"round_${round}",
@@ -325,7 +346,7 @@ class DirectInputClassBuilderSpec
         val bias = if (iterativeExtension.isDefined) 100 * round else 0
 
         val result = Await.result(
-          input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
+          input.compute(rc).apply(getBranchKey(inputMarker)).map {
             _.map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq.sorted
@@ -334,12 +355,6 @@ class DirectInputClassBuilderSpec
         assert(result === (0 until 100).map(i => bias + i))
       }
     }
-  }
-
-  private def mkExtraConfigurations(path: String): Map[String, String] = {
-    val job = MRJob.getInstance(new Configuration(false))
-    FileInputFormat.setInputPaths(job, new Path(path + "/part-*"))
-    Map(FileInputFormat.INPUT_DIR -> job.getConfiguration.get(FileInputFormat.INPUT_DIR))
   }
 }
 
@@ -375,6 +390,23 @@ object InputClassBuilderSpec {
         foo.id.modify(100 * round + i)
         (NullWritable.get, foo)
       }
+    }
+  }
+
+  class FooSequenceFileFormat extends SequenceFileFormat[NullWritable, Foo, Foo] {
+
+    override def getSupportedType(): Class[Foo] = classOf[Foo]
+
+    override def createKeyObject(): NullWritable = NullWritable.get()
+
+    override def createValueObject(): Foo = new Foo()
+
+    override def copyToModel(key: NullWritable, value: Foo, model: Foo): Unit = {
+      model.copyFrom(value)
+    }
+
+    override def copyFromModel(model: Foo, key: NullWritable, value: Foo): Unit = {
+      value.copyFrom(model)
     }
   }
 }

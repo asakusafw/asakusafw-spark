@@ -58,14 +58,14 @@ abstract class CoGroupClassBuilder(
     classOf[CoGroup].asType)
   with Branching
   with LabelField {
-  self: ComputationStrategy =>
+  self: CacheStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[Seq[(Seq[(Source, BranchKey)], Option[SortOrdering])]].asType,
       classOf[GroupOrdering].asType,
       classOf[Partitioner].asType,
-      classOf[Map[BroadcastId, Broadcast]].asType,
+      classOf[Map[BroadcastId, Broadcast[_]]].asType,
       classOf[SparkContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
@@ -105,7 +105,11 @@ abstract class CoGroupClassBuilder(
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Broadcast].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcast[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
           }
         }
         .newParameterType(classOf[SparkContext].asType)

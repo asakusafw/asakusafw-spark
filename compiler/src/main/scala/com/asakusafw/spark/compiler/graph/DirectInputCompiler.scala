@@ -32,16 +32,19 @@ class DirectInputCompiler extends NodeCompiler {
   override def support(
     subplan: SubPlan)(
       implicit context: NodeCompiler.Context): Boolean = {
-    subplan.getAttribute(classOf[SubPlanInfo]).getDriverType == SubPlanInfo.DriverType.INPUT && {
+    if (context.options.useInputDirect) {
       val subPlanInfo = subplan.getAttribute(classOf[SubPlanInfo])
       val primaryOperator = subPlanInfo.getPrimaryOperator
       if (primaryOperator.isInstanceOf[ExternalInput]) {
         val operator = primaryOperator.asInstanceOf[ExternalInput]
-        val inputFormatInfo = context.getInputFormatInfo(operator.getName, operator.getInfo)
-        context.options.useInputDirect && inputFormatInfo.isDefined
+        Option(operator.getInfo).flatMap { info =>
+          context.getInputFormatInfo(operator.getName, info)
+        }.isDefined
       } else {
         false
       }
+    } else {
+      false
     }
   }
 
@@ -69,7 +72,7 @@ class DirectInputCompiler extends NodeCompiler {
         inputFormatInfo.getValueClass.asType,
         inputFormatInfo.getExtraConfiguration.toMap)(
         subPlanInfo.getLabel,
-        subplan.getOutputs.toSeq) with ComputeOnce
+        subplan.getOutputs.toSeq) with CacheOnce
 
     context.addClass(builder)
   }
