@@ -17,10 +17,10 @@ package com.asakusafw.spark.extensions.iterativebatch.runtime.graph
 
 import scala.concurrent.Future
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
@@ -30,6 +30,6 @@ class MapBroadcastAlways(
   group: GroupOrdering,
   partitioner: Partitioner)(
     label: String)(
-      implicit sc: SparkContext)
+      implicit jobContext: JobContext)
   extends MapBroadcast(prevs, sort, group, partitioner)(label)
   with CacheAlways[RoundContext, Future[Broadcasted[Map[ShuffleKey, Seq[_]]]]]

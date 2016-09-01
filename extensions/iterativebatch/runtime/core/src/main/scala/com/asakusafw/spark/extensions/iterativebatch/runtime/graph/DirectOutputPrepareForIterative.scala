@@ -24,7 +24,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ Partitioner, SparkContext, TaskContext }
+import org.apache.spark.{ Partitioner, TaskContext }
 import org.slf4j.LoggerFactory
 
 import org.apache.spark.backdoor._
@@ -42,7 +42,7 @@ import com.asakusafw.runtime.directio.{
 import com.asakusafw.runtime.directio.hadoop.HadoopDataSourceUtil
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.StringOption
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.directio._
 import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.io.WritableSerDe
@@ -53,7 +53,7 @@ import resource._
 abstract class DirectOutputPrepareForIterative[T <: DataModel[T] with Writable: Manifest](
   @(transient @param) setup: IterativeAction[Unit],
   @(transient @param) prepare: DirectOutputPrepareEachForIterative[T])(
-    implicit @transient val sc: SparkContext) extends IterativeAction[Unit] {
+    implicit @transient val jobContext: JobContext) extends IterativeAction[Unit] {
   self: CacheStrategy[Seq[RoundContext], Future[Unit]] =>
 
   private val Logger = LoggerFactory.getLogger(getClass)
@@ -69,8 +69,8 @@ abstract class DirectOutputPrepareForIterative[T <: DataModel[T] with Writable: 
       .map(_._1)
       .map { prepares =>
 
-        sc.clearCallSite()
-        sc.setCallSite(
+        jobContext.sparkContext.clearCallSite()
+        jobContext.sparkContext.setCallSite(
           CallSite(origin.roundId.map(r => s"${label}: [${r}]").getOrElse(label), origin.toString))
 
         prepare.confluent(prepares).foreachPartition { iter =>

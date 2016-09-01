@@ -18,12 +18,10 @@ package com.asakusafw.spark.extensions.iterativebatch.runtime.graph
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
 
-import org.apache.spark.SparkContext
-
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.graph.Job
 
-abstract class IterativeJob(sc: SparkContext) extends Job(sc) {
+abstract class IterativeJob(implicit jobContext: JobContext) extends Job {
 
   def commit(
     origin: RoundContext,

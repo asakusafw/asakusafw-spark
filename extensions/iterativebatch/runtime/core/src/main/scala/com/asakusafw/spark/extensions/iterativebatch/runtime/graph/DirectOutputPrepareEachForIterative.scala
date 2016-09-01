@@ -23,7 +23,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ Partitioner, ShuffleDependency, SparkContext, TaskContext }
+import org.apache.spark.{ Partitioner, ShuffleDependency, TaskContext }
 import org.apache.spark.rdd.{ RDD, ShuffledRDD }
 import org.slf4j.LoggerFactory
 
@@ -33,7 +33,7 @@ import org.apache.spark.util.backdoor._
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ StringOption, ValueOption }
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.directio._
 import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.io.WritableSerDe
@@ -41,7 +41,7 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class DirectOutputPrepareEachForIterative[T <: DataModel[T] with Writable: ClassTag](
   @(transient @param) prevs: Seq[(Source, BranchKey)])(
-    implicit @transient val sc: SparkContext) extends Action[RDD[(ShuffleKey, T)]] {
+    implicit @transient val jobContext: JobContext) extends Action[RDD[(ShuffleKey, T)]] {
   self: CacheStrategy[RoundContext, Future[RDD[(ShuffleKey, T)]]] =>
 
   def newDataModel(): T
@@ -66,15 +66,15 @@ abstract class DirectOutputPrepareEachForIterative[T <: DataModel[T] with Writab
         if (zipped.size == 1) {
           zipped.head
         } else {
-          sc.union(zipped)
+          jobContext.sparkContext.union(zipped)
         }
       }
     })
       .map(_.map(_._2.asInstanceOf[T]))
       .flatMap { prev =>
 
-        sc.clearCallSite()
-        sc.setCallSite(
+        jobContext.sparkContext.clearCallSite()
+        jobContext.sparkContext.setCallSite(
           CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
         val rdd = doPrepare(rc, prev)
@@ -82,7 +82,7 @@ abstract class DirectOutputPrepareEachForIterative[T <: DataModel[T] with Writab
         val shuffleDep = rdd.dependencies.head
           .asInstanceOf[ShuffleDependency[ShuffleKey, Array[Byte], Array[Byte]]]
 
-        sc.submitMapStage(shuffleDep).map { _ =>
+        jobContext.sparkContext.submitMapStage(shuffleDep).map { _ =>
 
           rdd.mapPartitions(iter => {
             val value = newDataModel()
@@ -105,7 +105,7 @@ abstract class DirectOutputPrepareEachForIterative[T <: DataModel[T] with Writab
 
 abstract class DirectOutputPrepareFlatEachForIterative[T <: DataModel[T] with Writable: ClassTag](
   prevs: Seq[(Source, BranchKey)])(
-    implicit sc: SparkContext)
+    implicit jobContext: JobContext)
   extends DirectOutputPrepareEachForIterative[T](prevs) {
   self: CacheStrategy[RoundContext, Future[RDD[(ShuffleKey, T)]]] =>
 
@@ -160,7 +160,7 @@ abstract class DirectOutputPrepareFlatEachForIterative[T <: DataModel[T] with Wr
     if (zipped.size == 1) {
       zipped.head
     } else {
-      sc.union(zipped)
+      jobContext.sparkContext.union(zipped)
     }
   }
 }
@@ -168,7 +168,7 @@ abstract class DirectOutputPrepareFlatEachForIterative[T <: DataModel[T] with Wr
 abstract class DirectOutputPrepareGroupEachForIterative[T <: DataModel[T] with Writable: ClassTag](
   prevs: Seq[(Source, BranchKey)])(
     val partitioner: Partitioner)(
-      implicit sc: SparkContext)
+      implicit jobContext: JobContext)
   extends DirectOutputPrepareEachForIterative[T](prevs) {
   self: CacheStrategy[RoundContext, Future[RDD[(ShuffleKey, T)]]] =>
 
@@ -206,6 +206,6 @@ abstract class DirectOutputPrepareGroupEachForIterative[T <: DataModel[T] with W
   }
 
   override def confluent(rdds: Seq[RDD[(ShuffleKey, T)]]): RDD[(ShuffleKey, T)] = {
-    sc.confluent(rdds, partitioner, Some(sortOrdering))
+    jobContext.sparkContext.confluent(rdds, partitioner, Some(sortOrdering))
   }
 }

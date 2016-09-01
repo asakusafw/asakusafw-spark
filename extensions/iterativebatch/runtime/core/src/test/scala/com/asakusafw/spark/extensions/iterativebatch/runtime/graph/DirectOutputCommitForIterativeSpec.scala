@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -28,7 +28,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.directio.{ Counter, DataDefinition, OutputAttemptContext }
@@ -37,7 +37,6 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.directio.{ BasicDataDefinition, HadoopObjectFactory }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph.CacheOnce
 
 import resource._
@@ -45,7 +44,12 @@ import resource._
 @RunWith(classOf[JUnitRunner])
 class DirectOutputCommitForIterativeSpecTest extends DirectOutputCommitForIterativeSpec
 
-class DirectOutputCommitForIterativeSpec extends FlatSpec with SparkForAll with RoundContextSugar with TempDirForAll {
+class DirectOutputCommitForIterativeSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar
+  with TempDirForAll {
 
   import DirectOutputCommitForIterativeSpec._
 
@@ -63,7 +67,9 @@ class DirectOutputCommitForIterativeSpec extends FlatSpec with SparkForAll with 
     conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
   }
 
-  it should "commit" in { implicit sc =>
+  it should "commit" in {
+    implicit val jobContext = newJobContext(sc)
+
     val rounds = 0 to 1
     val files = rounds.map { round =>
       new File(root, s"out1_${round}/testing.bin")
@@ -88,7 +94,9 @@ class DirectOutputCommitForIterativeSpec extends FlatSpec with SparkForAll with 
     assert(files.forall(_.exists()) === true)
   }
 
-  it should "commit out of scope round" in { implicit sc =>
+  it should "commit out of scope round" in {
+    implicit val jobContext = newJobContext(sc)
+
     val rounds = 0 to 1
     val files = rounds.map { round =>
       new File(root, s"out2_${round}/testing.bin")
@@ -122,7 +130,7 @@ object DirectOutputCommitForIterativeSpec {
     basePath: String,
     resourceName: String)(
       val label: String)(
-        implicit val sc: SparkContext)
+        implicit val jobContext: JobContext)
     extends IterativeAction[Unit] with CacheAlways[Seq[RoundContext], Future[Unit]] {
 
     override protected def doPerform(
@@ -165,7 +173,7 @@ object DirectOutputCommitForIterativeSpec {
   class Commit(
     prepares: Set[IterativeAction[Unit]])(
       val basePaths: Set[String])(
-        implicit sc: SparkContext)
+        implicit jobContext: JobContext)
     extends DirectOutputCommitForIterative(prepares)
     with CacheAlways[Seq[RoundContext], Future[Unit]]
 

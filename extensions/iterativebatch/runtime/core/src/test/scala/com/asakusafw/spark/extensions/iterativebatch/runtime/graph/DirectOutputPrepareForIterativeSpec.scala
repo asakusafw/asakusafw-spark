@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -31,7 +31,7 @@ import scala.reflect.ClassTag
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -42,14 +42,18 @@ import com.asakusafw.runtime.value.{ IntOption, StringOption, ValueOption }
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator._
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, IdentityPartitioner, ShuffleKey }
 
 @RunWith(classOf[JUnitRunner])
 class DirectOutputPrepareForIterativeSpecTest extends DirectOutputPrepareForIterativeSpec
 
-class DirectOutputPrepareForIterativeSpec extends FlatSpec with SparkForAll with RoundContextSugar with TempDirForAll {
+class DirectOutputPrepareForIterativeSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar
+  with TempDirForAll {
 
   import DirectOutputPrepareForIterativeSpec._
 
@@ -70,7 +74,9 @@ class DirectOutputPrepareForIterativeSpec extends FlatSpec with SparkForAll with
   {
     var stageOffset = 0
 
-    it should "prepare flat simple" in { implicit sc =>
+    it should "prepare flat simple" in {
+      implicit val jobContext = newJobContext(sc)
+
       val rounds = 0 to 1
       val numSlices = 2
       val files = rounds.map { round =>
@@ -126,7 +132,9 @@ class DirectOutputPrepareForIterativeSpec extends FlatSpec with SparkForAll with
       stageOffset += 7
     }
 
-    it should "prepare flat w/o round variable" in { implicit sc =>
+    it should "prepare flat w/o round variable" in {
+      implicit val jobContext = newJobContext(sc)
+
       val rounds = 0 to 1
       val numSlices = 2
       val files = rounds.map { round =>
@@ -182,7 +190,9 @@ class DirectOutputPrepareForIterativeSpec extends FlatSpec with SparkForAll with
       stageOffset += 7
     }
 
-    it should "prepare flat a part of rounds" in { implicit sc =>
+    it should "prepare flat a part of rounds" in {
+      implicit val jobContext = newJobContext(sc)
+
       val rounds = 0 to 1
       val numSlices = 2
       val files = rounds.map { round =>
@@ -244,7 +254,9 @@ class DirectOutputPrepareForIterativeSpec extends FlatSpec with SparkForAll with
     }
   }
 
-  it should "prepare group simple" in { implicit sc =>
+  it should "prepare group simple" in {
+    implicit val jobContext = newJobContext(sc)
+
     val rounds = 0 to 1
     val numSlices = 2
     val files = rounds.map { round =>
@@ -303,7 +315,9 @@ class DirectOutputPrepareForIterativeSpec extends FlatSpec with SparkForAll with
     }
   }
 
-  it should "prepare group w/o round variable" in { implicit sc =>
+  it should "prepare group w/o round variable" in {
+    implicit val jobContext = newJobContext(sc)
+
     val rounds = 0 to 1
     val numSlices = 2
     val files = (0 until numSlices).map(i => new File(root, s"group2/foo_${i}.bin"))
@@ -359,7 +373,9 @@ class DirectOutputPrepareForIterativeSpec extends FlatSpec with SparkForAll with
     }
   }
 
-  it should "prepare group a part of rounds" in { implicit sc =>
+  it should "prepare group a part of rounds" in {
+    implicit val jobContext = newJobContext(sc)
+
     val rounds = 0 to 1
     val numSlices = 2
     val files = rounds.map { round =>
@@ -429,7 +445,7 @@ object DirectOutputPrepareForIterativeSpec {
 
   class Setup(
     val label: String)(
-      implicit val sc: SparkContext)
+      implicit val jobContext: JobContext)
     extends IterativeAction[Unit] with CacheAlways[Seq[RoundContext], Future[Unit]] {
 
     override protected def doPerform(
@@ -440,14 +456,14 @@ object DirectOutputPrepareForIterativeSpec {
   class Commit(
     prepares: Set[IterativeAction[Unit]])(
       val basePaths: Set[String])(
-        implicit sc: SparkContext)
+        implicit jobContext: JobContext)
     extends DirectOutputCommitForIterative(prepares)
     with CacheAlways[Seq[RoundContext], Future[Unit]] {
 
     def this(
       prepare: IterativeAction[Unit])(
         basePath: String)(
-          implicit sc: SparkContext) = this(Set(prepare))(Set(basePath))
+          implicit jobContext: JobContext) = this(Set(prepare))(Set(basePath))
   }
 
   val Input = BranchKey(0)
@@ -516,7 +532,7 @@ object DirectOutputPrepareForIterativeSpec {
     prepare: DirectOutputPrepareEachForIterative[Foo])(
       val formatType: Class[_ <: DataFormat[Foo]])(
         val label: String)(
-          implicit sc: SparkContext)
+          implicit jobContext: JobContext)
     extends DirectOutputPrepareForIterative[Foo](setup, prepare)
     with CacheAlways[Seq[RoundContext], Future[Unit]]
 
@@ -527,7 +543,7 @@ object DirectOutputPrepareForIterativeSpec {
         val basePath: String,
         val resourcePattern: String)(
           val label: String)(
-            implicit sc: SparkContext)
+            implicit jobContext: JobContext)
       extends DirectOutputPrepareFlatEachForIterative[Foo](prevs)
       with CacheAlways[RoundContext, Future[RDD[(ShuffleKey, Foo)]]] {
 
@@ -542,7 +558,7 @@ object DirectOutputPrepareForIterativeSpec {
         partitioner: Partitioner)(
           val basePath: String)(
             val label: String)(
-              implicit sc: SparkContext)
+              implicit jobContext: JobContext)
       extends DirectOutputPrepareGroupEachForIterative[Foo](prevs)(partitioner)
       with CacheAlways[RoundContext, Future[RDD[(ShuffleKey, Foo)]]] {
 

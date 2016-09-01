@@ -17,18 +17,17 @@ package com.asakusafw.spark.extensions.iterativebatch.runtime.graph
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.SparkContext
 import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.directio.{ Counter, FilePattern }
 import com.asakusafw.runtime.directio.hadoop.HadoopDataSourceUtil
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.graph._
 
 abstract class DirectOutputSetupForIterative(
   setup: DirectOutputSetup)(
-    implicit val sc: SparkContext) extends IterativeAction[Unit] {
+    implicit val jobContext: JobContext) extends IterativeAction[Unit] {
   self: CacheStrategy[Seq[RoundContext], Future[Unit]] =>
 
   override val label = getClass.getSimpleName
