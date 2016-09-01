@@ -17,7 +17,7 @@ package com.asakusafw.spark.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -33,7 +33,6 @@ import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
-import org.apache.spark.SparkContext
 
 import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -50,8 +49,7 @@ import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.runtime.{ RoundContextSugar, TempDirForEach }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
+import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -85,6 +83,7 @@ class TemporaryInputClassBuilderSpec
   with FlowIdForEach
   with UsingCompilerContext
   with TempDirForEach
+  with JobContextSugar
   with RoundContextSugar {
 
   import InputClassBuilderSpec._
@@ -96,7 +95,7 @@ class TemporaryInputClassBuilderSpec
     TemporaryOutputFormat.setOutputPath(job, new Path(path))
   }
 
-  it should "build TemporaryInput class" in { implicit sc =>
+  it should "build TemporaryInput class" in {
     val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
 
     val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -153,12 +152,14 @@ class TemporaryInputClassBuilderSpec
       branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
     }
 
+    implicit val jobContext = newJobContext(sc)
+
     val input = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[SparkContext])
+      classOf[JobContext])
       .newInstance(
         Map.empty,
-        sc)
+        jobContext)
 
     assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
 
@@ -185,6 +186,7 @@ class DirectInputClassBuilderSpec
   with FlowIdForEach
   with UsingCompilerContext
   with TempDirForEach
+  with JobContextSugar
   with RoundContextSugar {
 
   import InputClassBuilderSpec._
@@ -196,7 +198,7 @@ class DirectInputClassBuilderSpec
     FileOutputFormat.setOutputPath(job, new Path(path))
   }
 
-  it should "build DirectInput class" in { implicit sc =>
+  it should "build DirectInput class" in {
     val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
 
     val beginMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -274,12 +276,14 @@ class DirectInputClassBuilderSpec
       branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
     }
 
+    implicit val jobContext = newJobContext(sc)
+
     val input = cls.getConstructor(
       classOf[Map[BroadcastId, Broadcast[_]]],
-      classOf[SparkContext])
+      classOf[JobContext])
       .newInstance(
         Map.empty,
-        sc)
+        jobContext)
 
     assert(input.branchKeys === Set(inputMarker).map(getBranchKey))
 

@@ -53,7 +53,7 @@ object TemporaryOutputInstantiator extends Instantiator {
               context.branchKeys.getField(marker))
         }
       },
-      vars.sc.push())
+      vars.jobContext.push())
     output.store()
   }
 }

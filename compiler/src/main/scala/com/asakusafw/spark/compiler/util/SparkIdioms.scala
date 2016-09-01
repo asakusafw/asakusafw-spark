@@ -16,7 +16,7 @@
 package com.asakusafw.spark.compiler
 package util
 
-import org.apache.spark.{ HashPartitioner, Partitioner }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
 import org.objectweb.asm.Type
 
 import com.asakusafw.spark.compiler.ordering.{
@@ -28,6 +28,10 @@ import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 object SparkIdioms {
+
+  def sparkContext(jobContext: => Stack)(implicit mb: MethodBuilder): Stack = {
+    jobContext.invokeI("sparkContext", classOf[SparkContext].asType)
+  }
 
   def partitioner(numPartitions: => Stack)(implicit mb: MethodBuilder): Stack = {
     val partitioner = pushNew(classOf[HashPartitioner].asType)

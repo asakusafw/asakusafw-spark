@@ -22,7 +22,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
@@ -34,6 +34,7 @@ import com.asakusafw.spark.compiler.graph.branching.Branching
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.spi.NodeCompiler
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.graph.{
@@ -77,7 +78,7 @@ abstract class AggregateClassBuilder(
       classOf[Option[SortOrdering]].asType,
       classOf[Partitioner].asType,
       classOf[Map[BroadcastId, Future[Broadcast[_]]]].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Seq[_]].asType) {
@@ -109,10 +110,11 @@ abstract class AggregateClassBuilder(
               }
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: prevsVar :: sortVar :: partVar :: broadcastsVar :: scVar :: _ = mb.argVars
+        val thisVar :: prevsVar :: sortVar :: partVar :: broadcastsVar :: jobContextVar :: _ =
+          mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -122,7 +124,7 @@ abstract class AggregateClassBuilder(
           broadcastsVar.push(),
           classTag(valueType),
           classTag(combinerType),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }

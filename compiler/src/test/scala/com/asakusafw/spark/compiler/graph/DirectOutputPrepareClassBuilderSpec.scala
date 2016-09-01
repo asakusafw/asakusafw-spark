@@ -17,7 +17,7 @@ package com.asakusafw.spark.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -29,7 +29,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf }
 
 import com.asakusafw.lang.compiler.extension.directio.{
   DirectFileIoConstants,
@@ -49,7 +49,6 @@ import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator.Fragment
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.{ graph => runtime }
 import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
@@ -63,6 +62,7 @@ class DirectOutputPrepareClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar
   with TempDirForAll {
 
@@ -80,7 +80,7 @@ class DirectOutputPrepareClassBuilderSpec
     conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
   }
 
-  it should "compile prepare flat" in { implicit sc =>
+  it should "compile prepare flat" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -132,6 +132,8 @@ class DirectOutputPrepareClassBuilderSpec
     val numSlices = 2
     val files = (0 until numSlices).map(i => new File(root, s"flat/s0-p${i}.bin"))
 
+    implicit val jobContext = newJobContext(sc)
+
     val source =
       new ParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
         .map(Input)(Foo.intToFoo)
@@ -140,11 +142,11 @@ class DirectOutputPrepareClassBuilderSpec
     val prepare = cls.getConstructor(
       classOf[Action[Unit]],
       classOf[Seq[(Source, BranchKey)]],
-      classOf[SparkContext])
+      classOf[JobContext])
       .newInstance(
         setup,
         Seq((source, Input)),
-        sc)
+        jobContext)
     val commit = new Commit(prepare)("test/flat")
 
     val rc = newRoundContext(flowId = flowId)
@@ -166,7 +168,7 @@ class DirectOutputPrepareClassBuilderSpec
         === (0 until 100).map(i => (i, i % 10)))
   }
 
-  it should "compile prepare group" in { implicit sc =>
+  it should "compile prepare group" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -218,6 +220,8 @@ class DirectOutputPrepareClassBuilderSpec
     val numSlices = 2
     val files = (0 until 10).map(i => new File(root, s"group/foo_${i}.bin"))
 
+    implicit val jobContext = newJobContext(sc)
+
     val source =
       new ParallelCollectionSource(Input,
         (0 until 100).map(i => (i, math.random)).sortBy(_._2).map(_._1), Some(numSlices))("input")
@@ -228,12 +232,12 @@ class DirectOutputPrepareClassBuilderSpec
       classOf[Action[Unit]],
       classOf[Seq[(Source, BranchKey)]],
       classOf[Partitioner],
-      classOf[SparkContext])
+      classOf[JobContext])
       .newInstance(
         setup,
         Seq((source, Input)),
         new HashPartitioner(sc.defaultParallelism),
-        sc)
+        jobContext)
     val commit = new Commit(prepare)("test/group")
 
     val rc = newRoundContext(flowId = flowId)
@@ -263,7 +267,7 @@ object DirectOutputPrepareClassBuilderSpec {
 
   class Setup(
     val label: String)(
-      implicit val sc: SparkContext)
+      implicit val jobContext: JobContext)
     extends Action[Unit] with runtime.CacheOnce[RoundContext, Future[Unit]] {
 
     override protected def doPerform(
@@ -273,13 +277,13 @@ object DirectOutputPrepareClassBuilderSpec {
   class Commit(
     prepares: Set[Action[Unit]])(
       val basePaths: Set[String])(
-        implicit sc: SparkContext)
+        implicit jobContext: JobContext)
     extends DirectOutputCommit(prepares) with runtime.CacheOnce[RoundContext, Future[Unit]] {
 
     def this(
       prepare: Action[Unit])(
         basePath: String)(
-          implicit sc: SparkContext) = this(Set(prepare))(Set(basePath))
+          implicit jobContext: JobContext) = this(Set(prepare))(Set(basePath))
   }
 
   val Input = BranchKey(0)

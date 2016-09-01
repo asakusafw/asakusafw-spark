@@ -16,10 +16,10 @@
 package com.asakusafw.spark.compiler
 package graph
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.graph.DirectOutputSetup
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -35,13 +35,13 @@ abstract class DirectOutputSetupClassBuilder(
   self: CacheStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(classOf[SparkContext].asType)) { implicit mb =>
+    ctorDef.newInit(Seq(classOf[JobContext].asType)) { implicit mb =>
 
-      val thisVar :: scVar :: _ = mb.argVars
+      val thisVar :: jobContextVar :: _ = mb.argVars
 
       thisVar.push().invokeInit(
         superType,
-        scVar.push())
+        jobContextVar.push())
       initMixIns()
     }
   }

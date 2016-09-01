@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -38,6 +38,7 @@ import com.asakusafw.spark.compiler.directio.OutputPatternGeneratorClassBuilder
 import com.asakusafw.spark.compiler.graph.DirectOutputPrepareClassBuilder._
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator.Fragment
 import com.asakusafw.spark.runtime.graph.{
@@ -76,7 +77,7 @@ abstract class DirectOutputPrepareFlatClassBuilder(
     ctorDef.newInit(Seq(
       classOf[Action[Unit]].asType,
       classOf[Seq[(Source, BranchKey)]].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Action[_]].asType) {
@@ -93,17 +94,17 @@ abstract class DirectOutputPrepareFlatClassBuilder(
             }
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: setupVar :: prevsVar :: scVar :: _ = mb.argVars
+        val thisVar :: setupVar :: prevsVar :: jobContextVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           setupVar.push(),
           prevsVar.push(),
           manifest(dataModelType),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }
@@ -184,7 +185,7 @@ abstract class DirectOutputPrepareGroupClassBuilder(
       classOf[Action[Unit]].asType,
       classOf[Seq[(Source, BranchKey)]].asType,
       classOf[Partitioner].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Action[_]].asType) {
@@ -202,10 +203,10 @@ abstract class DirectOutputPrepareGroupClassBuilder(
           }
         }
         .newParameterType(classOf[Partitioner].asType)
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: setupVar :: prevsVar :: partVar :: scVar :: _ = mb.argVars
+        val thisVar :: setupVar :: prevsVar :: partVar :: jobContextVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -213,7 +214,7 @@ abstract class DirectOutputPrepareGroupClassBuilder(
           prevsVar.push(),
           partVar.push(),
           manifest(dataModelType),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }

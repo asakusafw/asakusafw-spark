@@ -18,7 +18,6 @@ package com.asakusafw.spark.compiler
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
@@ -31,7 +30,7 @@ import com.asakusafw.spark.compiler.serializer.{
   BroadcastIdSerializerClassBuilder,
   KryoRegistratorCompiler
 }
-import com.asakusafw.spark.runtime.DefaultClient
+import com.asakusafw.spark.runtime.{ DefaultClient, JobContext }
 import com.asakusafw.spark.runtime.graph.Job
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -49,13 +48,13 @@ class SparkClientClassBuilder(
     methodDef.newMethod(
       "newJob",
       classOf[Job].asType,
-      Seq(classOf[SparkContext].asType)) { implicit mb =>
+      Seq(classOf[JobContext].asType)) { implicit mb =>
 
-        val thisVar :: scVar :: _ = mb.argVars
+        val thisVar :: jobContextVar :: _ = mb.argVars
 
         val t = JobCompiler.compile(plan)(context.jobCompilerContext)
         val job = pushNew(t)
-        job.dup().invokeInit(scVar.push())
+        job.dup().invokeInit(jobContextVar.push())
         `return`(job)
       }
 

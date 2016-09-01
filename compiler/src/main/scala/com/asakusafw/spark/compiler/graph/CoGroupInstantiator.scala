@@ -84,11 +84,11 @@ object CoGroupInstantiator extends Instantiator {
         partitioner(ldc(1))
       } else {
         partitioner(
-          numPartitions(vars.sc.push())(
+          numPartitions(vars.jobContext.push())(
             subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner)))
       },
       vars.broadcasts.push(),
-      vars.sc.push())
+      vars.jobContext.push())
     cogroup.store()
   }
 }

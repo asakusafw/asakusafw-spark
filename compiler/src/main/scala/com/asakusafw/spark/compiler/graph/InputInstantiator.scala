@@ -35,7 +35,7 @@ object InputInstantiator extends Instantiator {
     val input = pushNew(nodeType)
     input.dup().invokeInit(
       vars.broadcasts.push(),
-      vars.sc.push())
+      vars.jobContext.push())
     input.store()
   }
 }
