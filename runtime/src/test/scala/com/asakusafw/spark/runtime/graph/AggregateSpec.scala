@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -28,14 +28,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{
   Fragment,
   GenericEdgeFragment,
@@ -48,7 +47,11 @@ import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 @RunWith(classOf[JUnitRunner])
 class AggregateSpecTest extends AggregateSpec
 
-class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
+class AggregateSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar {
 
   import AggregateSpec._
 
@@ -60,8 +63,10 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
   } {
     val conf = s"numSlices = ${numSlices}, combine = ${mapSideCombine} "
 
-    it should s"aggregate: [${conf}]" in { implicit sc =>
+    it should s"aggregate: [${conf}]" in {
       import TotalAggregate._
+
+      implicit val jobContext = newJobContext(sc)
 
       val foos =
         new ParallelCollectionSource(Input, (0 until 10), numSlices)("foos")
@@ -87,8 +92,10 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
         (1, (1 until 10 by 2).map(i => i * 100).sum)))
     }
 
-    it should s"aggregate multiple prevs: [${conf}]" in { implicit sc =>
+    it should s"aggregate multiple prevs: [${conf}]" in {
       import TotalAggregate._
+
+      implicit val jobContext = newJobContext(sc)
 
       val foos1 =
         new ParallelCollectionSource(Input, (0 until 5), numSlices)("foos1")
@@ -120,8 +127,10 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
     }
   }
 
-  it should s"aggregate partially" in { implicit sc =>
+  it should s"aggregate partially" in {
     import PartialAggregate._
+
+    implicit val jobContext = newJobContext(sc)
 
     val foos =
       new ParallelCollectionSource(Input, (0 until 10), Option(2))("foos")
@@ -246,7 +255,7 @@ object AggregateSpec {
       part: Partitioner,
       val aggregation: Aggregation[ShuffleKey, Foo, Foo])(
         val label: String)(
-          implicit sc: SparkContext)
+          implicit jobContext: JobContext)
       extends Aggregate[Foo, Foo](prev, sort, part)(Map.empty)
       with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
@@ -256,7 +265,7 @@ object AggregateSpec {
         part: Partitioner,
         aggregation: Aggregation[ShuffleKey, Foo, Foo])(
           label: String)(
-            implicit sc: SparkContext) = this(Seq(prev), sort, part, aggregation)(label)
+            implicit jobContext: JobContext) = this(Seq(prev), sort, part, aggregation)(label)
 
       override def branchKeys: Set[BranchKey] = Set(Result)
 
@@ -312,7 +321,7 @@ object AggregateSpec {
     class TestPartialAggregationExtract(
       prev: (Source, BranchKey))(
         val label: String)(
-          implicit sc: SparkContext)
+          implicit jobContext: JobContext)
       extends Extract[Foo](Seq(prev))(Map.empty)
       with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 

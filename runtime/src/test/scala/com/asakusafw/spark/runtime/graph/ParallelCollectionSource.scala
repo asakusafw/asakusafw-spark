@@ -19,7 +19,6 @@ package graph
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -29,12 +28,14 @@ class ParallelCollectionSource[T: ClassTag](
   data: Seq[T],
   numSlices: Option[Int] = None)(
     val label: String)(
-      implicit @transient val sc: SparkContext)
+      implicit val jobContext: JobContext)
   extends Source with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with CacheOnce.Ops {
 
   override def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
-    val rdd = sc.parallelize(data, numSlices.getOrElse(sc.defaultParallelism))
+    val rdd = jobContext.sparkContext.parallelize(
+      data,
+      numSlices.getOrElse(jobContext.sparkContext.defaultParallelism))
     Map(branchKey -> Future.successful(rdd))
   }
 }

@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -29,14 +29,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
@@ -44,7 +43,11 @@ import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 @RunWith(classOf[JUnitRunner])
 class CoGroupSpecTest extends CoGroupSpec
 
-class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
+class CoGroupSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar {
 
   import CoGroupSpec._
 
@@ -55,7 +58,9 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
   } {
     val conf = s"numSlices = ${numSlices}"
 
-    it should s"cogroup: [${conf}]" in { implicit sc =>
+    it should s"cogroup: [${conf}]" in {
+      implicit val jobContext = newJobContext(sc)
+
       val foos =
         new ParallelCollectionSource(FooInput, (0 until 100), numSlices)("foos")
           .map(FooInput)(Foo.intToFoo)
@@ -127,7 +132,9 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       }
     }
 
-    it should s"cogroup multiple prevs: [${conf}]" in { implicit sc =>
+    it should s"cogroup multiple prevs: [${conf}]" in {
+      implicit val jobContext = newJobContext(sc)
+
       val foos1 =
         new ParallelCollectionSource(FooInput, (0 until 50), numSlices)("input")
           .map(FooInput)(Foo.intToFoo)
@@ -345,7 +352,7 @@ object CoGroupSpec {
     @(transient @param) grouping: GroupOrdering,
     @(transient @param) part: Partitioner)(
       val label: String)(
-        implicit sc: SparkContext)
+        implicit jobContext: JobContext)
     extends CoGroup(inputs, grouping, part)(Map.empty)
     with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 

@@ -20,14 +20,13 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: ClassTag](
   @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
-    implicit sc: SparkContext)
+    implicit jobContext: JobContext)
   extends NewHadoopInput[IF, K, V] {
   self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 

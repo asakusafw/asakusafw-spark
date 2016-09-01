@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -31,7 +31,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
@@ -39,7 +39,6 @@ import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.TempDirForEach
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class OutputSpec extends FlatSpec with SparkForAll {
@@ -63,7 +62,11 @@ abstract class OutputSpec extends FlatSpec with SparkForAll {
 @RunWith(classOf[JUnitRunner])
 class TemporaryOutputSpecTest extends TemporaryOutputSpec
 
-class TemporaryOutputSpec extends OutputSpec with RoundContextSugar with TempDirForEach {
+class TemporaryOutputSpec
+  extends OutputSpec
+  with JobContextSugar
+  with RoundContextSugar
+  with TempDirForEach {
 
   import OutputSpec._
 
@@ -74,7 +77,9 @@ class TemporaryOutputSpec extends OutputSpec with RoundContextSugar with TempDir
   } {
     val conf = s"numSlices = ${numSlices}"
 
-    it should s"output: [${conf}]" in { implicit sc =>
+    it should s"output: [${conf}]" in {
+      implicit val jobContext = newJobContext(sc)
+
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path = new File(tmpDir, s"foos-${EXPR_EXECUTION_ID}").getAbsolutePath
 
@@ -92,7 +97,9 @@ class TemporaryOutputSpec extends OutputSpec with RoundContextSugar with TempDir
       assert(result === (0 until 100))
     }
 
-    it should s"output multiple prevs: [${conf}]" in { implicit sc =>
+    it should s"output multiple prevs: [${conf}]" in {
+      implicit val jobContext = newJobContext(sc)
+
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path = new File(tmpDir, s"foos-${EXPR_EXECUTION_ID}").getAbsolutePath
 
@@ -166,14 +173,14 @@ object OutputSpec {
       prevs: Seq[(Source, BranchKey)])(
         val path: String,
         val label: String)(
-          implicit sc: SparkContext)
+          implicit jobContext: JobContext)
       extends TemporaryOutput[Foo](prevs) {
 
       def this(
         prev: (Source, BranchKey))(
           path: String,
           label: String)(
-            implicit sc: SparkContext) = this(Seq(prev))(path, label)
+            implicit jobContext: JobContext) = this(Seq(prev))(path, label)
     }
   }
 }

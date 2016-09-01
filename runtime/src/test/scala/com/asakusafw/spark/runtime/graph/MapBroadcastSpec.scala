@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -32,20 +32,21 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 @RunWith(classOf[JUnitRunner])
 class MapBroadcastSpecTest extends MapBroadcastSpec
 
-class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar {
+class MapBroadcastSpec extends FlatSpec with SparkForAll with JobContextSugar with RoundContextSugar {
 
   import MapBroadcastSpec._
 
   behavior of classOf[MapBroadcast].getSimpleName
 
-  it should "broadcast as map" in { implicit sc =>
+  it should "broadcast as map" in {
+    implicit val jobContext = newJobContext(sc)
+
     val source =
       new ParallelCollectionSource[(Int, String)](Input,
         (0 until 10).flatMap { i =>
@@ -77,7 +78,9 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
     }
   }
 
-  it should "broadcast as map with sort" in { implicit sc =>
+  it should "broadcast as map with sort" in {
+    implicit val jobContext = newJobContext(sc)
+
     val source =
       new ParallelCollectionSource[(Int, String)](Input,
         (0 until 10).flatMap { i =>
@@ -109,7 +112,9 @@ class MapBroadcastSpec extends FlatSpec with SparkForAll with RoundContextSugar 
     }
   }
 
-  it should "broadcast as map with multiple inputs" in { implicit sc =>
+  it should "broadcast as map with multiple inputs" in {
+    implicit val jobContext = newJobContext(sc)
+
     val source1 =
       new ParallelCollectionSource[(Int, String)](Input,
         (0 until 10).flatMap { i =>

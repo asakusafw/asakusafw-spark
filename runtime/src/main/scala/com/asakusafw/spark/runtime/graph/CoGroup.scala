@@ -19,7 +19,7 @@ package graph
 import scala.annotation.meta.param
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.rdd.RDD
 
 import org.apache.spark.backdoor._
@@ -33,7 +33,7 @@ abstract class CoGroup(
   @(transient @param) group: GroupOrdering,
   @(transient @param) part: Partitioner)(
     @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
-      implicit @transient val sc: SparkContext)
+      implicit val jobContext: JobContext)
   extends Source
   with UsingBroadcasts
   with Branching[IndexedSeq[Iterator[_]]] {
@@ -41,7 +41,8 @@ abstract class CoGroup(
 
   @transient
   private val fragmentBufferSize =
-    sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
+    jobContext.sparkContext.getConf.getInt(
+      Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override protected def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
@@ -58,14 +59,16 @@ abstract class CoGroup(
         }).zip(zipBroadcasts(rc)).map {
           case (prevs, broadcasts) =>
 
-            sc.clearCallSite()
-            sc.setCallSite(
+            jobContext.sparkContext.clearCallSite()
+            jobContext.sparkContext.setCallSite(
               CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
-            val cogrouped = sc.smcogroup[ShuffleKey](
+            val cogrouped = jobContext.sparkContext.smcogroup[ShuffleKey](
               prevs.map {
                 case (rdds, sort) =>
-                  (sc.confluent[ShuffleKey, Any](rdds, part, sort.orElse(Option(group))), sort)
+                  (jobContext.sparkContext.confluent[ShuffleKey, Any](
+                    rdds, part, sort.orElse(Option(group))),
+                    sort)
               },
               part,
               group)

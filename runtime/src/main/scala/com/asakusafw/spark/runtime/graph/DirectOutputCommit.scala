@@ -20,7 +20,6 @@ import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkContext
 import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -28,7 +27,7 @@ import com.asakusafw.runtime.directio.hadoop.HadoopDataSourceUtil
 
 abstract class DirectOutputCommit(
   prepares: Set[Action[Unit]])(
-    implicit val sc: SparkContext)
+    implicit val jobContext: JobContext)
   extends Action[Unit] with CacheOnce[RoundContext, Future[Unit]] {
 
   private val Logger = LoggerFactory.getLogger(getClass)

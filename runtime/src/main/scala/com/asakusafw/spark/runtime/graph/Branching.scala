@@ -21,7 +21,7 @@ import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
@@ -32,7 +32,7 @@ import com.asakusafw.spark.runtime.rdd._
 
 trait Branching[T] {
 
-  def sc: SparkContext
+  def jobContext: JobContext
 
   def branchKeys: Set[BranchKey]
 

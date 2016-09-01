@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 package com.asakusafw.spark.runtime
-package graph
 
-trait Node extends Serializable {
+import org.apache.spark.SparkContext
 
-  implicit def jobContext: JobContext
+trait JobContextSugar {
 
-  def label: String
+  def newJobContext(sc: SparkContext): JobContext =
+    JobContextSugar.MockJobContext(sc)
+}
+
+object JobContextSugar {
+
+  case class MockJobContext(
+    @transient sparkContext: SparkContext)
+    extends JobContext
 }

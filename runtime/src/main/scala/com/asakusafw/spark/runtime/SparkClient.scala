@@ -27,6 +27,7 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
+import com.asakusafw.spark.runtime
 import com.asakusafw.spark.runtime.graph.Job
 
 trait SparkClient {
@@ -77,9 +78,9 @@ abstract class DefaultClient extends SparkClient {
 
     val sc = SparkContext.getOrCreate(conf)
     try {
-      val job = newJob(sc)
+      val job = newJob(DefaultClient.JobContext(sc))
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
-      val context = DefaultClient.Context(hadoopConf)
+      val context = DefaultClient.RoundContext(hadoopConf)
       Await.result(job.execute(context)(SparkClient.ec), Duration.Inf)
       0
     } finally {
@@ -87,16 +88,20 @@ abstract class DefaultClient extends SparkClient {
     }
   }
 
-  def newJob(sc: SparkContext): Job
+  def newJob(jobContext: JobContext): Job
 
   def kryoRegistrator: String
 }
 
 object DefaultClient {
 
-  case class Context(
+  case class JobContext(
+    @transient sparkContext: SparkContext)
+    extends runtime.JobContext
+
+  case class RoundContext(
     hadoopConf: Broadcasted[Configuration])
-    extends RoundContext {
+    extends runtime.RoundContext {
 
     private def stageInfo: StageInfo =
       StageInfo.deserialize(hadoopConf.value.get(StageInfo.KEY_NAME))

@@ -18,12 +18,11 @@ package graph
 
 import scala.concurrent.Future
 
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class Input(
-  implicit @transient val sc: SparkContext) extends Source {
+  implicit val jobContext: JobContext) extends Source {
   self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 }

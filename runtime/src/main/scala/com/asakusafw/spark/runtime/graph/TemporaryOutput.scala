@@ -21,7 +21,6 @@ import scala.reflect.{ classTag, ClassTag }
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
-import org.apache.spark.SparkContext
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
@@ -29,7 +28,7 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class TemporaryOutput[T: ClassTag](
   prevs: Seq[(Source, BranchKey)])(
-    implicit sc: SparkContext)
+    implicit jobContext: JobContext)
   extends NewHadoopOutput(prevs) {
 
   protected def path: String

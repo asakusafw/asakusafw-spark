@@ -23,7 +23,7 @@ import scala.annotation.meta.param
 import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ Partitioner, SparkContext, TaskContext }
+import org.apache.spark.{ Partitioner, TaskContext }
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
@@ -51,7 +51,7 @@ import resource._
 abstract class DirectOutputPrepare[T: Manifest](
   @(transient @param) setup: Action[Unit],
   @(transient @param) prevs: Seq[(Source, BranchKey)])(
-    implicit @transient val sc: SparkContext) extends Action[Unit] {
+    implicit val jobContext: JobContext) extends Action[Unit] {
   self: CacheStrategy[RoundContext, Future[Unit]] =>
 
   protected val Logger = LoggerFactory.getLogger(getClass)
@@ -80,7 +80,7 @@ abstract class DirectOutputPrepare[T: Manifest](
         if (zipped.size == 1) {
           zipped.head
         } else {
-          sc.union(zipped)
+          jobContext.sparkContext.union(zipped)
         }
       }
     })
@@ -147,7 +147,7 @@ abstract class DirectOutputPrepare[T: Manifest](
 abstract class DirectOutputPrepareFlat[T: Manifest](
   setup: Action[Unit],
   prevs: Seq[(Source, BranchKey)])(
-    implicit sc: SparkContext)
+    implicit jobContext: JobContext)
   extends DirectOutputPrepare[T](setup, prevs) {
   self: CacheStrategy[RoundContext, Future[Unit]] =>
 
@@ -157,8 +157,8 @@ abstract class DirectOutputPrepareFlat[T: Manifest](
 
   override protected def doPrepare(rc: RoundContext, prev: RDD[T]): Unit = {
 
-    sc.clearCallSite()
-    sc.setCallSite(
+    jobContext.sparkContext.clearCallSite()
+    jobContext.sparkContext.setCallSite(
       CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
     prev.foreachPartition { iter =>
@@ -196,7 +196,7 @@ abstract class DirectOutputPrepareGroup[T <: DataModel[T] with Writable: Manifes
   setup: Action[Unit],
   prevs: Seq[(Source, BranchKey)])(
     partitioner: Partitioner)(
-      implicit sc: SparkContext)
+      implicit jobContext: JobContext)
   extends DirectOutputPrepare[T](setup, prevs) {
   self: CacheStrategy[RoundContext, Future[Unit]] =>
 
@@ -216,8 +216,8 @@ abstract class DirectOutputPrepareGroup[T <: DataModel[T] with Writable: Manifes
 
   override protected def doPrepare(rc: RoundContext, prev: RDD[T]): Unit = {
 
-    sc.clearCallSite()
-    sc.setCallSite(
+    jobContext.sparkContext.clearCallSite()
+    jobContext.sparkContext.setCallSite(
       CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
     prev.map(value => (shuffleKey(value), WritableSerDe.serialize(value)))

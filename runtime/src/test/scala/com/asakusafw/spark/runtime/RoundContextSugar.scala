@@ -18,19 +18,17 @@ package com.asakusafw.spark.runtime
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.spark.runtime
 
 trait RoundContextSugar {
 
-  def newRoundContext(stageInfo: StageInfo)(implicit sc: SparkContext): RoundContext = {
-    val conf = new Configuration(sc.hadoopConfiguration)
+  def newRoundContext(stageInfo: StageInfo)(implicit jobContext: JobContext): RoundContext = {
+    val conf = new Configuration(jobContext.sparkContext.hadoopConfiguration)
     conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
 
-    RoundContextSugar.MockRoundContext(sc.broadcast(conf))
+    RoundContextSugar.MockRoundContext(jobContext.sparkContext.broadcast(conf))
   }
 
   def newRoundContext(
@@ -40,7 +38,7 @@ trait RoundContextSugar {
     stageId: String = null,
     executionId: String = "executionId",
     batchArguments: Map[String, String] = Map.empty)(
-      implicit sc: SparkContext): RoundContext = {
+      implicit jobContext: JobContext): RoundContext = {
 
     val stageInfo = new StageInfo(userName, batchId, flowId, stageId, executionId, batchArguments)
     newRoundContext(stageInfo)

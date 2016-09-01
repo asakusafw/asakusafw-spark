@@ -18,9 +18,7 @@ package graph
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.SparkContext
-
-abstract class Job(val sc: SparkContext) {
+abstract class Job(implicit val jobContext: JobContext) {
 
   def nodes: Seq[Node]
 

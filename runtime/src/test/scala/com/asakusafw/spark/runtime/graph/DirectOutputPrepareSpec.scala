@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -28,13 +28,12 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf }
 
 import com.asakusafw.runtime.directio.DataFormat
 import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption, ValueOption }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator._
 import com.asakusafw.spark.runtime.io.WritableSerDe
@@ -45,7 +44,12 @@ import resource._
 @RunWith(classOf[JUnitRunner])
 class DirectOutputPrepareSpecTest extends DirectOutputPrepareSpec
 
-class DirectOutputPrepareSpec extends FlatSpec with SparkForAll with RoundContextSugar with TempDirForAll {
+class DirectOutputPrepareSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar
+  with TempDirForAll {
 
   behavior of classOf[DirectOutputPrepare[_]].getSimpleName
 
@@ -63,7 +67,9 @@ class DirectOutputPrepareSpec extends FlatSpec with SparkForAll with RoundContex
     conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
   }
 
-  it should "prepare flat" in { implicit sc =>
+  it should "prepare flat" in {
+    implicit val jobContext = newJobContext(sc)
+
     val numSlices = 2
     val files = (0 until numSlices).map(i => new File(root, s"flat/s0-p${i}.bin"))
 
@@ -100,7 +106,9 @@ class DirectOutputPrepareSpec extends FlatSpec with SparkForAll with RoundContex
         === (0 until 100).map(i => (i, i % 10)))
   }
 
-  it should "prepare group" in { implicit sc =>
+  it should "prepare group" in {
+    implicit val jobContext = newJobContext(sc)
+
     val numSlices = 2
     val files = (0 until 10).map(i => new File(root, s"group/foo_${i}.bin"))
 
@@ -146,7 +154,7 @@ object DirectOutputPrepareSpec {
 
   class Setup(
     val label: String)(
-      implicit val sc: SparkContext)
+      implicit val jobContext: JobContext)
     extends Action[Unit] with CacheOnce[RoundContext, Future[Unit]] {
 
     override protected def doPerform(
@@ -156,13 +164,13 @@ object DirectOutputPrepareSpec {
   class Commit(
     prepares: Set[Action[Unit]])(
       val basePaths: Set[String])(
-        implicit sc: SparkContext)
+        implicit jobContext: JobContext)
     extends DirectOutputCommit(prepares) with CacheOnce[RoundContext, Future[Unit]] {
 
     def this(
       prepare: Action[Unit])(
         basePath: String)(
-          implicit sc: SparkContext) = this(Set(prepare))(Set(basePath))
+          implicit jobContext: JobContext) = this(Set(prepare))(Set(basePath))
   }
 
   val Input = BranchKey(0)
@@ -232,7 +240,7 @@ object DirectOutputPrepareSpec {
         val resourcePattern: String,
         val formatType: Class[_ <: DataFormat[Foo]])(
           val label: String)(
-            implicit sc: SparkContext)
+            implicit jobContext: JobContext)
       extends DirectOutputPrepareFlat[Foo](setup, prevs)
       with CacheOnce[RoundContext, Future[Unit]]
   }
@@ -246,7 +254,7 @@ object DirectOutputPrepareSpec {
           val basePath: String,
           val formatType: Class[_ <: DataFormat[Foo]])(
             val label: String)(
-              implicit sc: SparkContext)
+              implicit jobContext: JobContext)
       extends DirectOutputPrepareGroup[Foo](setup, prevs)(partitioner)
       with CacheOnce[RoundContext, Future[Unit]] {
 
