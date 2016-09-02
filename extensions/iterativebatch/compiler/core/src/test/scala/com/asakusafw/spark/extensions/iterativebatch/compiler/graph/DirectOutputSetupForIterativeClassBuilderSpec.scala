@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -28,7 +28,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.lang.compiler.extension.directio.{
   DirectFileIoConstants,
@@ -44,7 +44,6 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler._
 import com.asakusafw.spark.runtime._
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph.{ CacheOnce, DirectOutputSetup }
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.DirectOutputSetupForIterative
@@ -57,6 +56,7 @@ class DirectOutputSetupForIterativeClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar
   with TempDirForAll {
 
@@ -73,15 +73,15 @@ class DirectOutputSetupForIterativeClassBuilderSpec
     conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
   }
 
-  def newSetup(outputs: Set[ExternalOutput])(implicit sc: SparkContext): DirectOutputSetupForIterative = {
+  def newSetup(outputs: Set[ExternalOutput])(implicit jobContext: JobContext): DirectOutputSetupForIterative = {
     implicit val context = newCompilerContext(flowId)
     val setupType = DirectOutputSetupForIterativeCompiler.compile(outputs)
     context.loadClass(setupType.getClassName)
-      .getConstructor(classOf[SparkContext])
-      .newInstance(sc)
+      .getConstructor(classOf[JobContext])
+      .newInstance(jobContext)
   }
 
-  it should "delete simple" in { implicit sc =>
+  it should "delete simple" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -114,6 +114,8 @@ class DirectOutputSetupForIterativeClassBuilderSpec
       file
     }
 
+    implicit val jobContext = newJobContext(sc)
+
     val setup = newSetup(Set(outputOperator))
     val origin = newRoundContext()
     val rcs = rounds.map { round =>
@@ -129,7 +131,7 @@ class DirectOutputSetupForIterativeClassBuilderSpec
     assert(files.exists(_.exists()) === false)
   }
 
-  it should "not delete out of scope" in { implicit sc =>
+  it should "not delete out of scope" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -161,6 +163,8 @@ class DirectOutputSetupForIterativeClassBuilderSpec
       file.createNewFile()
       file
     }
+
+    implicit val jobContext = newJobContext(sc)
 
     val setup = newSetup(Set(outputOperator))
     val origin = newRoundContext()

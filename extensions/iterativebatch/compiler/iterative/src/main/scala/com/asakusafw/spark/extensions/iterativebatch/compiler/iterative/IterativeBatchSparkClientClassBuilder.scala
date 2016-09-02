@@ -19,7 +19,6 @@ package iterative
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.analyzer.util.OperatorUtil
@@ -32,6 +31,7 @@ import com.asakusafw.spark.compiler.serializer.{
   BroadcastIdSerializerClassBuilder,
   KryoRegistratorCompiler
 }
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
@@ -52,13 +52,13 @@ class IterativeBatchSparkClientClassBuilder(
     methodDef.newMethod(
       "newJob",
       classOf[IterativeJob].asType,
-      Seq(classOf[SparkContext].asType)) { implicit mb =>
+      Seq(classOf[JobContext].asType)) { implicit mb =>
 
-        val thisVar :: scVar :: _ = mb.argVars
+        val thisVar :: jobContextVar :: _ = mb.argVars
 
         val t = IterativeJobCompiler.compile(plan)(context.iterativeJobCompilerContext)
         val job = pushNew(t)
-        job.dup().invokeInit(scVar.push())
+        job.dup().invokeInit(jobContextVar.push())
         `return`(job)
       }
 

@@ -21,7 +21,6 @@ import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.runtime.BoxedUnit
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -38,7 +37,7 @@ import com.asakusafw.spark.compiler.planning.{
   SubPlanOutputInfo
 }
 import com.asakusafw.spark.compiler.util.SparkIdioms._
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -80,8 +79,8 @@ class IterativeJobClassBuilder(
   override def defFields(fieldDef: FieldDef): Unit = {
     fieldDef.newField(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
-      "sc",
-      classOf[SparkContext].asType)
+      "jobContext",
+      classOf[JobContext].asType)
     fieldDef.newField(
       Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
       "nodes",
@@ -101,15 +100,15 @@ class IterativeJobClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
-      classOf[SparkContext].asType)) { implicit mb =>
+      classOf[JobContext].asType)) { implicit mb =>
 
-      val thisVar :: scVar :: _ = mb.argVars
+      val thisVar :: jobContextVar :: _ = mb.argVars
 
       thisVar.push().invokeInit(
         superType,
-        scVar.push())
+        jobContextVar.push())
 
-      thisVar.push().putField("sc", scVar.push())
+      thisVar.push().putField("jobContext", jobContextVar.push())
 
       val nodesVar = pushNewArray(classOf[Node].asType, subplans.size).store()
 
@@ -229,7 +228,7 @@ class IterativeJobClassBuilder(
 
           val t = DirectOutputSetupForIterativeCompiler.compile(directOutputs.map(_._2))
           val setup = pushNew(t)
-          setup.dup().invokeInit(thisVar.push().getField("sc", classOf[SparkContext].asType))
+          setup.dup().invokeInit(thisVar.push().getField("jobContext", classOf[JobContext].asType))
           `return`(setup)
         }
 
@@ -252,7 +251,7 @@ class IterativeJobClassBuilder(
                   thisVar.push().getField("nodes", classOf[Seq[_]].asType),
                   ldc(subplanToIdx(subplan)))
                   .cast(classOf[DirectOutputPrepareEachForIterative[_]].asType),
-                thisVar.push().getField("sc", classOf[SparkContext].asType))
+                thisVar.push().getField("jobContext", classOf[JobContext].asType))
               `return`(prepare)
             }
       }
@@ -269,7 +268,7 @@ class IterativeJobClassBuilder(
           val commit = pushNew(t)
           commit.dup().invokeInit(
             preparesVar.push(),
-            thisVar.push().getField("sc", classOf[SparkContext].asType))
+            thisVar.push().getField("jobContext", classOf[JobContext].asType))
           `return`(commit)
         }
     }
@@ -299,7 +298,7 @@ class IterativeJobClassBuilder(
 
     val thisVar :: nodesVar :: allBroadcastsVar :: _ = mb.argVars
 
-    val scVar = thisVar.push().getField("sc", classOf[SparkContext].asType).store()
+    val jobContextVar = thisVar.push().getField("jobContext", classOf[JobContext].asType).store()
 
     val broadcastsVar =
       buildMap { builder =>
@@ -336,7 +335,7 @@ class IterativeJobClassBuilder(
                         context.branchKeys.getField(subPlanOutput.getOperator))
                     }
                   },
-                  scVar.push))
+                  jobContextVar.push))
           }
         }
       }.store()
@@ -349,7 +348,7 @@ class IterativeJobClassBuilder(
       nodeType,
       subplan,
       subplanToIdx)(
-        Instantiator.Vars(scVar, nodesVar, broadcastsVar))(
+        Instantiator.Vars(jobContextVar, nodesVar, broadcastsVar))(
           implicitly, context.instantiatorCompilerContext)
     nodesVar.push().astore(ldc(i), nodeVar.push())
 
@@ -375,7 +374,7 @@ class IterativeJobClassBuilder(
                 nodeVar.push().asType(classOf[Source].asType),
                 context.branchKeys.getField(marker))
             },
-            scVar.push))
+            jobContextVar.push))
     }
     `return`()
   }
@@ -385,7 +384,7 @@ class IterativeJobClassBuilder(
     broadcastInfo: BroadcastInfo,
     iterativeInfo: IterativeInfo)(
       nodes: () => Stack,
-      sc: () => Stack)(
+      jobContext: () => Stack)(
         implicit mb: MethodBuilder): Stack = {
     val dataModelRef = marker.getInput.dataModelRef
     val group = broadcastInfo.getFormatInfo
@@ -415,7 +414,7 @@ class IterativeJobClassBuilder(
           }
         }
     }
-    arguments += sc()
+    arguments += jobContext()
     broadcast.invokeInit(arguments.result: _*)
     broadcast
   }

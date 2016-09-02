@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -37,6 +37,7 @@ import com.asakusafw.spark.compiler.directio.OutputPatternGeneratorClassBuilder
 import com.asakusafw.spark.compiler.graph.{ CacheStrategy, LabelField }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator.Fragment
 import com.asakusafw.spark.runtime.graph.{
@@ -77,7 +78,7 @@ abstract class DirectOutputPrepareEachFlatForIterativeClassBuilder(
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[Seq[(Source, BranchKey)]].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Seq[_]].asType) {
@@ -89,16 +90,16 @@ abstract class DirectOutputPrepareEachFlatForIterativeClassBuilder(
             }
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: prevsVar :: scVar :: _ = mb.argVars
+        val thisVar :: prevsVar :: jobContextVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           prevsVar.push(),
           classTag(dataModelType),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }
@@ -175,7 +176,7 @@ abstract class DirectOutputPrepareGroupEachForIterativeClassBuilder(
     ctorDef.newInit(Seq(
       classOf[Seq[(Source, BranchKey)]].asType,
       classOf[Partitioner].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Seq[_]].asType) {
@@ -188,17 +189,17 @@ abstract class DirectOutputPrepareGroupEachForIterativeClassBuilder(
           }
         }
         .newParameterType(classOf[Partitioner].asType)
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: prevsVar :: partVar :: scVar :: _ = mb.argVars
+        val thisVar :: prevsVar :: partVar :: jobContextVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           prevsVar.push(),
           partVar.push(),
           classTag(dataModelType),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }

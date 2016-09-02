@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -31,7 +31,6 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
-import org.apache.spark.SparkContext
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.api.CompilerOptions
@@ -45,8 +44,7 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
 import com.asakusafw.spark.compiler.graph._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
-import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar, TempDirForEach }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
+import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -87,13 +85,14 @@ class TemporaryOutputClassBuilderSpec
   with FlowIdForEach
   with UsingCompilerContext
   with TempDirForEach
+  with JobContextSugar
   with RoundContextSugar {
 
   import OutputClassBuilderSpec._
 
   behavior of classOf[TemporaryOutputClassBuilder].getSimpleName
 
-  it should "build TemporaryOutput class" in { implicit sc =>
+  it should "build TemporaryOutput class" in {
     val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
 
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -143,15 +142,17 @@ class TemporaryOutputClassBuilderSpec
       branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
     }
 
+    implicit val jobContext = newJobContext(sc)
+
     val source =
       new RoundAwareParallelCollectionSource(Input, (0 until 100))("input")
         .mapWithRoundContext(Input)(Foo.intToFoo)
     val output = cls.getConstructor(
       classOf[Seq[(Source, BranchKey)]],
-      classOf[SparkContext])
+      classOf[JobContext])
       .newInstance(
         Seq((source, getBranchKey(foosMarker))),
-        sc)
+        jobContext)
 
     val path = new File(tmpDir, outputOperator.getName).getAbsolutePath
 

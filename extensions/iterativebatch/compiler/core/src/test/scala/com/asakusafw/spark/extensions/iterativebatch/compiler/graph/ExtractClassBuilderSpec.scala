@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -29,7 +29,6 @@ import scala.concurrent.duration.Duration
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.SparkContext
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
@@ -43,8 +42,7 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
 import com.asakusafw.spark.compiler.graph._
 import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo, SubPlanOutputInfo }
-import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
+import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -67,6 +65,7 @@ class ExtractClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar {
 
   import ExtractClassBuilderSpec._
@@ -84,7 +83,7 @@ class ExtractClassBuilderSpec
   } {
     val conf = s"OutputType: ${outputType}, IterativeInfo: ${iterativeInfo}"
 
-    it should s"build extract class: [${conf}]" in { implicit sc =>
+    it should s"build extract class: [${conf}]" in {
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -161,17 +160,19 @@ class ExtractClassBuilderSpec
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
+      implicit val jobContext = newJobContext(sc)
+
       val source =
         new RoundAwareParallelCollectionSource(getBranchKey(foosMarker), (0 until 10))("input")
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
         classOf[Seq[(Source, BranchKey)]],
         classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[SparkContext])
+        classOf[JobContext])
         .newInstance(
           Seq((source, getBranchKey(foosMarker))),
           Map.empty,
-          sc)
+          jobContext)
 
       assert(extract.partitioners.size === partitioners)
 
@@ -238,7 +239,7 @@ class ExtractClassBuilderSpec
   } {
     val conf = s"OutputType: ${outputType}, IterativeInfo: ${iterativeInfo}"
 
-    it should s"build extract class missing port connection: [${conf}]" in { implicit sc =>
+    it should s"build extract class missing port connection: [${conf}]" in {
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -293,17 +294,19 @@ class ExtractClassBuilderSpec
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
+      implicit val jobContext = newJobContext(sc)
+
       val source =
         new RoundAwareParallelCollectionSource(getBranchKey(foosMarker), (0 until 10))("input")
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
         classOf[Seq[(Source, BranchKey)]],
         classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[SparkContext])
+        classOf[JobContext])
         .newInstance(
           Seq((source, getBranchKey(foosMarker))),
           Map.empty,
-          sc)
+          jobContext)
 
       assert(extract.partitioners.size === partitioners)
 
