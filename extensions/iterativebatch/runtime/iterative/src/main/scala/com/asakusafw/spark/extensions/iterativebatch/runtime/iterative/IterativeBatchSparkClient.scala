@@ -34,9 +34,10 @@ import com.asakusafw.spark.runtime.{ JobContext, Props, RoundContext, SparkClien
 import com.asakusafw.spark.runtime.SparkClient.Implicits.ec
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.IterativeJob
-import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient._
 
 abstract class IterativeBatchSparkClient extends SparkClient {
+
+  val Logger = LoggerFactory.getLogger(getClass)
 
   override def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int = {
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
@@ -48,7 +49,7 @@ abstract class IterativeBatchSparkClient extends SparkClient {
       val numSlots = conf.getInt(Props.NumSlots, Props.DefaultNumSlots)
       val stopOnFail = conf.getBoolean(Props.StopOnFail, Props.DefaultStopOnFail)
 
-      implicit val jobContext = JobContext(sc)
+      implicit val jobContext = IterativeBatchSparkClient.JobContext(sc)
       val job = newJob(jobContext)
 
       execute(job, stageInfo, numSlots, stopOnFail)
@@ -64,7 +65,7 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     stopOnFail: Boolean)(
       implicit jobContext: JobContext): Int = {
     val executor = new IterativeBatchExecutor(numSlots, stopOnFail)(job)
-    executor.addListener(Logger)
+    executor.addListener(IterativeBatchSparkClient.Logger)
     executor.start()
     try {
       val origin = newContext(stageInfo.getOrigin)
@@ -83,6 +84,23 @@ abstract class IterativeBatchSparkClient extends SparkClient {
           result.isDefined && result.get.isSuccess
         }
         job.commit(origin, contextsToCommit)
+
+        if (Logger.isInfoEnabled) {
+          import Logger._ // scalastyle:ignore
+          info(s"Direct I/O file output: ${jobContext.outputStatistics.size} entries")
+          jobContext.outputStatistics.toSeq.sortBy(_._1).foreach {
+            case (name, statistics) =>
+              info(s"  ${name}:")
+              info(s"    number of output files: ${statistics.files}")
+              info(s"    output file size in bytes: ${statistics.bytes}")
+              info(s"    number of output records: ${statistics.records}")
+          }
+          info(s"  (TOTAL):")
+          info(s"    number of output files: ${jobContext.outputStatistics.map(_._2.files).sum}")
+          info(s"    output file size in bytes: ${jobContext.outputStatistics.map(_._2.bytes).sum}")
+          info(s"    number of output records: ${jobContext.outputStatistics.map(_._2.records).sum}") // scalastyle:ignore
+        }
+
         0
       }
     } catch {
@@ -99,7 +117,7 @@ abstract class IterativeBatchSparkClient extends SparkClient {
   private def newContext(stageInfo: StageInfo)(implicit jobContext: JobContext): RoundContext = {
     val conf = new Configuration(jobContext.sparkContext.hadoopConfiguration)
     conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
-    RoundContext(jobContext.sparkContext.broadcast(conf))
+    IterativeBatchSparkClient.RoundContext(jobContext.sparkContext.broadcast(conf))
   }
 }
 

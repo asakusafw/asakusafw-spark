@@ -245,6 +245,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 .collect.toSeq
                 === (0 until 100).map(i => (100 * round + i, i % 10)))
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 4)
+          assert(statistics.bytes === 4292)
+          assert(statistics.records === 200)
+
           stageOffset += 7
         } else {
           assert(files.head.forall(_.exists()) === true)
@@ -258,6 +265,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
               .map(foo => (foo.id.get, foo.group.get))
               .collect.toSeq
               === (0 until 100).map(i => (100 * round + i, i % 10)))
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 2)
+          assert(statistics.bytes === 2146)
+          assert(statistics.records === 100)
+
           stageOffset += 4
         }
         idx += 1
@@ -353,6 +367,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 .collect.toSeq
                 === (0 until 100).map(i => (100 * round + i, i % 10)))
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 4)
+          assert(statistics.bytes === 4292)
+          assert(statistics.records === 200)
+
           stageOffset += 7
         } else {
           assert(files.head.forall(_.exists()) === true)
@@ -366,6 +387,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
               .map(foo => (foo.id.get, foo.group.get))
               .collect.toSeq
               === (0 until 100).map(i => (100 * round + i, i % 10)))
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 2)
+          assert(statistics.bytes === 2146)
+          assert(statistics.records === 100)
+
           stageOffset += 4
         }
         idx += 1
@@ -462,6 +490,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
             .map(foo => (foo.id.get, foo.group.get))
             .collect.toSeq
             === (0 until 100).map(i => (100 * round + i, i % 10)))
+
+        assert(jobContext.outputStatistics.size === 1)
+        val statistics = jobContext.outputStatistics(outputOperator.getName)
+        assert(statistics.files === 2)
+        assert(statistics.bytes === 2146)
+        assert(statistics.records === 100)
+
         if (iterativeInfo.getRecomputeKind != IterativeInfo.RecomputeKind.NEVER) {
           stageOffset += 5
         } else {
@@ -578,6 +613,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                       === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
               }
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 20)
+          assert(statistics.bytes === 7060)
+          assert(statistics.records === 200)
+
         } else {
           assert(files.head.forall(_.exists()) === true)
           assert(files.tail.exists(_.exists(_.exists())) === false)
@@ -593,6 +635,12 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                   .collect.toSeq
                   === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 10)
+          assert(statistics.bytes === 3530)
+          assert(statistics.records === 100)
         }
         idx += 1
       }
@@ -689,6 +737,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                     (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i))
                   })
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 10)
+          assert(statistics.bytes === 5330)
+          assert(statistics.records === 200)
+
         } else {
           files.zipWithIndex.foreach {
             case (file, i) =>
@@ -700,6 +755,12 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                   .collect.toSeq
                   === (0 until 100).reverse.filter(_ % 10 == i).map(j => (j, i)))
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 10)
+          assert(statistics.bytes === 3530)
+          assert(statistics.records === 100)
         }
         idx += 1
       }
@@ -799,6 +860,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 .collect.toSeq
                 === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
         }
+
+        assert(jobContext.outputStatistics.size === 1)
+        val statistics = jobContext.outputStatistics(outputOperator.getName)
+        assert(statistics.files === 10)
+        assert(statistics.bytes === 3530)
+        assert(statistics.records === 100)
+
         idx += 1
       }
     }

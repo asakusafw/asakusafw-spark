@@ -56,9 +56,13 @@ abstract class DirectOutputPrepare[T: Manifest](
 
   protected val Logger = LoggerFactory.getLogger(getClass)
 
+  def name: String
+
   def basePath: String
 
   def formatType: Class[_ <: DataFormat[T]]
+
+  private val statistics = jobContext.getOrNewOutputStatistics(name)
 
   override protected def doPerform(
     rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
@@ -125,6 +129,8 @@ abstract class DirectOutputPrepare[T: Manifest](
           } {
             records.add(withOutput(output))
           }
+
+          statistics.addFile(s"${basePath}/${resourcePath}")
       })
       dataSource.commitAttemptOutput(context)
 
@@ -132,6 +138,9 @@ abstract class DirectOutputPrepare[T: Manifest](
         taskContext.taskMetrics.outputMetrics.bytesWritten + bytes.get)
       taskContext.taskMetrics.outputMetrics.setRecordsWritten(
         taskContext.taskMetrics.outputMetrics.recordsWritten + records.get)
+
+      statistics.addBytes(bytes.get)
+      statistics.addRecords(records.get)
     } catch {
       case t: Throwable =>
         Logger.error(

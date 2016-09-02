@@ -81,6 +81,7 @@ class DirectOutputPrepareSpec
     val prepare = new Flat.Prepare(
       setup,
       Seq((source, Input)))(
+      "flat",
       "test/flat",
       "*.bin",
       classOf[FooSequenceFileFormat])(
@@ -104,6 +105,12 @@ class DirectOutputPrepareSpec
         .map(foo => (foo.id.get, foo.group.get))
         .collect.toSeq
         === (0 until 100).map(i => (i, i % 10)))
+
+    assert(jobContext.outputStatistics.size === 1)
+    val statistics = jobContext.outputStatistics("flat")
+    assert(statistics.files === 2)
+    assert(statistics.bytes === 2044)
+    assert(statistics.records === 100)
   }
 
   it should "prepare group" in {
@@ -122,6 +129,7 @@ class DirectOutputPrepareSpec
       setup,
       Seq((source, Input)))(
       new HashPartitioner(sc.defaultParallelism))(
+      "group",
       "test/group",
       classOf[FooSequenceFileFormat])(
       "group")
@@ -147,6 +155,12 @@ class DirectOutputPrepareSpec
             .collect.toSeq
             === (0 until 100).reverse.filter(_ % 10 == i).map(j => (j, i)))
     }
+
+    assert(jobContext.outputStatistics.size === 1)
+    val statistics = jobContext.outputStatistics("group")
+    assert(statistics.files === 10)
+    assert(statistics.bytes === 3020)
+    assert(statistics.records === 100)
   }
 }
 
@@ -236,6 +250,7 @@ object DirectOutputPrepareSpec {
     class Prepare(
       setup: Action[Unit],
       prevs: Seq[(Source, BranchKey)])(
+        val name: String,
         val basePath: String,
         val resourcePattern: String,
         val formatType: Class[_ <: DataFormat[Foo]])(
@@ -251,6 +266,7 @@ object DirectOutputPrepareSpec {
       setup: Action[Unit],
       prevs: Seq[(Source, BranchKey)])(
         partitioner: Partitioner)(
+          val name: String,
           val basePath: String,
           val formatType: Class[_ <: DataFormat[Foo]])(
             val label: String)(

@@ -112,6 +112,10 @@ abstract class DirectOutputPrepareFlatClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
+    methodDef.newMethod("name", classOf[String].asType, Seq.empty) { implicit mb =>
+      `return`(ldc(operator.getName))
+    }
+
     methodDef.newMethod("basePath", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(model.getBasePath))
     }
@@ -221,6 +225,10 @@ abstract class DirectOutputPrepareGroupClassBuilder(
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
+
+    methodDef.newMethod("name", classOf[String].asType, Seq.empty) { implicit mb =>
+      `return`(ldc(operator.getName))
+    }
 
     methodDef.newMethod("basePath", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(model.getBasePath))

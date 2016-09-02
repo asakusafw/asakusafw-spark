@@ -166,6 +166,12 @@ class DirectOutputPrepareClassBuilderSpec
         .map(foo => (foo.id.get, foo.group.get))
         .collect.toSeq
         === (0 until 100).map(i => (i, i % 10)))
+
+    assert(jobContext.outputStatistics.size === 1)
+    val statistics = jobContext.outputStatistics(outputOperator.getName)
+    assert(statistics.files === 2)
+    assert(statistics.bytes === 2070)
+    assert(statistics.records === 100)
   }
 
   it should "compile prepare group" in {
@@ -260,6 +266,12 @@ class DirectOutputPrepareClassBuilderSpec
             .collect.toSeq
             === (0 until 100).reverse.filter(_ % 10 == i).map(j => (j, i)))
     }
+
+    assert(jobContext.outputStatistics.size === 1)
+    val statistics = jobContext.outputStatistics(outputOperator.getName)
+    assert(statistics.files === 10)
+    assert(statistics.bytes === 3150)
+    assert(statistics.records === 100)
   }
 }
 

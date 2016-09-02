@@ -24,6 +24,7 @@ import scala.concurrent.duration.Duration
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
@@ -63,6 +64,8 @@ object SparkClient {
 
 abstract class DefaultClient extends SparkClient {
 
+  val Logger = LoggerFactory.getLogger(getClass)
+
   override def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int = {
     require(!stageInfo.isIterative,
       s"This client does not support iterative extension.")
@@ -78,10 +81,28 @@ abstract class DefaultClient extends SparkClient {
 
     val sc = SparkContext.getOrCreate(conf)
     try {
-      val job = newJob(DefaultClient.JobContext(sc))
+      val jobContext = DefaultClient.JobContext(sc)
+      val job = newJob(jobContext)
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
       val context = DefaultClient.RoundContext(hadoopConf)
       Await.result(job.execute(context)(SparkClient.ec), Duration.Inf)
+
+      if (Logger.isInfoEnabled) {
+        import Logger._ // scalastyle:ignore
+        info(s"Direct I/O file output: ${jobContext.outputStatistics.size} entries")
+        jobContext.outputStatistics.toSeq.sortBy(_._1).foreach {
+          case (name, statistics) =>
+            info(s"  ${name}:")
+            info(s"    number of output files: ${statistics.files}")
+            info(s"    output file size in bytes: ${statistics.bytes}")
+            info(s"    number of output records: ${statistics.records}")
+        }
+        info(s"  (TOTAL):")
+        info(s"    number of output files: ${jobContext.outputStatistics.map(_._2.files).sum}")
+        info(s"    output file size in bytes: ${jobContext.outputStatistics.map(_._2.bytes).sum}")
+        info(s"    number of output records: ${jobContext.outputStatistics.map(_._2.records).sum}")
+      }
+
       0
     } finally {
       sc.stop()

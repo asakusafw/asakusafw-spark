@@ -106,6 +106,10 @@ abstract class DirectOutputPrepareForIterativeClassBuilder(
       `return`(ldc(s"epilogue: ${label}"))
     }
 
+    methodDef.newMethod("name", classOf[String].asType, Seq.empty) { implicit mb =>
+      `return`(ldc(operator.getName))
+    }
+
     methodDef.newMethod("formatType", classOf[Class[_ <: DataFormat[_]]].asType, Seq.empty,
       new MethodSignatureBuilder()
         .newReturnType {

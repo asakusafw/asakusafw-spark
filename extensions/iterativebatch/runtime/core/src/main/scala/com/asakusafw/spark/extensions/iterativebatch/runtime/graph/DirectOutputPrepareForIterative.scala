@@ -58,7 +58,11 @@ abstract class DirectOutputPrepareForIterative[T <: DataModel[T] with Writable: 
 
   private val Logger = LoggerFactory.getLogger(getClass)
 
+  def name: String
+
   def formatType: Class[_ <: DataFormat[T]]
+
+  private val statistics = jobContext.getOrNewOutputStatistics(name)
 
   override protected def doPerform(
     origin: RoundContext,
@@ -125,10 +129,12 @@ abstract class DirectOutputPrepareForIterative[T <: DataModel[T] with Writable: 
                     buff.head._1.grouping, basePathBytes, buff.head._1.grouping.length) == 0
                 }
 
+                val resourcePath = pathOpt.getAsString
+
                 for {
                   output <- managed(
                     dataSource.openOutput(
-                      context, definition, componentPath, pathOpt.getAsString, bytes))
+                      context, definition, componentPath, resourcePath, bytes))
                 } {
                   var rs = 0L
                   while (buff.hasNext && sameBasePath && sameResourcePath) {
@@ -137,6 +143,8 @@ abstract class DirectOutputPrepareForIterative[T <: DataModel[T] with Writable: 
                   }
                   records.add(rs)
                 }
+
+                statistics.addFile(s"${basePath}/${resourcePath}")
               }
 
               dataSource.commitAttemptOutput(context)
@@ -155,6 +163,9 @@ abstract class DirectOutputPrepareForIterative[T <: DataModel[T] with Writable: 
             taskContext.taskMetrics.outputMetrics.bytesWritten + bytes.get)
           taskContext.taskMetrics.outputMetrics.setRecordsWritten(
             taskContext.taskMetrics.outputMetrics.recordsWritten + records.get)
+
+          statistics.addBytes(bytes.get)
+          statistics.addRecords(records.get)
         }
       }
   }
