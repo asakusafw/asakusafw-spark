@@ -86,19 +86,21 @@ abstract class IterativeBatchSparkClient extends SparkClient {
         job.commit(origin, contextsToCommit)
 
         if (Logger.isInfoEnabled) {
-          import Logger._ // scalastyle:ignore
-          info(s"Direct I/O file output: ${jobContext.outputStatistics.size} entries")
+          Logger.info(s"Direct I/O file output: ${jobContext.outputStatistics.size} entries")
           jobContext.outputStatistics.toSeq.sortBy(_._1).foreach {
             case (name, statistics) =>
-              info(s"  ${name}:")
-              info(s"    number of output files: ${statistics.files}")
-              info(s"    output file size in bytes: ${statistics.bytes}")
-              info(s"    number of output records: ${statistics.records}")
+              Logger.info(s"  ${name}:")
+              Logger.info(f"    number of output files: ${statistics.files}%,d")
+              Logger.info(f"    output file size in bytes: ${statistics.bytes}%,d")
+              Logger.info(f"    number of output records: ${statistics.records}%,d")
           }
-          info(s"  (TOTAL):")
-          info(s"    number of output files: ${jobContext.outputStatistics.map(_._2.files).sum}")
-          info(s"    output file size in bytes: ${jobContext.outputStatistics.map(_._2.bytes).sum}")
-          info(s"    number of output records: ${jobContext.outputStatistics.map(_._2.records).sum}") // scalastyle:ignore
+          Logger.info(s"  (TOTAL):")
+          Logger.info(
+            f"    number of output files: ${jobContext.outputStatistics.map(_._2.files).sum}%,d")
+          Logger.info(
+            f"    output file size in bytes: ${jobContext.outputStatistics.map(_._2.bytes).sum}%,d")
+          Logger.info(
+            f"    number of output records: ${jobContext.outputStatistics.map(_._2.records).sum}%,d") // scalastyle:ignore
         }
 
         0
