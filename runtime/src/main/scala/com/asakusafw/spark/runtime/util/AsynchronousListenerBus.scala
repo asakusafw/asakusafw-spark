@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.extensions.iterativebatch.runtime.util
+package com.asakusafw.spark.runtime.util
 
 import scala.util.control.NonFatal
 
@@ -44,6 +44,10 @@ abstract class AsynchronousListenerBus[L, E](name: String)
 
   def start(): Unit = {
     queue.start()
+  }
+
+  def awaitExecution(): Unit = {
+    queue.awaitExecution()
   }
 
   def stop(): Unit = {

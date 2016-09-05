@@ -25,13 +25,13 @@ import scala.util.control.NonFatal
 
 import com.asakusafw.spark.runtime.RoundContext
 import com.asakusafw.spark.runtime.graph.Job
+import com.asakusafw.spark.runtime.util.{
+  AsynchronousListenerBus,
+  MessageQueue
+}
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.IterativeBatchExecutor._
-import com.asakusafw.spark.extensions.iterativebatch.runtime.util.{
-  AsynchronousListenerBus,
-  MessageQueue,
-  ReadWriteLockedMap
-}
+import com.asakusafw.spark.extensions.iterativebatch.runtime.util.ReadWriteLockedMap
 
 class IterativeBatchExecutor(
   numSlots: Int, stopOnFail: Boolean)(

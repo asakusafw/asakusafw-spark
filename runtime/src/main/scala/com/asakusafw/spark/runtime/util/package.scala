@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.extensions.iterativebatch.runtime
+package com.asakusafw.spark.runtime
 
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.{ Condition, Lock }
