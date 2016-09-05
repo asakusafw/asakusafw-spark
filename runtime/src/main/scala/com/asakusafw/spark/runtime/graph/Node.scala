@@ -16,11 +16,9 @@
 package com.asakusafw.spark.runtime
 package graph
 
-import org.apache.spark.SparkContext
-
 trait Node extends Serializable {
 
-  implicit def sc: SparkContext
+  implicit def jobContext: JobContext
 
   def label: String
 }

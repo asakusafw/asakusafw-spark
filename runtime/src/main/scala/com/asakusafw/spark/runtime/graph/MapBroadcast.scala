@@ -18,7 +18,7 @@ package graph
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
@@ -33,7 +33,7 @@ abstract class MapBroadcast(
   group: GroupOrdering,
   part: Partitioner)(
     val label: String)(
-      implicit val sc: SparkContext) extends Broadcast[Map[ShuffleKey, Seq[_]]] {
+      implicit val jobContext: JobContext) extends Broadcast[Map[ShuffleKey, Seq[_]]] {
   self: CacheStrategy[RoundContext, Future[Broadcasted[Map[ShuffleKey, Seq[_]]]]] =>
 
   override protected def doBroadcast(
@@ -47,13 +47,16 @@ abstract class MapBroadcast(
 
     Future.sequence(rdds).map { prevs =>
 
-      sc.clearCallSite()
-      sc.setCallSite(
+      jobContext.sparkContext.clearCallSite()
+      jobContext.sparkContext.setCallSite(
         CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
-      sc.broadcast(
-        sc.smcogroup(
-          Seq((sc.confluent[ShuffleKey, Any](prevs, part, sort.orElse(Option(group))), sort)),
+      jobContext.sparkContext.broadcast(
+        jobContext.sparkContext.smcogroup(
+          Seq(
+            (jobContext.sparkContext.confluent[ShuffleKey, Any](
+              prevs, part, sort.orElse(Option(group))),
+              sort)),
           part,
           group)
           .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[_]]) }
@@ -69,6 +72,6 @@ class MapBroadcastOnce(
   group: GroupOrdering,
   partitioner: Partitioner)(
     label: String)(
-      implicit sc: SparkContext)
+      implicit jobContext: JobContext)
   extends MapBroadcast(prevs, sort, group, partitioner)(label)
   with CacheOnce[RoundContext, Future[Broadcasted[Map[ShuffleKey, Seq[_]]]]]

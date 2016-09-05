@@ -54,7 +54,7 @@ object ExtractInstantiator extends Instantiator {
         }
       },
       vars.broadcasts.push(),
-      vars.sc.push())
+      vars.jobContext.push())
     extract.store()
   }
 }

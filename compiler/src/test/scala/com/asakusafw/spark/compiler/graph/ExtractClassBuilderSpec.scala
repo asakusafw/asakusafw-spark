@@ -17,7 +17,7 @@ package com.asakusafw.spark.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -29,7 +29,6 @@ import scala.concurrent.duration.Duration
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.SparkContext
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
@@ -42,8 +41,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
+import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -63,6 +61,7 @@ class ExtractClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar {
 
   import ExtractClassBuilderSpec._
@@ -74,7 +73,7 @@ class ExtractClassBuilderSpec
       (SubPlanOutputInfo.OutputType.DONT_CARE, 3),
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 1))
   } {
-    it should s"build extract class with OutputType.${outputType}" in { implicit sc =>
+    it should s"build extract class with OutputType.${outputType}" in {
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -150,17 +149,19 @@ class ExtractClassBuilderSpec
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
+      implicit val jobContext = newJobContext(sc)
+
       val source =
         new ParallelCollectionSource(getBranchKey(foosMarker), (0 until 10))("input")
           .map(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
         classOf[Seq[(Source, BranchKey)]],
         classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[SparkContext])
+        classOf[JobContext])
         .newInstance(
           Seq((source, getBranchKey(foosMarker))),
           Map.empty,
-          sc)
+          jobContext)
 
       assert(extract.partitioners.size === partitioners)
 
@@ -214,7 +215,7 @@ class ExtractClassBuilderSpec
       (SubPlanOutputInfo.OutputType.DONT_CARE, 1),
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 0))
   } {
-    it should s"build extract class missing port connection with OutputType.${outputType}" in { implicit sc =>
+    it should s"build extract class missing port connection with OutputType.${outputType}" in {
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -268,17 +269,19 @@ class ExtractClassBuilderSpec
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
+      implicit val jobContext = newJobContext(sc)
+
       val source =
         new ParallelCollectionSource(getBranchKey(foosMarker), (0 until 10))("input")
           .map(getBranchKey(foosMarker))(Foo.intToFoo)
       val extract = cls.getConstructor(
         classOf[Seq[(Source, BranchKey)]],
         classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[SparkContext])
+        classOf[JobContext])
         .newInstance(
           Seq((source, getBranchKey(foosMarker))),
           Map.empty,
-          sc)
+          jobContext)
 
       assert(extract.partitioners.size === partitioners)
 

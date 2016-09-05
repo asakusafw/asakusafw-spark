@@ -19,7 +19,7 @@ package branching
 
 import scala.collection.JavaConversions._
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -27,6 +27,7 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.compiler.util.NumPartitions._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.rdd.BranchKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -88,7 +89,7 @@ trait PartitionersField extends ClassBuilder {
     val thisVar :: _ = mb.argVars
 
     buildMap { builder =>
-      val np = numPartitions(thisVar.push().invokeV("sc", classOf[SparkContext].asType)) _
+      val np = numPartitions(thisVar.push().invokeV("jobContext", classOf[JobContext].asType)) _
       for {
         output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
         outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))

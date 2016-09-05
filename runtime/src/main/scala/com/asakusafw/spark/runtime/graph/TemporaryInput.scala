@@ -23,7 +23,6 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -32,7 +31,7 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class TemporaryInput[V: ClassTag](
   @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
-    implicit sc: SparkContext)
+    implicit jobContext: JobContext)
   extends NewHadoopInput[TemporaryInputFormat[V], NullWritable, V] {
   self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 

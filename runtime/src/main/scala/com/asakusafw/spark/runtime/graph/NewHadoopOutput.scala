@@ -20,7 +20,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
@@ -31,7 +31,7 @@ import com.asakusafw.spark.runtime.rdd._
 
 abstract class NewHadoopOutput(
   prevs: Seq[(Source, BranchKey)])(
-    implicit sc: SparkContext)
+    implicit jobContext: JobContext)
   extends Output {
 
   private[this] val Logger = LoggerFactory.getLogger(getClass())
@@ -58,7 +58,7 @@ abstract class NewHadoopOutput(
         if (zipped.size == 1) {
           zipped.head
         } else {
-          sc.union(zipped)
+          jobContext.sparkContext.union(zipped)
         }
       }
     })
@@ -66,8 +66,8 @@ abstract class NewHadoopOutput(
 
         val job = newJob(rc)
 
-        sc.clearCallSite()
-        sc.setCallSite(
+        jobContext.sparkContext.clearCallSite()
+        jobContext.sparkContext.setCallSite(
           CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
         val output = prev.map(in => (NullWritable.get, in._2))

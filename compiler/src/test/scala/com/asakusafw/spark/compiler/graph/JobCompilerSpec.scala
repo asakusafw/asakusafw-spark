@@ -17,8 +17,7 @@ package com.asakusafw.spark.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.Suites
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.{ FlatSpec, Suites }
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ File, DataInput, DataOutput }
@@ -36,7 +35,7 @@ import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.{ FileInputFormat, SequenceFileInputFormat }
 import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
@@ -70,7 +69,6 @@ import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.runtime._
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph.Job
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
@@ -96,6 +94,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
   with TempDirForAll
   with TempDirForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar {
 
   import JobCompilerSpec._
@@ -134,8 +133,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     name: String,
     path: File,
     configurePath: (MRJob, File, String) => Unit = configurePath)(
-      rdd: RDD[T])(
-        implicit sc: SparkContext): Unit = {
+      rdd: RDD[T]): Unit = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass)
@@ -143,7 +141,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
 
-  def readResult[T: ClassTag](name: String, path: File)(implicit sc: SparkContext): RDD[T] = {
+  def readResult[T: ClassTag](name: String, path: File): RDD[T] = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/-/part-*")))
     sc.newAPIHadoopRDD(
@@ -153,7 +151,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
       classTag[T].runtimeClass.asInstanceOf[Class[T]]).map(_._2)
   }
 
-  it should s"compile Job from simple plan: [${configuration}]" in { implicit sc =>
+  it should s"compile Job from simple plan: [${configuration}]" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -185,7 +183,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job from simple plan with InputFormatInfo: [${configuration}]" in { implicit sc =>
+  it should s"compile Job from simple plan with InputFormatInfo: [${configuration}]" in {
     val configurePath: (MRJob, File, String) => Unit = { (job, path, name) =>
       job.setOutputFormatClass(classOf[SequenceFileOutputFormat[NullWritable, Foo]])
       FileOutputFormat.setOutputPath(job, new Path(path.getPath, name))
@@ -246,7 +244,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job from simple plan with DirectOutput flat: [${configuration}]" in { implicit sc =>
+  it should s"compile Job from simple plan with DirectOutput flat: [${configuration}]" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -294,7 +292,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job from simple plan with DirectOutput group: [${configuration}]" in { implicit sc =>
+  it should s"compile Job from simple plan with DirectOutput group: [${configuration}]" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("baz", path) {
@@ -351,7 +349,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with Logging: [${configuration}]" in { implicit sc =>
+  it should s"compile Job with Logging: [${configuration}]" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -389,7 +387,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with Extract: ${configuration}" in { implicit sc =>
+  it should s"compile Job with Extract: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -442,7 +440,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with Checkpoint and Extract: ${configuration}" in { implicit sc =>
+  it should s"compile Job with Checkpoint and Extract: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -502,7 +500,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with StopFragment: ${configuration}" in { implicit sc =>
+  it should s"compile Job with StopFragment: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -544,7 +542,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with CoGroup: ${configuration}" in { implicit sc =>
+  it should s"compile Job with CoGroup: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo1", path) {
@@ -657,7 +655,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with CoGroup with grouping is empty: ${configuration}" in { implicit sc =>
+  it should s"compile Job with CoGroup with grouping is empty: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo1", path) {
@@ -767,7 +765,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with MasterCheck: ${configuration}" in { implicit sc =>
+  it should s"compile Job with MasterCheck: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -837,7 +835,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with MasterCheck with multiple masters: ${configuration}" in { implicit sc =>
+  it should s"compile Job with MasterCheck with multiple masters: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo1", path) {
@@ -918,7 +916,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with broadcast MasterCheck: ${configuration}" in { implicit sc =>
+  it should s"compile Job with broadcast MasterCheck: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -988,7 +986,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with broadcast MasterCheck with multiple masters: ${configuration}" in { implicit sc =>
+  it should s"compile Job with broadcast MasterCheck with multiple masters: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo1", path) {
@@ -1069,7 +1067,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with Checkpoint and broadcast MasterCheck: ${configuration}" in { implicit sc =>
+  it should s"compile Job with Checkpoint and broadcast MasterCheck: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -1145,7 +1143,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with MasterJoin: ${configuration}" in { implicit sc =>
+  it should s"compile Job with MasterJoin: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo1", path) {
@@ -1226,7 +1224,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with broadcast MasterJoin: ${configuration}" in { implicit sc =>
+  it should s"compile Job with broadcast MasterJoin: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -1296,7 +1294,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with broadcast self MasterCheck: ${configuration}" in { implicit sc =>
+  it should s"compile Job with broadcast self MasterCheck: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("foo", path) {
@@ -1354,7 +1352,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with Fold: ${configuration}" in { implicit sc =>
+  it should s"compile Job with Fold: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("baz1", path) {
@@ -1412,7 +1410,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with Fold with grouping is empty: ${configuration}" in { implicit sc =>
+  it should s"compile Job with Fold with grouping is empty: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("baz1", path) {
@@ -1467,7 +1465,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with Summarize: ${configuration}" in { implicit sc =>
+  it should s"compile Job with Summarize: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("baz1", path) {
@@ -1531,7 +1529,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
-  it should s"compile Job with Summarize with grouping is empty: ${configuration}" in { implicit sc =>
+  it should s"compile Job with Summarize with grouping is empty: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
     prepareData("baz1", path) {
@@ -1631,12 +1629,14 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     jobType
   }
 
-  def executeJob(flowId: String, jobType: Type)(implicit sc: SparkContext): Unit = {
+  def executeJob(flowId: String, jobType: Type): Unit = {
     val cls = Class.forName(
       jobType.getClassName, true, Thread.currentThread.getContextClassLoader)
       .asSubclass(classOf[Job])
 
-    val job = cls.getConstructor(classOf[SparkContext]).newInstance(sc)
+    implicit val jobContext = newJobContext(sc)
+
+    val job = cls.getConstructor(classOf[JobContext]).newInstance(jobContext)
     Await.result(job.execute(newRoundContext(flowId = flowId)), Duration.Inf)
   }
 }

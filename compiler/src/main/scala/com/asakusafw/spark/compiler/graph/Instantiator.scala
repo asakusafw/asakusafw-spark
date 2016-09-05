@@ -44,7 +44,7 @@ object Instantiator {
   }
 
   case class Vars(
-    sc: Var, // SparkContext
+    jobContext: Var, // JobContext
     nodes: Var, // Array[Node]
     broadcasts: Var, // Map[BroadcastId, Broadcast]
     setup: Option[Var] = None // DirectOutputSetup

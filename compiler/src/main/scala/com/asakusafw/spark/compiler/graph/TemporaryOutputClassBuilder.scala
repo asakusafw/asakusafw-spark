@@ -20,13 +20,13 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.spark.compiler.graph.TemporaryOutputClassBuilder._
 import com.asakusafw.spark.compiler.spi.NodeCompiler
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   Source,
@@ -56,7 +56,7 @@ class TemporaryOutputClassBuilder(
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[Seq[(Source, BranchKey)]].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Seq[_]].asType) {
@@ -68,16 +68,16 @@ class TemporaryOutputClassBuilder(
             }
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: prevsVar :: scVar :: _ = mb.argVars
+        val thisVar :: prevsVar :: jobContextVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           prevsVar.push(),
           classTag(operator.getDataType.asType),
-          scVar.push())
+          jobContextVar.push())
       }
   }
 

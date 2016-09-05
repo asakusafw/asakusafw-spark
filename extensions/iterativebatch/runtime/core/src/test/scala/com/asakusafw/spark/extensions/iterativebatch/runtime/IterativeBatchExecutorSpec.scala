@@ -16,7 +16,7 @@
 package com.asakusafw.spark.extensions.iterativebatch.runtime
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.util.concurrent.{ ArrayBlockingQueue, BlockingQueue, TimeUnit }
@@ -27,11 +27,10 @@ import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
+import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.graph.{
   Job,
   Node,
@@ -46,13 +45,18 @@ import com.asakusafw.spark.extensions.iterativebatch.runtime.util.ReadWriteLocke
 @RunWith(classOf[JUnitRunner])
 class IterativeBatchExecutorSpecTest extends IterativeBatchExecutorSpec
 
-class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundContextSugar {
+class IterativeBatchExecutorSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar {
 
   import IterativeBatchExecutorSpec._
 
   behavior of classOf[IterativeBatchExecutor].getSimpleName
 
-  it should "handle RoundContexts" in { implicit sc =>
+  it should "handle RoundContexts" in {
+    implicit val jobContext = newJobContext(sc)
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -61,10 +65,9 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
-    val job: Job = new Job(sc) {
+    val job: Job = new Job {
 
       val nodes = {
-        implicit val sc = this.sc
         val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
           .mapWithRoundContext(Branch) { rc =>
 
@@ -123,7 +126,8 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     }
   }
 
-  it should "handle `awaitExecution()`" in { implicit sc =>
+  it should "handle `awaitExecution()`" in {
+    implicit val jobContext = newJobContext(sc)
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -133,10 +137,9 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
-    val job: Job = new Job(sc) {
+    val job: Job = new Job {
 
       val nodes = {
-        implicit val sc = this.sc
         val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
           .mapWithRoundContext(Branch) { rc =>
 
@@ -184,7 +187,8 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     }
   }
 
-  it should "handle event listener" in { implicit sc =>
+  it should "handle event listener" in {
+    implicit val jobContext = newJobContext(sc)
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -193,10 +197,9 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     val collection =
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
-    val job: Job = new Job(sc) {
+    val job: Job = new Job {
 
       val nodes = {
-        implicit val sc = this.sc
         val source = new RoundAwareParallelCollectionSource(Branch, (0 until 100))("source")
           .mapWithRoundContext(Branch) { rc =>
 
@@ -236,7 +239,8 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     }
   }
 
-  it should "handle exception to stop on fail" in { implicit sc =>
+  it should "handle exception to stop on fail" in {
+    implicit val jobContext = newJobContext(sc)
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -246,10 +250,9 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
     val maxRounds = 8
-    val job: Job = new Job(sc) {
+    val job: Job = new Job {
 
       val nodes = {
-        implicit val sc = this.sc
         val max = maxRounds
         val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
           .mapWithRoundContext(Branch) { rc =>
@@ -303,7 +306,8 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
     }
   }
 
-  it should "handle exception not to stop on fail" in { implicit sc =>
+  it should "handle exception not to stop on fail" in {
+    implicit val jobContext = newJobContext(sc)
 
     val rcs = (0 until 10).map { round =>
       newRoundContext(batchArguments = Map("round" -> round.toString))
@@ -313,10 +317,9 @@ class IterativeBatchExecutorSpec extends FlatSpec with SparkForAll with RoundCon
       new mutable.HashMap[RoundContext, Array[Int]] with ReadWriteLockedMap[RoundContext, Array[Int]]
 
     val maxRounds = 8
-    val job: Job = new Job(sc) {
+    val job: Job = new Job {
 
       val nodes = {
-        implicit val sc = this.sc
         val max = maxRounds
         val source = new RoundAwareParallelCollectionSource(Branch, (0 until 10))("source")
           .mapWithRoundContext(Branch) { rc =>
@@ -373,7 +376,8 @@ object IterativeBatchExecutorSpec {
 
   val Branch = BranchKey(0)
 
-  class PrintSink(prev: Source)(implicit val sc: SparkContext) extends Sink {
+  class PrintSink(prev: Source)(
+    implicit val jobContext: JobContext) extends Sink {
 
     override val label: String = "print"
 
@@ -386,7 +390,8 @@ object IterativeBatchExecutorSpec {
 
   class CollectSink(
     collection: mutable.Map[RoundContext, Array[Int]])(
-      prev: Source)(implicit val sc: SparkContext) extends Sink {
+      prev: Source)(
+        implicit val jobContext: JobContext) extends Sink {
 
     override val label: String = "collect"
 

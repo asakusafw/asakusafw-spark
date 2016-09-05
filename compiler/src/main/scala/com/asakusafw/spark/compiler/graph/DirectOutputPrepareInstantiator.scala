@@ -71,9 +71,9 @@ object DirectOutputPrepareInstantiator extends Instantiator {
           }
         },
         partitioner(
-          numPartitions(vars.sc.push())(
+          numPartitions(vars.jobContext.push())(
             subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner))),
-        vars.sc.push())
+        vars.jobContext.push())
     } else {
       output.dup().invokeInit(
         vars.setup.get.push().asType(classOf[Action[Unit]].asType),
@@ -92,7 +92,7 @@ object DirectOutputPrepareInstantiator extends Instantiator {
                 context.branchKeys.getField(marker))
           }
         },
-        vars.sc.push())
+        vars.jobContext.push())
     }
     output.store()
   }

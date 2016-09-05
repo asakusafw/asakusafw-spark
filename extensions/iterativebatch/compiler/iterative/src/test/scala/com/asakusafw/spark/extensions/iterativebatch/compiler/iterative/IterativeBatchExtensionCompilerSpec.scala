@@ -75,7 +75,10 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
     (path, classpath)
   }
 
-  def prepareData[T: ClassTag](name: String, path: File)(rdd: RDD[T])(implicit sc: SparkContext): Unit = {
+  def prepareData[T: ClassTag](
+    name: String, path: File)(
+      rdd: RDD[T])(
+        implicit sc: SparkContext): Unit = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass)
@@ -86,7 +89,9 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
 
-  def readResult[T: ClassTag](name: String, round: Int, path: File)(implicit sc: SparkContext): RDD[T] = {
+  def readResult[T: ClassTag](
+    name: String, round: Int, path: File)(
+      implicit sc: SparkContext): RDD[T] = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     TemporaryInputFormat.setInputPaths(
       job,
@@ -130,7 +135,7 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
     compile(graph, 2, path, classpath)
 
     val rounds = 0 to 1
-    execute(classpath)(rounds)
+    executeJob(classpath)(rounds)
 
     spark { implicit sc =>
       for {
@@ -193,7 +198,7 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
     compiler.process(jpContext, jobflow)
   }
 
-  def execute(classpath: File)(rounds: Seq[Int]): Unit = {
+  def executeJob(classpath: File)(rounds: Seq[Int]): Unit = {
     val cl = Thread.currentThread.getContextClassLoader
     try {
       val classloader = new URLClassLoader(Array(classpath.toURI.toURL), cl)

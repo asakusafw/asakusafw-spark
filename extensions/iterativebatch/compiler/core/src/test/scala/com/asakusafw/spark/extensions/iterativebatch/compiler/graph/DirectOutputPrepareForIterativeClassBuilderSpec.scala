@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -31,7 +31,7 @@ import scala.reflect.{ classTag, ClassTag }
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -57,7 +57,6 @@ import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator._
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, IdentityPartitioner, ShuffleKey }
 
@@ -75,6 +74,7 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar
   with TempDirForAll {
 
@@ -98,7 +98,7 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
     subplan: SubPlan)(
       prevs: Seq[(Source, BranchKey)])(
         implicit context: MockCompilerContext.NodeCompiler,
-        sc: SparkContext): DirectOutputPrepareFlatEachForIterative[Foo] = {
+        jobContext: JobContext): DirectOutputPrepareFlatEachForIterative[Foo] = {
 
     val compiler = RoundAwareNodeCompiler.get(subplan)
     val thisType = compiler.compile(subplan)
@@ -106,8 +106,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
     context.addClass(context.broadcastIds)
     val cls = classServer.loadClass(thisType)
       .asSubclass(classOf[DirectOutputPrepareFlatEachForIterative[Foo]])
-    cls.getConstructor(classOf[Seq[_]], classOf[SparkContext])
-      .newInstance(prevs, sc)
+    cls.getConstructor(classOf[Seq[_]], classOf[JobContext])
+      .newInstance(prevs, jobContext)
   }
 
   def newPrepareGroupEach(
@@ -115,7 +115,7 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
       prevs: Seq[(Source, BranchKey)])(
         partitioner: Partitioner)(
           implicit context: MockCompilerContext.NodeCompiler,
-          sc: SparkContext): DirectOutputPrepareGroupEachForIterative[Foo] = {
+          jobContext: JobContext): DirectOutputPrepareGroupEachForIterative[Foo] = {
 
     val compiler = RoundAwareNodeCompiler.get(subplan)
     val thisType = compiler.compile(subplan)
@@ -123,8 +123,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
     context.addClass(context.broadcastIds)
     val cls = classServer.loadClass(thisType)
       .asSubclass(classOf[DirectOutputPrepareGroupEachForIterative[Foo]])
-    cls.getConstructor(classOf[Seq[_]], classOf[Partitioner], classOf[SparkContext])
-      .newInstance(prevs, partitioner, sc)
+    cls.getConstructor(classOf[Seq[_]], classOf[Partitioner], classOf[JobContext])
+      .newInstance(prevs, partitioner, jobContext)
   }
 
   def newPrepare(
@@ -132,15 +132,15 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
       setup: IterativeAction[Unit],
       prepare: DirectOutputPrepareEachForIterative[Foo])(
         implicit context: MockCompilerContext.NodeCompiler,
-        sc: SparkContext): DirectOutputPrepareForIterative[Foo] = {
+        jobContext: JobContext): DirectOutputPrepareForIterative[Foo] = {
     val thisType = DirectOutputPrepareForIterativeCompiler.compile(subplan)
     val cls = classServer.loadClass(thisType)
       .asSubclass(classOf[DirectOutputPrepareForIterative[Foo]])
     cls.getConstructor(
       classOf[IterativeAction[Unit]],
       classOf[DirectOutputPrepareEachForIterative[_]],
-      classOf[SparkContext])
-      .newInstance(setup, prepare, sc)
+      classOf[JobContext])
+      .newInstance(setup, prepare, jobContext)
   }
 
   {
@@ -155,7 +155,7 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
     } {
       val conf = s"IterativeInfo: ${iterativeInfo}"
 
-      it should s"prepare flat simple: [${conf}]" in { implicit sc =>
+      it should s"prepare flat simple: [${conf}]" in {
         val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
           .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
         val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -205,6 +205,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
           (0 until numSlices).map(i => new File(root, s"flat${idx}_${round}/s${round + stageOffset}-p${i}.bin"))
         }
 
+        implicit val jobContext = newJobContext(sc)
+
         val source =
           new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
             .mapWithRoundContext(Input)(Foo.intToFoo)
@@ -243,6 +245,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 .collect.toSeq
                 === (0 until 100).map(i => (100 * round + i, i % 10)))
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 4)
+          assert(statistics.bytes === 4292)
+          assert(statistics.records === 200)
+
           stageOffset += 7
         } else {
           assert(files.head.forall(_.exists()) === true)
@@ -256,12 +265,19 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
               .map(foo => (foo.id.get, foo.group.get))
               .collect.toSeq
               === (0 until 100).map(i => (100 * round + i, i % 10)))
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 2)
+          assert(statistics.bytes === 2146)
+          assert(statistics.records === 100)
+
           stageOffset += 4
         }
         idx += 1
       }
 
-      it should s"prepare flat w/o round variable: [${conf}]" in { implicit sc =>
+      it should s"prepare flat w/o round variable: [${conf}]" in {
         val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
           .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
         val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -311,6 +327,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
           (0 until numSlices).map(i => new File(root, s"flat${idx}/s${round + stageOffset}-p${i}.bin"))
         }
 
+        implicit val jobContext = newJobContext(sc)
+
         val source =
           new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
             .mapWithRoundContext(Input)(Foo.intToFoo)
@@ -349,6 +367,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 .collect.toSeq
                 === (0 until 100).map(i => (100 * round + i, i % 10)))
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 4)
+          assert(statistics.bytes === 4292)
+          assert(statistics.records === 200)
+
           stageOffset += 7
         } else {
           assert(files.head.forall(_.exists()) === true)
@@ -362,12 +387,19 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
               .map(foo => (foo.id.get, foo.group.get))
               .collect.toSeq
               === (0 until 100).map(i => (100 * round + i, i % 10)))
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 2)
+          assert(statistics.bytes === 2146)
+          assert(statistics.records === 100)
+
           stageOffset += 4
         }
         idx += 1
       }
 
-      it should s"prepare flat a part of rounds: [${conf}]" in { implicit sc =>
+      it should s"prepare flat a part of rounds: [${conf}]" in {
         val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
           .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
         val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -417,6 +449,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
           (0 until numSlices).map(i => new File(root, s"flat${idx}_${round}/s${round + stageOffset}-p${i}.bin"))
         }
 
+        implicit val jobContext = newJobContext(sc)
+
         val source =
           new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
             .mapWithRoundContext(Input)(Foo.intToFoo)
@@ -456,6 +490,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
             .map(foo => (foo.id.get, foo.group.get))
             .collect.toSeq
             === (0 until 100).map(i => (100 * round + i, i % 10)))
+
+        assert(jobContext.outputStatistics.size === 1)
+        val statistics = jobContext.outputStatistics(outputOperator.getName)
+        assert(statistics.files === 2)
+        assert(statistics.bytes === 2146)
+        assert(statistics.records === 100)
+
         if (iterativeInfo.getRecomputeKind != IterativeInfo.RecomputeKind.NEVER) {
           stageOffset += 5
         } else {
@@ -477,7 +518,7 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
     } {
       val conf = s"IterativeInfo: ${iterativeInfo}"
 
-      it should s"prepare group simple: [${conf}]" in { implicit sc =>
+      it should s"prepare group simple: [${conf}]" in {
         val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
           .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
         val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -527,6 +568,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
           (0 until numSlices).map(i => new File(root, s"group${idx}_${round}/foo_${i}.bin"))
         }
 
+        implicit val jobContext = newJobContext(sc)
+
         val source =
           new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
             .mapWithRoundContext(Input)(Foo.intToFoo)
@@ -570,6 +613,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                       === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
               }
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 20)
+          assert(statistics.bytes === 7060)
+          assert(statistics.records === 200)
+
         } else {
           assert(files.head.forall(_.exists()) === true)
           assert(files.tail.exists(_.exists(_.exists())) === false)
@@ -585,11 +635,17 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                   .collect.toSeq
                   === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 10)
+          assert(statistics.bytes === 3530)
+          assert(statistics.records === 100)
         }
         idx += 1
       }
 
-      it should s"prepare group w/o round variable: [${conf}]" in { implicit sc =>
+      it should s"prepare group w/o round variable: [${conf}]" in {
         val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
           .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
         val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -637,6 +693,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
         val numSlices = 2
         val files = (0 until numSlices).map(i => new File(root, s"group${idx}/foo_${i}.bin"))
 
+        implicit val jobContext = newJobContext(sc)
+
         val source =
           new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
             .mapWithRoundContext(Input)(Foo.intToFoo)
@@ -679,6 +737,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                     (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i))
                   })
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 10)
+          assert(statistics.bytes === 5330)
+          assert(statistics.records === 200)
+
         } else {
           files.zipWithIndex.foreach {
             case (file, i) =>
@@ -690,11 +755,17 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                   .collect.toSeq
                   === (0 until 100).reverse.filter(_ % 10 == i).map(j => (j, i)))
           }
+
+          assert(jobContext.outputStatistics.size === 1)
+          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(statistics.files === 10)
+          assert(statistics.bytes === 3530)
+          assert(statistics.records === 100)
         }
         idx += 1
       }
 
-      it should s"prepare group a part of rounds: [${conf}]" in { implicit sc =>
+      it should s"prepare group a part of rounds: [${conf}]" in {
         val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
           .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
         val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -744,6 +815,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
           (0 until numSlices).map(i => new File(root, s"group${idx}_${round}/foo_${i}.bin"))
         }
 
+        implicit val jobContext = newJobContext(sc)
+
         val source =
           new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
             .mapWithRoundContext(Input)(Foo.intToFoo)
@@ -787,6 +860,13 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 .collect.toSeq
                 === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
         }
+
+        assert(jobContext.outputStatistics.size === 1)
+        val statistics = jobContext.outputStatistics(outputOperator.getName)
+        assert(statistics.files === 10)
+        assert(statistics.bytes === 3530)
+        assert(statistics.records === 100)
+
         idx += 1
       }
     }
@@ -797,7 +877,7 @@ object DirectOutputPrepareForIterativeClassBuilderSpec {
 
   class Setup(
     val label: String)(
-      implicit val sc: SparkContext)
+      implicit val jobContext: JobContext)
     extends IterativeAction[Unit] with runtime.CacheAlways[Seq[RoundContext], Future[Unit]] {
 
     override protected def doPerform(
@@ -808,14 +888,14 @@ object DirectOutputPrepareForIterativeClassBuilderSpec {
   class Commit(
     prepares: Set[IterativeAction[Unit]])(
       val basePaths: Set[String])(
-        implicit sc: SparkContext)
+        implicit jobContext: JobContext)
     extends DirectOutputCommitForIterative(prepares)
     with runtime.CacheAlways[Seq[RoundContext], Future[Unit]] {
 
     def this(
       prepare: IterativeAction[Unit])(
         basePath: String)(
-          implicit sc: SparkContext) = this(Set(prepare))(Set(basePath))
+          implicit jobContext: JobContext) = this(Set(prepare))(Set(basePath))
   }
 
   val Input = BranchKey(0)

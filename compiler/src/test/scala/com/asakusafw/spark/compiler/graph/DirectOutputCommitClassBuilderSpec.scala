@@ -17,7 +17,7 @@ package com.asakusafw.spark.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -27,7 +27,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.extension.directio.{
@@ -46,7 +46,6 @@ import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler.graph.DirectOutputCommitClassBuilderSpec._
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.directio.{ BasicDataDefinition, HadoopObjectFactory }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.{ graph => runtime }
 
@@ -60,6 +59,7 @@ class DirectOutputCommitClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar
   with TempDirForAll {
 
@@ -80,15 +80,15 @@ class DirectOutputCommitClassBuilderSpec
   def newCommit(
     outputs: Set[ExternalOutput])(
       prepares: Set[Action[Unit]])(
-        implicit sc: SparkContext): DirectOutputCommit = {
+        implicit jobContext: JobContext): DirectOutputCommit = {
     implicit val context = newCompilerContext(flowId)
     val setupType = DirectOutputCommitCompiler.compile(outputs)
     context.loadClass(setupType.getClassName)
-      .getConstructor(classOf[Set[Action[Unit]]], classOf[SparkContext])
-      .newInstance(prepares, sc)
+      .getConstructor(classOf[Set[Action[Unit]]], classOf[JobContext])
+      .newInstance(prepares, jobContext)
   }
 
-  it should "commit" in { implicit sc =>
+  it should "commit" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -115,6 +115,8 @@ class DirectOutputCommitClassBuilderSpec
 
     val file = new File(root, "out/testing.bin")
 
+    implicit val jobContext = newJobContext(sc)
+
     val prepare = new Prepare("id", "test/out/testing.bin", "test/out", "testing.bin")("prepare")
     val commit = newCommit(Set(outputOperator))(Set(prepare))
 
@@ -138,7 +140,7 @@ object DirectOutputCommitClassBuilderSpec {
     basePath: String,
     resourceName: String)(
       val label: String)(
-        implicit val sc: SparkContext)
+        implicit val jobContext: JobContext)
     extends Action[Unit] with runtime.CacheOnce[RoundContext, Future[Unit]] {
 
     override protected def doPerform(

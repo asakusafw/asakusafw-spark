@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -28,7 +28,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.directio.{ Counter, DataDefinition, OutputAttemptContext }
@@ -36,14 +36,18 @@ import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, HadoopDataSourc
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.directio.{ BasicDataDefinition, HadoopObjectFactory }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 
 import resource._
 
 @RunWith(classOf[JUnitRunner])
 class DirectOutputCommitSpecTest extends DirectOutputCommitSpec
 
-class DirectOutputCommitSpec extends FlatSpec with SparkForAll with RoundContextSugar with TempDirForAll {
+class DirectOutputCommitSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar
+  with TempDirForAll {
 
   import DirectOutputCommitSpec._
 
@@ -61,7 +65,9 @@ class DirectOutputCommitSpec extends FlatSpec with SparkForAll with RoundContext
     conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
   }
 
-  it should "commit" in { implicit sc =>
+  it should "commit" in {
+    implicit val jobContext = newJobContext(sc)
+
     val file = new File(root, "out/testing.bin")
 
     val prepare = new Prepare("id", "test/out", "testing.bin")("prepare")
@@ -86,7 +92,7 @@ object DirectOutputCommitSpec {
     basePath: String,
     resourceName: String)(
       val label: String)(
-        implicit val sc: SparkContext)
+        implicit val jobContext: JobContext)
     extends Action[Unit] with CacheOnce[RoundContext, Future[Unit]] {
 
     override protected def doPerform(
@@ -123,7 +129,7 @@ object DirectOutputCommitSpec {
   class Commit(
     prepares: Set[Action[Unit]])(
       val basePaths: Set[String])(
-        implicit sc: SparkContext)
+        implicit jobContext: JobContext)
     extends DirectOutputCommit(prepares) with CacheOnce[RoundContext, Future[Unit]]
 
   class Foo extends DataModel[Foo] with Writable {

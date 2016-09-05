@@ -13,20 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime.fixture
-
-import org.scalatest.Outcome
-import org.scalatest.fixture.Suite
+package com.asakusafw.spark.runtime
 
 import org.apache.spark.SparkContext
 
-import com.asakusafw.spark.runtime
+trait JobContextSugar {
 
-trait SparkForAll extends runtime.SparkForAll { self: Suite =>
+  def newJobContext(sc: SparkContext): JobContext =
+    JobContextSugar.MockJobContext(sc)
+}
 
-  type FixtureParam = SparkContext
+object JobContextSugar {
 
-  override def withFixture(test: OneArgTest): Outcome = {
-    withFixture(test.toNoArgTest(sc))
-  }
+  case class MockJobContext(
+    @transient sparkContext: SparkContext)
+    extends JobContext
 }

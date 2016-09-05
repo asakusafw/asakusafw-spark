@@ -17,7 +17,7 @@ package com.asakusafw.spark.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -27,7 +27,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.lang.compiler.extension.directio.{
   DirectFileIoConstants,
@@ -43,7 +43,6 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler.graph.DirectOutputSetupClassBuilderSpec._
 import com.asakusafw.spark.runtime._
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.graph.DirectOutputSetup
 
 @RunWith(classOf[JUnitRunner])
@@ -54,6 +53,7 @@ class DirectOutputSetupClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar
   with TempDirForAll {
 
@@ -68,15 +68,15 @@ class DirectOutputSetupClassBuilderSpec
     conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
   }
 
-  def newSetup(outputs: Set[ExternalOutput])(implicit sc: SparkContext): DirectOutputSetup = {
+  def newSetup(outputs: Set[ExternalOutput])(implicit jobContext: JobContext): DirectOutputSetup = {
     implicit val context = newCompilerContext(flowId)
     val setupType = DirectOutputSetupCompiler.compile(outputs)
     context.loadClass(setupType.getClassName)
-      .getConstructor(classOf[SparkContext])
-      .newInstance(sc)
+      .getConstructor(classOf[JobContext])
+      .newInstance(jobContext)
   }
 
-  it should "delete simple" in { implicit sc =>
+  it should "delete simple" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -105,6 +105,8 @@ class DirectOutputSetupClassBuilderSpec
     file.getParentFile.mkdirs()
     file.createNewFile()
 
+    implicit val jobContext = newJobContext(sc)
+
     val setup = newSetup(Set(outputOperator))
     val rc = newRoundContext()
 
@@ -113,7 +115,7 @@ class DirectOutputSetupClassBuilderSpec
     assert(file.exists() === false)
   }
 
-  it should "not delete out of scope" in { implicit sc =>
+  it should "not delete out of scope" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -141,6 +143,8 @@ class DirectOutputSetupClassBuilderSpec
     val file = new File(root, "out2/testing.bin")
     file.getParentFile.mkdirs()
     file.createNewFile()
+
+    implicit val jobContext = newJobContext(sc)
 
     val setup = newSetup(Set(outputOperator))
     val rc = newRoundContext()

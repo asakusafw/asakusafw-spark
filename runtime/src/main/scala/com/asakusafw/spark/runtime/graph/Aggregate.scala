@@ -20,7 +20,7 @@ import scala.annotation.meta.param
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
-import org.apache.spark.{ InterruptibleIterator, Partitioner, SparkContext, TaskContext }
+import org.apache.spark.{ InterruptibleIterator, Partitioner, TaskContext }
 import org.apache.spark.rdd.RDD
 
 import org.apache.spark.backdoor._
@@ -35,7 +35,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
   @(transient @param) sort: Option[SortOrdering],
   @(transient @param) partitioner: Partitioner)(
     @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
-      implicit @transient val sc: SparkContext)
+      implicit val jobContext: JobContext)
   extends Source
   with UsingBroadcasts
   with Branching[C] {
@@ -43,7 +43,8 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
 
   @transient
   private val fragmentBufferSize =
-    sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
+    jobContext.sparkContext.getConf.getInt(
+      Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   def aggregation: Aggregation[ShuffleKey, V, C]
 
@@ -58,14 +59,14 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
     val future = Future.sequence(rdds).zip(zipBroadcasts(rc)).map {
       case (prevs, broadcasts) =>
 
-        sc.clearCallSite()
-        sc.setCallSite(
+        jobContext.sparkContext.clearCallSite()
+        jobContext.sparkContext.setCallSite(
           CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
         val aggregated = {
           if (aggregation.mapSideCombine) {
             val part = Some(partitioner)
-            sc.confluent(
+            jobContext.sparkContext.confluent(
               prevs.map { prev =>
                 if (prev.partitioner == part) {
                   prev.asInstanceOf[RDD[(ShuffleKey, C)]]
@@ -85,7 +86,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
                 new InterruptibleIterator(context, combiner.iterator)
               }, preservesPartitioning = true)
           } else {
-            sc.confluent(prevs, partitioner, sort)
+            jobContext.sparkContext.confluent(prevs, partitioner, sort)
               .mapPartitions({ iter =>
                 val combiner = aggregation.valueCombiner
                 combiner.insertAll(iter.map { case (k, v) => (k.dropOrdering, v) })

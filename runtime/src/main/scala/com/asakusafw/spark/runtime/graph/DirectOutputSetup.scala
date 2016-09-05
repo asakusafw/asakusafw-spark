@@ -18,7 +18,6 @@ package graph
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.SparkContext
 import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -26,7 +25,7 @@ import com.asakusafw.runtime.directio.{ Counter, FilePattern }
 import com.asakusafw.runtime.directio.hadoop.HadoopDataSourceUtil
 
 abstract class DirectOutputSetup(
-  implicit val sc: SparkContext) extends Action[Unit] {
+  implicit val jobContext: JobContext) extends Action[Unit] {
   self: CacheStrategy[RoundContext, Future[Unit]] =>
 
   private val Logger = LoggerFactory.getLogger(getClass)

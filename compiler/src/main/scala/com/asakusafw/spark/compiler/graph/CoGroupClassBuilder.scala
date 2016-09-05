@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import org.objectweb.asm.Type
@@ -33,6 +33,7 @@ import com.asakusafw.spark.compiler.graph.branching.Branching
 import com.asakusafw.spark.compiler.graph.CoGroupClassBuilder._
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.spi.{ NodeCompiler, OperatorCompiler, OperatorType }
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
@@ -66,7 +67,7 @@ abstract class CoGroupClassBuilder(
       classOf[GroupOrdering].asType,
       classOf[Partitioner].asType,
       classOf[Map[BroadcastId, Broadcast[_]]].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Seq[_]].asType) {
@@ -112,11 +113,11 @@ abstract class CoGroupClassBuilder(
               }
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
         val (thisVar :: prevsVar :: groupingVar :: partVar :: broadcastsVar
-          :: scVar :: _) = mb.argVars
+          :: jobContextVar :: _) = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -124,7 +125,7 @@ abstract class CoGroupClassBuilder(
           groupingVar.push(),
           partVar.push(),
           broadcastsVar.push(),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }

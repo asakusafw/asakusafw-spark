@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -28,7 +28,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.lang.compiler.extension.directio.{
@@ -47,7 +47,6 @@ import com.asakusafw.spark.compiler._
 import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.directio.{ BasicDataDefinition, HadoopObjectFactory }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.{
   DirectOutputCommitForIterative,
@@ -65,6 +64,7 @@ class DirectOutputCommitForIterativeClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar
   with TempDirForAll {
 
@@ -87,15 +87,15 @@ class DirectOutputCommitForIterativeClassBuilderSpec
   def newCommit(
     outputs: Set[ExternalOutput])(
       prepares: Set[IterativeAction[Unit]])(
-        implicit sc: SparkContext): DirectOutputCommitForIterative = {
+        implicit jobContext: JobContext): DirectOutputCommitForIterative = {
     implicit val context = newCompilerContext(flowId)
     val setupType = DirectOutputCommitForIterativeCompiler.compile(outputs)
     context.loadClass(setupType.getClassName)
-      .getConstructor(classOf[Set[IterativeAction[Unit]]], classOf[SparkContext])
-      .newInstance(prepares, sc)
+      .getConstructor(classOf[Set[IterativeAction[Unit]]], classOf[JobContext])
+      .newInstance(prepares, jobContext)
   }
 
-  it should "commit" in { implicit sc =>
+  it should "commit" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -125,6 +125,8 @@ class DirectOutputCommitForIterativeClassBuilderSpec
       new File(root, s"out1_${round}/testing.bin")
     }
 
+    implicit val jobContext = newJobContext(sc)
+
     val prepare = new Prepare("id", "test/out1_${round}", "testing.bin")("prepare")
     val commit = newCommit(Set(outputOperator))(Set(prepare))
 
@@ -144,7 +146,7 @@ class DirectOutputCommitForIterativeClassBuilderSpec
     assert(files.forall(_.exists()) === true)
   }
 
-  it should "commit out of scope round" in { implicit sc =>
+  it should "commit out of scope round" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
     val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
@@ -174,6 +176,8 @@ class DirectOutputCommitForIterativeClassBuilderSpec
       new File(root, s"out2_${round}/testing.bin")
     }
 
+    implicit val jobContext = newJobContext(sc)
+
     val prepare = new Prepare("id", "test/out2_${round}", "testing.bin")("prepare")
     val commit = newCommit(Set(outputOperator))(Set(prepare))
 
@@ -199,7 +203,7 @@ object DirectOutputCommitForIterativeClassBuilderSpec {
     basePath: String,
     resourceName: String)(
       val label: String)(
-        implicit val sc: SparkContext)
+        implicit val jobContext: JobContext)
     extends IterativeAction[Unit] with runtime.CacheAlways[Seq[RoundContext], Future[Unit]] {
 
     override protected def doPerform(

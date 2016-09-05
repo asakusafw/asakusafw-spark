@@ -16,7 +16,5 @@
 package com.asakusafw.spark.runtime
 package graph
 
-import org.apache.spark.SparkContext
-
 abstract class Output(
-  implicit val sc: SparkContext) extends Sink
+  implicit val jobContext: JobContext) extends Sink

@@ -19,10 +19,9 @@ package graph
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.graph.{ CacheStrategy, Source }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
@@ -31,7 +30,7 @@ abstract class RoundAwareMapPartitions[T, U: ClassTag](
   branchKey: BranchKey,
   f: RoundContext => (Int, Iterator[T]) => Iterator[U],
   preservesPartitioning: Boolean = false)(
-    implicit val sc: SparkContext) extends Source with RoundAwareSource.Ops {
+    implicit val jobContext: JobContext) extends Source with RoundAwareSource.Ops {
   self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
 
   override val label: String = parent.label

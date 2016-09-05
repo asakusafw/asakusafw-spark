@@ -21,7 +21,6 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.{ classTag, ClassTag }
 
 import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 import org.apache.spark.backdoor._
@@ -31,7 +30,7 @@ import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
-  implicit sc: SparkContext,
+  implicit jobContext: JobContext,
   @(transient @param) ifClassTag: ClassTag[IF],
   @(transient @param) kClassTag: ClassTag[K],
   @(transient @param) vClassTag: ClassTag[V])
@@ -42,6 +41,11 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
 
   protected def newJob(rc: RoundContext): MRJob
 
+  @transient
+  private val fragmentBufferSize =
+    jobContext.sparkContext.getConf.getInt(
+      Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
+
   override protected def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 
@@ -49,18 +53,17 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
 
       val job = newJob(rc)
 
-      sc.clearCallSite()
-      sc.setCallSite(
+      jobContext.sparkContext.clearCallSite()
+      jobContext.sparkContext.setCallSite(
         CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
-      val rdd = sc.newAPIHadoopRDD(
+      val rdd = jobContext.sparkContext.newAPIHadoopRDD(
         job.getConfiguration,
         classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
         classTag[K].runtimeClass.asInstanceOf[Class[K]],
         classTag[V].runtimeClass.asInstanceOf[Class[V]])
 
-      branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(
-        sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize))
+      branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(fragmentBufferSize)
     }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

@@ -19,10 +19,9 @@ package graph
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.graph.ParallelCollectionSource
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
@@ -31,6 +30,6 @@ class RoundAwareParallelCollectionSource[T: ClassTag](
   data: Seq[T],
   numSlices: Option[Int] = None)(
     label: String)(
-      implicit sc: SparkContext)
+      implicit jobContext: JobContext)
   extends ParallelCollectionSource[T](branchKey, data, numSlices)(label)
   with RoundAwareCacheOnce.Ops

@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -27,7 +27,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.io.{ NullWritable, Writable }
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
@@ -35,20 +35,24 @@ import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 @RunWith(classOf[JUnitRunner])
 class ResourceBrokingIteratorSpecTest extends ResourceBrokingIteratorSpec
 
-class ResourceBrokingIteratorSpec extends FlatSpec with SparkForAll with RoundContextSugar {
+class ResourceBrokingIteratorSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar {
 
   import ResourceBrokingIteratorSpec._
 
   behavior of classOf[ResourceBrokingIterator[_]].getSimpleName
 
-  it should "broke resources" in { implicit sc =>
+  it should "broke resources" in {
+    implicit val jobContext = newJobContext(sc)
 
     val source =
       new ParallelCollectionSource(Input, (0 until 10))("input")
@@ -114,14 +118,14 @@ object ResourceBrokingIteratorSpec {
   class TestExtract(
     prevs: Seq[(Source, BranchKey)])(
       val label: String)(
-        implicit sc: SparkContext)
+        implicit jobContext: JobContext)
     extends Extract[Foo](prevs)(Map.empty)
     with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
     def this(
       prev: (Source, BranchKey))(
         label: String)(
-          implicit sc: SparkContext) = this(Seq(prev))(label)
+          implicit jobContext: JobContext) = this(Seq(prev))(label)
 
     override def branchKeys: Set[BranchKey] = Set(Result)
 

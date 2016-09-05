@@ -17,7 +17,7 @@ package com.asakusafw.spark.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -30,7 +30,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -43,8 +43,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ BooleanOption, IntOption }
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.runtime.{ RoundContext, RoundContextSugar }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
+import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -69,6 +68,7 @@ class CoGroupClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar {
 
   import CoGroupClassBuilderSpec._
@@ -81,7 +81,7 @@ class CoGroupClassBuilderSpec
       (SubPlanOutputInfo.OutputType.DONT_CARE, 7),
       (SubPlanOutputInfo.OutputType.PREPARE_EXTERNAL_OUTPUT, 0))
   } {
-    it should s"build cogroup class ${method} with OutputType.${outputType}" in { implicit sc =>
+    it should s"build cogroup class ${method} with OutputType.${outputType}" in {
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
       val barsMarker = MarkerOperator.builder(ClassDescription.of(classOf[Bar]))
@@ -183,6 +183,8 @@ class CoGroupClassBuilderSpec
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
+      implicit val jobContext = newJobContext(sc)
+
       val foos =
         new ParallelCollectionSource(getBranchKey(foosMarker), (0 until 100))("foos")
           .map(getBranchKey(foosMarker))(Foo.intToFoo)
@@ -201,7 +203,7 @@ class CoGroupClassBuilderSpec
         classOf[GroupOrdering],
         classOf[Partitioner],
         classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[SparkContext])
+        classOf[JobContext])
         .newInstance(
           Seq(
             (Seq((foos, getBranchKey(foosMarker))), Option(fooOrd)),
@@ -209,7 +211,7 @@ class CoGroupClassBuilderSpec
           grouping,
           partitioner,
           Map.empty,
-          sc)
+          jobContext)
 
       assert(cogroup.partitioners.size === partitioners)
 

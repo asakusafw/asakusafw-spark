@@ -16,11 +16,11 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.Type
 
 import com.asakusafw.spark.compiler._
 import com.asakusafw.spark.compiler.graph.CacheStrategy
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.graph.DirectOutputSetup
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -37,18 +37,18 @@ abstract class DirectOutputSetupForIterativeClassBuilder(
   self: CacheStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(classOf[SparkContext].asType)) { implicit mb =>
+    ctorDef.newInit(Seq(classOf[JobContext].asType)) { implicit mb =>
 
-      val thisVar :: scVar :: _ = mb.argVars
+      val thisVar :: jobContextVar :: _ = mb.argVars
 
       thisVar.push().invokeInit(
         superType,
         {
           val setup = pushNew(setupType)
-          setup.dup().invokeInit(scVar.push())
+          setup.dup().invokeInit(jobContextVar.push())
           setup.asType(classOf[DirectOutputSetup].asType)
         },
-        scVar.push())
+        jobContextVar.push())
       initMixIns()
     }
   }

@@ -20,17 +20,16 @@ import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkContext
 import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.directio.hadoop.HadoopDataSourceUtil
-import com.asakusafw.spark.runtime.RoundContext
+import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
 import com.asakusafw.spark.runtime.graph._
 
 abstract class DirectOutputCommitForIterative(
   prepares: Set[IterativeAction[Unit]])(
-    implicit val sc: SparkContext) extends IterativeAction[Unit] {
+    implicit val jobContext: JobContext) extends IterativeAction[Unit] {
   self: CacheStrategy[Seq[RoundContext], Future[Unit]] =>
 
   private val Logger = LoggerFactory.getLogger(getClass)

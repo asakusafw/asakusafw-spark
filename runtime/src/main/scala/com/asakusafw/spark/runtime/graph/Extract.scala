@@ -19,7 +19,7 @@ package graph
 import scala.annotation.meta.param
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.Props
@@ -28,7 +28,7 @@ import com.asakusafw.spark.runtime.rdd._
 abstract class Extract[T](
   @(transient @param) prevs: Seq[(Source, BranchKey)])(
     @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
-      implicit @transient val sc: SparkContext)
+      implicit val jobContext: JobContext)
   extends Source
   with UsingBroadcasts
   with Branching[T] {
@@ -36,7 +36,8 @@ abstract class Extract[T](
 
   @transient
   private val fragmentBufferSize =
-    sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
+    jobContext.sparkContext.getConf.getInt(
+      Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
@@ -59,7 +60,7 @@ abstract class Extract[T](
           if (zipped.size == 1) {
             zipped.head
           } else {
-            sc.union(zipped)
+            jobContext.sparkContext.union(zipped)
           }
         }
       }).zip(zipBroadcasts(rc)).map {

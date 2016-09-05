@@ -21,6 +21,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.planning.PartitionGroupInfo
+import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -28,10 +29,13 @@ import com.asakusafw.spark.tools.asm4s._
 
 object NumPartitions {
 
-  def numPartitions(sc: => Stack)(port: SubPlan.Port)(implicit mb: MethodBuilder): Stack = {
+  def numPartitions(
+    jobContext: => Stack)(
+      port: SubPlan.Port)(
+        implicit mb: MethodBuilder): Stack = {
     val dataSize = Option(port.getAttribute(classOf[PartitionGroupInfo]))
       .map(_.getDataSize).getOrElse(PartitionGroupInfo.DataSize.REGULAR)
-    val scale = getParallelismScale(sc) _
+    val scale = getParallelismScale(jobContext) _
     dataSize match {
       case PartitionGroupInfo.DataSize.TINY =>
         ldc(1)
@@ -40,38 +44,40 @@ object NumPartitions {
           classOf[Math].asType,
           "max",
           Type.INT_TYPE,
-          getParallelism(sc).toDouble.multiply(scale("Small")).toInt,
+          getParallelism(jobContext).toDouble.multiply(scale("Small")).toInt,
           ldc(1))
       case PartitionGroupInfo.DataSize.REGULAR =>
         invokeStatic(
           classOf[Math].asType,
           "max",
           Type.INT_TYPE,
-          getParallelism(sc),
+          getParallelism(jobContext),
           ldc(1))
       case PartitionGroupInfo.DataSize.LARGE =>
         invokeStatic(
           classOf[Math].asType,
           "max",
           Type.INT_TYPE,
-          getParallelism(sc).toDouble.multiply(scale("Large")).toInt,
+          getParallelism(jobContext).toDouble.multiply(scale("Large")).toInt,
           ldc(1))
       case PartitionGroupInfo.DataSize.HUGE =>
         invokeStatic(
           classOf[Math].asType,
           "max",
           Type.INT_TYPE,
-          getParallelism(sc).toDouble.multiply(scale("Huge")).toInt,
+          getParallelism(jobContext).toDouble.multiply(scale("Huge")).toInt,
           ldc(1))
     }
   }
 
-  private def getParallelism(sc: => Stack)(implicit mb: MethodBuilder): Stack = {
-    sc.invokeV("getConf", classOf[SparkConf].asType)
+  private def getParallelism(jobContext: => Stack)(implicit mb: MethodBuilder): Stack = {
+    sparkContext(jobContext)
+      .invokeV("getConf", classOf[SparkConf].asType)
       .invokeV("getInt", Type.INT_TYPE,
         pushObject(Props)
           .invokeV("Parallelism", classOf[String].asType),
-        sc.invokeV("getConf", classOf[SparkConf].asType)
+        sparkContext(jobContext)
+          .invokeV("getConf", classOf[SparkConf].asType)
           .invokeV("getInt", Type.INT_TYPE,
             ldc("spark.default.parallelism"),
             pushObject(Props)
@@ -79,10 +85,11 @@ object NumPartitions {
   }
 
   private def getParallelismScale(
-    sc: => Stack)(
+    jobContext: => Stack)(
       suffix: String)(
         implicit mb: MethodBuilder): Stack = {
-    sc.invokeV("getConf", classOf[SparkConf].asType)
+    sparkContext(jobContext)
+      .invokeV("getConf", classOf[SparkConf].asType)
       .invokeV("getDouble", Type.DOUBLE_TYPE,
         pushObject(Props)
           .invokeV(s"ParallelismScale${suffix}", classOf[String].asType),

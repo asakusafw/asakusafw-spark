@@ -67,8 +67,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     (path, classpath)
   }
 
-  def prepareData[T: ClassTag](name: String, path: File)(rdd: RDD[T])(
-    implicit sc: SparkContext): Unit = {
+  def prepareData[T: ClassTag](
+    name: String, path: File)(
+      rdd: RDD[T])(
+        implicit sc: SparkContext): Unit = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass)
@@ -79,7 +81,9 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
 
-  def readResult[T: ClassTag](name: String, path: File)(implicit sc: SparkContext): RDD[T] = {
+  def readResult[T: ClassTag](
+    name: String, path: File)(
+      implicit sc: SparkContext): RDD[T] = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/-/part-*")))
     sc.newAPIHadoopRDD(

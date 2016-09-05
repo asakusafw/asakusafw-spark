@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.File
@@ -27,15 +27,19 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 
 import com.asakusafw.runtime.directio.hadoop.HadoopDataSource
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 
 @RunWith(classOf[JUnitRunner])
 class DirectOutputSetupSpecTest extends DirectOutputSetupSpec
 
-class DirectOutputSetupSpec extends FlatSpec with SparkForAll with RoundContextSugar with TempDirForAll {
+class DirectOutputSetupSpec
+  extends FlatSpec
+  with SparkForAll
+  with JobContextSugar
+  with RoundContextSugar
+  with TempDirForAll {
 
   import DirectOutputSetupSpec._
 
@@ -50,7 +54,9 @@ class DirectOutputSetupSpec extends FlatSpec with SparkForAll with RoundContextS
     conf.setHadoopConf("com.asakusafw.directio.test.fs.path", root.getAbsolutePath)
   }
 
-  it should "delete simple" in { implicit sc =>
+  it should "delete simple" in {
+    implicit val jobContext = newJobContext(sc)
+
     val file = new File(root, "out1/testing.bin")
     file.getParentFile.mkdirs()
     file.createNewFile()
@@ -63,7 +69,9 @@ class DirectOutputSetupSpec extends FlatSpec with SparkForAll with RoundContextS
     assert(file.exists() === false)
   }
 
-  it should "not delete out of scope" in { implicit sc =>
+  it should "not delete out of scope" in {
+    implicit val jobContext = newJobContext(sc)
+
     val file = new File(root, "out2/testing.bin")
     file.getParentFile.mkdirs()
     file.createNewFile()
@@ -81,6 +89,6 @@ object DirectOutputSetupSpec {
 
   class Setup(
     val specs: Set[(String, String, Seq[String])])(
-      implicit sc: SparkContext)
+      implicit jobContext: JobContext)
     extends DirectOutputSetup with CacheOnce[RoundContext, Future[Unit]]
 }

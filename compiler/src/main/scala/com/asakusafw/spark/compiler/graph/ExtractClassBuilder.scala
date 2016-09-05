@@ -22,7 +22,6 @@ import scala.collection.mutable
 import scala.concurrent.Future
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import org.objectweb.asm.Type
@@ -34,6 +33,7 @@ import com.asakusafw.spark.compiler.graph.ExtractClassBuilder._
 import com.asakusafw.spark.compiler.operator.FragmentGraphBuilder
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.graph.branching.Branching
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
@@ -69,7 +69,7 @@ abstract class ExtractClassBuilder(
     ctorDef.newInit(Seq(
       classOf[Seq[(Source, BranchKey)]].asType,
       classOf[Map[BroadcastId, Broadcast[_]]].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Seq[_]].asType) {
@@ -91,15 +91,15 @@ abstract class ExtractClassBuilder(
               }
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: inputsVar :: broadcastsVar :: scVar :: _ = mb.argVars
+        val thisVar :: inputsVar :: broadcastsVar :: jobContextVar :: _ = mb.argVars
         thisVar.push().invokeInit(
           superType,
           inputsVar.push(),
           broadcastsVar.push(),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }

@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -28,6 +27,7 @@ import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.graph.DirectInputClassBuilder._
 import com.asakusafw.spark.compiler.spi.NodeCompiler
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.graph.{ Broadcast, BroadcastId, DirectInput }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -68,7 +68,7 @@ abstract class DirectInputClassBuilder(
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(Seq(
       classOf[Map[BroadcastId, Broadcast[_]]].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
@@ -80,10 +80,10 @@ abstract class DirectInputClassBuilder(
               }
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: broadcastsVar :: scVar :: _ = mb.argVars
+        val thisVar :: broadcastsVar :: jobContextVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
@@ -91,7 +91,7 @@ abstract class DirectInputClassBuilder(
           classTag(inputFormatType),
           classTag(keyType),
           classTag(valueType),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }

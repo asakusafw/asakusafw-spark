@@ -22,7 +22,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.runtime.BoxedUnit
 
-import org.apache.spark.{ Partitioner, SparkContext }
+import org.apache.spark.Partitioner
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -34,6 +34,7 @@ import com.asakusafw.spark.compiler._
 import com.asakusafw.spark.compiler.graph.CacheStrategy
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.graph.SortOrdering
 import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
@@ -71,7 +72,7 @@ abstract class DirectOutputPrepareForIterativeClassBuilder(
     ctorDef.newInit(Seq(
       classOf[IterativeAction[Unit]].asType,
       classOf[DirectOutputPrepareEachForIterative[_]].asType,
-      classOf[SparkContext].asType),
+      classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[IterativeAction[_]].asType) {
@@ -83,17 +84,17 @@ abstract class DirectOutputPrepareForIterativeClassBuilder(
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: setupVar :: prepareVar :: scVar :: _ = mb.argVars
+        val thisVar :: setupVar :: prepareVar :: jobContextVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           setupVar.push(),
           prepareVar.push(),
           manifest(dataModelType),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }
@@ -103,6 +104,10 @@ abstract class DirectOutputPrepareForIterativeClassBuilder(
 
     methodDef.newMethod("label", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(s"epilogue: ${label}"))
+    }
+
+    methodDef.newMethod("name", classOf[String].asType, Seq.empty) { implicit mb =>
+      `return`(ldc(operator.getName))
     }
 
     methodDef.newMethod("formatType", classOf[Class[_ <: DataFormat[_]]].asType, Seq.empty,

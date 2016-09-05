@@ -71,11 +71,11 @@ object AggregateInstantiator extends Instantiator {
         partitioner(ldc(1))
       } else {
         partitioner(
-          numPartitions(vars.sc.push())(
+          numPartitions(vars.jobContext.push())(
             subplan.findInput(input.getOpposites.head.getOwner)))
       }),
       vars.broadcasts.push(),
-      vars.sc.push())
+      vars.jobContext.push())
     aggregate.store()
   }
 }

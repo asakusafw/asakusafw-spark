@@ -18,12 +18,12 @@ package graph
 
 import scala.runtime.BoxedUnit
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.spark.compiler._
 import com.asakusafw.spark.compiler.graph.CacheStrategy
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
@@ -43,7 +43,7 @@ class DirectOutputCommitForIterativeClassBuilder(
   this: CacheStrategy =>
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq(classOf[Set[IterativeAction[String]]].asType, classOf[SparkContext].asType),
+    ctorDef.newInit(Seq(classOf[Set[IterativeAction[String]]].asType, classOf[JobContext].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Set[_]].asType) {
@@ -54,15 +54,15 @@ class DirectOutputCommitForIterativeClassBuilder(
             }
           }
         }
-        .newParameterType(classOf[SparkContext].asType)
+        .newParameterType(classOf[JobContext].asType)
         .newVoidReturnType()) { implicit mb =>
 
-        val thisVar :: preparesVar :: scVar :: _ = mb.argVars
+        val thisVar :: preparesVar :: jobContextVar :: _ = mb.argVars
 
         thisVar.push().invokeInit(
           superType,
           preparesVar.push(),
-          scVar.push())
+          jobContextVar.push())
         initMixIns()
       }
   }

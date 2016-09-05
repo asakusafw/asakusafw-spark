@@ -17,7 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -29,7 +29,7 @@ import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.Writable
-import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -47,8 +47,7 @@ import com.asakusafw.spark.compiler.planning.{
   SubPlanInfo,
   SubPlanOutputInfo
 }
-import com.asakusafw.spark.runtime.{ Props, RoundContext, RoundContextSugar }
-import com.asakusafw.spark.runtime.fixture.SparkForAll
+import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -74,6 +73,7 @@ class AggregateClassBuilderSpec
   with SparkForAll
   with FlowIdForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar {
 
   import AggregateClassBuilderSpec._
@@ -99,7 +99,7 @@ class AggregateClassBuilderSpec
   } {
     val conf = s"DataSize: ${dataSize}, IterativeInfo: ${iterativeInfo}"
 
-    it should s"build aggregate class: [${conf}]" in { implicit sc =>
+    it should s"build aggregate class: [${conf}]" in {
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -155,6 +155,8 @@ class AggregateClassBuilderSpec
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
+      implicit val jobContext = newJobContext(sc)
+
       val foos =
         new RoundAwareParallelCollectionSource(getBranchKey(foosMarker), (0 until 10))("foos")
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
@@ -164,13 +166,13 @@ class AggregateClassBuilderSpec
         classOf[Option[SortOrdering]],
         classOf[Partitioner],
         classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[SparkContext])
+        classOf[JobContext])
         .newInstance(
           Seq((foos, getBranchKey(foosMarker))),
           Option(new Foo.SortOrdering()),
           new HashPartitioner(2),
           Map.empty,
-          sc)
+          jobContext)
 
       assert(aggregate.branchKeys === Set(resultMarker).map(getBranchKey))
 
@@ -201,7 +203,7 @@ class AggregateClassBuilderSpec
       }
     }
 
-    it should s"build aggregate class with grouping is empty: [${conf}]" in { implicit sc =>
+    it should s"build aggregate class with grouping is empty: [${conf}]" in {
       val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
         .attribute(classOf[PlanMarker], PlanMarker.CHECKPOINT).build()
 
@@ -257,6 +259,8 @@ class AggregateClassBuilderSpec
         branchKeyCls.getField(context.branchKeys.getField(sn)).get(null).asInstanceOf[BranchKey]
       }
 
+      implicit val jobContext = newJobContext(sc)
+
       val foos =
         new RoundAwareParallelCollectionSource(getBranchKey(foosMarker), (0 until 10))("foos")
           .mapWithRoundContext(getBranchKey(foosMarker))(Foo.intToFoo)
@@ -270,13 +274,13 @@ class AggregateClassBuilderSpec
         classOf[Option[SortOrdering]],
         classOf[Partitioner],
         classOf[Map[BroadcastId, Broadcast[_]]],
-        classOf[SparkContext])
+        classOf[JobContext])
         .newInstance(
           Seq((foos, getBranchKey(foosMarker))),
           None,
           new HashPartitioner(2),
           Map.empty,
-          sc)
+          jobContext)
 
       assert(aggregate.branchKeys === Set(resultMarker).map(getBranchKey))
 

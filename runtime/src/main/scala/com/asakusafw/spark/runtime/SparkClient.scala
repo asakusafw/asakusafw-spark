@@ -24,9 +24,11 @@ import scala.concurrent.duration.Duration
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
+import com.asakusafw.spark.runtime
 import com.asakusafw.spark.runtime.graph.Job
 
 trait SparkClient {
@@ -62,6 +64,8 @@ object SparkClient {
 
 abstract class DefaultClient extends SparkClient {
 
+  val Logger = LoggerFactory.getLogger(getClass)
+
   override def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int = {
     require(!stageInfo.isIterative,
       s"This client does not support iterative extension.")
@@ -77,26 +81,50 @@ abstract class DefaultClient extends SparkClient {
 
     val sc = SparkContext.getOrCreate(conf)
     try {
-      val job = newJob(sc)
+      val jobContext = DefaultClient.JobContext(sc)
+      val job = newJob(jobContext)
       val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
-      val context = DefaultClient.Context(hadoopConf)
+      val context = DefaultClient.RoundContext(hadoopConf)
       Await.result(job.execute(context)(SparkClient.ec), Duration.Inf)
+
+      if (Logger.isInfoEnabled) {
+        Logger.info(s"Direct I/O file output: ${jobContext.outputStatistics.size} entries")
+        jobContext.outputStatistics.toSeq.sortBy(_._1).foreach {
+          case (name, statistics) =>
+            Logger.info(s"  ${name}:")
+            Logger.info(f"    number of output files: ${statistics.files}%,d")
+            Logger.info(f"    output file size in bytes: ${statistics.bytes}%,d")
+            Logger.info(f"    number of output records: ${statistics.records}%,d")
+        }
+        Logger.info(s"  (TOTAL):")
+        Logger.info(
+          f"    number of output files: ${jobContext.outputStatistics.map(_._2.files).sum}%,d")
+        Logger.info(
+          f"    output file size in bytes: ${jobContext.outputStatistics.map(_._2.bytes).sum}%,d")
+        Logger.info(
+          f"    number of output records: ${jobContext.outputStatistics.map(_._2.records).sum}%,d")
+      }
+
       0
     } finally {
       sc.stop()
     }
   }
 
-  def newJob(sc: SparkContext): Job
+  def newJob(jobContext: JobContext): Job
 
   def kryoRegistrator: String
 }
 
 object DefaultClient {
 
-  case class Context(
+  case class JobContext(
+    @transient sparkContext: SparkContext)
+    extends runtime.JobContext
+
+  case class RoundContext(
     hadoopConf: Broadcasted[Configuration])
-    extends RoundContext {
+    extends runtime.RoundContext {
 
     private def stageInfo: StageInfo =
       StageInfo.deserialize(hadoopConf.value.get(StageInfo.KEY_NAME))

@@ -17,7 +17,7 @@ package com.asakusafw.spark.runtime
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput, File }
@@ -33,7 +33,7 @@ import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
-import org.apache.spark.{ Partitioner, SparkConf, SparkContext }
+import org.apache.spark.{ Partitioner, SparkConf }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
@@ -45,7 +45,6 @@ import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.TempDirForEach
 import com.asakusafw.spark.runtime.aggregation.Aggregation
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
@@ -69,7 +68,11 @@ abstract class InputSpec extends FlatSpec with SparkForAll {
 @RunWith(classOf[JUnitRunner])
 class TemporaryInputSpecTest extends TemporaryInputSpec
 
-class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirForEach {
+class TemporaryInputSpec
+  extends InputSpec
+  with JobContextSugar
+  with RoundContextSugar
+  with TempDirForEach {
 
   import InputSpec._
 
@@ -85,7 +88,9 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
   } {
     val conf = s"numSlices = ${numSlices}"
 
-    it should s"input: [${conf}]" in { implicit sc =>
+    it should s"input: [${conf}]" in {
+      implicit val jobContext = newJobContext(sc)
+
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path = new File(tmpDir, "foos").getAbsolutePath
 
@@ -105,7 +110,9 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
       assert(result === (0 until 100))
     }
 
-    it should s"input from multiple paths: [${conf}]" in { implicit sc =>
+    it should s"input from multiple paths: [${conf}]" in {
+      implicit val jobContext = newJobContext(sc)
+
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path1 = new File(tmpDir, "foos1").getAbsolutePath
       val path2 = new File(tmpDir, "foos2").getAbsolutePath
@@ -142,7 +149,11 @@ class TemporaryInputWithParallelismSpec extends TemporaryInputSpec {
 @RunWith(classOf[JUnitRunner])
 class DirectInputSpecTest extends DirectInputSpec
 
-class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEach {
+class DirectInputSpec
+  extends InputSpec
+  with JobContextSugar
+  with RoundContextSugar
+  with TempDirForEach {
 
   import InputSpec._
 
@@ -158,7 +169,9 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
   } {
     val conf = s"numSlices = ${numSlices}"
 
-    it should s"input: [${conf}]" in { implicit sc =>
+    it should s"input: [${conf}]" in {
+      implicit val jobContext = newJobContext(sc)
+
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path = new File(tmpDir, "foos").getAbsolutePath
 
@@ -178,7 +191,9 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
       assert(result === (0 until 100))
     }
 
-    it should s"input from multiple paths: [${conf}]" in { implicit sc =>
+    it should s"input from multiple paths: [${conf}]" in {
+      implicit val jobContext = newJobContext(sc)
+
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path1 = new File(tmpDir, "foos1").getAbsolutePath
       val path2 = new File(tmpDir, "foos2").getAbsolutePath
@@ -263,11 +278,14 @@ object InputSpec {
     class Input(
       basePaths: Set[String])(
         val label: String)(
-          implicit sc: SparkContext)
+          implicit jobContext: JobContext)
       extends TemporaryInput[Foo](Map.empty)
       with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
 
-      def this(path: String)(label: String)(implicit sc: SparkContext) = this(Set(path))(label)
+      def this(
+        path: String)(
+          label: String)(
+            implicit jobContext: JobContext) = this(Set(path))(label)
 
       override def paths: Set[String] = basePaths.map(_ + "/part-*")
 
@@ -304,7 +322,7 @@ object InputSpec {
     class Input(
       val extraConfigurations: Map[String, String])(
         val label: String)(
-          implicit sc: SparkContext)
+          implicit jobContext: JobContext)
       extends DirectInput(
         Map.empty)(
         classTag[DirectFileInputFormat].asInstanceOf[ClassTag[InputFormat[NullWritable, Foo]]],

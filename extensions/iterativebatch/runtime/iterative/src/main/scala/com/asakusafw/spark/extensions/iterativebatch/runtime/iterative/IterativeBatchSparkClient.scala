@@ -29,25 +29,28 @@ import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
-import com.asakusafw.spark.runtime.{ Props, RoundContext, SparkClient }
+import com.asakusafw.spark.runtime
+import com.asakusafw.spark.runtime.{ JobContext, Props, RoundContext, SparkClient }
 import com.asakusafw.spark.runtime.SparkClient.Implicits.ec
 
 import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.IterativeJob
-import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient._
 
 abstract class IterativeBatchSparkClient extends SparkClient {
+
+  val Logger = LoggerFactory.getLogger(getClass)
 
   override def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int = {
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     conf.set("spark.kryo.registrator", kryoRegistrator)
     conf.set("spark.kryo.referenceTracking", false.toString)
 
-    implicit val sc = SparkContext.getOrCreate(conf)
+    val sc = SparkContext.getOrCreate(conf)
     try {
       val numSlots = conf.getInt(Props.NumSlots, Props.DefaultNumSlots)
       val stopOnFail = conf.getBoolean(Props.StopOnFail, Props.DefaultStopOnFail)
 
-      val job = newJob(sc)
+      implicit val jobContext = IterativeBatchSparkClient.JobContext(sc)
+      val job = newJob(jobContext)
 
       execute(job, stageInfo, numSlots, stopOnFail)
     } finally {
@@ -60,9 +63,9 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     stageInfo: IterativeStageInfo,
     numSlots: Int,
     stopOnFail: Boolean)(
-      implicit sc: SparkContext): Int = {
+      implicit jobContext: JobContext): Int = {
     val executor = new IterativeBatchExecutor(numSlots, stopOnFail)(job)
-    executor.addListener(Logger)
+    executor.addListener(IterativeBatchSparkClient.Logger)
     executor.start()
     try {
       val origin = newContext(stageInfo.getOrigin)
@@ -81,6 +84,25 @@ abstract class IterativeBatchSparkClient extends SparkClient {
           result.isDefined && result.get.isSuccess
         }
         job.commit(origin, contextsToCommit)
+
+        if (Logger.isInfoEnabled) {
+          Logger.info(s"Direct I/O file output: ${jobContext.outputStatistics.size} entries")
+          jobContext.outputStatistics.toSeq.sortBy(_._1).foreach {
+            case (name, statistics) =>
+              Logger.info(s"  ${name}:")
+              Logger.info(f"    number of output files: ${statistics.files}%,d")
+              Logger.info(f"    output file size in bytes: ${statistics.bytes}%,d")
+              Logger.info(f"    number of output records: ${statistics.records}%,d")
+          }
+          Logger.info(s"  (TOTAL):")
+          Logger.info(
+            f"    number of output files: ${jobContext.outputStatistics.map(_._2.files).sum}%,d")
+          Logger.info(
+            f"    output file size in bytes: ${jobContext.outputStatistics.map(_._2.bytes).sum}%,d")
+          Logger.info(
+            f"    number of output records: ${jobContext.outputStatistics.map(_._2.records).sum}%,d") // scalastyle:ignore
+        }
+
         0
       }
     } catch {
@@ -90,22 +112,26 @@ abstract class IterativeBatchSparkClient extends SparkClient {
     }
   }
 
-  def newJob(sc: SparkContext): IterativeJob
+  def newJob(jobContext: JobContext): IterativeJob
 
   def kryoRegistrator: String
 
-  private def newContext(stageInfo: StageInfo)(implicit sc: SparkContext): Context = {
-    val conf = new Configuration(sc.hadoopConfiguration)
+  private def newContext(stageInfo: StageInfo)(implicit jobContext: JobContext): RoundContext = {
+    val conf = new Configuration(jobContext.sparkContext.hadoopConfiguration)
     conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
-    Context(sc.broadcast(conf))
+    IterativeBatchSparkClient.RoundContext(jobContext.sparkContext.broadcast(conf))
   }
 }
 
 object IterativeBatchSparkClient {
 
-  case class Context(
+  case class JobContext(
+    @transient sparkContext: SparkContext)
+    extends runtime.JobContext
+
+  case class RoundContext(
     hadoopConf: Broadcasted[Configuration])
-    extends RoundContext {
+    extends runtime.RoundContext {
 
     private def stageInfo: StageInfo =
       StageInfo.deserialize(hadoopConf.value.get(StageInfo.KEY_NAME))
@@ -127,19 +153,19 @@ object IterativeBatchSparkClient {
       }
     }
 
-    override def onRoundSubmitted(rc: RoundContext): Unit = {
+    override def onRoundSubmitted(rc: runtime.RoundContext): Unit = {
       if (Logger.isInfoEnabled) {
         Logger.info(s"Round[${rc}] is submitted.")
       }
     }
 
-    override def onRoundStart(rc: RoundContext): Unit = {
+    override def onRoundStart(rc: runtime.RoundContext): Unit = {
       if (Logger.isInfoEnabled) {
         Logger.info(s"Round[${rc}] started.")
       }
     }
 
-    override def onRoundCompleted(rc: RoundContext, result: Try[Unit]): Unit = {
+    override def onRoundCompleted(rc: runtime.RoundContext, result: Try[Unit]): Unit = {
       result match {
         case Success(_) =>
           if (Logger.isInfoEnabled) {

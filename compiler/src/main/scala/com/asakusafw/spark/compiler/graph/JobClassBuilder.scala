@@ -19,7 +19,6 @@ package graph
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-import org.apache.spark.SparkContext
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -34,6 +33,7 @@ import com.asakusafw.spark.compiler.planning.{
 }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
+import com.asakusafw.spark.runtime.JobContext
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -82,13 +82,13 @@ class JobClassBuilder(
 
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
 
-    ctorDef.newInit(Seq(classOf[SparkContext].asType)) { implicit mb =>
+    ctorDef.newInit(Seq(classOf[JobContext].asType)) { implicit mb =>
 
-      val thisVar :: scVar :: _ = mb.argVars
+      val thisVar :: jobContextVar :: _ = mb.argVars
 
       thisVar.push().invokeInit(
         superType,
-        scVar.push())
+        jobContextVar.push())
 
       val nodesVar = pushNewArray(
         classOf[Node].asType,
@@ -99,16 +99,19 @@ class JobClassBuilder(
         .store()
 
       if (useDirectOut) {
-        thisVar.push().invokeV("node0", nodesVar.push(), scVar.push())
+        thisVar.push().invokeV("node0", nodesVar.push(), jobContextVar.push())
       }
 
       subplans.foreach { subplan =>
         thisVar.push().invokeV(
-          s"node${subplanToIdx(subplan)}", nodesVar.push(), broadcastsVar.push(), scVar.push())
+          s"node${subplanToIdx(subplan)}",
+          nodesVar.push(),
+          broadcastsVar.push(),
+          jobContextVar.push())
       }
 
       if (useDirectOut) {
-        thisVar.push().invokeV(s"node${subplans.size + 1}", nodesVar.push(), scVar.push())
+        thisVar.push().invokeV(s"node${subplans.size + 1}", nodesVar.push(), jobContextVar.push())
       }
 
       thisVar.push().putField(
@@ -172,14 +175,14 @@ class JobClassBuilder(
     methodDef.newMethod(
       Opcodes.ACC_PRIVATE,
       "node0",
-      Seq(classOf[Array[Node]].asType, classOf[SparkContext].asType)) { implicit mb =>
+      Seq(classOf[Array[Node]].asType, classOf[JobContext].asType)) { implicit mb =>
 
-        val thisVar :: nodesVar :: scVar :: _ = mb.argVars
+        val thisVar :: nodesVar :: jobContextVar :: _ = mb.argVars
 
         nodesVar.push().astore(ldc(0), {
           val setupType = DirectOutputSetupCompiler.compile(directOutputs.map(_._2))
           val setup = pushNew(setupType)
-          setup.dup().invokeInit(scVar.push())
+          setup.dup().invokeInit(jobContextVar.push())
           setup
         })
         `return`()
@@ -190,9 +193,9 @@ class JobClassBuilder(
     methodDef.newMethod(
       Opcodes.ACC_PRIVATE,
       s"node${subplanToIdx.size + 1}",
-      Seq(classOf[Array[Node]].asType, classOf[SparkContext].asType)) { implicit mb =>
+      Seq(classOf[Array[Node]].asType, classOf[JobContext].asType)) { implicit mb =>
 
-        val thisVar :: nodesVar :: scVar :: _ = mb.argVars
+        val thisVar :: nodesVar :: jobContextVar :: _ = mb.argVars
 
         nodesVar.push().astore(ldc(subplanToIdx.size + 1), {
           val commitType = DirectOutputCommitCompiler.compile(directOutputs.map(_._2))
@@ -203,7 +206,7 @@ class JobClassBuilder(
                 builder += nodesVar.push().aload(ldc(i))
               }
             },
-            scVar.push())
+            jobContextVar.push())
           commit
         })
         `return`()
@@ -222,9 +225,9 @@ class JobClassBuilder(
       Seq(
         classOf[Array[Node]].asType,
         classOf[mutable.Map[BroadcastId, Broadcast[_]]].asType,
-        classOf[SparkContext].asType)) { implicit mb =>
+        classOf[JobContext].asType)) { implicit mb =>
 
-        val thisVar :: nodesVar :: allBroadcastsVar :: scVar :: _ = mb.argVars
+        val thisVar :: nodesVar :: allBroadcastsVar :: jobContextVar :: _ = mb.argVars
 
         val broadcastsVar =
           buildMap { builder =>
@@ -258,7 +261,7 @@ class JobClassBuilder(
                             context.branchKeys.getField(subPlanOutput.getOperator))
                         }
                       },
-                      scVar.push))
+                      jobContextVar.push))
               }
             }
           }.store()
@@ -273,7 +276,7 @@ class JobClassBuilder(
           nodeType,
           subplan,
           subplanToIdx)(
-            Instantiator.Vars(scVar, nodesVar, broadcastsVar, setupVar))(
+            Instantiator.Vars(jobContextVar, nodesVar, broadcastsVar, setupVar))(
               implicitly, context.instantiatorCompilerContext)
         nodesVar.push().astore(ldc(subplanToIdx(subplan)), nodeVar.push())
 
@@ -296,7 +299,7 @@ class JobClassBuilder(
                     nodeVar.push().asType(classOf[Source].asType),
                     context.branchKeys.getField(marker))
                 },
-                scVar.push))
+                jobContextVar.push))
         }
         `return`()
       }

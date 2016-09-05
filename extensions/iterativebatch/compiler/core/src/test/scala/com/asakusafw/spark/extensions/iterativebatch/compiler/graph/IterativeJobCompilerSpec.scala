@@ -17,8 +17,7 @@ package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.Suites
-import org.scalatest.fixture.FlatSpec
+import org.scalatest.{ FlatSpec, Suites }
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ File, DataInput, DataOutput }
@@ -33,7 +32,7 @@ import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.{ FileInputFormat, SequenceFileInputFormat }
 import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
-import org.apache.spark.{ SparkConf, SparkContext }
+import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
 
@@ -65,7 +64,6 @@ import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
 import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler.planning.SparkPlanning
 import com.asakusafw.spark.runtime._
-import com.asakusafw.spark.runtime.fixture.SparkForAll
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.model.{ Key, Joined, Summarized }
@@ -93,6 +91,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   with TempDirForAll
   with TempDirForEach
   with UsingCompilerContext
+  with JobContextSugar
   with RoundContextSugar {
 
   import IterativeJobCompilerSpec._
@@ -131,8 +130,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
     name: String,
     path: File,
     configurePath: (MRJob, File, String) => Unit = configurePath)(
-      rdd: RDD[T])(
-        implicit sc: SparkContext): Unit = {
+      rdd: RDD[T]): Unit = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass)
@@ -140,7 +138,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
   }
 
-  def readResult[T: ClassTag](name: String, round: Int, path: File)(implicit sc: SparkContext): RDD[T] = {
+  def readResult[T: ClassTag](name: String, round: Int, path: File): RDD[T] = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     TemporaryInputFormat.setInputPaths(
       job,
@@ -159,7 +157,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob from simple plan: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob from simple plan: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -210,7 +208,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob from simple plan with InputFormatInfo: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob from simple plan with InputFormatInfo: [${conf}]" in {
       val path = new File(root, s"foos${i}")
 
       val configurePath: (MRJob, File, String) => Unit = { (job, path, name) =>
@@ -292,7 +290,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile Job from simple plan with DirectOutput flat: [${conf}]" in { implicit sc =>
+    it should s"compile Job from simple plan with DirectOutput flat: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foo", path) {
@@ -359,7 +357,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile Job from simple plan with DirectOutput group: [${conf}]" in { implicit sc =>
+    it should s"compile Job from simple plan with DirectOutput group: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("baz", path) {
@@ -437,7 +435,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with Logging: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Logging: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -494,7 +492,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with Extract: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Extract: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -570,7 +568,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with Checkpoint and Extract: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Checkpoint and Extract: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -653,7 +651,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with StopFragment: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with StopFragment: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -717,7 +715,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with CoGroup: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with CoGroup: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -866,7 +864,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with CoGroup with grouping is empty: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with CoGroup with grouping is empty: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -1012,7 +1010,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with MasterCheck: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterCheck: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -1104,7 +1102,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
       }
     }
 
-    it should s"compile IterativeJob with MasterCheck with multiple masters: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterCheck with multiple masters: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -1214,7 +1212,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
       }
     }
 
-    it should s"compile IterativeJob with MasterCheck with fixed master: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterCheck with fixed master: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
@@ -1325,7 +1323,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with broadcast MasterCheck: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterCheck: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -1419,7 +1417,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
       }
     }
 
-    it should s"compile IterativeJob with broadcast MasterCheck with multiple masters: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterCheck with multiple masters: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -1531,7 +1529,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
       }
     }
 
-    it should s"compile IterativeJob with Checkpoint and broadcast MasterCheck: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Checkpoint and broadcast MasterCheck: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -1629,7 +1627,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
       }
     }
 
-    it should s"compile IterativeJob with broadcast MasterCheck with fixed master: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterCheck with fixed master: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
@@ -1725,7 +1723,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with MasterJoin: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterJoin: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos1", path) {
@@ -1835,7 +1833,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
       }
     }
 
-    it should s"compile IterativeJob with MasterJoin with fixed master: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with MasterJoin with fixed master: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
@@ -1946,7 +1944,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with broadcast MasterJoin: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterJoin: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -2038,7 +2036,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
       }
     }
 
-    it should s"compile IterativeJob with broadcast MasterJoin with fixed master: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast MasterJoin with fixed master: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
       val rounds = 0 to 1
 
@@ -2134,7 +2132,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with broadcast self MasterCheck: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with broadcast self MasterCheck: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("foos", path) {
@@ -2213,7 +2211,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with Fold: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Fold: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("bazs1", path) {
@@ -2299,7 +2297,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with Fold with grouping is empty: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Fold with grouping is empty: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("bazs1", path) {
@@ -2382,7 +2380,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with Summarize: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Summarize: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("bazs1", path) {
@@ -2474,7 +2472,7 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
   } {
     val conf = s"${configuration}, IterativeExtension: ${iterativeExtension}"
 
-    it should s"compile IterativeJob with Summarize with grouping is empty: [${conf}]" in { implicit sc =>
+    it should s"compile IterativeJob with Summarize with grouping is empty: [${conf}]" in {
       val path = createTempDirectoryForEach("test-").toFile
 
       prepareData("bazs1", path) {
@@ -2595,11 +2593,14 @@ class IterativeJobCompilerSpecBase(threshold: Option[Int], parallelism: Option[I
     jobType
   }
 
-  def executeJob(flowId: String, jobType: Type)(rounds: Seq[Int])(implicit sc: SparkContext): Unit = {
+  def executeJob(flowId: String, jobType: Type)(rounds: Seq[Int]): Unit = {
     val cls = Class.forName(
       jobType.getClassName, true, Thread.currentThread.getContextClassLoader)
       .asSubclass(classOf[IterativeJob])
-    val job = cls.getConstructor(classOf[SparkContext]).newInstance(sc)
+
+    implicit val jobContext = newJobContext(sc)
+
+    val job = cls.getConstructor(classOf[JobContext]).newInstance(jobContext)
 
     val origin = newRoundContext(flowId = flowId)
     val rcs = rounds.map { round =>
