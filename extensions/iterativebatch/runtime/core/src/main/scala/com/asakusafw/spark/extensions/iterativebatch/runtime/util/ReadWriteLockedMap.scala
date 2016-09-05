@@ -19,6 +19,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 
 import scala.collection.mutable.Map
 
+import com.asakusafw.spark.runtime.util._
+
 // scalastyle:off
 trait ReadWriteLockedMap[A, B] extends Map[A, B] {
 
