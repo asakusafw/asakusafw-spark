@@ -15,21 +15,26 @@
  */
 package com.asakusafw.spark.runtime
 
+import java.util.ServiceLoader
 import java.util.concurrent.{ Executors, ThreadFactory }
 import java.util.concurrent.atomic.AtomicLong
 
+import scala.collection.JavaConversions._
 import scala.concurrent.{ Await, ExecutionContext, ExecutionContextExecutorService }
 import scala.concurrent.duration.Duration
+import scala.reflect.{ classTag, ClassTag }
+import scala.util.{ Failure, Success, Try }
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
-import org.slf4j.LoggerFactory
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.launch.IterativeStageInfo
 import com.asakusafw.spark.runtime
+import com.asakusafw.spark.runtime.SparkClient._
 import com.asakusafw.spark.runtime.graph.Job
+import com.asakusafw.spark.runtime.util.{ ListenerBus => _, _ }
 
 trait SparkClient {
 
@@ -60,11 +65,43 @@ object SparkClient {
           }
         }))
   }
+
+  sealed trait Event
+  case class Configure(conf: SparkConf) extends Event
+  case class JobStart(jobContext: JobContext) extends Event
+  case class JobCompleted(jobContext: JobContext, result: Try[Int]) extends Event
+
+  trait Listener {
+
+    def onConfigure(conf: SparkConf): Unit = {}
+
+    def onJobStart(jobContext: JobContext): Unit = {}
+
+    def onJobCompleted(jobContext: JobContext, result: Try[Int]): Unit = {}
+  }
+
+  class ListenerBus(name: String)
+    extends AsynchronousListenerBus[Listener, Event](name) {
+
+    override def postEvent(listener: Listener, event: Event): Unit = {
+      event match {
+        case Configure(conf) => listener.onConfigure(conf)
+        case JobStart(jobContext) => listener.onJobStart(jobContext)
+        case JobCompleted(jobContext, result) => listener.onJobCompleted(jobContext, result)
+      }
+    }
+  }
+
+  def loadListeners[L: ClassTag](): Seq[L] = {
+    loadListeners[L](Thread.currentThread.getContextClassLoader)
+  }
+
+  def loadListeners[L: ClassTag](cl: ClassLoader): Seq[L] = {
+    ServiceLoader.load(classTag[L].runtimeClass.asInstanceOf[Class[L]], cl).toSeq
+  }
 }
 
 abstract class DefaultClient extends SparkClient {
-
-  val Logger = LoggerFactory.getLogger(getClass)
 
   override def execute(conf: SparkConf, stageInfo: IterativeStageInfo): Int = {
     require(!stageInfo.isIterative,
@@ -75,39 +112,43 @@ abstract class DefaultClient extends SparkClient {
   }
 
   def execute(conf: SparkConf): Int = {
+    val listenerBus = new ListenerBus(getClass.getName)
+    loadListeners[Listener]().foreach(listenerBus.addListener)
+    listenerBus.start()
+
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     conf.set("spark.kryo.registrator", kryoRegistrator)
     conf.set("spark.kryo.referenceTracking", false.toString)
 
+    listenerBus.post(Configure(conf))
+
     val sc = SparkContext.getOrCreate(conf)
     try {
       val jobContext = DefaultClient.JobContext(sc)
-      val job = newJob(jobContext)
-      val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
-      val context = DefaultClient.RoundContext(hadoopConf)
-      Await.result(job.execute(context)(SparkClient.ec), Duration.Inf)
 
-      if (Logger.isInfoEnabled) {
-        Logger.info(s"Direct I/O file output: ${jobContext.outputStatistics.size} entries")
-        jobContext.outputStatistics.toSeq.sortBy(_._1).foreach {
-          case (name, statistics) =>
-            Logger.info(s"  ${name}:")
-            Logger.info(f"    number of output files: ${statistics.files}%,d")
-            Logger.info(f"    output file size in bytes: ${statistics.bytes}%,d")
-            Logger.info(f"    number of output records: ${statistics.records}%,d")
-        }
-        Logger.info(s"  (TOTAL):")
-        Logger.info(
-          f"    number of output files: ${jobContext.outputStatistics.map(_._2.files).sum}%,d")
-        Logger.info(
-          f"    output file size in bytes: ${jobContext.outputStatistics.map(_._2.bytes).sum}%,d")
-        Logger.info(
-          f"    number of output records: ${jobContext.outputStatistics.map(_._2.records).sum}%,d")
+      listenerBus.post(JobStart(jobContext))
+
+      val result = Try {
+        val job = newJob(jobContext)
+        val hadoopConf = sc.broadcast(sc.hadoopConfiguration)
+        val context = DefaultClient.RoundContext(hadoopConf)
+        Await.result(job.execute(context)(SparkClient.ec), Duration.Inf)
+        0
       }
 
-      0
+      listenerBus.post(JobCompleted(jobContext, result))
+
+      result match {
+        case Success(code) => code
+        case Failure(t) => throw t
+      }
     } finally {
-      sc.stop()
+      listenerBus.awaitExecution()
+      try {
+        sc.stop()
+      } finally {
+        listenerBus.stop()
+      }
     }
   }
 

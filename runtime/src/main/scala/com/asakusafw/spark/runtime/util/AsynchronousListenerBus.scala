@@ -46,6 +46,10 @@ abstract class AsynchronousListenerBus[L, E](name: String)
     queue.start()
   }
 
+  def awaitExecution(): Unit = {
+    queue.awaitExecution()
+  }
+
   def stop(): Unit = {
     queue.stop(awaitExecution = true, gracefully = true)
   }
