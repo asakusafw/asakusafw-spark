@@ -10,3 +10,4 @@ target
 .worksheet
 dependency-reduced-pom.xml
 *.crc
+.tmpBin
