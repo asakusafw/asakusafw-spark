@@ -59,20 +59,26 @@ trait Branching[T] {
       fragmentBufferSize: Int): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
       Map(branchKeys.head ->
-        rdd.mapPartitions(
-          iterateFragments(_, broadcasts, hadoopConf)(fragmentBufferSize).map {
-            case (Branch(_, k), v) => (k, v)
-          }, preservesPartitioning = true))
+        rdd.mapPartitions({ iter =>
+          new ResourceBrokingIterator(
+            hadoopConf.value,
+            iterateFragments(iter, broadcasts)(fragmentBufferSize).map {
+              case (Branch(_, k), v) => (k, v)
+            })
+        }, preservesPartitioning = true))
     } else {
       rdd.branch[ShuffleKey, Array[Byte]](
         branchKeys,
         { iter =>
-          val fragmentsIter = iterateFragments(iter, broadcasts, hadoopConf)(fragmentBufferSize)
-          if (aggregations.values.exists(_.mapSideCombine)) {
-            iterateWithCombiner(fragmentsIter)
-          } else {
-            iterateWithoutCombiner(fragmentsIter)
-          }
+          new ResourceBrokingIterator(
+            hadoopConf.value, {
+              val fragmentsIter = iterateFragments(iter, broadcasts)(fragmentBufferSize)
+              if (aggregations.values.exists(_.mapSideCombine)) {
+                iterateWithCombiner(fragmentsIter)
+              } else {
+                iterateWithoutCombiner(fragmentsIter)
+              }
+            })
         },
         partitioners =
           partitioners.map {
@@ -120,27 +126,23 @@ trait Branching[T] {
 
   private def iterateFragments(
     iter: Iterator[(_, T)],
-    broadcasts: Map[BroadcastId, Broadcasted[_]],
-    hadoopConf: Broadcasted[Configuration])(
+    broadcasts: Map[BroadcastId, Broadcasted[_]])(
       fragmentBufferSize: Int): Iterator[(Branch[ShuffleKey], _)] = {
-
-    new ResourceBrokingIterator(hadoopConf.value, {
-      val (fragment, outputs) = fragments(broadcasts)(fragmentBufferSize)
-      assert(outputs.keys.toSet == branchKeys,
-        s"The branch keys of outputs and branch keys field should be the same: (${
-          outputs.keys.mkString("(", ",", ")")
-        }, ${
-          branchKeys.mkString("(", ",", ")")
-        })")
-      iter.flatMap {
-        case (_, value) =>
-          fragment.reset()
-          fragment.add(value)
-          outputs.iterator.flatMap {
-            case (key, output) =>
-              output.iterator.map(value => (Branch(key, shuffleKey(key, value)), value))
-          }
-      }
-    })
+    val (fragment, outputs) = fragments(broadcasts)(fragmentBufferSize)
+    assert(outputs.keys.toSet == branchKeys,
+      s"The branch keys of outputs and branch keys field should be the same: (${
+        outputs.keys.mkString("(", ",", ")")
+      }, ${
+        branchKeys.mkString("(", ",", ")")
+      })")
+    iter.flatMap {
+      case (_, value) =>
+        fragment.reset()
+        fragment.add(value)
+        outputs.iterator.flatMap {
+          case (key, output) =>
+            output.iterator.map(value => (Branch(key, shuffleKey(key, value)), value))
+        }
+    }
   }
 }
