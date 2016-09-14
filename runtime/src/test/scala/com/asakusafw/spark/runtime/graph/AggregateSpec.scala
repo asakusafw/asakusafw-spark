@@ -32,6 +32,7 @@ import org.apache.spark.{ HashPartitioner, Partitioner, SparkConf }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
+import com.asakusafw.bridge.api.BatchContext
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.aggregation.Aggregation
@@ -79,7 +80,7 @@ class AggregateSpec
       val aggregate =
         new TestAggregate((foos, Input), sort, partitioner, aggregation)("aggregate")
 
-      val rc = newRoundContext()
+      val rc = newRoundContext(batchArguments = Map("bias" -> 0.toString))
 
       val result = Await.result(
         aggregate.compute(rc).apply(Result).map {
@@ -113,7 +114,7 @@ class AggregateSpec
           Seq((foos1, Input), (foos2, Input)),
           sort, partitioner, aggregation)("aggregate")
 
-      val rc = newRoundContext()
+      val rc = newRoundContext(batchArguments = Map("bias" -> 0.toString))
 
       val result = Await.result(
         aggregate.compute(rc).apply(Result).map {
@@ -139,7 +140,7 @@ class AggregateSpec
     val aggregate =
       new TestPartialAggregationExtract((foos, Input))("partial-aggregate")
 
-    val rc = newRoundContext()
+    val rc = newRoundContext(batchArguments = Map("bias" -> 0.toString))
 
     val (result1, result2) = Await.result(
       aggregate.compute(rc).apply(Result1).map {
@@ -228,7 +229,9 @@ object AggregateSpec {
     }
 
     override def mergeValue(combiner: Foo, value: Foo): Foo = {
+      val bias = BatchContext.get("bias").toInt
       combiner.sum.add(value.sum)
+      combiner.sum.add(bias)
       combiner
     }
 
@@ -238,7 +241,9 @@ object AggregateSpec {
     }
 
     override def mergeCombiners(comb1: Foo, comb2: Foo): Foo = {
+      val bias = BatchContext.get("bias").toInt
       comb1.sum.add(comb2.sum)
+      comb1.sum.add(bias)
       comb1
     }
   }
