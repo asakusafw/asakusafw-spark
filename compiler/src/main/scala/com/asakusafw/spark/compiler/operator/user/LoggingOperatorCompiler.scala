@@ -128,7 +128,11 @@ private class LoggingOperatorFragmentClassBuilder(
         val thisVar :: inputVar :: _ = mb.argVars
         invokeStatic(
           classOf[Report].asType,
-          level.name.toLowerCase,
+          level match {
+            case Logging.Level.ERROR => "error"
+            case Logging.Level.WARN => "warn"
+            case _ => "info"
+          },
           getOperatorField()
             .invokeV(
               operator.methodDesc.getName,
