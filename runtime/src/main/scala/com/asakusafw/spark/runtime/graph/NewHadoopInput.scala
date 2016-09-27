@@ -27,6 +27,7 @@ import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor._
 
 import com.asakusafw.spark.runtime.Props
+import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
@@ -38,6 +39,12 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
   with UsingBroadcasts
   with Branching[V] {
   self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+
+  def name: String
+
+  def counter: InputCounter
+
+  private val statistics = jobContext.getOrNewInputStatistics(counter, name)
 
   protected def newJob(rc: RoundContext): MRJob
 
@@ -62,6 +69,10 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
         classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
         classTag[K].runtimeClass.asInstanceOf[Class[K]],
         classTag[V].runtimeClass.asInstanceOf[Class[V]])
+        .map { kv =>
+          statistics.addRecords(1L)
+          kv
+        }
 
       branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(fragmentBufferSize)
     }

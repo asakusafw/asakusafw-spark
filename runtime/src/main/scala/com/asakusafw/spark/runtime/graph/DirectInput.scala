@@ -22,6 +22,7 @@ import scala.reflect.ClassTag
 import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.spark.rdd.RDD
 
+import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 
 abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: ClassTag](
@@ -29,6 +30,8 @@ abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: Cl
     implicit jobContext: JobContext)
   extends NewHadoopInput[IF, K, V] {
   self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+
+  override def counter: InputCounter = InputCounter.Direct
 
   protected def extraConfigurations: Map[String, String]
 

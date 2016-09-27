@@ -99,6 +99,10 @@ abstract class DirectInputClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
+    methodDef.newMethod("name", classOf[String].asType, Seq.empty) { implicit mb =>
+      `return`(ldc(operator.getName))
+    }
+
     methodDef.newMethod("extraConfigurations", classOf[Map[String, String]].asType, Seq.empty,
       new MethodSignatureBuilder()
         .newReturnType {

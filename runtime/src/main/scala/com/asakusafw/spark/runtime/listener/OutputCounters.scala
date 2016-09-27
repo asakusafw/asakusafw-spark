@@ -20,7 +20,7 @@ import scala.util.Try
 
 import org.slf4j.LoggerFactory
 
-import com.asakusafw.spark.runtime.JobContext.OutputCounter
+import com.asakusafw.spark.runtime.JobContext.{ InputCounter, OutputCounter }
 
 class OutputCounters extends SparkClient.Listener {
 
@@ -28,6 +28,18 @@ class OutputCounters extends SparkClient.Listener {
 
   override def onJobCompleted(jobContext: JobContext, result: Try[Int]): Unit = {
     if (result.isSuccess && Logger.isInfoEnabled) {
+
+      jobContext.inputStatistics.get(InputCounter.Direct).foreach { statistics =>
+        Logger.info(s"Direct I/O file input: ${statistics.size} entries")
+        statistics.toSeq.sortBy(_._1).foreach {
+          case (name, statistics) =>
+            Logger.info(s"  ${name}:")
+            Logger.info(f"    number of input records: ${statistics.records}%,d")
+        }
+        Logger.info(s"  (TOTAL):")
+        Logger.info(f"    number of input records: ${statistics.map(_._2.records).sum}%,d")
+      }
+
       jobContext.outputStatistics.get(OutputCounter.Direct).foreach { statistics =>
         Logger.info(s"Direct I/O file output: ${statistics.size} entries")
         statistics.toSeq.sortBy(_._1).foreach {
@@ -41,6 +53,17 @@ class OutputCounters extends SparkClient.Listener {
         Logger.info(f"    number of output files: ${statistics.map(_._2.files).sum}%,d")
         Logger.info(f"    output file size in bytes: ${statistics.map(_._2.bytes).sum}%,d")
         Logger.info(f"    number of output records: ${statistics.map(_._2.records).sum}%,d")
+      }
+
+      jobContext.inputStatistics.get(InputCounter.External).foreach { statistics =>
+        Logger.info(s"External I/O file input: ${statistics.size} entries")
+        statistics.toSeq.sortBy(_._1).foreach {
+          case (name, statistics) =>
+            Logger.info(s"  ${name}:")
+            Logger.info(f"    number of input records: ${statistics.records}%,d")
+        }
+        Logger.info(s"  (TOTAL):")
+        Logger.info(f"    number of input records: ${statistics.map(_._2.records).sum}%,d")
       }
 
       jobContext.outputStatistics.get(OutputCounter.External).foreach { statistics =>

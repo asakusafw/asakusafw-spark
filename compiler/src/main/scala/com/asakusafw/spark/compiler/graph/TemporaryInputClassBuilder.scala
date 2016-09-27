@@ -88,6 +88,10 @@ abstract class TemporaryInputClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
+    methodDef.newMethod("name", classOf[String].asType, Seq.empty) { implicit mb =>
+      `return`(ldc(operator.getName))
+    }
+
     methodDef.newMethod("paths", classOf[Set[String]].asType, Seq.empty,
       new MethodSignatureBuilder()
         .newReturnType {

@@ -28,6 +28,20 @@ trait JobContext {
   def sparkContext: SparkContext
 
   @transient
+  val inputStatistics: mutable.Map[InputCounter, mutable.Map[String, InputStatistics]] =
+    mutable.Map.empty
+
+  def getOrNewInputStatistics(
+    counter: InputCounter, name: String): InputStatistics = {
+    inputStatistics
+      .getOrElseUpdate(counter, mutable.Map.empty)
+      .getOrElseUpdate(
+        name,
+        new InputStatistics(
+          sparkContext.longAccumulator(s"input.${counter.name}.${name}.records")))
+  }
+
+  @transient
   val outputStatistics: mutable.Map[OutputCounter, mutable.Map[String, OutputStatistics]] =
     mutable.Map.empty
 
@@ -45,6 +59,24 @@ trait JobContext {
 }
 
 object JobContext {
+
+  sealed abstract class InputCounter(val name: String)
+
+  object InputCounter {
+    case object Direct extends InputCounter("direct")
+    case object External extends InputCounter("external")
+  }
+
+  class InputStatistics private[JobContext] (
+    recordCounter: LongAccumulator) extends Serializable {
+
+    def addRecords(records: Long): Unit = recordCounter.add(records)
+
+    def records: Long = recordCounter.value
+
+    override def toString(): String =
+      s"InputStatistics(records=${records})"
+  }
 
   sealed abstract class OutputCounter(val name: String)
 

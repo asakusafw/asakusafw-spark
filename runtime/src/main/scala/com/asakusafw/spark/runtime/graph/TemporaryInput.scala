@@ -27,6 +27,7 @@ import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
+import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class TemporaryInput[V: ClassTag](
@@ -34,6 +35,8 @@ abstract class TemporaryInput[V: ClassTag](
     implicit jobContext: JobContext)
   extends NewHadoopInput[TemporaryInputFormat[V], NullWritable, V] {
   self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+
+  override def counter: InputCounter = InputCounter.External
 
   protected def paths: Set[String]
 

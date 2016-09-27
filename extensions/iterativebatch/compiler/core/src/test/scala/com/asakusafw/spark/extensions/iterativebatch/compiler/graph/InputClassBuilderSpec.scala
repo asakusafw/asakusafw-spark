@@ -54,6 +54,7 @@ import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
 import com.asakusafw.spark.compiler.graph._
 import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.runtime._
+import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -212,6 +213,14 @@ class TemporaryInputClassBuilderSpec
 
           assert(result === (0 until 100).map(i => bias + i))
         }
+
+        assert(jobContext.inputStatistics(InputCounter.External).size === 1)
+        val statistics = jobContext.inputStatistics(InputCounter.External)(inputOperator.getName)
+        if (iterativeInfo.getRecomputeKind != IterativeInfo.RecomputeKind.NEVER) {
+          assert(statistics.records === 200)
+        } else {
+          assert(statistics.records === 100)
+        }
       }
     }
   }
@@ -279,7 +288,9 @@ class DirectInputClassBuilderSpec
           SubPlanInfo.DriverType.INPUT,
           Seq.empty[SubPlanInfo.DriverOption],
           inputOperator))
-      subplan.putAttr(_ => IterativeInfo.getDeclared(inputOperator))
+
+      val iterativeInfo = IterativeInfo.getDeclared(inputOperator)
+      subplan.putAttr(_ => iterativeInfo)
 
       subplan.findOut(inputMarker)
         .putAttr(
@@ -357,6 +368,14 @@ class DirectInputClassBuilderSpec
           }, Duration.Inf)
 
         assert(result === (0 until 100).map(i => bias + i))
+      }
+
+      assert(jobContext.inputStatistics(InputCounter.Direct).size === 1)
+      val statistics = jobContext.inputStatistics(InputCounter.Direct)(inputOperator.getName)
+      if (iterativeInfo.getRecomputeKind != IterativeInfo.RecomputeKind.NEVER) {
+        assert(statistics.records === 200)
+      } else {
+        assert(statistics.records === 100)
       }
     }
   }
