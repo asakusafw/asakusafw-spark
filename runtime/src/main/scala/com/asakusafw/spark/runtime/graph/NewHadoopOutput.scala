@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory
 import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor._
 
+import com.asakusafw.spark.runtime.JobContext.OutputCounter
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class NewHadoopOutput(
@@ -35,6 +36,12 @@ abstract class NewHadoopOutput(
   extends Output {
 
   private[this] val Logger = LoggerFactory.getLogger(getClass())
+
+  def name: String
+
+  def counter: OutputCounter
+
+  private val statistics = jobContext.getOrNewOutputStatistics(counter, name)
 
   protected def newJob(rc: RoundContext): MRJob
 
@@ -70,7 +77,10 @@ abstract class NewHadoopOutput(
         jobContext.sparkContext.setCallSite(
           CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
-        val output = prev.map(in => (NullWritable.get, in._2))
+        val output = prev.map { in =>
+          statistics.addRecords(1L)
+          (NullWritable.get, in._2)
+        }
 
         if (Logger.isTraceEnabled()) {
           Logger.trace(output.toDebugString)

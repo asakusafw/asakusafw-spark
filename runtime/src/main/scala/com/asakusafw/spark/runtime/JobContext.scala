@@ -21,25 +21,39 @@ import scala.collection.mutable
 import org.apache.spark.SparkContext
 import org.apache.spark.util._
 
+import com.asakusafw.spark.runtime.JobContext._
+
 trait JobContext {
 
   def sparkContext: SparkContext
 
-  val outputStatistics: mutable.Map[String, JobContext.OutputStatistics] = mutable.Map.empty
+  @transient
+  val outputStatistics: mutable.Map[OutputCounter, mutable.Map[String, OutputStatistics]] =
+    mutable.Map.empty
 
-  def getOrNewOutputStatistics(name: String): JobContext.OutputStatistics = {
-    outputStatistics.getOrElseUpdate(
-      name,
-      new JobContext.OutputStatistics(
-        sparkContext.collectionAccumulator(s"output.${name}.files"),
-        sparkContext.longAccumulator(s"output.${name}.bytes"),
-        sparkContext.longAccumulator(s"output.${name}.records")))
+  def getOrNewOutputStatistics(
+    counter: OutputCounter, name: String): OutputStatistics = {
+    outputStatistics
+      .getOrElseUpdate(counter, mutable.Map.empty)
+      .getOrElseUpdate(
+        name,
+        new OutputStatistics(
+          sparkContext.collectionAccumulator(s"output.${counter.name}.${name}.files"),
+          sparkContext.longAccumulator(s"output.${counter.name}.${name}.bytes"),
+          sparkContext.longAccumulator(s"output.${counter.name}.${name}.records")))
   }
 }
 
 object JobContext {
 
-  class OutputStatistics(
+  sealed abstract class OutputCounter(val name: String)
+
+  object OutputCounter {
+    case object Direct extends OutputCounter("direct")
+    case object External extends OutputCounter("external")
+  }
+
+  class OutputStatistics private[JobContext] (
     fileAccumulator: CollectionAccumulator[String],
     byteCounter: LongAccumulator,
     recordCounter: LongAccumulator) extends Serializable {

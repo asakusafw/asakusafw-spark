@@ -40,6 +40,7 @@ import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption, ValueOption }
 import com.asakusafw.spark.runtime._
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.Direct
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator._
 import com.asakusafw.spark.runtime.graph._
@@ -131,8 +132,8 @@ class DirectOutputPrepareForIterativeSpec
             === (0 until 100).map(i => (100 * round + i, i % 10)))
       }
 
-      assert(jobContext.outputStatistics.size === 1)
-      val statistics = jobContext.outputStatistics("flat1")
+      assert(jobContext.outputStatistics(Direct).size === 1)
+      val statistics = jobContext.outputStatistics(Direct)("flat1")
       assert(statistics.files === 4)
       assert(statistics.bytes === 4240)
       assert(statistics.records === 200)
@@ -197,8 +198,8 @@ class DirectOutputPrepareForIterativeSpec
             === (0 until 100).map(i => (100 * round + i, i % 10)))
       }
 
-      assert(jobContext.outputStatistics.size === 1)
-      val statistics = jobContext.outputStatistics("flat2")
+      assert(jobContext.outputStatistics(Direct).size === 1)
+      val statistics = jobContext.outputStatistics(Direct)("flat2")
       assert(statistics.files === 4)
       assert(statistics.bytes === 4240)
       assert(statistics.records === 200)
@@ -256,8 +257,8 @@ class DirectOutputPrepareForIterativeSpec
       assert(files.head.forall(_.exists()) === true)
       assert(files.tail.exists(_.exists(_.exists())) === false)
 
-      assert(jobContext.outputStatistics.size === 1)
-      val statistics = jobContext.outputStatistics("flat3")
+      assert(jobContext.outputStatistics(Direct).size === 1)
+      val statistics = jobContext.outputStatistics(Direct)("flat3")
       assert(statistics.files === 2)
       assert(statistics.bytes === 2120)
       assert(statistics.records === 100)
@@ -342,8 +343,8 @@ class DirectOutputPrepareForIterativeSpec
         }
     }
 
-    assert(jobContext.outputStatistics.size === 1)
-    val statistics = jobContext.outputStatistics("group1")
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)("group1")
     assert(statistics.files === 20)
     assert(statistics.bytes === 6800)
     assert(statistics.records === 200)
@@ -407,8 +408,8 @@ class DirectOutputPrepareForIterativeSpec
             })
     }
 
-    assert(jobContext.outputStatistics.size === 1)
-    val statistics = jobContext.outputStatistics("group2")
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)("group2")
     assert(statistics.files === 10)
     assert(statistics.bytes === 5200)
     assert(statistics.records === 200)
@@ -464,8 +465,8 @@ class DirectOutputPrepareForIterativeSpec
     assert(files.head.forall(_.exists()) === true)
     assert(files.tail.exists(_.exists(_.exists())) === false)
 
-    assert(jobContext.outputStatistics.size === 1)
-    val statistics = jobContext.outputStatistics("group3")
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)("group3")
     assert(statistics.files === 10)
     assert(statistics.bytes === 3400)
     assert(statistics.records === 100)

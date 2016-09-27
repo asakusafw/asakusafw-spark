@@ -38,6 +38,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.External
 import com.asakusafw.spark.runtime.TempDirForEach
 import com.asakusafw.spark.runtime.rdd._
 
@@ -86,7 +87,7 @@ class TemporaryOutputSpec
       val source =
         new ParallelCollectionSource(Input, (0 until 100))("input")
           .map(Input)(Foo.intToFoo)
-      val output = new Temporary.Output((source, Input))(path, "output")
+      val output = new Temporary.Output((source, Input))("output", path, "output")
 
       val rc = newRoundContext()
 
@@ -95,6 +96,10 @@ class TemporaryOutputSpec
       val result = readResult(path, rc)
       assert(result.size === 100)
       assert(result === (0 until 100))
+
+      assert(jobContext.outputStatistics(External).size === 1)
+      val statistics = jobContext.outputStatistics(External)("output")
+      assert(statistics.records === 100)
     }
 
     it should s"output multiple prevs: [${conf}]" in {
@@ -109,7 +114,7 @@ class TemporaryOutputSpec
       val source2 =
         new ParallelCollectionSource(Input, (50 until 100), numSlices)("input")
           .map(Input)(Foo.intToFoo)
-      val output = new Temporary.Output(Seq((source1, Input), (source2, Input)))(path, "output")
+      val output = new Temporary.Output(Seq((source1, Input), (source2, Input)))("output", path, "output")
 
       val rc = newRoundContext()
 
@@ -118,6 +123,10 @@ class TemporaryOutputSpec
       val result = readResult(path, rc)
       assert(result.size === 100)
       assert(result === (0 until 100))
+
+      assert(jobContext.outputStatistics(External).size === 1)
+      val statistics = jobContext.outputStatistics(External)("output")
+      assert(statistics.records === 100)
     }
   }
 }
@@ -171,6 +180,7 @@ object OutputSpec {
 
     class Output(
       prevs: Seq[(Source, BranchKey)])(
+        val name: String,
         val path: String,
         val label: String)(
           implicit jobContext: JobContext)
@@ -178,9 +188,10 @@ object OutputSpec {
 
       def this(
         prev: (Source, BranchKey))(
+          name: String,
           path: String,
           label: String)(
-            implicit jobContext: JobContext) = this(Seq(prev))(path, label)
+            implicit jobContext: JobContext) = this(Seq(prev))(name, path, label)
     }
   }
 }

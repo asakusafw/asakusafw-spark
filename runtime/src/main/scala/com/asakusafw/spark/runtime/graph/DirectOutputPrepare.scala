@@ -42,6 +42,7 @@ import com.asakusafw.runtime.directio.hadoop.HadoopDataSourceUtil
 import com.asakusafw.runtime.io.ModelOutput
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ StringOption, ValueOption }
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.Direct
 import com.asakusafw.spark.runtime.directio._
 import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
@@ -62,7 +63,7 @@ abstract class DirectOutputPrepare[T: Manifest](
 
   def formatType: Class[_ <: DataFormat[T]]
 
-  private val statistics = jobContext.getOrNewOutputStatistics(name)
+  private val statistics = jobContext.getOrNewOutputStatistics(Direct, name)
 
   override protected def doPerform(
     rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {

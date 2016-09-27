@@ -44,6 +44,7 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime._
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.External
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -157,6 +158,10 @@ class TemporaryOutputClassBuilderSpec
     val result = readResult(path, rc)
     assert(result.size === 100)
     assert(result === (0 until 100))
+
+    assert(jobContext.outputStatistics(External).size === 1)
+    val statistics = jobContext.outputStatistics(External)(outputOperator.getName)
+    assert(statistics.records === 100)
   }
 }
 

@@ -45,6 +45,7 @@ import com.asakusafw.spark.compiler.{ ClassServerForAll, FlowIdForEach }
 import com.asakusafw.spark.compiler.graph._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.runtime._
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.External
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -169,6 +170,10 @@ class TemporaryOutputClassBuilderSpec
       assert(result.size === 100)
       assert(result === (0 until 100).map(i => 100 * round + i))
     }
+
+    assert(jobContext.outputStatistics(External).size === 1)
+    val statistics = jobContext.outputStatistics(External)(outputOperator.getName)
+    assert(statistics.records === 200)
   }
 }
 

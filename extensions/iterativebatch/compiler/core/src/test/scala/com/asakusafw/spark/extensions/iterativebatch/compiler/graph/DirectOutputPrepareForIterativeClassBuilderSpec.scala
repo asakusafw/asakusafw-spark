@@ -55,6 +55,7 @@ import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler.planning.{ IterativeInfo, SubPlanInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime._
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.Direct
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator._
 import com.asakusafw.spark.runtime.graph._
@@ -246,8 +247,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 === (0 until 100).map(i => (100 * round + i, i % 10)))
           }
 
-          assert(jobContext.outputStatistics.size === 1)
-          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
           assert(statistics.files === 4)
           assert(statistics.bytes === 4292)
           assert(statistics.records === 200)
@@ -266,8 +267,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
               .collect.toSeq
               === (0 until 100).map(i => (100 * round + i, i % 10)))
 
-          assert(jobContext.outputStatistics.size === 1)
-          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
           assert(statistics.files === 2)
           assert(statistics.bytes === 2146)
           assert(statistics.records === 100)
@@ -368,8 +369,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 === (0 until 100).map(i => (100 * round + i, i % 10)))
           }
 
-          assert(jobContext.outputStatistics.size === 1)
-          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
           assert(statistics.files === 4)
           assert(statistics.bytes === 4292)
           assert(statistics.records === 200)
@@ -388,8 +389,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
               .collect.toSeq
               === (0 until 100).map(i => (100 * round + i, i % 10)))
 
-          assert(jobContext.outputStatistics.size === 1)
-          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
           assert(statistics.files === 2)
           assert(statistics.bytes === 2146)
           assert(statistics.records === 100)
@@ -491,8 +492,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
             .collect.toSeq
             === (0 until 100).map(i => (100 * round + i, i % 10)))
 
-        assert(jobContext.outputStatistics.size === 1)
-        val statistics = jobContext.outputStatistics(outputOperator.getName)
+        assert(jobContext.outputStatistics(Direct).size === 1)
+        val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
         assert(statistics.files === 2)
         assert(statistics.bytes === 2146)
         assert(statistics.records === 100)
@@ -614,8 +615,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
               }
           }
 
-          assert(jobContext.outputStatistics.size === 1)
-          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
           assert(statistics.files === 20)
           assert(statistics.bytes === 7060)
           assert(statistics.records === 200)
@@ -636,8 +637,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                   === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
           }
 
-          assert(jobContext.outputStatistics.size === 1)
-          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
           assert(statistics.files === 10)
           assert(statistics.bytes === 3530)
           assert(statistics.records === 100)
@@ -738,8 +739,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                   })
           }
 
-          assert(jobContext.outputStatistics.size === 1)
-          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
           assert(statistics.files === 10)
           assert(statistics.bytes === 5330)
           assert(statistics.records === 200)
@@ -756,8 +757,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                   === (0 until 100).reverse.filter(_ % 10 == i).map(j => (j, i)))
           }
 
-          assert(jobContext.outputStatistics.size === 1)
-          val statistics = jobContext.outputStatistics(outputOperator.getName)
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
           assert(statistics.files === 10)
           assert(statistics.bytes === 3530)
           assert(statistics.records === 100)
@@ -861,8 +862,8 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
                 === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
         }
 
-        assert(jobContext.outputStatistics.size === 1)
-        val statistics = jobContext.outputStatistics(outputOperator.getName)
+        assert(jobContext.outputStatistics(Direct).size === 1)
+        val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
         assert(statistics.files === 10)
         assert(statistics.bytes === 3530)
         assert(statistics.records === 100)

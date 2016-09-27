@@ -24,12 +24,15 @@ import org.apache.hadoop.mapreduce.{ Job => MRJob }
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
+import com.asakusafw.spark.runtime.JobContext.OutputCounter
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class TemporaryOutput[T: ClassTag](
   prevs: Seq[(Source, BranchKey)])(
     implicit jobContext: JobContext)
   extends NewHadoopOutput(prevs) {
+
+  override def counter: OutputCounter = OutputCounter.External
 
   protected def path: String
 
