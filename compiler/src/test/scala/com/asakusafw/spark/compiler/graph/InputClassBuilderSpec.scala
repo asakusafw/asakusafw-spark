@@ -50,6 +50,7 @@ import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime._
+import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.graph.{
   Broadcast,
   BroadcastId,
@@ -175,6 +176,10 @@ class TemporaryInputClassBuilderSpec
       }, Duration.Inf)
 
     assert(result === (0 until 100))
+
+    assert(jobContext.inputStatistics(InputCounter.External).size === 1)
+    val statistics = jobContext.inputStatistics(InputCounter.External)(inputOperator.getName)
+    assert(statistics.records === 100)
   }
 }
 
@@ -299,6 +304,10 @@ class DirectInputClassBuilderSpec
       }, Duration.Inf)
 
     assert(result === (0 until 100))
+
+    assert(jobContext.inputStatistics(InputCounter.Direct).size === 1)
+    val statistics = jobContext.inputStatistics(InputCounter.Direct)(inputOperator.getName)
+    assert(statistics.records === 100)
   }
 }
 

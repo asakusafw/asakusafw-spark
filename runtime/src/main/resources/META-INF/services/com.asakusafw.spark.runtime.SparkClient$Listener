@@ -1,1 +1,1 @@
-com.asakusafw.spark.runtime.listener.DirectOutputCount
+com.asakusafw.spark.runtime.listener.OutputCounters

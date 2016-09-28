@@ -34,6 +34,7 @@ import com.asakusafw.runtime.directio.DataFormat
 import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption, ValueOption }
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.Direct
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator._
 import com.asakusafw.spark.runtime.io.WritableSerDe
@@ -106,8 +107,8 @@ class DirectOutputPrepareSpec
         .collect.toSeq
         === (0 until 100).map(i => (i, i % 10)))
 
-    assert(jobContext.outputStatistics.size === 1)
-    val statistics = jobContext.outputStatistics("flat")
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)("flat")
     assert(statistics.files === 2)
     assert(statistics.bytes === 2044)
     assert(statistics.records === 100)
@@ -156,8 +157,8 @@ class DirectOutputPrepareSpec
             === (0 until 100).reverse.filter(_ % 10 == i).map(j => (j, i)))
     }
 
-    assert(jobContext.outputStatistics.size === 1)
-    val statistics = jobContext.outputStatistics("group")
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)("group")
     assert(statistics.files === 10)
     assert(statistics.bytes === 3020)
     assert(statistics.records === 100)

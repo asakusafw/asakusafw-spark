@@ -43,6 +43,7 @@ import com.asakusafw.runtime.directio.hadoop.HadoopDataSourceUtil
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.StringOption
 import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.Direct
 import com.asakusafw.spark.runtime.directio._
 import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.runtime.io.WritableSerDe
@@ -62,7 +63,7 @@ abstract class DirectOutputPrepareForIterative[T <: DataModel[T] with Writable: 
 
   def formatType: Class[_ <: DataFormat[T]]
 
-  private val statistics = jobContext.getOrNewOutputStatistics(name)
+  private val statistics = jobContext.getOrNewOutputStatistics(Direct, name)
 
   override protected def doPerform(
     origin: RoundContext,

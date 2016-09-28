@@ -43,6 +43,7 @@ import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value.IntOption
+import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.TempDirForEach
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment, OutputFragment }
@@ -94,7 +95,7 @@ class TemporaryInputSpec
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path = new File(tmpDir, "foos").getAbsolutePath
 
-      val input = new Temporary.Input(path)("input")
+      val input = new Temporary.Input(path)("input", "input")
 
       prepareRound(path, configurePath)(0 until 100)
 
@@ -108,6 +109,10 @@ class TemporaryInputSpec
         }, Duration.Inf)
 
       assert(result === (0 until 100))
+
+      assert(jobContext.inputStatistics(InputCounter.External).size === 1)
+      val statistics = jobContext.inputStatistics(InputCounter.External)("input")
+      assert(statistics.records === 100)
     }
 
     it should s"input from multiple paths: [${conf}]" in {
@@ -117,7 +122,7 @@ class TemporaryInputSpec
       val path1 = new File(tmpDir, "foos1").getAbsolutePath
       val path2 = new File(tmpDir, "foos2").getAbsolutePath
 
-      val input = new Temporary.Input(Set(path1, path2))("input")
+      val input = new Temporary.Input(Set(path1, path2))("input", "input")
 
       prepareRound(path1, configurePath)(0 until 50)
       prepareRound(path2, configurePath)(50 until 100)
@@ -132,6 +137,10 @@ class TemporaryInputSpec
         }, Duration.Inf)
 
       assert(result === (0 until 100))
+
+      assert(jobContext.inputStatistics(InputCounter.External).size === 1)
+      val statistics = jobContext.inputStatistics(InputCounter.External)("input")
+      assert(statistics.records === 100)
     }
   }
 }
@@ -175,7 +184,7 @@ class DirectInputSpec
       val tmpDir = createTempDirectoryForEach("test-").toFile.getAbsolutePath
       val path = new File(tmpDir, "foos").getAbsolutePath
 
-      val input = new Direct.Input(mkExtraConfigurations(tmpDir))("input")
+      val input = new Direct.Input(mkExtraConfigurations(tmpDir))("input", "input")
 
       prepareRound(path, configurePath)(0 until 100)
 
@@ -189,6 +198,10 @@ class DirectInputSpec
         }, Duration.Inf)
 
       assert(result === (0 until 100))
+
+      assert(jobContext.inputStatistics(InputCounter.Direct).size === 1)
+      val statistics = jobContext.inputStatistics(InputCounter.Direct)("input")
+      assert(statistics.records === 100)
     }
 
     it should s"input from multiple paths: [${conf}]" in {
@@ -198,7 +211,7 @@ class DirectInputSpec
       val path1 = new File(tmpDir, "foos1").getAbsolutePath
       val path2 = new File(tmpDir, "foos2").getAbsolutePath
 
-      val input = new Direct.Input(mkExtraConfigurations(tmpDir))("input")
+      val input = new Direct.Input(mkExtraConfigurations(tmpDir))("input", "input")
 
       prepareRound(path1, configurePath)(0 until 50)
       prepareRound(path2, configurePath)(50 until 100)
@@ -213,6 +226,10 @@ class DirectInputSpec
         }, Duration.Inf)
 
       assert(result === (0 until 100))
+
+      assert(jobContext.inputStatistics(InputCounter.Direct).size === 1)
+      val statistics = jobContext.inputStatistics(InputCounter.Direct)("input")
+      assert(statistics.records === 100)
     }
   }
 
@@ -277,6 +294,7 @@ object InputSpec {
 
     class Input(
       basePaths: Set[String])(
+        val name: String,
         val label: String)(
           implicit jobContext: JobContext)
       extends TemporaryInput[Foo](Map.empty)
@@ -284,8 +302,9 @@ object InputSpec {
 
       def this(
         path: String)(
+          name: String,
           label: String)(
-            implicit jobContext: JobContext) = this(Set(path))(label)
+            implicit jobContext: JobContext) = this(Set(path))(name, label)
 
       override def paths: Set[String] = basePaths.map(_ + "/part-*")
 
@@ -321,6 +340,7 @@ object InputSpec {
 
     class Input(
       val extraConfigurations: Map[String, String])(
+        val name: String,
         val label: String)(
           implicit jobContext: JobContext)
       extends DirectInput(

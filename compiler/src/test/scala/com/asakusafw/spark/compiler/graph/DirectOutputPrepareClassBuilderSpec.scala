@@ -47,6 +47,7 @@ import com.asakusafw.spark.compiler.graph.DirectOutputPrepareClassBuilderSpec._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime._
+import com.asakusafw.spark.runtime.JobContext.OutputCounter.Direct
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator.Fragment
 import com.asakusafw.spark.runtime.{ graph => runtime }
@@ -167,8 +168,8 @@ class DirectOutputPrepareClassBuilderSpec
         .collect.toSeq
         === (0 until 100).map(i => (i, i % 10)))
 
-    assert(jobContext.outputStatistics.size === 1)
-    val statistics = jobContext.outputStatistics(outputOperator.getName)
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
     assert(statistics.files === 2)
     assert(statistics.bytes === 2070)
     assert(statistics.records === 100)
@@ -267,8 +268,8 @@ class DirectOutputPrepareClassBuilderSpec
             === (0 until 100).reverse.filter(_ % 10 == i).map(j => (j, i)))
     }
 
-    assert(jobContext.outputStatistics.size === 1)
-    val statistics = jobContext.outputStatistics(outputOperator.getName)
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
     assert(statistics.files === 10)
     assert(statistics.bytes === 3150)
     assert(statistics.records === 100)

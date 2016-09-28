@@ -84,6 +84,10 @@ class TemporaryOutputClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
+    methodDef.newMethod("name", classOf[String].asType, Seq.empty) { implicit mb =>
+      `return`(ldc(operator.getName))
+    }
+
     methodDef.newMethod("path", classOf[String].asType, Seq.empty) { implicit mb =>
       `return`(ldc(context.options.getRuntimeWorkingPath(operator.getName)))
     }
