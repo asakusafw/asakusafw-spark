@@ -18,6 +18,7 @@ package com.asakusafw.spark.runtime.directio
 import java.text.SimpleDateFormat
 import java.util.{ Calendar, Random }
 
+import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime.directio.OutputPatternGenerator._
 
@@ -27,9 +28,9 @@ abstract class OutputPatternGenerator[T](fragments: Seq[Fragment]) {
 
   def getProperty(target: T, name: String): ValueOption[_]
 
-  def generate(target: T): StringOption = {
+  def generate(target: T)(stageInfo: StageInfo): StringOption = {
     val str = fragments.map {
-      case Fragment.Constant(value) => value
+      case Fragment.Constant(value) => stageInfo.resolveUserVariables(value)
       case Fragment.Natural(property) => getProperty(target, property)
       case date: Fragment.DateFormat =>
         date.format(getProperty(target, date.property))
