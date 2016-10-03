@@ -141,6 +141,72 @@ class DirectOutputPrepareForIterativeSpec
       stageOffset += 7
     }
 
+    it should "prepare flat simple with batch argument" in {
+      implicit val jobContext = newJobContext(sc)
+
+      val rounds = 0 to 1
+      val numSlices = 2
+      val files = rounds.map { round =>
+        (0 until numSlices).map(i => new File(root, s"flat1_bar_${round}/bar_s${round + stageOffset}-p${i}.bin"))
+      }
+
+      val source =
+        new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
+          .mapWithRoundContext(Input)(Foo.intToFoo)
+
+      val setup = new Setup("setup")
+      val prepareEach =
+        new Flat.PrepareEach(
+          Seq((source, Input)))(
+          "test/flat1_${arg}_${round}",
+          "${arg}_*.bin")(
+          "prepare flat.each 1 with batch argument")
+      val prepare = new Prepare(
+        setup,
+        prepareEach)(
+        "flat1",
+        classOf[FooSequenceFileFormat])(
+        "prepare flat 1 with batch argument")
+      val commit = new Commit(prepare)("test/flat1_${round}")
+
+      val origin = newRoundContext()
+      val rcs = rounds.map { round =>
+        newRoundContext(
+          stageId = s"round_${round}",
+          batchArguments = Map("arg" -> "bar", "round" -> round.toString))
+      }
+
+      assert(files.exists(_.exists(_.exists())) === false)
+
+      rcs.foreach { rc =>
+        Await.result(prepareEach.perform(rc), Duration.Inf)
+      }
+
+      Await.result(prepare.perform(origin, rcs), Duration.Inf)
+      assert(files.exists(_.exists(_.exists())) === false)
+
+      Await.result(commit.perform(origin, rcs), Duration.Inf)
+      assert(files.forall(_.forall(_.exists())) === true)
+
+      rounds.foreach { round =>
+        assert(
+          sc.newAPIHadoopFile[NullWritable, Foo, SequenceFileInputFormat[NullWritable, Foo]](
+            new File(root, s"flat1_bar_${round}/bar_s${round + stageOffset}-*.bin").getAbsolutePath)
+            .map(_._2)
+            .map(foo => (foo.id.get, foo.group.get))
+            .collect.toSeq
+            === (0 until 100).map(i => (100 * round + i, i % 10)))
+      }
+
+      assert(jobContext.outputStatistics(Direct).size === 1)
+      val statistics = jobContext.outputStatistics(Direct)("flat1")
+      assert(statistics.files === 4)
+      assert(statistics.bytes === 4240)
+      assert(statistics.records === 200)
+
+      stageOffset += 7
+    }
+
     it should "prepare flat w/o round variable" in {
       implicit val jobContext = newJobContext(sc)
 
@@ -191,7 +257,7 @@ class DirectOutputPrepareForIterativeSpec
       rounds.foreach { round =>
         assert(
           sc.newAPIHadoopFile[NullWritable, Foo, SequenceFileInputFormat[NullWritable, Foo]](
-            new File(root, s"flat2/s${round + 7}-*.bin").getAbsolutePath)
+            new File(root, s"flat2/s${round + stageOffset}-*.bin").getAbsolutePath)
             .map(_._2)
             .map(foo => (foo.id.get, foo.group.get))
             .collect.toSeq
@@ -300,7 +366,8 @@ class DirectOutputPrepareForIterativeSpec
       new Group.PrepareEach(
         Seq((source, Input)))(
         new HashPartitioner(sc.defaultParallelism))(
-        "test/group1_${round}")(
+        "test/group1_${round}",
+        Seq(constant("foo_"), natural("group"), constant(".bin")))(
         "prepare group.each 1")
     val prepare = new Prepare(
       setup,
@@ -315,6 +382,75 @@ class DirectOutputPrepareForIterativeSpec
       newRoundContext(
         stageId = s"round_${round}",
         batchArguments = Map("round" -> round.toString))
+    }
+
+    assert(files.exists(_.exists(_.exists())) === false)
+
+    rcs.foreach { rc =>
+      Await.result(prepareEach.perform(rc), Duration.Inf)
+    }
+
+    Await.result(prepare.perform(origin, rcs), Duration.Inf)
+    assert(files.exists(_.exists(_.exists())) === false)
+
+    Await.result(commit.perform(origin, rcs), Duration.Inf)
+    assert(files.forall(_.forall(_.exists())) === true)
+
+    rounds.zip(files).foreach {
+      case (round, files) =>
+        files.zipWithIndex.foreach {
+          case (file, i) =>
+            assert(
+              sc.newAPIHadoopFile[NullWritable, Foo, SequenceFileInputFormat[NullWritable, Foo]](
+                file.getAbsolutePath)
+                .map(_._2)
+                .map(foo => (foo.id.get, foo.group.get))
+                .collect.toSeq
+                === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
+        }
+    }
+
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)("group1")
+    assert(statistics.files === 20)
+    assert(statistics.bytes === 6800)
+    assert(statistics.records === 200)
+  }
+
+  it should "prepare group simple with batch argument" in {
+    implicit val jobContext = newJobContext(sc)
+
+    val rounds = 0 to 1
+    val numSlices = 2
+    val files = rounds.map { round =>
+      (0 until numSlices).map(i => new File(root, s"group1_bar_${round}/foo_bar_${i}.bin"))
+    }
+
+    val source =
+      new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
+        .mapWithRoundContext(Input)(Foo.intToFoo)
+
+    val setup = new Setup("setup")
+    val prepareEach =
+      new Group.PrepareEach(
+        Seq((source, Input)))(
+        new HashPartitioner(sc.defaultParallelism))(
+        "test/group1_${arg}_${round}",
+        Seq(constant("foo_${arg}_"), natural("group"), constant(".bin")))(
+        "prepare group.each 1 with batch argument")
+    val prepare = new Prepare(
+      setup,
+      prepareEach)(
+      "group1",
+      classOf[FooSequenceFileFormat])(
+      "prepare group 1 with batch argument")
+    val commit = new Commit(prepare)("test/group1_${round}")
+
+    val origin = newRoundContext()
+    val rcs = rounds.map { round =>
+      newRoundContext(
+        stageId = s"round_${round}",
+        batchArguments = Map("arg" -> "bar", "round" -> round.toString))
     }
 
     assert(files.exists(_.exists(_.exists())) === false)
@@ -366,7 +502,8 @@ class DirectOutputPrepareForIterativeSpec
       new Group.PrepareEach(
         Seq((source, Input)))(
         new HashPartitioner(sc.defaultParallelism))(
-        "test/group2")(
+        "test/group2",
+        Seq(constant("foo_"), natural("group"), constant(".bin")))(
         "prepare group.each 2")
     val prepare = new Prepare(
       setup,
@@ -433,7 +570,8 @@ class DirectOutputPrepareForIterativeSpec
       new Group.PrepareEach(
         Seq((source, Input)))(
         new HashPartitioner(sc.defaultParallelism))(
-        "test/group3_${round}")(
+        "test/group3_${round}",
+        Seq(constant("foo_"), natural("group"), constant(".bin")))(
         "prepare group.each 3")
     val prepare = new Prepare(
       setup,
@@ -610,7 +748,8 @@ object DirectOutputPrepareForIterativeSpec {
     class PrepareEach(
       prevs: Seq[(Source, BranchKey)])(
         partitioner: Partitioner)(
-          val basePath: String)(
+          val basePath: String,
+          val fragments: Seq[Fragment])(
             val label: String)(
               implicit jobContext: JobContext)
       extends DirectOutputPrepareGroupEachForIterative[Foo](prevs)(partitioner)
@@ -618,8 +757,7 @@ object DirectOutputPrepareForIterativeSpec {
 
       override def newDataModel(): Foo = new Foo()
 
-      override lazy val outputPatternGenerator = new FooOutputPatternGenerator(
-        Seq(constant("foo_"), natural("group"), constant(".bin")))
+      override lazy val outputPatternGenerator = new FooOutputPatternGenerator(fragments)
 
       override val sortOrdering: SortOrdering = new Ord
 

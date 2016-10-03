@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.asakusafw.spark.runtime.directio
+package com.asakusafw.spark.runtime
+package directio
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -27,7 +28,7 @@ import com.asakusafw.spark.runtime.directio.OutputPatternGenerator._
 @RunWith(classOf[JUnitRunner])
 class OutputPatternGeneratorSpecTest extends OutputPatternGeneratorSpec
 
-class OutputPatternGeneratorSpec extends FlatSpec {
+class OutputPatternGeneratorSpec extends FlatSpec with StageInfoSugar {
 
   behavior of classOf[OutputPatternGenerator[_]].getSimpleName
 
@@ -35,7 +36,13 @@ class OutputPatternGeneratorSpec extends FlatSpec {
 
   it should "generate simple" in {
     val generator = new FooOutputPatternGenerator(Seq(constant("hello")))
-    assert(generator.generate(new Foo()).getAsString === "hello")
+    assert(generator.generate(new Foo())(newStageInfo()).getAsString === "hello")
+  }
+
+  it should "generate simple with batch argument" in {
+    val generator = new FooOutputPatternGenerator(Seq(constant("hello_${arg}")))
+    val stageInfo = newStageInfo(batchArguments = Map("arg" -> "bar"))
+    assert(generator.generate(new Foo())(stageInfo).getAsString === "hello_bar")
   }
 
   it should "generate random" in {
@@ -45,21 +52,52 @@ class OutputPatternGeneratorSpec extends FlatSpec {
 
     val rnd = new Random(0xcafebabe)
     for (_ <- 0 until 100) {
-      assert(generator.generate(new Foo()).getAsString === s"r-${rnd.nextInt(9 - 1 + 1) + 1}")
+      assert(generator.generate(new Foo())(newStageInfo()).getAsString
+        === s"r-${rnd.nextInt(9 - 1 + 1) + 1}")
+    }
+  }
+
+  it should "generate random with batch argument" in {
+    val generator = new FooOutputPatternGenerator(Seq(
+      constant("r-${arg}-"),
+      random(0xcafebabe, 1, 9)))
+    val stageInfo = newStageInfo(batchArguments = Map("arg" -> "bar"))
+
+    val rnd = new Random(0xcafebabe)
+    for (_ <- 0 until 100) {
+      assert(generator.generate(new Foo())(stageInfo).getAsString
+        === s"r-bar-${rnd.nextInt(9 - 1 + 1) + 1}")
     }
   }
 
   it should "generate natural" in {
     val generator = new FooOutputPatternGenerator(Seq(constant("p-"), natural("str")))
-    assert(generator.generate(new Foo(_str = Some("v"))).getAsString === "p-v")
+    assert(generator.generate(new Foo(_str = Some("v")))(newStageInfo()).getAsString
+      === "p-v")
+  }
+
+  it should "generate natural with batch argument" in {
+    val generator = new FooOutputPatternGenerator(Seq(constant("p-${arg}-"), natural("str")))
+    val stageInfo = newStageInfo(batchArguments = Map("arg" -> "bar"))
+    assert(generator.generate(new Foo(_str = Some("${arg}")))(stageInfo).getAsString
+      === "p-bar-${arg}")
   }
 
   it should "generate date format" in {
     val generator = new FooOutputPatternGenerator(Seq(
       constant("p-"),
       date("date", "yyyyMMdd")))
-    assert(generator.generate(new Foo(_date = Some(new Date(2000, 1, 2)))).getAsString
+    assert(generator.generate(new Foo(_date = Some(new Date(2000, 1, 2))))(newStageInfo()).getAsString
       === "p-20000102")
+  }
+
+  it should "generate date format with batch argument" in {
+    val generator = new FooOutputPatternGenerator(Seq(
+      constant("p-${arg}-"),
+      date("date", "yyyyMMdd")))
+    val stageInfo = newStageInfo(batchArguments = Map("arg" -> "bar"))
+    assert(generator.generate(new Foo(_date = Some(new Date(2000, 1, 2))))(stageInfo).getAsString
+      === "p-bar-20000102")
   }
 
   it should "generate datetime format" in {
@@ -67,8 +105,18 @@ class OutputPatternGeneratorSpec extends FlatSpec {
       constant("p-"),
       dateTime("dateTime", "yyyyMMdd")))
     assert(generator.generate(
-      new Foo(_dateTime = Some(new DateTime(2000, 1, 2, 3, 4, 5)))).getAsString
+      new Foo(_dateTime = Some(new DateTime(2000, 1, 2, 3, 4, 5))))(newStageInfo()).getAsString
       === "p-20000102")
+  }
+
+  it should "generate datetime format with batch argument" in {
+    val generator = new FooOutputPatternGenerator(Seq(
+      constant("p-${arg}-"),
+      dateTime("dateTime", "yyyyMMdd")))
+    val stageInfo = newStageInfo(batchArguments = Map("arg" -> "bar"))
+    assert(generator.generate(
+      new Foo(_dateTime = Some(new DateTime(2000, 1, 2, 3, 4, 5))))(stageInfo).getAsString
+      === "p-bar-20000102")
   }
 }
 

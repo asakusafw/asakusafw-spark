@@ -22,40 +22,16 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.bridge.stage.StageInfo
 
-trait RoundContextSugar extends StageInfoSugar {
+trait StageInfoSugar {
 
-  def newRoundContext(stageInfo: StageInfo)(implicit jobContext: JobContext): RoundContext = {
-    val conf = new Configuration(jobContext.sparkContext.hadoopConfiguration)
-    conf.set(StageInfo.KEY_NAME, stageInfo.serialize)
-
-    RoundContextSugar.MockRoundContext(jobContext.sparkContext.broadcast(conf))
-  }
-
-  def newRoundContext(
+  def newStageInfo(
     userName: String = sys.props("user.name"),
     batchId: String = "batchId",
     flowId: String = "flowId",
     stageId: String = null,
     executionId: String = "executionId",
-    batchArguments: Map[String, String] = Map.empty)(
-      implicit jobContext: JobContext): RoundContext = {
+    batchArguments: Map[String, String] = Map.empty): StageInfo = {
 
-    val stageInfo = newStageInfo(userName, batchId, flowId, stageId, executionId, batchArguments)
-    newRoundContext(stageInfo)
-  }
-}
-
-object RoundContextSugar {
-
-  case class MockRoundContext(hadoopConf: Broadcasted[Configuration]) extends RoundContext {
-
-    private def stageInfo: StageInfo =
-      StageInfo.deserialize(hadoopConf.value.get(StageInfo.KEY_NAME))
-
-    override lazy val roundId: Option[String] = {
-      Option(stageInfo.getStageId)
-    }
-
-    override lazy val toString: String = stageInfo.toString
+    new StageInfo(userName, batchId, flowId, stageId, executionId, batchArguments)
   }
 }

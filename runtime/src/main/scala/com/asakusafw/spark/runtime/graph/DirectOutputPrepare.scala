@@ -218,9 +218,9 @@ abstract class DirectOutputPrepareGroup[T <: DataModel[T] with Writable: Manifes
 
   def orderings(value: T): Seq[ValueOption[_]]
 
-  def shuffleKey(value: T): ShuffleKey = {
+  def shuffleKey(value: T)(stageInfo: StageInfo): ShuffleKey = {
     new ShuffleKey(
-      WritableSerDe.serialize(outputPatternGenerator.generate(value)),
+      WritableSerDe.serialize(outputPatternGenerator.generate(value)(stageInfo)),
       WritableSerDe.serialize(orderings(value)))
   }
 
@@ -230,7 +230,12 @@ abstract class DirectOutputPrepareGroup[T <: DataModel[T] with Writable: Manifes
     jobContext.sparkContext.setCallSite(
       CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
 
-    prev.map(value => (shuffleKey(value), WritableSerDe.serialize(value)))
+    prev.mapPartitions { iter =>
+      val conf = rc.hadoopConf.value
+      val stageInfo = StageInfo.deserialize(conf.get(StageInfo.KEY_NAME))
+
+      iter.map(value => (shuffleKey(value)(stageInfo), WritableSerDe.serialize(value)))
+    }
       .repartitionAndSortWithinPartitions(partitioner)
       .foreachPartition { iter =>
 

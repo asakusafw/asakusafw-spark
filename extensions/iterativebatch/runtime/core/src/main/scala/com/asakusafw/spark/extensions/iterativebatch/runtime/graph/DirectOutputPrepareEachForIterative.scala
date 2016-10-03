@@ -180,9 +180,9 @@ abstract class DirectOutputPrepareGroupEachForIterative[T <: DataModel[T] with W
 
   def orderings(value: T): Seq[ValueOption[_]]
 
-  def shuffleKey(basePathOpt: StringOption, value: T): ShuffleKey = {
+  def shuffleKey(basePathOpt: StringOption, value: T)(stageInfo: StageInfo): ShuffleKey = {
     new ShuffleKey(
-      WritableSerDe.serialize(Seq(basePathOpt, outputPatternGenerator.generate(value))),
+      WritableSerDe.serialize(Seq(basePathOpt, outputPatternGenerator.generate(value)(stageInfo))),
       WritableSerDe.serialize(orderings(value)))
   }
 
@@ -198,7 +198,7 @@ abstract class DirectOutputPrepareGroupEachForIterative[T <: DataModel[T] with W
       basePathOpt.modify(stageInfo.resolveUserVariables(this.basePath))
 
       iter.map { value =>
-        (shuffleKey(basePathOpt, value), WritableSerDe.serialize(value))
+        (shuffleKey(basePathOpt, value)(stageInfo), WritableSerDe.serialize(value))
       }
     }
       .repartitionAndSortWithinPartitions(partitioner)
