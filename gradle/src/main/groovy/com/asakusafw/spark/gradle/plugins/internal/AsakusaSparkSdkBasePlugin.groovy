@@ -91,8 +91,7 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
         }
         PluginUtils.afterEvaluate(project) {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
-            AsakusafwPluginConvention asakusa = project.asakusafw
-            AsakusafwSdkExtension features = asakusa.sdk
+            AsakusafwSdkExtension features = AsakusaSdkPlugin.get(project).sdk
             project.configurations {
                 asakusaSparkCommon { Configuration conf ->
                     if (base.customSparkArtifact != null) {
@@ -124,27 +123,27 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
                     }
 
                     asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.langVersion}"
-                    asakusaSparkCommon "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
-                    asakusaSparkCommon "com.asakusafw:java-dom:${asakusa.asakusafwVersion}"
+                    asakusaSparkCommon "com.asakusafw:simple-graph:${base.coreVersion}"
+                    asakusaSparkCommon "com.asakusafw:java-dom:${base.coreVersion}"
 
                     asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.langVersion}"
                     asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.langVersion}"
                     asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.langVersion}"
 
-                    asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${asakusa.asakusafwVersion}"
-                    asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${asakusa.asakusafwVersion}"
-                    asakusaSparkCompiler "com.asakusafw:asakusa-yaess-core:${asakusa.asakusafwVersion}"
+                    asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${base.coreVersion}"
+                    asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${base.coreVersion}"
+                    asakusaSparkCompiler "com.asakusafw:asakusa-yaess-core:${base.coreVersion}"
 
                     asakusaSparkCommon "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.langVersion}"
                     asakusaSparkCommon "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.featureVersion}"
 
                     if (features.directio) {
                         asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.langVersion}"
-                        asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${asakusa.asakusafwVersion}"
+                        asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${base.coreVersion}"
                     }
                     if (features.windgate) {
                         asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.langVersion}"
-                        asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${asakusa.asakusafwVersion}"
+                        asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${base.coreVersion}"
                     }
                     if (features.hive) {
                         asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-hive:${base.langVersion}"
