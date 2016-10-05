@@ -15,9 +15,6 @@
  */
 package com.asakusafw.spark.gradle.plugins.internal
 
-import java.util.Map
-import java.util.Properties
-
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -76,6 +73,8 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
         this.project = project
+        project.apply plugin: AsakusafwBasePlugin
+
         this.extension = project.extensions.create('asakusaSparkBase', AsakusaSparkBaseExtension)
         configureExtension()
         configureTasks()

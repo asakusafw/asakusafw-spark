@@ -17,10 +17,6 @@ package com.asakusafw.spark.gradle.plugins.internal
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.DependencyResolveDetails
-import org.gradle.api.artifacts.ModuleVersionSelector
-import org.gradle.api.artifacts.ResolutionStrategy
 import org.gradle.api.artifacts.ResolvedConfiguration
 import org.gradle.api.artifacts.ResolvedDependency
 
@@ -34,127 +30,33 @@ import com.asakusafw.gradle.tasks.internal.ResolutionUtils
 
 /**
  * A Gradle sub plug-in for Asakusa on Spark SDK.
+ * @since 0.1.0
+ * @version 0.4.0
+ * @see AsakusaSparkSdkBasePlugin
  */
 class AsakusaSparkSdkPlugin implements Plugin<Project> {
 
+    /**
+     * The compile task name.
+     */
     public static final String TASK_COMPILE = 'sparkCompileBatchapps'
-
-    private static final Map<String, String> REDIRECT = [
-            'com.asakusafw.runtime.core.BatchContext' : 'com.asakusafw.bridge.api.BatchContext',
-            'com.asakusafw.runtime.core.Report' : 'com.asakusafw.bridge.api.Report',
-            'com.asakusafw.runtime.directio.api.DirectIo' : 'com.asakusafw.bridge.directio.api.DirectIo',
-    ]
 
     private Project project
 
-    private AsakusaSparkBaseExtension base
+    private AsakusafwCompilerExtension extension
 
     @Override
     void apply(Project project) {
         this.project = project
 
-        project.apply plugin: 'asakusafw-sdk'
-        project.apply plugin: AsakusaSparkBasePlugin
+        project.apply plugin: AsakusaSparkSdkBasePlugin
+        this.extension = AsakusaSparkSdkBasePlugin.get(project)
 
-        configureConvention()
-        configureConfigurations()
         defineTasks()
     }
 
-    private void configureConvention() {
-        AsakusafwPluginConvention convention = project.asakusafw
-        AsakusafwCompilerExtension spark = convention.extensions.create('spark', AsakusafwCompilerExtension)
-        spark.conventionMapping.with {
-            outputDirectory = { project.relativePath(new File(project.buildDir, 'spark-batchapps')) }
-            batchIdPrefix = { (String) 'spark.' }
-            failOnError = { true }
-        }
-        REDIRECT.each { k, v ->
-            spark.compilerProperties.put((String) "redirector.rule.${k}", v)
-        }
-        spark.compilerProperties.put('javac.version', { convention.javac.sourceCompatibility.toString() })
-    }
-
-    private void configureConfigurations() {
-        project.configurations {
-            asakusaSparkCommon {
-                description 'Common libraries of Asakusa DSL Compiler for Spark'
-                exclude group: 'asm', module: 'asm'
-            }
-            asakusaSparkCompiler {
-                description 'Full classpath of Asakusa DSL Compiler for Spark'
-                extendsFrom project.configurations.compile
-                extendsFrom project.configurations.asakusaSparkCommon
-            }
-            asakusaSparkTestkit {
-                description 'Asakusa DSL testkit classpath for Spark'
-                extendsFrom project.configurations.asakusaSparkCommon
-                exclude group: 'com.asakusafw', module: 'asakusa-test-mapreduce'
-            }
-        }
-        PluginUtils.afterEvaluate(project) {
-            AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
-            AsakusafwPluginConvention asakusa = project.asakusafw
-            project.configurations {
-                asakusaSparkCommon { Configuration conf ->
-                    if (base.customSparkArtifact != null) {
-                        conf.resolutionStrategy { ResolutionStrategy strategy ->
-                            strategy.eachDependency { DependencyResolveDetails details ->
-                                ModuleVersionSelector req = details.requested
-                                if (req.group == 'org.apache.spark' && req.name.startsWith('spark-core_')) {
-                                    details.useTarget base.customSparkArtifact
-                                }
-                            }
-                        }
-                    }
-                }
-                asakusaSparkCompiler { Configuration conf ->
-                    base.excludeModules.each { Object moduleInfo ->
-                        project.logger.info "excludes module for Spark compiler: ${moduleInfo}"
-                        if (moduleInfo instanceof Map<?, ?>) {
-                            conf.exclude moduleInfo
-                        } else {
-                            conf.exclude module: moduleInfo
-                        }
-                    }
-                }
-            }
-            project.dependencies {
-                asakusaSparkCommon("com.asakusafw.spark:asakusa-spark-compiler:${base.featureVersion}") {
-                    exclude module: 'hadoop-client'
-                }
-
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.langVersion}"
-                asakusaSparkCommon "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
-                asakusaSparkCommon "com.asakusafw:java-dom:${asakusa.asakusafwVersion}"
-
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.langVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.langVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.langVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.langVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-hive:${base.langVersion}"
-                asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.langVersion}"
-                asakusaSparkCommon "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.langVersion}"
-                asakusaSparkCommon "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.featureVersion}"
-
-                asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${asakusa.asakusafwVersion}"
-                asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${asakusa.asakusafwVersion}"
-                asakusaSparkCompiler "com.asakusafw:asakusa-yaess-core:${asakusa.asakusafwVersion}"
-                asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${asakusa.asakusafwVersion}"
-                asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${asakusa.asakusafwVersion}"
-
-                asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-test-adapter:${base.featureVersion}"
-                asakusaSparkTestkit "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.langVersion}"
-                asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-runtime:${base.featureVersion}"
-                asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.featureVersion}"
-                asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.featureVersion}"
-            }
-        }
-    }
-
     private void defineTasks() {
-        AsakusafwPluginConvention convention = project.asakusafw
-        AsakusafwCompilerExtension spark = convention.spark
+        AsakusafwPluginConvention sdk = AsakusaSdkPlugin.get(project)
         project.tasks.create(TASK_COMPILE, AsakusaCompileTask) { AsakusaCompileTask task ->
             task.group AsakusaSdkPlugin.ASAKUSAFW_BUILD_GROUP
             task.description 'Compiles Asakusa DSL source files for Spark environment'
@@ -171,17 +73,17 @@ class AsakusaSparkSdkPlugin implements Plugin<Project> {
             task.embed << { [project.sourceSets.main.output.resourcesDir].findAll { it.exists() } }
             task.attach << { project.configurations.embedded }
 
-            task.include << { spark.include }
-            task.exclude << { spark.exclude }
+            task.include << { extension.include }
+            task.exclude << { extension.exclude }
 
             task.clean = true
 
             task.conventionMapping.with {
-                maxHeapSize = { convention.maxHeapSize }
-                runtimeWorkingDirectory = { spark.runtimeWorkingDirectory }
-                batchIdPrefix = { spark.batchIdPrefix }
-                outputDirectory = { project.file(spark.outputDirectory) }
-                failOnError = { spark.failOnError }
+                maxHeapSize = { sdk.maxHeapSize }
+                runtimeWorkingDirectory = { extension.runtimeWorkingDirectory }
+                batchIdPrefix = { extension.batchIdPrefix }
+                outputDirectory = { project.file(extension.outputDirectory) }
+                failOnError = { extension.failOnError }
             }
             project.tasks.compileBatchapp.dependsOn task
             project.tasks.jarBatchapp.from { task.outputDirectory }
@@ -190,12 +92,12 @@ class AsakusaSparkSdkPlugin implements Plugin<Project> {
         PluginUtils.afterEvaluate(project) {
             AsakusaCompileTask task = project.tasks.getByName(TASK_COMPILE)
             Map<String, String> map = [:]
-            map.putAll(ResolutionUtils.resolveToStringMap(spark.compilerProperties))
+            map.putAll(ResolutionUtils.resolveToStringMap(extension.compilerProperties))
             map.putAll(ResolutionUtils.resolveToStringMap(task.compilerProperties))
             task.compilerProperties = map
 
-            if (convention.logbackConf != null) {
-                File f = project.file(convention.logbackConf)
+            if (sdk.logbackConf != null) {
+                File f = project.file(sdk.logbackConf)
                 task.systemProperties.put('logback.configurationFile', f.absolutePath)
             }
         }
@@ -216,9 +118,9 @@ class AsakusaSparkSdkPlugin implements Plugin<Project> {
     }
 
     private String findSparkVersion(ResolvedConfiguration conf) {
-        LinkedList<ResolvedDependency> work = new LinkedList<ResolvedDependency>()
+        LinkedList<ResolvedDependency> work = new LinkedList<>()
         work.addAll(conf.firstLevelModuleDependencies)
-        Set<ResolvedDependency> saw = new HashSet<ResolvedDependency>()
+        Set<ResolvedDependency> saw = new HashSet<>()
         while (!work.empty) {
             ResolvedDependency d = work.removeFirst()
             if (saw.contains(d)) {

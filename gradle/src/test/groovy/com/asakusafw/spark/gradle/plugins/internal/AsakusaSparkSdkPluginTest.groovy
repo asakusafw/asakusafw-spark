@@ -87,6 +87,15 @@ class AsakusaSparkSdkPluginTest {
     }
 
     /**
+     * test for version.
+     */
+    @Test
+    void extension_version() {
+        project.asakusaSparkBase.featureVersion = '__VERSION__'
+        assert project.asakusafw.spark.version == '__VERSION__'
+    }
+
+    /**
      * test for {@code tasks.sparkCompileBatchapps}.
      */
     @Test
