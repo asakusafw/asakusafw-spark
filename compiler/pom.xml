@@ -78,6 +78,10 @@ target=jvm-${java.version}
     </dependency>
     <dependency>
       <groupId>com.asakusafw</groupId>
+      <artifactId>asakusa-iterative-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.asakusafw</groupId>
       <artifactId>simple-graph</artifactId>
     </dependency>
     <dependency>
