@@ -41,6 +41,12 @@ class AsakusaSparkSdkPlugin implements Plugin<Project> {
      */
     public static final String TASK_COMPILE = 'sparkCompileBatchapps'
 
+    private static final Map<String, String> REDIRECT = [
+            'com.asakusafw.runtime.core.BatchContext' : 'com.asakusafw.bridge.api.BatchContext',
+            'com.asakusafw.runtime.core.Report' : 'com.asakusafw.bridge.api.Report',
+            'com.asakusafw.runtime.directio.api.DirectIo' : 'com.asakusafw.bridge.directio.api.DirectIo',
+    ]
+
     private Project project
 
     private AsakusafwCompilerExtension extension
@@ -50,9 +56,25 @@ class AsakusaSparkSdkPlugin implements Plugin<Project> {
         this.project = project
 
         project.apply plugin: AsakusaSparkSdkBasePlugin
-        this.extension = AsakusaSparkSdkBasePlugin.get(project)
+        this.extension = AsakusaSdkPlugin.get(project).extensions.create('spark', AsakusafwCompilerExtension)
 
+        configureConvention()
         defineTasks()
+    }
+
+    private void configureConvention() {
+        AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
+        AsakusafwPluginConvention sdk = AsakusaSdkPlugin.get(project)
+        extension.conventionMapping.with {
+            outputDirectory = { project.relativePath(new File(project.buildDir, 'spark-batchapps')) }
+            batchIdPrefix = { (String) 'spark.' }
+            failOnError = { true }
+        }
+        REDIRECT.each { k, v ->
+            extension.compilerProperties.put((String) "redirector.rule.${k}", v)
+        }
+        extension.compilerProperties.put('javac.version', { sdk.javac.sourceCompatibility.toString() })
+        PluginUtils.injectVersionProperty(extension, { base.featureVersion })
     }
 
     private void defineTasks() {
