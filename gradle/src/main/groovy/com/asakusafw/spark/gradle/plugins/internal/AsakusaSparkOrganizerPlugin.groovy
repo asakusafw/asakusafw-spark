@@ -23,6 +23,7 @@ import org.gradle.api.Task
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerPlugin
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerPluginConvention
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
+import com.asakusafw.gradle.plugins.internal.PluginUtils
 import com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension
 
 /**
@@ -56,6 +57,7 @@ class AsakusaSparkOrganizerPlugin implements Plugin<Project> {
     }
 
     private void configureConvention() {
+        AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
         AsakusafwOrganizerPluginConvention convention = project.asakusafwOrganizer
         convention.extensions.create('spark', AsakusafwOrganizerSparkExtension)
         convention.spark.conventionMapping.with {
@@ -64,6 +66,7 @@ class AsakusaSparkOrganizerPlugin implements Plugin<Project> {
         convention.yaess.conventionMapping.with {
             iterativeEnabled = { true }
         }
+        PluginUtils.injectVersionProperty(convention.spark, { base.featureVersion })
     }
 
     private void configureProfiles() {
@@ -74,10 +77,13 @@ class AsakusaSparkOrganizerPlugin implements Plugin<Project> {
     }
 
     private void configureProfile(AsakusafwOrganizerProfile profile) {
+        AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
         profile.extensions.create('spark', AsakusafwOrganizerSparkExtension)
         profile.spark.conventionMapping.with {
             enabled = { project.asakusafwOrganizer.spark.enabled }
         }
+        PluginUtils.injectVersionProperty(profile.spark, { base.featureVersion })
+
         AsakusaSparkOrganizer organizer = new AsakusaSparkOrganizer(project, profile)
         organizer.configureProfile()
         organizers << organizer

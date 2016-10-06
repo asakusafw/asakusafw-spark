@@ -22,28 +22,18 @@ import org.gradle.api.artifacts.DependencyResolveDetails
 import org.gradle.api.artifacts.ModuleVersionSelector
 import org.gradle.api.artifacts.ResolutionStrategy
 
-import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
-import com.asakusafw.gradle.plugins.AsakusafwPluginConvention
 import com.asakusafw.gradle.plugins.AsakusafwSdkExtension
 import com.asakusafw.gradle.plugins.internal.AsakusaSdkPlugin
 import com.asakusafw.gradle.plugins.internal.PluginUtils
 
 /**
  * A base plug-in of {@link AsakusaSparkSdkPlugin}.
- * This only organizes conventions and dependencies.
+ * This only organizes dependencies and testkits.
  * @since 0.4.0
  */
 class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
 
-    private static final Map<String, String> REDIRECT = [
-            'com.asakusafw.runtime.core.BatchContext' : 'com.asakusafw.bridge.api.BatchContext',
-            'com.asakusafw.runtime.core.Report' : 'com.asakusafw.bridge.api.Report',
-            'com.asakusafw.runtime.directio.api.DirectIo' : 'com.asakusafw.bridge.directio.api.DirectIo',
-    ]
-
     private Project project
-
-    private AsakusafwCompilerExtension extension
 
     @Override
     void apply(Project project) {
@@ -51,26 +41,14 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
 
         project.apply plugin: AsakusaSdkPlugin
         project.apply plugin: AsakusaSparkBasePlugin
-        this.extension = AsakusaSdkPlugin.get(project).extensions.create('spark', AsakusafwCompilerExtension)
 
-        configureConvention()
+        configureTestkit()
         configureConfigurations()
     }
 
-    private void configureConvention() {
-        AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
-        AsakusafwPluginConvention sdk = AsakusaSdkPlugin.get(project)
-        extension.conventionMapping.with {
-            outputDirectory = { project.relativePath(new File(project.buildDir, 'spark-batchapps')) }
-            batchIdPrefix = { (String) 'spark.' }
-            failOnError = { true }
-        }
-        REDIRECT.each { k, v ->
-            extension.compilerProperties.put((String) "redirector.rule.${k}", v)
-        }
-        extension.compilerProperties.put('javac.version', { sdk.javac.sourceCompatibility.toString() })
-        PluginUtils.injectVersionProperty(extension, { base.featureVersion })
-        sdk.sdk.availableTestkits << new AsakusaSparkTestkit()
+    private void configureTestkit() {
+        AsakusafwSdkExtension sdk = AsakusaSdkPlugin.get(project).sdk
+        sdk.availableTestkits << new AsakusaSparkTestkit()
     }
 
     private void configureConfigurations() {
@@ -91,8 +69,7 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
         }
         PluginUtils.afterEvaluate(project) {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
-            AsakusafwPluginConvention asakusa = project.asakusafw
-            AsakusafwSdkExtension features = asakusa.sdk
+            AsakusafwSdkExtension features = AsakusaSdkPlugin.get(project).sdk
             project.configurations {
                 asakusaSparkCommon { Configuration conf ->
                     if (base.customSparkArtifact != null) {
@@ -124,27 +101,27 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
                     }
 
                     asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.langVersion}"
-                    asakusaSparkCommon "com.asakusafw:simple-graph:${asakusa.asakusafwVersion}"
-                    asakusaSparkCommon "com.asakusafw:java-dom:${asakusa.asakusafwVersion}"
+                    asakusaSparkCommon "com.asakusafw:simple-graph:${base.coreVersion}"
+                    asakusaSparkCommon "com.asakusafw:java-dom:${base.coreVersion}"
 
                     asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.langVersion}"
                     asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.langVersion}"
                     asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.langVersion}"
 
-                    asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${asakusa.asakusafwVersion}"
-                    asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${asakusa.asakusafwVersion}"
-                    asakusaSparkCompiler "com.asakusafw:asakusa-yaess-core:${asakusa.asakusafwVersion}"
+                    asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${base.coreVersion}"
+                    asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${base.coreVersion}"
+                    asakusaSparkCompiler "com.asakusafw:asakusa-yaess-core:${base.coreVersion}"
 
                     asakusaSparkCommon "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.langVersion}"
                     asakusaSparkCommon "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.featureVersion}"
 
                     if (features.directio) {
                         asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.langVersion}"
-                        asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${asakusa.asakusafwVersion}"
+                        asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${base.coreVersion}"
                     }
                     if (features.windgate) {
                         asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.langVersion}"
-                        asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${asakusa.asakusafwVersion}"
+                        asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${base.coreVersion}"
                     }
                     if (features.hive) {
                         asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-hive:${base.langVersion}"
@@ -159,20 +136,5 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
                 }
             }
         }
-    }
-
-    /**
-     * Returns the extension object of this plug-in.
-     * The plug-in will be applied automatically.
-     * @param project the target project
-     * @return the related extension
-     */
-    static AsakusafwCompilerExtension get(Project project) {
-        project.apply plugin: AsakusaSparkSdkBasePlugin
-        AsakusaSparkSdkBasePlugin plugin = project.plugins.getPlugin(AsakusaSparkSdkBasePlugin)
-        if (plugin == null) {
-            throw new IllegalStateException('AsakusaSparkSdkBasePlugin has not been applied')
-        }
-        return plugin.extension
     }
 }

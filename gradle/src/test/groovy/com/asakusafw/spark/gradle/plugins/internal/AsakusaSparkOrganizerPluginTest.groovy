@@ -75,6 +75,18 @@ class AsakusaSparkOrganizerPluginTest {
     }
 
     /**
+     * Test for {@code project.asakusafwOrganizer.spark.version}.
+     */
+    @Test
+    void extension_version() {
+        project.asakusaSparkBase.featureVersion = '__VERSION__'
+        assert project.asakusafwOrganizer.spark.version == '__VERSION__'
+        assert project.asakusafwOrganizer.profiles.dev.spark.version == '__VERSION__'
+        assert project.asakusafwOrganizer.profiles.prod.spark.version == '__VERSION__'
+        assert project.asakusafwOrganizer.profiles.other.spark.version == '__VERSION__'
+    }
+
+    /**
      * test for extension.
      */
     @Test
