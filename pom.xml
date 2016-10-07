@@ -317,6 +317,7 @@ encoding/<project>=UTF-8
             <sourceDirectory>${basedir}/src/main/scala</sourceDirectory>
             <testSourceDirectory>${basedir}/src/test/scala</testSourceDirectory>
             <inputEncoding>${project.build.sourceEncoding}</inputEncoding>
+            <failOnWarning>true</failOnWarning>
           </configuration>
         </plugin>
         <plugin>
@@ -832,7 +833,7 @@ encoding/<project>=UTF-8
   </pluginRepositories>
 
   <profiles>
-     <profile>
+    <profile>
       <id>disable-doclint</id>
       <activation>
         <jdk>[1.8,)</jdk>
