@@ -309,7 +309,7 @@ encoding/<project>=UTF-8
         <plugin>
           <groupId>org.scalastyle</groupId>
           <artifactId>scalastyle-maven-plugin</artifactId>
-          <version>0.7.0</version>
+          <version>0.8.0</version>
           <configuration>
             <configLocation>scalastyle-config.xml</configLocation>
             <outputFile>${basedir}/target/scalastyle-output.xml</outputFile>
