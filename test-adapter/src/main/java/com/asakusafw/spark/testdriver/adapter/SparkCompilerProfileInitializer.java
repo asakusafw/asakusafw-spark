@@ -30,7 +30,7 @@ import com.asakusafw.testdriver.compiler.CompilerConfiguration;
 /**
  * {@link CompilerProfileInitializer} for Spark.
  * @since 0.1.0
- * @version 0.4.0
+ * @version 0.3.2
  */
 public class SparkCompilerProfileInitializer implements CompilerProfileInitializer {
 
