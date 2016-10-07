@@ -54,6 +54,7 @@ eclipse.preferences.version=1
 scala.compiler.installation=${scala.compat.version}
 scala.compiler.useProjectSettings=true
 target=jvm-${java.version}
+feature=true
 ]]>
               </content>
             </file>
@@ -164,6 +165,7 @@ target=jvm-${java.version}
               <configuration>
                 <args>
                   <arg>-target:jvm-${java.version}</arg>
+                  <arg>-feature</arg>
                   <arg>-Xdisable-assertions</arg>
                 </args>
               </configuration>

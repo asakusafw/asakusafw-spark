@@ -54,6 +54,7 @@ eclipse.preferences.version=1
 scala.compiler.installation=${scala.compat.version}
 scala.compiler.useProjectSettings=true
 target=jvm-${java.version}
+feature=true
 ]]>
               </content>
             </file>

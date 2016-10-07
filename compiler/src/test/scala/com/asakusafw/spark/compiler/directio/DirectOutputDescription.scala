@@ -18,6 +18,7 @@ package com.asakusafw.spark.compiler.directio
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
+import scala.language.existentials
 import scala.reflect.{ classTag, ClassTag }
 
 import com.asakusafw.runtime.directio.DataFormat
