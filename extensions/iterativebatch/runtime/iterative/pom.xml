@@ -67,6 +67,10 @@ feature=true
       <groupId>com.asakusafw</groupId>
       <artifactId>asakusa-runtime</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.asakusafw</groupId>
+      <artifactId>asakusa-iterative-common</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>com.asakusafw.spark</groupId>
