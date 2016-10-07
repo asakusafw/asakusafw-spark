@@ -98,7 +98,11 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
             }
           }
 
-          branch(aggregated.asInstanceOf[RDD[(_, C)]], broadcasts, rc.hadoopConf)(fragmentBufferSize)
+          branch(
+            aggregated.asInstanceOf[RDD[(_, C)]],
+            broadcasts,
+            rc.hadoopConf)(
+              fragmentBufferSize)
         }
     }
 
