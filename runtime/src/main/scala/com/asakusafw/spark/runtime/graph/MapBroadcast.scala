@@ -22,9 +22,6 @@ import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
-import org.apache.spark.backdoor._
-import org.apache.spark.util.backdoor._
-
 import com.asakusafw.spark.runtime.rdd._
 
 abstract class MapBroadcast(
@@ -46,22 +43,19 @@ abstract class MapBroadcast(
     }
 
     Future.sequence(rdds).map { prevs =>
-
-      jobContext.sparkContext.clearCallSite()
-      jobContext.sparkContext.setCallSite(
-        CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
-
-      jobContext.sparkContext.broadcast(
-        jobContext.sparkContext.smcogroup(
-          Seq(
-            (jobContext.sparkContext.confluent[ShuffleKey, Any](
-              prevs, part, sort.orElse(Option(group))),
-              sort)),
-          part,
-          group)
-          .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[_]]) }
-          .collect()
-          .toMap)
+      withCallSite(rc) {
+        jobContext.sparkContext.broadcast(
+          jobContext.sparkContext.smcogroup(
+            Seq(
+              (jobContext.sparkContext.confluent[ShuffleKey, Any](
+                prevs, part, sort.orElse(Option(group))),
+                sort)),
+            part,
+            group)
+            .map { case (k, vs) => (k.dropOrdering, vs(0).toVector.asInstanceOf[Seq[_]]) }
+            .collect()
+            .toMap)
+      }
     }
   }
 }

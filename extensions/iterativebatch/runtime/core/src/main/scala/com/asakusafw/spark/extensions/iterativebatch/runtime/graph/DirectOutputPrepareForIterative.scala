@@ -27,9 +27,7 @@ import org.apache.hadoop.io.Writable
 import org.apache.spark.{ Partitioner, TaskContext }
 import org.slf4j.LoggerFactory
 
-import org.apache.spark.backdoor._
 import org.apache.spark.executor.backdoor._
-import org.apache.spark.util.backdoor._
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.directio.{
@@ -73,100 +71,98 @@ abstract class DirectOutputPrepareForIterative[T <: DataModel[T] with Writable: 
       .zip(setup.perform(origin, rcs))
       .map(_._1)
       .map { prepares =>
+        withCallSite(origin) {
 
-        jobContext.sparkContext.clearCallSite()
-        jobContext.sparkContext.setCallSite(
-          CallSite(origin.roundId.map(r => s"${label}: [${r}]").getOrElse(label), origin.toString))
+          prepare.confluent(prepares).foreachPartition { iter =>
+            val conf = origin.hadoopConf.value
+            val stageInfo = StageInfo.deserialize(conf.get(StageInfo.KEY_NAME))
+            val repository = HadoopDataSourceUtil.loadRepository(conf)
 
-        prepare.confluent(prepares).foreachPartition { iter =>
-          val conf = origin.hadoopConf.value
-          val stageInfo = StageInfo.deserialize(conf.get(StageInfo.KEY_NAME))
-          val repository = HadoopDataSourceUtil.loadRepository(conf)
+            val definition = BasicDataDefinition(new HadoopObjectFactory(conf), formatType)
+            val taskContext = TaskContext.get
+            val attemptId = s"s${taskContext.stageId}-p${taskContext.partitionId}"
 
-          val definition = BasicDataDefinition(new HadoopObjectFactory(conf), formatType)
-          val taskContext = TaskContext.get
-          val attemptId = s"s${taskContext.stageId}-p${taskContext.partitionId}"
+            val bytes = new Counter()
+            val records = new Counter()
 
-          val bytes = new Counter()
-          val records = new Counter()
+            val buff = iter.buffered
+            val basePathOpt = new StringOption()
+            val pathOpt = new StringOption()
 
-          val buff = iter.buffered
-          val basePathOpt = new StringOption()
-          val pathOpt = new StringOption()
+            while (buff.hasNext) {
+              val currentBasePath = buff.head._1.grouping
+              WritableSerDe.deserialize(currentBasePath, basePathOpt)
 
-          while (buff.hasNext) {
-            val currentBasePath = buff.head._1.grouping
-            WritableSerDe.deserialize(currentBasePath, basePathOpt)
+              val basePathBytes =
+                StringOption.getBytesLength(currentBasePath, 0, currentBasePath.length)
 
-            val basePathBytes =
-              StringOption.getBytesLength(currentBasePath, 0, currentBasePath.length)
-
-            def sameBasePath: Boolean = {
-              StringOption.compareBytes(
-                currentBasePath, 0, basePathBytes,
-                buff.head._1.grouping, 0, basePathBytes) == 0
-            }
-
-            val basePath = basePathOpt.getAsString()
-
-            val sourceId = repository.getRelatedId(basePath)
-            val containerPath = repository.getContainerPath(basePath)
-            val componentPath = repository.getComponentPath(basePath)
-            val dataSource = repository.getRelatedDataSource(containerPath)
-
-            val context = new OutputAttemptContext(
-              stageInfo.getExecutionId, attemptId, sourceId, new Counter())
-
-            dataSource.setupAttemptOutput(context)
-
-            try {
-              while (buff.hasNext && sameBasePath) {
-                val currentPath = buff.head._1.grouping
-                WritableSerDe.deserialize(currentPath, basePathBytes, pathOpt)
-
-                def sameResourcePath: Boolean = {
-                  StringOption.compareBytes(
-                    currentPath, basePathBytes, currentPath.length,
-                    buff.head._1.grouping, basePathBytes, buff.head._1.grouping.length) == 0
-                }
-
-                val resourcePath = pathOpt.getAsString
-
-                for {
-                  output <- managed(
-                    dataSource.openOutput(
-                      context, definition, componentPath, resourcePath, bytes))
-                } {
-                  var rs = 0L
-                  while (buff.hasNext && sameBasePath && sameResourcePath) {
-                    rs += 1L
-                    output.write(buff.next()._2)
-                  }
-                  records.add(rs)
-                }
-
-                statistics.addFile(s"${basePath}/${resourcePath}")
+              def sameBasePath: Boolean = {
+                StringOption.compareBytes(
+                  currentBasePath, 0, basePathBytes,
+                  buff.head._1.grouping, 0, basePathBytes) == 0
               }
 
-              dataSource.commitAttemptOutput(context)
-            } catch {
-              case t: Throwable =>
-                Logger.error(
-                  "error occurred while processing Direct file output: " +
-                    s"basePath=${basePath}, context=${context}",
-                  t)
-            } finally {
-              dataSource.cleanupAttemptOutput(context)
+              val basePath = basePathOpt.getAsString()
+
+              val sourceId = repository.getRelatedId(basePath)
+              val containerPath = repository.getContainerPath(basePath)
+              val componentPath = repository.getComponentPath(basePath)
+              val dataSource = repository.getRelatedDataSource(containerPath)
+
+              val context = new OutputAttemptContext(
+                stageInfo.getExecutionId, attemptId, sourceId, new Counter())
+
+              dataSource.setupAttemptOutput(context)
+
+              try {
+                while (buff.hasNext && sameBasePath) {
+                  val currentPath = buff.head._1.grouping
+                  WritableSerDe.deserialize(currentPath, basePathBytes, pathOpt)
+
+                  def sameResourcePath: Boolean = {
+                    StringOption.compareBytes(
+                      currentPath, basePathBytes, currentPath.length,
+                      buff.head._1.grouping, basePathBytes, buff.head._1.grouping.length) == 0
+                  }
+
+                  val resourcePath = pathOpt.getAsString
+
+                  for {
+                    output <- managed(
+                      dataSource.openOutput(
+                        context, definition, componentPath, resourcePath, bytes))
+                  } {
+                    var rs = 0L
+                    while (buff.hasNext && sameBasePath && sameResourcePath) {
+                      rs += 1L
+                      output.write(buff.next()._2)
+                    }
+                    records.add(rs)
+                  }
+
+                  statistics.addFile(s"${basePath}/${resourcePath}")
+                }
+
+                dataSource.commitAttemptOutput(context)
+              } catch {
+                case t: Throwable =>
+                  Logger.error(
+                    "error occurred while processing Direct file output: " +
+                      s"basePath=${basePath}, context=${context}",
+                    t)
+              } finally {
+                dataSource.cleanupAttemptOutput(context)
+              }
             }
+
+            taskContext.taskMetrics.outputMetrics.setBytesWritten(
+              taskContext.taskMetrics.outputMetrics.bytesWritten + bytes.get)
+            taskContext.taskMetrics.outputMetrics.setRecordsWritten(
+              taskContext.taskMetrics.outputMetrics.recordsWritten + records.get)
+
+            statistics.addBytes(bytes.get)
+            statistics.addRecords(records.get)
           }
-
-          taskContext.taskMetrics.outputMetrics.setBytesWritten(
-            taskContext.taskMetrics.outputMetrics.bytesWritten + bytes.get)
-          taskContext.taskMetrics.outputMetrics.setRecordsWritten(
-            taskContext.taskMetrics.outputMetrics.recordsWritten + records.get)
-
-          statistics.addBytes(bytes.get)
-          statistics.addRecords(records.get)
         }
       }
   }

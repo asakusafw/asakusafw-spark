@@ -23,9 +23,6 @@ import scala.reflect.ClassTag
 import org.apache.spark.{ InterruptibleIterator, Partitioner, TaskContext }
 import org.apache.spark.rdd.RDD
 
-import org.apache.spark.backdoor._
-import org.apache.spark.util.backdoor._
-
 import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.rdd._
@@ -58,54 +55,51 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
 
     val future = Future.sequence(rdds).zip(zipBroadcasts(rc)).map {
       case (prevs, broadcasts) =>
-
-        jobContext.sparkContext.clearCallSite()
-        jobContext.sparkContext.setCallSite(
-          CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
-
-        val aggregated = {
-          if (aggregation.mapSideCombine) {
-            val part = Some(partitioner)
-            jobContext.sparkContext.confluent(
-              prevs.map { prev =>
-                if (prev.partitioner == part) {
-                  prev.asInstanceOf[RDD[(ShuffleKey, C)]]
-                } else {
-                  prev.mapPartitions({ iter =>
-                    val combiner = aggregation.valueCombiner
-                    combiner.insertAll(
-                      new ResourceBrokingIterator(
-                        rc.hadoopConf.value,
-                        iter))
-                    val context = TaskContext.get
-                    new InterruptibleIterator(context, combiner.iterator)
-                  }, preservesPartitioning = true)
-                }
-              }, partitioner, sort)
-              .mapPartitions({ iter =>
-                val combiner = aggregation.combinerCombiner
-                combiner.insertAll(
-                  new ResourceBrokingIterator(
-                    rc.hadoopConf.value,
-                    iter.map { case (k, v) => (k.dropOrdering, v) }))
-                val context = TaskContext.get
-                new InterruptibleIterator(context, combiner.iterator)
-              }, preservesPartitioning = true)
-          } else {
-            jobContext.sparkContext.confluent(prevs, partitioner, sort)
-              .mapPartitions({ iter =>
-                val combiner = aggregation.valueCombiner
-                combiner.insertAll(
-                  new ResourceBrokingIterator(
-                    rc.hadoopConf.value,
-                    iter.map { case (k, v) => (k.dropOrdering, v) }))
-                val context = TaskContext.get
-                new InterruptibleIterator(context, combiner.iterator)
-              }, preservesPartitioning = true)
+        withCallSite(rc) {
+          val aggregated = {
+            if (aggregation.mapSideCombine) {
+              val part = Some(partitioner)
+              jobContext.sparkContext.confluent(
+                prevs.map { prev =>
+                  if (prev.partitioner == part) {
+                    prev.asInstanceOf[RDD[(ShuffleKey, C)]]
+                  } else {
+                    prev.mapPartitions({ iter =>
+                      val combiner = aggregation.valueCombiner
+                      combiner.insertAll(
+                        new ResourceBrokingIterator(
+                          rc.hadoopConf.value,
+                          iter))
+                      val context = TaskContext.get
+                      new InterruptibleIterator(context, combiner.iterator)
+                    }, preservesPartitioning = true)
+                  }
+                }, partitioner, sort)
+                .mapPartitions({ iter =>
+                  val combiner = aggregation.combinerCombiner
+                  combiner.insertAll(
+                    new ResourceBrokingIterator(
+                      rc.hadoopConf.value,
+                      iter.map { case (k, v) => (k.dropOrdering, v) }))
+                  val context = TaskContext.get
+                  new InterruptibleIterator(context, combiner.iterator)
+                }, preservesPartitioning = true)
+            } else {
+              jobContext.sparkContext.confluent(prevs, partitioner, sort)
+                .mapPartitions({ iter =>
+                  val combiner = aggregation.valueCombiner
+                  combiner.insertAll(
+                    new ResourceBrokingIterator(
+                      rc.hadoopConf.value,
+                      iter.map { case (k, v) => (k.dropOrdering, v) }))
+                  val context = TaskContext.get
+                  new InterruptibleIterator(context, combiner.iterator)
+                }, preservesPartitioning = true)
+            }
           }
-        }
 
-        branch(aggregated.asInstanceOf[RDD[(_, C)]], broadcasts, rc.hadoopConf)(fragmentBufferSize)
+          branch(aggregated.asInstanceOf[RDD[(_, C)]], broadcasts, rc.hadoopConf)(fragmentBufferSize)
+        }
     }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap
