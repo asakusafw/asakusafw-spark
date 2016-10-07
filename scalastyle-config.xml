@@ -39,7 +39,9 @@
 
   <check level="warning" class="org.scalastyle.file.IndentationChecker" enabled="true">
     <parameters>
-      <parameter name="tabSize">2</parameter>
+      <parameter name="tabSize"><![CDATA[2]]></parameter>
+      <parameter name="classParamIndentSize"><![CDATA[2]]></parameter>
+      <parameter name="methodParamIndentSize"><![CDATA[2]]></parameter>
     </parameters>
   </check>
 
@@ -49,7 +51,7 @@
 
   <check level="warning" class="org.scalastyle.file.RegexChecker" enabled="true">
     <parameters>
-      <parameter name="regex"><![CDATA[println]]></parameter>
+      <parameter name="regex"><![CDATA[\sprintln]]></parameter>
     </parameters>
   </check>
 
@@ -109,7 +111,7 @@
 
   <check level="error" class="org.scalastyle.scalariform.FieldNamesChecker" enabled="false">
     <parameters>
-      <parameter name="regex">^[a-z][A-Za-z0-9]*$</parameter>
+      <parameter name="regex"><![CDATA[^[a-z][A-Za-z0-9]*$]]></parameter>
     </parameters>
   </check>
 
