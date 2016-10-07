@@ -78,6 +78,10 @@ feature=true
       <artifactId>asakusa-bridge-runtime-hadoop</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.asakusafw</groupId>
+      <artifactId>asakusa-iterative-common</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.asakusafw.iterative</groupId>
       <artifactId>asakusa-iterative-launch</artifactId>
     </dependency>
