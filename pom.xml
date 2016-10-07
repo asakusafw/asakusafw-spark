@@ -485,6 +485,7 @@ encoding/<project>=UTF-8
         <groupId>com.asakusafw</groupId>
         <artifactId>asakusa-iterative-common</artifactId>
         <version>${asakusafw.version}</version>
+        <scope>provided</scope>
       </dependency>
 
       <dependency>
