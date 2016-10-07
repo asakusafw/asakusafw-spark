@@ -306,6 +306,9 @@ abstract class DirectOutputPrepareGroupClassBuilder(
                                 .invokeV("dateTime", classOf[Fragment].asType,
                                   ldc(segment.getTarget.getName.toMemberName),
                                   ldc(segment.getArgument))
+                            case _ =>
+                              throw new AssertionError(
+                                s"Unknown StringTemplate.Format: ${segment.getFormat}")
                           }
 
                         case OutputPattern.SourceKind.RANDOM =>
@@ -316,6 +319,10 @@ abstract class DirectOutputPrepareGroupClassBuilder(
                               ldc(segment.getRandomNumber.getLowerBound),
                               ldc(segment.getRandomNumber.getUpperBound))
                           randoms += 1
+
+                        case _ =>
+                          throw new AssertionError(
+                            s"Unknown OutputPattern.SourceKind: ${segment.getKind}")
                       }
                     }
                   })
