@@ -52,20 +52,24 @@ abstract class Extract[T](
         rdds.head
       } else {
         Future.sequence(rdds).map { prevs =>
-          val zipped =
-            prevs.groupBy(_.partitions.length).map {
-              case (_, rdds) =>
-                rdds.reduce(_.zipPartitions(_, preservesPartitioning = false)(_ ++ _))
-            }.toSeq
-          if (zipped.size == 1) {
-            zipped.head
-          } else {
-            jobContext.sparkContext.union(zipped)
+          withCallSite(rc) {
+            val zipped =
+              prevs.groupBy(_.partitions.length).map {
+                case (_, rdds) =>
+                  rdds.reduce(_.zipPartitions(_, preservesPartitioning = false)(_ ++ _))
+              }.toSeq
+            if (zipped.size == 1) {
+              zipped.head
+            } else {
+              jobContext.sparkContext.union(zipped)
+            }
           }
         }
       }).zip(zipBroadcasts(rc)).map {
         case (prev, broadcasts) =>
-          branch(prev, broadcasts, rc.hadoopConf)(fragmentBufferSize)
+          withCallSite(rc) {
+            branch(prev, broadcasts, rc.hadoopConf)(fragmentBufferSize)
+          }
       }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

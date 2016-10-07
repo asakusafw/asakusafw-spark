@@ -16,9 +16,22 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import org.apache.spark.backdoor._
+import org.apache.spark.util.backdoor._
+
 trait Node extends Serializable {
 
   implicit def jobContext: JobContext
 
   def label: String
+
+  def withCallSite[A](rc: RoundContext)(block: => A): A = {
+    jobContext.sparkContext.setCallSite(
+      CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
+    try {
+      block
+    } finally {
+      jobContext.sparkContext.clearCallSite()
+    }
+  }
 }

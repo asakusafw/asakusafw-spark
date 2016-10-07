@@ -22,9 +22,6 @@ import scala.concurrent.{ ExecutionContext, Future }
 import org.apache.spark.Partitioner
 import org.apache.spark.rdd.RDD
 
-import org.apache.spark.backdoor._
-import org.apache.spark.util.backdoor._
-
 import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.rdd._
 
@@ -58,26 +55,23 @@ abstract class CoGroup(
             Future.sequence(rdds).map((_, sort))
         }).zip(zipBroadcasts(rc)).map {
           case (prevs, broadcasts) =>
+            withCallSite(rc) {
+              val cogrouped = jobContext.sparkContext.smcogroup[ShuffleKey](
+                prevs.map {
+                  case (rdds, sort) =>
+                    (jobContext.sparkContext.confluent[ShuffleKey, Any](
+                      rdds, part, sort.orElse(Option(group))),
+                      sort)
+                },
+                part,
+                group)
 
-            jobContext.sparkContext.clearCallSite()
-            jobContext.sparkContext.setCallSite(
-              CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
-
-            val cogrouped = jobContext.sparkContext.smcogroup[ShuffleKey](
-              prevs.map {
-                case (rdds, sort) =>
-                  (jobContext.sparkContext.confluent[ShuffleKey, Any](
-                    rdds, part, sort.orElse(Option(group))),
-                    sort)
-              },
-              part,
-              group)
-
-            branch(
-              cogrouped.asInstanceOf[RDD[(_, IndexedSeq[Iterator[_]])]],
-              broadcasts,
-              rc.hadoopConf)(
-                fragmentBufferSize)
+              branch(
+                cogrouped.asInstanceOf[RDD[(_, IndexedSeq[Iterator[_]])]],
+                broadcasts,
+                rc.hadoopConf)(
+                  fragmentBufferSize)
+            }
         }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

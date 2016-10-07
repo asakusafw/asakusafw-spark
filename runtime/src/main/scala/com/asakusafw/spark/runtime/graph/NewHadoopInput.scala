@@ -23,9 +23,6 @@ import scala.reflect.{ classTag, ClassTag }
 import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
 import org.apache.spark.rdd.RDD
 
-import org.apache.spark.backdoor._
-import org.apache.spark.util.backdoor._
-
 import com.asakusafw.spark.runtime.Props
 import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.rdd.BranchKey
@@ -57,24 +54,21 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
 
     val future = zipBroadcasts(rc).map { broadcasts =>
+      withCallSite(rc) {
+        val job = newJob(rc)
 
-      val job = newJob(rc)
+        val rdd = jobContext.sparkContext.newAPIHadoopRDD(
+          job.getConfiguration,
+          classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
+          classTag[K].runtimeClass.asInstanceOf[Class[K]],
+          classTag[V].runtimeClass.asInstanceOf[Class[V]])
+          .map { kv =>
+            statistics.addRecords(1L)
+            kv
+          }
 
-      jobContext.sparkContext.clearCallSite()
-      jobContext.sparkContext.setCallSite(
-        CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
-
-      val rdd = jobContext.sparkContext.newAPIHadoopRDD(
-        job.getConfiguration,
-        classTag[IF].runtimeClass.asInstanceOf[Class[IF]],
-        classTag[K].runtimeClass.asInstanceOf[Class[K]],
-        classTag[V].runtimeClass.asInstanceOf[Class[V]])
-        .map { kv =>
-          statistics.addRecords(1L)
-          kv
-        }
-
-      branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(fragmentBufferSize)
+        branch(rdd.asInstanceOf[RDD[(_, V)]], broadcasts, rc.hadoopConf)(fragmentBufferSize)
+      }
     }
 
     branchKeys.map(key => key -> future.map(_(key))).toMap

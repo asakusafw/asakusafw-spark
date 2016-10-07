@@ -27,9 +27,7 @@ import org.apache.spark.{ Partitioner, TaskContext }
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
-import org.apache.spark.backdoor._
 import org.apache.spark.executor.backdoor._
-import org.apache.spark.util.backdoor._
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.directio.{
@@ -166,35 +164,32 @@ abstract class DirectOutputPrepareFlat[T: Manifest](
   def resourcePattern: String
 
   override protected def doPrepare(rc: RoundContext, prev: RDD[T]): Unit = {
+    withCallSite(rc) {
+      prev.foreachPartition { iter =>
 
-    jobContext.sparkContext.clearCallSite()
-    jobContext.sparkContext.setCallSite(
-      CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
+        if (iter.hasNext) {
+          doPreparePartition(rc) { (stageInfo, context, withOutput) =>
 
-    prev.foreachPartition { iter =>
+            val resourcePattern = stageInfo.resolveUserVariables(this.resourcePattern)
+            val phAt = resourcePattern.lastIndexOf(Placeholder)
+            require(phAt >= 0,
+              "pattern does not contain any placeholder symbol " +
+                s"(${Placeholder}): ${resourcePattern}")
 
-      if (iter.hasNext) {
-        doPreparePartition(rc) { (stageInfo, context, withOutput) =>
+            val resolvedPath = new JStringBuilder()
+              .append(resourcePattern, 0, phAt)
+              .append(context.getAttemptId)
+              .append(resourcePattern, phAt + 1, resourcePattern.length)
+              .toString
 
-          val resourcePattern = stageInfo.resolveUserVariables(this.resourcePattern)
-          val phAt = resourcePattern.lastIndexOf(Placeholder)
-          require(phAt >= 0,
-            "pattern does not contain any placeholder symbol " +
-              s"(${Placeholder}): ${resourcePattern}")
-
-          val resolvedPath = new JStringBuilder()
-            .append(resourcePattern, 0, phAt)
-            .append(context.getAttemptId)
-            .append(resourcePattern, phAt + 1, resourcePattern.length)
-            .toString
-
-          withOutput(resolvedPath) { output =>
-            var records = 0L
-            while (iter.hasNext) {
-              records += 1L
-              output.write(iter.next())
+            withOutput(resolvedPath) { output =>
+              var records = 0L
+              while (iter.hasNext) {
+                records += 1L
+                output.write(iter.next())
+              }
+              records
             }
-            records
           }
         }
       }
@@ -225,41 +220,38 @@ abstract class DirectOutputPrepareGroup[T <: DataModel[T] with Writable: Manifes
   }
 
   override protected def doPrepare(rc: RoundContext, prev: RDD[T]): Unit = {
+    withCallSite(rc) {
+      prev.mapPartitions { iter =>
+        val conf = rc.hadoopConf.value
+        val stageInfo = StageInfo.deserialize(conf.get(StageInfo.KEY_NAME))
 
-    jobContext.sparkContext.clearCallSite()
-    jobContext.sparkContext.setCallSite(
-      CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
+        iter.map(value => (shuffleKey(value)(stageInfo), WritableSerDe.serialize(value)))
+      }
+        .repartitionAndSortWithinPartitions(partitioner)
+        .foreachPartition { iter =>
 
-    prev.mapPartitions { iter =>
-      val conf = rc.hadoopConf.value
-      val stageInfo = StageInfo.deserialize(conf.get(StageInfo.KEY_NAME))
+          if (iter.hasNext) {
+            doPreparePartition(rc) { (stageInfo, context, withOutput) =>
+              val buff = iter.buffered
+              val pathOpt = new StringOption()
+              val data = newDataModel()
 
-      iter.map(value => (shuffleKey(value)(stageInfo), WritableSerDe.serialize(value)))
-    }
-      .repartitionAndSortWithinPartitions(partitioner)
-      .foreachPartition { iter =>
-
-        if (iter.hasNext) {
-          doPreparePartition(rc) { (stageInfo, context, withOutput) =>
-            val buff = iter.buffered
-            val pathOpt = new StringOption()
-            val data = newDataModel()
-
-            while (buff.hasNext) {
-              val currentPath = buff.head._1.grouping
-              WritableSerDe.deserialize(buff.head._1.grouping, pathOpt)
-              withOutput(pathOpt.getAsString) { output =>
-                var records = 0L
-                while (buff.hasNext && Arrays.equals(buff.head._1.grouping, currentPath)) {
-                  records += 1L
-                  WritableSerDe.deserialize(buff.next()._2, data)
-                  output.write(data)
+              while (buff.hasNext) {
+                val currentPath = buff.head._1.grouping
+                WritableSerDe.deserialize(buff.head._1.grouping, pathOpt)
+                withOutput(pathOpt.getAsString) { output =>
+                  var records = 0L
+                  while (buff.hasNext && Arrays.equals(buff.head._1.grouping, currentPath)) {
+                    records += 1L
+                    WritableSerDe.deserialize(buff.next()._2, data)
+                    output.write(data)
+                  }
+                  records
                 }
-                records
               }
             }
           }
         }
-      }
+    }
   }
 }

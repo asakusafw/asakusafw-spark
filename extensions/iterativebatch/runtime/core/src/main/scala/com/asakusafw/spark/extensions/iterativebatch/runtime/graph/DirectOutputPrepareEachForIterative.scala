@@ -28,7 +28,6 @@ import org.apache.spark.rdd.{ RDD, ShuffledRDD }
 import org.slf4j.LoggerFactory
 
 import org.apache.spark.backdoor._
-import org.apache.spark.util.backdoor._
 
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
@@ -58,40 +57,39 @@ abstract class DirectOutputPrepareEachForIterative[T <: DataModel[T] with Writab
       rdds.head
     } else {
       Future.sequence(rdds).map { prevs =>
-        val zipped =
-          prevs.groupBy(_.partitions.length).map {
-            case (_, rdds) =>
-              rdds.reduce(_.zipPartitions(_, preservesPartitioning = false)(_ ++ _))
-          }.toSeq
-        if (zipped.size == 1) {
-          zipped.head
-        } else {
-          jobContext.sparkContext.union(zipped)
+        withCallSite(rc) {
+          val zipped =
+            prevs.groupBy(_.partitions.length).map {
+              case (_, rdds) =>
+                rdds.reduce(_.zipPartitions(_, preservesPartitioning = false)(_ ++ _))
+            }.toSeq
+          if (zipped.size == 1) {
+            zipped.head
+          } else {
+            jobContext.sparkContext.union(zipped)
+          }
         }
       }
     })
       .map(_.map(_._2.asInstanceOf[T]))
       .flatMap { prev =>
+        withCallSite(rc) {
+          val rdd = doPrepare(rc, prev)
 
-        jobContext.sparkContext.clearCallSite()
-        jobContext.sparkContext.setCallSite(
-          CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
+          val shuffleDep = rdd.dependencies.head
+            .asInstanceOf[ShuffleDependency[ShuffleKey, Array[Byte], Array[Byte]]]
 
-        val rdd = doPrepare(rc, prev)
+          jobContext.sparkContext.submitMapStage(shuffleDep).map { _ =>
 
-        val shuffleDep = rdd.dependencies.head
-          .asInstanceOf[ShuffleDependency[ShuffleKey, Array[Byte], Array[Byte]]]
-
-        jobContext.sparkContext.submitMapStage(shuffleDep).map { _ =>
-
-          rdd.mapPartitions(iter => {
-            val value = newDataModel()
-            iter.map {
-              case (key, bytes) =>
-                WritableSerDe.deserialize(bytes, value)
-                (key, value)
-            }
-          }, preservesPartitioning = true)
+            rdd.mapPartitions(iter => {
+              val value = newDataModel()
+              iter.map {
+                case (key, bytes) =>
+                  WritableSerDe.deserialize(bytes, value)
+                  (key, value)
+              }
+            }, preservesPartitioning = true)
+          }
         }
       }
   }

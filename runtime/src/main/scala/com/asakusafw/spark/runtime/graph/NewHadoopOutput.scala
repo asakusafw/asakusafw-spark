@@ -24,9 +24,6 @@ import org.apache.spark.Partitioner
 import org.apache.spark.rdd.RDD
 import org.slf4j.LoggerFactory
 
-import org.apache.spark.backdoor._
-import org.apache.spark.util.backdoor._
-
 import com.asakusafw.spark.runtime.JobContext.OutputCounter
 import com.asakusafw.spark.runtime.rdd._
 
@@ -57,36 +54,35 @@ abstract class NewHadoopOutput(
       rdds.head
     } else {
       Future.sequence(rdds).map { prevs =>
-        val zipped =
-          prevs.groupBy(_.partitions.length).map {
-            case (_, rdds) =>
-              rdds.reduce(_.zipPartitions(_, preservesPartitioning = false)(_ ++ _))
-          }.toSeq
-        if (zipped.size == 1) {
-          zipped.head
-        } else {
-          jobContext.sparkContext.union(zipped)
+        withCallSite(rc) {
+          val zipped =
+            prevs.groupBy(_.partitions.length).map {
+              case (_, rdds) =>
+                rdds.reduce(_.zipPartitions(_, preservesPartitioning = false)(_ ++ _))
+            }.toSeq
+          if (zipped.size == 1) {
+            zipped.head
+          } else {
+            jobContext.sparkContext.union(zipped)
+          }
         }
       }
     })
       .map { prev =>
+        withCallSite(rc) {
+          val job = newJob(rc)
 
-        val job = newJob(rc)
+          val output = prev.map { in =>
+            statistics.addRecords(1L)
+            (NullWritable.get, in._2)
+          }
 
-        jobContext.sparkContext.clearCallSite()
-        jobContext.sparkContext.setCallSite(
-          CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
+          if (Logger.isTraceEnabled()) {
+            Logger.trace(output.toDebugString)
+          }
 
-        val output = prev.map { in =>
-          statistics.addRecords(1L)
-          (NullWritable.get, in._2)
+          output.saveAsNewAPIHadoopDataset(job.getConfiguration)
         }
-
-        if (Logger.isTraceEnabled()) {
-          Logger.trace(output.toDebugString)
-        }
-
-        output.saveAsNewAPIHadoopDataset(job.getConfiguration)
       }
   }
 }
