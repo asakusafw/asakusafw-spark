@@ -1,8 +1,0 @@
-allprojects {
-    buildscript {
-        repositories {
-            mavenLocal()
-        }
-    }
-}
-logger.info "applied init script: add-buildscript-mavenlocal.gradle"
