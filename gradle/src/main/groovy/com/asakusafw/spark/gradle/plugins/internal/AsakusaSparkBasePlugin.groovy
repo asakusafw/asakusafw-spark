@@ -149,7 +149,7 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
     }
 
     private void extendVersionsTask() {
-        project.tasks.getByName(AsakusafwBasePlugin.TASK_VERSIONS) << {
+        project.tasks.getByName(AsakusafwBasePlugin.TASK_VERSIONS).doLast {
             logger.lifecycle "Asakusa on Spark: ${extension.featureVersion}"
         }
     }
