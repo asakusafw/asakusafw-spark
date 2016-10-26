@@ -24,6 +24,7 @@ import org.scalatest.junit.JUnitRunner
 import java.io.{ DataInput, DataOutput }
 
 import scala.collection.JavaConversions._
+import scala.language.reflectiveCalls
 
 import org.apache.hadoop.io.Writable
 import org.apache.spark.broadcast.Broadcast
@@ -129,6 +130,61 @@ class ConvertOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
       case (input, i) =>
         assert(input.i.get === i)
         assert(input.l.get === i)
+    }
+    out2.iterator.zipWithIndex.foreach {
+      case (output, i) =>
+        assert(output.l.get === 10 * i)
+        assert(output.s.isNull)
+    }
+
+    fragment.reset()
+  }
+
+  it should "compile Convert operator modifying original port" in {
+    val operator = OperatorExtractor
+      .extract(classOf[Convert], classOf[ConvertOperator], "convertp")
+      .input("input", ClassDescription.of(classOf[Input]))
+      .output("original", ClassDescription.of(classOf[Input]))
+      .output("out", ClassDescription.of(classOf[Output]))
+      .argument("n", ImmediateDescription.of(10))
+      .build()
+
+    implicit val context = newOperatorCompilerContext("flowId")
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    val cls = context.loadClass[Fragment[Input]](thisType.getClassName)
+
+    val out1 = new Fragment[Input] {
+
+      val output = new GenericOutputFragment[Input]()
+
+      override def doAdd(result: Input): Unit = {
+        result.l.add(10)
+        output.add(result)
+      }
+
+      override def doReset(): Unit = {
+        output.reset()
+      }
+    }
+
+    val out2 = new GenericOutputFragment[Output]()
+
+    val fragment = cls.getConstructor(
+      classOf[Map[BroadcastId, Broadcast[_]]],
+      classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, out1, out2)
+
+    fragment.reset()
+    val input = new Input()
+    for (i <- 0 until 10) {
+      input.i.modify(i)
+      input.l.modify(i)
+      fragment.add(input)
+    }
+    out1.output.iterator.zipWithIndex.foreach {
+      case (input, i) =>
+        assert(input.i.get === i)
+        assert(input.l.get === i + 10)
     }
     out2.iterator.zipWithIndex.foreach {
       case (output, i) =>
