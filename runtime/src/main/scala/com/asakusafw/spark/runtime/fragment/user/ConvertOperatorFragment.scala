@@ -23,8 +23,8 @@ abstract class ConvertOperatorFragment[T <: DataModel[T], U <: DataModel[U]](
   extends Fragment[T] {
 
   override def doAdd(result: T): Unit = {
-    original.add(result)
     converted.add(convert(result))
+    original.add(result)
   }
 
   def convert(input: T): U
