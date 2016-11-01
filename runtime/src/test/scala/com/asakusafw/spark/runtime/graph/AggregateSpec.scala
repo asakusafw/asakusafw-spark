@@ -284,11 +284,7 @@ object AggregateSpec {
         new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
       }
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        ???
-      }
-
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         ???
       }
 
@@ -346,13 +342,9 @@ object AggregateSpec {
         new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
       }
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        WritableSerDe.serialize(value.asInstanceOf[Writable])
-      }
-
       lazy val foo = new Foo()
 
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         WritableSerDe.deserialize(value, foo)
         foo
       }

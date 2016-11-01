@@ -137,11 +137,7 @@ object ResourceBrokingIteratorSpec {
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-    override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-      ???
-    }
-
-    override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+    override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
       ???
     }
 
