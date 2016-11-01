@@ -2,6 +2,25 @@
 リリースノート
 ==============
 
+Release 0.3.2
+=============
+
+(開発中)
+
+`Asakusa on Spark 0.3.2 documentation`_
+
+..  _`Asakusa on Spark 0.3.2 documentation`: http://docs.asakusafw.com/asakusa-on-spark/0.3.2/release/ja/html/index.html
+
+* Spark バージョン 1.6.3 に対応しました。
+* その他、Spark DSLコンパイラや実行ライブラリなどのバグフィックスが含まれます。
+
+変更点の詳細は :doc:`changelogs` を参照してください。
+
+互換性に関して
+--------------
+
+* Asakusa on Spark バージョン 0.3.2 は、 Asakusa Framework バージョン 0.8.2 以降が必要です。
+
 Release 0.3.1
 =============
 
