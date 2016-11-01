@@ -87,7 +87,7 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
 
       val result = Await.result(
         input.getOrCompute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -109,7 +109,7 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
 
       val result = Await.result(
         input.getOrCompute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -155,7 +155,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
 
       val result = Await.result(
         input.getOrCompute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -177,7 +177,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
 
       val result = Await.result(
         input.getOrCompute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)

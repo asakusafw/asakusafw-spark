@@ -37,11 +37,11 @@ abstract class Extract[T](
     sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, T)]])
+        source.getOrCompute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(_, T)]])
     }
 
     val future =

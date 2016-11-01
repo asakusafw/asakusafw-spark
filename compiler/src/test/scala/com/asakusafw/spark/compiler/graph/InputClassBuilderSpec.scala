@@ -160,7 +160,7 @@ class TemporaryInputClassBuilderSpec
 
     val result = Await.result(
       input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
-        _.map {
+        _().map {
           case (_, foo: Foo) => foo.id.get
         }.collect.toSeq.sorted
       }, Duration.Inf)
@@ -269,7 +269,7 @@ class DirectInputClassBuilderSpec
 
     val result = Await.result(
       input.getOrCompute(rc).apply(getBranchKey(inputMarker)).map {
-        _.map {
+        _().map {
           case (_, foo: Foo) => foo.id.get
         }.collect.toSeq.sorted
       }, Duration.Inf)

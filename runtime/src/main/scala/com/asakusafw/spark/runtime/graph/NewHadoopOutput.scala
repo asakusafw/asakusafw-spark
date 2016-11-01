@@ -43,7 +43,7 @@ abstract class NewHadoopOutput(
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, _)]])
+        source.getOrCompute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(_, _)]])
     }
 
     (if (rdds.size == 1) {

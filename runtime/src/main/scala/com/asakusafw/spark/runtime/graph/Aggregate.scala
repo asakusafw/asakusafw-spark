@@ -46,11 +46,11 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
   def aggregation: Aggregation[ShuffleKey, V, C]
 
   override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, V)]])
+        source.getOrCompute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(ShuffleKey, V)]])
     }
 
     val future = Future.sequence(rdds).zip(zipBroadcasts(rc)).map {

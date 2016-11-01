@@ -30,11 +30,11 @@ trait ComputeAlways {
   self: Source =>
 
   @transient
-  private val generatedRDDs: mutable.Map[RoundContext, Map[BranchKey, Future[RDD[_]]]] =
+  private val generatedRDDs: mutable.Map[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =
     mutable.WeakHashMap.empty
 
   override def getOrCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
     synchronized(generatedRDDs.getOrElseUpdate(rc, compute(rc)))
   }
 }

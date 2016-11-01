@@ -285,7 +285,7 @@ object IterativeBatchExecutorSpec {
 
     override def submitJob(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
       prev.getOrCompute(rc).apply(Branch).map {
-        _.foreach(println)
+        _().foreach(println)
       }
     }
   }
@@ -299,7 +299,7 @@ object IterativeBatchExecutorSpec {
     override def submitJob(rc: RoundContext)(implicit ec: ExecutionContext): Future[Unit] = {
       prev.getOrCompute(rc).apply(Branch).map { rdd =>
         collection +=
-          rc -> rdd.map {
+          rc -> rdd().map {
             case i: Int => i
           }.collect()
       }

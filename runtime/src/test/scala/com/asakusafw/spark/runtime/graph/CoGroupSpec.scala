@@ -79,23 +79,23 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
           cogroup.getOrCompute(rc).apply(FooResult).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
             cogroup.getOrCompute(rc).apply(BarResult).map {
-              _.map {
+              _().map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
             cogroup.getOrCompute(rc).apply(FooError).map {
-              _.map {
+              _().map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
               cogroup.getOrCompute(rc).apply(BarError).map {
-                _.map {
+                _().map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
@@ -157,23 +157,23 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
           cogroup.getOrCompute(rc).apply(FooResult).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
             cogroup.getOrCompute(rc).apply(BarResult).map {
-              _.map {
+              _().map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
             cogroup.getOrCompute(rc).apply(FooError).map {
-              _.map {
+              _().map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
               cogroup.getOrCompute(rc).apply(BarError).map {
-                _.map {
+                _().map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }

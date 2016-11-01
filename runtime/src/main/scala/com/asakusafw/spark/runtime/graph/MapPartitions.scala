@@ -34,12 +34,12 @@ abstract class MapPartitions[T, U: ClassTag](
   override val label: String = parent.label
 
   override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
     val prevs = parent.getOrCompute(rc)
     prevs.updated(
       branchKey,
-      prevs(branchKey).map {
-        _.asInstanceOf[RDD[T]].mapPartitionsWithIndex(f, preservesPartitioning)
+      prevs(branchKey).map { rddF =>
+        () => rddF().asInstanceOf[RDD[T]].mapPartitionsWithIndex(f, preservesPartitioning)
       })
   }
 }

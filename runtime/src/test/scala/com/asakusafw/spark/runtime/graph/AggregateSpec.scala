@@ -78,7 +78,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val result = Await.result(
         aggregate.getOrCompute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
         }, Duration.Inf)
@@ -110,7 +110,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val result = Await.result(
         aggregate.getOrCompute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
         }, Duration.Inf)
@@ -134,12 +134,12 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
     val (result1, result2) = Await.result(
       aggregate.getOrCompute(rc).apply(Result1).map {
-        _.map {
+        _().map {
           case (_, foo: Foo) => (foo.id.get, foo.sum.get)
         }.collect.toSeq.sortBy(_._1)
       }.zip {
         aggregate.getOrCompute(rc).apply(Result2).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.sum.get
           }.collect.toSeq
         }

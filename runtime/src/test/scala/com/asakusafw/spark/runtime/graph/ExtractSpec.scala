@@ -66,7 +66,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val result = Await.result(
         extract.getOrCompute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq
         }, Duration.Inf)
@@ -90,7 +90,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val result = Await.result(
         extract.getOrCompute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -111,12 +111,12 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val (result1, result2) = Await.result(
         branch.getOrCompute(rc).apply(Result1).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }.zip {
           branch.getOrCompute(rc).apply(Result2).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq.sorted
           }
@@ -142,12 +142,12 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val (result1, result2) = Await.result(
         branch.getOrCompute(rc).apply(Result1).map {
-          _.map {
+          _().map {
             case (_, bar: Bar) => (bar.id.get, bar.ord.get)
           }.collect.toSeq
         }.zip {
           branch.getOrCompute(rc).apply(Result2).map {
-            _.map {
+            _().map {
               case (_, bar: Bar) => (bar.id.get, bar.ord.get)
             }.collect.toSeq
           }
