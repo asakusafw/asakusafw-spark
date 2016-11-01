@@ -555,7 +555,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
       sc.parallelize(0 until 10).flatMap(Bar.intToBars)
     }
 
-    val fooInputOperator = ExternalInput
+    val foo1InputOperator = ExternalInput
       .newInstance("foo1/part-*",
         new ExternalInputInfo.Basic(
           ClassDescription.of(classOf[Foo]),
@@ -583,7 +583,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
       .extract(classOf[CoGroup], classOf[Ops], "cogroup")
       .input("foos", ClassDescription.of(classOf[Foo]),
         Groups.parse(Seq("id")),
-        fooInputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
+        foo1InputOperator.getOperatorPort, foo2InputOperator.getOperatorPort)
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")),
         barInputOperator.getOperatorPort)
@@ -606,7 +606,7 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
       .newInstance("barError", cogroupOperator.findOutput("barError"))
 
     val graph = new OperatorGraph(Seq(
-      fooInputOperator, foo2InputOperator, barInputOperator,
+      foo1InputOperator, foo2InputOperator, barInputOperator,
       cogroupOperator,
       fooResultOutputOperator, barResultOutputOperator, fooErrorOutputOperator, barErrorOutputOperator))
 
@@ -762,6 +762,64 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
       } {
         assert(barError((i * (i - 1)) / 2 + j) === (10 + j, i, s"bar${10 + j}"))
       }
+    }
+  }
+
+  it should s"compile Job with CoGroup using same input: ${configuration}" in {
+    val path = createTempDirectoryForEach("test-").toFile
+
+    prepareData("foo", path) {
+      sc.parallelize(0 until 10).map(Foo.intToFoo)
+    }
+
+    val fooInputOperator = ExternalInput
+      .newInstance("foo/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "foos1",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val cogroupOperator = OperatorExtractor
+      .extract(classOf[CoGroup], classOf[Ops], "cogroupSameInputs")
+      .input("foos1", ClassDescription.of(classOf[Foo]),
+        Groups.parse(Seq("id")),
+        fooInputOperator.getOperatorPort)
+      .input("foos2", ClassDescription.of(classOf[Foo]),
+        Groups.parse(Seq("id")),
+        fooInputOperator.getOperatorPort)
+      .output("fooResult", ClassDescription.of(classOf[Foo]))
+      .output("fooError", ClassDescription.of(classOf[Foo]))
+      .build()
+
+    val fooResultOutputOperator = ExternalOutput
+      .newInstance("fooResult", cogroupOperator.findOutput("fooResult"))
+
+    val fooErrorOutputOperator = ExternalOutput
+      .newInstance("fooError", cogroupOperator.findOutput("fooError"))
+
+    val graph = new OperatorGraph(Seq(
+      fooInputOperator,
+      cogroupOperator,
+      fooResultOutputOperator, fooErrorOutputOperator))
+
+    val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
+    executeJob(flowId, jobType)
+
+    {
+      val fooResult = readResult[Foo]("fooResult", path)
+        .map { foo =>
+          (foo.id.get, foo.foo.getAsString)
+        }.collect.toSeq.sortBy(_._1)
+      assert(fooResult.size === 10)
+      assert(fooResult === (0 until 10).map(i => (i, s"foo${i}")))
+    }
+    {
+      val fooError = readResult[Foo]("fooError", path)
+        .map { foo =>
+          (foo.id.get, foo.foo.getAsString)
+        }.collect.toSeq.sortBy(_._1)
+      assert(fooError.size === 0)
     }
   }
 
@@ -1903,6 +1961,19 @@ object JobCompilerSpec {
       } else {
         foos.foreach(fooError.add)
         bars.foreach(barError.add)
+      }
+    }
+
+    @CoGroup
+    def cogroupSameInputs(
+      foos1: JList[Foo], foos2: JList[Foo],
+      fooResult: Result[Foo], fooError: Result[Foo]): Unit = {
+      foos1.zip(foos2).foreach {
+        case (left, right) if left.id == right.id && left.foo == right.foo =>
+          fooResult.add(left)
+        case (left, right) =>
+          fooError.add(left)
+          fooError.add(right)
       }
     }
 
