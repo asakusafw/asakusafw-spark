@@ -359,21 +359,22 @@ object CoGroupSpec {
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-    override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-      WritableSerDe.serialize(value.asInstanceOf[Writable])
-    }
-
-    lazy val foo = new Foo()
-    lazy val bar = new Bar()
-
-    override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+    override def deserializerFor(branch: BranchKey): Array[Byte] => Any = {
       branch match {
         case FooResult | FooError =>
-          WritableSerDe.deserialize(value, foo)
-          foo
+          {
+            val foo = new Foo()
+            value =>
+              WritableSerDe.deserialize(value, foo)
+              foo
+          }
         case BarResult | BarError =>
-          WritableSerDe.deserialize(value, bar)
-          bar
+          {
+            val bar = new Bar()
+            value =>
+              WritableSerDe.deserialize(value, bar)
+              bar
+          }
       }
     }
 

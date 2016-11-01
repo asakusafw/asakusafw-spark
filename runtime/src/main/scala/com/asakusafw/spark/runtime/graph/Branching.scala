@@ -21,6 +21,7 @@ import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.Writable
 import org.apache.spark.{ Partitioner, SparkContext }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
@@ -28,6 +29,7 @@ import org.apache.spark.rdd.RDD
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd._
 
 trait Branching[T] {
@@ -44,9 +46,7 @@ trait Branching[T] {
 
   def shuffleKey(branch: BranchKey, value: Any): ShuffleKey
 
-  def serialize(branch: BranchKey, value: Any): Array[Byte]
-
-  def deserialize(branch: BranchKey, value: Array[Byte]): Any
+  def deserializerFor(branch: BranchKey): Array[Byte] => Any
 
   def fragments(
     broadcasts: Map[BroadcastId, Broadcasted[_]])(
@@ -93,8 +93,9 @@ trait Branching[T] {
           case (b, rdd) =>
             b -> { () =>
               rdd.mapPartitions({ iter =>
+                val deserializer = deserializerFor(b)
                 iter.map {
-                  case (k, v) => (k, deserialize(b, v))
+                  case (k, v) => (k, deserializer(v))
                 }
               }, preservesPartitioning = true)
             }
@@ -112,11 +113,11 @@ trait Branching[T] {
       case (Branch(b, k), v) if combiners.contains(b) =>
         combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]].insert(k, v)
         Iterator.empty
-      case (bk @ Branch(b, _), v) => Iterator((bk, serialize(b, v)))
+      case (bk, v) => Iterator((bk, WritableSerDe.serialize(v.asInstanceOf[Writable])))
     } ++ combiners.iterator.flatMap {
       case (b, combiner) =>
         combiner.iterator.map {
-          case (k, v) => (Branch(b, k), serialize(b, v))
+          case (k, v) => (Branch(b, k), WritableSerDe.serialize(v.asInstanceOf[Writable]))
         }
     }
   }
@@ -124,7 +125,7 @@ trait Branching[T] {
   private def iterateWithoutCombiner(
     iter: Iterator[(Branch[ShuffleKey], _)]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
     iter.map {
-      case (bk @ Branch(b, _), value) => (bk, serialize(b, value))
+      case (bk, value) => (bk, WritableSerDe.serialize(value.asInstanceOf[Writable]))
     }
   }
 

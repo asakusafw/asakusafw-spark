@@ -274,11 +274,7 @@ object ExtractSpec {
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        ???
-      }
-
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         ???
       }
 
@@ -313,13 +309,9 @@ object ExtractSpec {
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        WritableSerDe.serialize(value.asInstanceOf[Writable])
-      }
-
       lazy val foo = new Foo()
 
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         WritableSerDe.deserialize(value, foo)
         foo
       }
@@ -383,13 +375,9 @@ object ExtractSpec {
           WritableSerDe.serialize(bar.ord))
       }
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        WritableSerDe.serialize(value.asInstanceOf[Writable])
-      }
-
       lazy val bar = new Bar()
 
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         WritableSerDe.deserialize(value, bar)
         bar
       }
