@@ -45,14 +45,14 @@ object CacheOnce {
       f: T => U): Source with Source.Ops = {
       new MapPartitions(this, branchKey, {
         (Int, iter: Iterator[T]) => iter.map(f)
-      }, preservesPartitioning = false) with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning = false) with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     override def flatMap[T, U: ClassTag](branchKey: BranchKey)(
       f: T => TraversableOnce[U]): Source with Source.Ops = {
       new MapPartitions(this, branchKey, {
         (Int, iter: Iterator[T]) => iter.flatMap(f)
-      }, preservesPartitioning = false) with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning = false) with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     override def mapPartitions[T, U: ClassTag](branchKey: BranchKey)(
@@ -60,7 +60,7 @@ object CacheOnce {
       preservesPartitioning: Boolean = false): Source with Source.Ops = {
       new MapPartitions(this, branchKey, {
         (index: Int, iter: Iterator[T]) => f(iter)
-      }, preservesPartitioning) with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning) with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     override def mapPartitionsWithIndex[T, U: ClassTag](branchKey: BranchKey)(
@@ -68,7 +68,7 @@ object CacheOnce {
       preservesPartitioning: Boolean = false): Source with Source.Ops = {
       new MapPartitions(this, branchKey, {
         (index: Int, iter: Iterator[T]) => f(index, iter)
-      }, preservesPartitioning) with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning) with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
   }
 }

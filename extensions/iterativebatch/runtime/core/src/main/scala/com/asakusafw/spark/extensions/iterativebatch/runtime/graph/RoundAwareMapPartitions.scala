@@ -31,17 +31,17 @@ abstract class RoundAwareMapPartitions[T, U: ClassTag](
   f: RoundContext => (Int, Iterator[T]) => Iterator[U],
   preservesPartitioning: Boolean = false)(
     implicit val jobContext: JobContext) extends Source with RoundAwareSource.Ops {
-  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 
   override val label: String = parent.label
 
   override def doCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
     val prevs = parent.compute(rc)
     prevs.updated(
       branchKey,
-      prevs(branchKey).map {
-        _.asInstanceOf[RDD[T]].mapPartitionsWithIndex(f(rc), preservesPartitioning)
+      prevs(branchKey).map { rddF =>
+        () => rddF().asInstanceOf[RDD[T]].mapPartitionsWithIndex(f(rc), preservesPartitioning)
       })
   }
 }

@@ -72,7 +72,7 @@ class ExtractSpec
 
       val result = Await.result(
         extract.compute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq
         }, Duration.Inf)
@@ -98,7 +98,7 @@ class ExtractSpec
 
       val result = Await.result(
         extract.compute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -121,12 +121,12 @@ class ExtractSpec
 
       val (result1, result2) = Await.result(
         branch.compute(rc).apply(Result1).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }.zip {
           branch.compute(rc).apply(Result2).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq.sorted
           }
@@ -154,12 +154,12 @@ class ExtractSpec
 
       val (result1, result2) = Await.result(
         branch.compute(rc).apply(Result1).map {
-          _.map {
+          _().map {
             case (_, bar: Bar) => (bar.id.get, bar.ord.get)
           }.collect.toSeq
         }.zip {
           branch.compute(rc).apply(Result2).map {
-            _.map {
+            _().map {
               case (_, bar: Bar) => (bar.id.get, bar.ord.get)
             }.collect.toSeq
           }
@@ -269,7 +269,7 @@ object ExtractSpec {
         val label: String)(
           implicit jobContext: JobContext)
       extends Extract[Foo](prevs)(Map.empty)
-      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
       def this(
         prev: (Source, BranchKey))(
@@ -313,7 +313,7 @@ object ExtractSpec {
         val label: String)(
           implicit jobContext: JobContext)
       extends Extract[Foo](prevs)(Map.empty)
-      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
 
@@ -376,7 +376,7 @@ object ExtractSpec {
         val label: String)(
           implicit jobContext: JobContext)
       extends Extract[Bar](prevs)(Map.empty)
-      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
 

@@ -103,7 +103,7 @@ class TemporaryInputSpec
 
       val result = Await.result(
         input.compute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -131,7 +131,7 @@ class TemporaryInputSpec
 
       val result = Await.result(
         input.compute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -192,7 +192,7 @@ class DirectInputSpec
 
       val result = Await.result(
         input.compute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -220,7 +220,7 @@ class DirectInputSpec
 
       val result = Await.result(
         input.compute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -298,7 +298,7 @@ object InputSpec {
         val label: String)(
           implicit jobContext: JobContext)
       extends TemporaryInput[Foo](Map.empty)
-      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
       def this(
         path: String)(
@@ -347,7 +347,7 @@ object InputSpec {
         Map.empty)(
         classTag[DirectFileInputFormat].asInstanceOf[ClassTag[InputFormat[NullWritable, Foo]]],
         classTag[NullWritable], classTag[Foo], implicitly)
-      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Input)
 

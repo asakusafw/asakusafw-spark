@@ -24,5 +24,5 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class Input(
   implicit val jobContext: JobContext) extends Source {
-  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 }

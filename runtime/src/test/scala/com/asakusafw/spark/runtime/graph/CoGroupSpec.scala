@@ -86,23 +86,23 @@ class CoGroupSpec
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
           cogroup.compute(rc).apply(FooResult).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
             cogroup.compute(rc).apply(BarResult).map {
-              _.map {
+              _().map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
             cogroup.compute(rc).apply(FooError).map {
-              _.map {
+              _().map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
               cogroup.compute(rc).apply(BarError).map {
-                _.map {
+                _().map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
@@ -166,23 +166,23 @@ class CoGroupSpec
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
           cogroup.compute(rc).apply(FooResult).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
             cogroup.compute(rc).apply(BarResult).map {
-              _.map {
+              _().map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
             cogroup.compute(rc).apply(FooError).map {
-              _.map {
+              _().map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
               cogroup.compute(rc).apply(BarError).map {
-                _.map {
+                _().map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
@@ -354,7 +354,7 @@ object CoGroupSpec {
       val label: String)(
         implicit jobContext: JobContext)
     extends CoGroup(inputs, grouping, part)(Map.empty)
-    with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+    with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
     override def branchKeys: Set[BranchKey] = {
       Set(FooResult, BarResult, FooError, BarError)

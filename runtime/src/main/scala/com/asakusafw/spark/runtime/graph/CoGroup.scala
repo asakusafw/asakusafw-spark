@@ -34,7 +34,7 @@ abstract class CoGroup(
   extends Source
   with UsingBroadcasts
   with Branching[IndexedSeq[Iterator[_]]] {
-  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 
   @transient
   private val fragmentBufferSize =
@@ -42,7 +42,7 @@ abstract class CoGroup(
       Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override protected def doCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
 
     val future =
       Future.sequence(
@@ -50,7 +50,7 @@ abstract class CoGroup(
           case (targets, sort) =>
             val rdds = targets.map {
               case (source, branchKey) =>
-                source.compute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]])
+                source.compute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(ShuffleKey, _)]])
             }
             Future.sequence(rdds).map((_, sort))
         }).zip(zipBroadcasts(rc)).map {

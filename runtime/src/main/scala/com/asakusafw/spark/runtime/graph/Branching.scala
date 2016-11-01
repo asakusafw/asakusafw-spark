@@ -56,16 +56,18 @@ trait Branching[T] {
     rdd: RDD[(_, T)],
     broadcasts: Map[BroadcastId, Broadcasted[_]],
     hadoopConf: Broadcasted[Configuration])(
-      fragmentBufferSize: Int): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
+      fragmentBufferSize: Int): Map[BranchKey, () => RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
-      Map(branchKeys.head ->
-        rdd.mapPartitions({ iter =>
+      Map(branchKeys.head -> {
+        val mapped = rdd.mapPartitions({ iter =>
           new ResourceBrokingIterator(
             hadoopConf.value,
             iterateFragments(iter, broadcasts)(fragmentBufferSize).map {
               case (Branch(_, k), v) => (k, v)
             })
-        }, preservesPartitioning = true))
+        }, preservesPartitioning = true)
+        () => mapped
+      })
     } else {
       rdd.branch[ShuffleKey, Array[Byte]](
         branchKeys,
@@ -89,11 +91,13 @@ trait Branching[T] {
         preservesPartitioning = true)
         .map {
           case (b, rdd) =>
-            b -> rdd.mapPartitions({ iter =>
-              iter.map {
-                case (k, v) => (k, deserialize(b, v))
-              }
-            }, preservesPartitioning = true)
+            b -> { () =>
+              rdd.mapPartitions({ iter =>
+                iter.map {
+                  case (k, v) => (k, deserialize(b, v))
+                }
+              }, preservesPartitioning = true)
+            }
         }
     }
   }

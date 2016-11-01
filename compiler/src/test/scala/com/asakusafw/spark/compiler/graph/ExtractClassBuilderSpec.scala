@@ -175,12 +175,12 @@ class ExtractClassBuilderSpec
       val ((fooResult, barResult), nResult) =
         Await.result(
           results(getBranchKey(fooResultMarker)).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
             results(getBranchKey(barResultMarker)).map {
-              _.map {
+              _().map {
                 case (_, bar: Bar) => bar
               }.mapPartitionsWithIndex({
                 case (part, iter) => iter.map(bar => (part, bar.fooId.get, bar.id.get))
@@ -188,7 +188,7 @@ class ExtractClassBuilderSpec
             }
           }.zip {
             results(getBranchKey(nResultMarker)).map {
-              _.map {
+              _().map {
                 case (_, n: N) => n.n.get
               }.collect.toSeq
             }
@@ -294,7 +294,7 @@ class ExtractClassBuilderSpec
 
       val fooResult = Await.result(
         results(getBranchKey(fooResultMarker)).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq
         }, Duration.Inf)

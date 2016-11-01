@@ -64,7 +64,7 @@ class ResourceBrokingIteratorSpec
 
     val result = Await.result(
       extract.compute(rc).apply(Result).map {
-        _.map {
+        _().map {
           case (_, foo: Foo) => (foo.id.get, foo.str.getAsString)
         }.collect.toSeq
       }, Duration.Inf)
@@ -120,7 +120,7 @@ object ResourceBrokingIteratorSpec {
       val label: String)(
         implicit jobContext: JobContext)
     extends Extract[Foo](prevs)(Map.empty)
-    with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+    with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
     def this(
       prev: (Source, BranchKey))(

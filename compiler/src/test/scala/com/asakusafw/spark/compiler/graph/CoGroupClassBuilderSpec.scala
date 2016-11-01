@@ -228,41 +228,41 @@ class CoGroupClassBuilderSpec
       val (((fooResult, barResult), (fooError, barError)), ((fooAll, barAll), nResult)) =
         Await.result(
           results(getBranchKey(fooResultMarker)).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
             results(getBranchKey(barResultMarker)).map {
-              _.map {
+              _().map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
             results(getBranchKey(fooErrorMarker)).map {
-              _.map {
+              _().map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
               results(getBranchKey(barErrorMarker)).map {
-                _.map {
+                _().map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
             }
           }.zip {
             results(getBranchKey(fooAllMarker)).map {
-              _.map {
+              _().map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
               results(getBranchKey(barAllMarker)).map {
-                _.map {
+                _().map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
             }.zip {
               results(getBranchKey(nResultMarker)).map {
-                _.map {
+                _().map {
                   case (_, n: N) => n.n.get
                 }.collect.toSeq
               }

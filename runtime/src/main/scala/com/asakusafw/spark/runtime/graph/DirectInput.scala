@@ -29,7 +29,7 @@ abstract class DirectInput[IF <: InputFormat[K, V]: ClassTag, K: ClassTag, V: Cl
   @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
     implicit jobContext: JobContext)
   extends NewHadoopInput[IF, K, V] {
-  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 
   override def counter: InputCounter = InputCounter.Direct
 
