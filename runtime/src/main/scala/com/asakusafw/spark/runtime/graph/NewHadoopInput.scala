@@ -35,7 +35,7 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
   extends Input
   with UsingBroadcasts
   with Branching[V] {
-  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 
   def name: String
 
@@ -51,7 +51,7 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
       Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override protected def doCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
 
     val future = zipBroadcasts(rc).map { broadcasts =>
       withCallSite(rc) {

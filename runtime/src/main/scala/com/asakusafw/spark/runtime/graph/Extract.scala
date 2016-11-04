@@ -32,7 +32,7 @@ abstract class Extract[T](
   extends Source
   with UsingBroadcasts
   with Branching[T] {
-  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 
   @transient
   private val fragmentBufferSize =
@@ -40,11 +40,11 @@ abstract class Extract[T](
       Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override def doCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.compute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, T)]])
+        source.compute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(_, T)]])
     }
 
     val future =

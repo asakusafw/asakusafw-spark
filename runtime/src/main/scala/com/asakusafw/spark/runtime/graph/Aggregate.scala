@@ -36,7 +36,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
   extends Source
   with UsingBroadcasts
   with Branching[C] {
-  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 
   @transient
   private val fragmentBufferSize =
@@ -46,11 +46,11 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
   def aggregation: Aggregation[ShuffleKey, V, C]
 
   override protected def doCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.compute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, V)]])
+        source.compute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(ShuffleKey, V)]])
     }
 
     val future = Future.sequence(rdds).zip(zipBroadcasts(rc)).map {

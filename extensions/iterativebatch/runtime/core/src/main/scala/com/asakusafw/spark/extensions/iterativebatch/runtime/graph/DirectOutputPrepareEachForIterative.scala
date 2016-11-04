@@ -50,7 +50,7 @@ abstract class DirectOutputPrepareEachForIterative[T <: DataModel[T] with Writab
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.compute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(_, _)]])
+        source.compute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(_, _)]])
     }
 
     (if (rdds.size == 1) {

@@ -29,13 +29,13 @@ class ParallelCollectionSource[T: ClassTag](
   numSlices: Option[Int] = None)(
     val label: String)(
       implicit val jobContext: JobContext)
-  extends Source with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] with CacheOnce.Ops {
+  extends Source with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with CacheOnce.Ops {
 
   override def doCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
     val rdd = jobContext.sparkContext.parallelize(
       data,
       numSlices.getOrElse(jobContext.sparkContext.defaultParallelism))
-    Map(branchKey -> Future.successful(rdd))
+    Map(branchKey -> Future.successful(() => rdd))
   }
 }

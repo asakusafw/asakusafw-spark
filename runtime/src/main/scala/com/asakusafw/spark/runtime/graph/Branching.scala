@@ -21,6 +21,7 @@ import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.Duration
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.Writable
 import org.apache.spark.Partitioner
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
@@ -28,6 +29,7 @@ import org.apache.spark.rdd.RDD
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.runtime.aggregation.Aggregation
 import com.asakusafw.spark.runtime.fragment.{ Fragment, OutputFragment }
+import com.asakusafw.spark.runtime.io.WritableSerDe
 import com.asakusafw.spark.runtime.rdd._
 
 trait Branching[T] {
@@ -44,9 +46,7 @@ trait Branching[T] {
 
   def shuffleKey(branch: BranchKey, value: Any): ShuffleKey
 
-  def serialize(branch: BranchKey, value: Any): Array[Byte]
-
-  def deserialize(branch: BranchKey, value: Array[Byte]): Any
+  def deserializerFor(branch: BranchKey): Array[Byte] => Any
 
   def fragments(
     broadcasts: Map[BroadcastId, Broadcasted[_]])(
@@ -56,16 +56,18 @@ trait Branching[T] {
     rdd: RDD[(_, T)],
     broadcasts: Map[BroadcastId, Broadcasted[_]],
     hadoopConf: Broadcasted[Configuration])(
-      fragmentBufferSize: Int): Map[BranchKey, RDD[(ShuffleKey, _)]] = {
+      fragmentBufferSize: Int): Map[BranchKey, () => RDD[(ShuffleKey, _)]] = {
     if (branchKeys.size == 1 && partitioners.size == 0) {
-      Map(branchKeys.head ->
-        rdd.mapPartitions({ iter =>
+      Map(branchKeys.head -> {
+        val mapped = rdd.mapPartitions({ iter =>
           new ResourceBrokingIterator(
             hadoopConf.value,
             iterateFragments(iter, broadcasts)(fragmentBufferSize).map {
               case (Branch(_, k), v) => (k, v)
             })
-        }, preservesPartitioning = true))
+        }, preservesPartitioning = true)
+        () => mapped
+      })
     } else {
       rdd.branch[ShuffleKey, Array[Byte]](
         branchKeys,
@@ -89,11 +91,14 @@ trait Branching[T] {
         preservesPartitioning = true)
         .map {
           case (b, rdd) =>
-            b -> rdd.mapPartitions({ iter =>
-              iter.map {
-                case (k, v) => (k, deserialize(b, v))
-              }
-            }, preservesPartitioning = true)
+            b -> { () =>
+              rdd.mapPartitions({ iter =>
+                val deserializer = deserializerFor(b)
+                iter.map {
+                  case (k, v) => (k, deserializer(v))
+                }
+              }, preservesPartitioning = true)
+            }
         }
     }
   }
@@ -108,11 +113,11 @@ trait Branching[T] {
       case (Branch(b, k), v) if combiners.contains(b) =>
         combiners(b).asInstanceOf[Aggregation.Combiner[ShuffleKey, Any, Any]].insert(k, v)
         Iterator.empty
-      case (bk @ Branch(b, _), v) => Iterator((bk, serialize(b, v)))
+      case (bk, v) => Iterator((bk, WritableSerDe.serialize(v.asInstanceOf[Writable])))
     } ++ combiners.iterator.flatMap {
       case (b, combiner) =>
         combiner.iterator.map {
-          case (k, v) => (Branch(b, k), serialize(b, v))
+          case (k, v) => (Branch(b, k), WritableSerDe.serialize(v.asInstanceOf[Writable]))
         }
     }
   }
@@ -120,7 +125,7 @@ trait Branching[T] {
   private def iterateWithoutCombiner(
     iter: Iterator[(Branch[ShuffleKey], _)]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
     iter.map {
-      case (bk @ Branch(b, _), value) => (bk, serialize(b, value))
+      case (bk, value) => (bk, WritableSerDe.serialize(value.asInstanceOf[Writable]))
     }
   }
 

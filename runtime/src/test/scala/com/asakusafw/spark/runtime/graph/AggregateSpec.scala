@@ -84,7 +84,7 @@ class AggregateSpec
 
       val result = Await.result(
         aggregate.compute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
         }, Duration.Inf)
@@ -118,7 +118,7 @@ class AggregateSpec
 
       val result = Await.result(
         aggregate.compute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
         }, Duration.Inf)
@@ -144,12 +144,12 @@ class AggregateSpec
 
     val (result1, result2) = Await.result(
       aggregate.compute(rc).apply(Result1).map {
-        _.map {
+        _().map {
           case (_, foo: Foo) => (foo.id.get, foo.sum.get)
         }.collect.toSeq.sortBy(_._1)
       }.zip {
         aggregate.compute(rc).apply(Result2).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.sum.get
           }.collect.toSeq
         }
@@ -262,7 +262,7 @@ object AggregateSpec {
         val label: String)(
           implicit jobContext: JobContext)
       extends Aggregate[Foo, Foo](prev, sort, part)(Map.empty)
-      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
       def this(
         prev: (Source, BranchKey),
@@ -284,11 +284,7 @@ object AggregateSpec {
         new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
       }
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        ???
-      }
-
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         ???
       }
 
@@ -328,7 +324,7 @@ object AggregateSpec {
         val label: String)(
           implicit jobContext: JobContext)
       extends Extract[Foo](Seq(prev))(Map.empty)
-      with CacheOnce[RoundContext, Map[BranchKey, Future[RDD[_]]]] {
+      with CacheOnce[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] {
 
       override def branchKeys: Set[BranchKey] = Set(Result1, Result2)
 
@@ -346,13 +342,9 @@ object AggregateSpec {
         new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
       }
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        WritableSerDe.serialize(value.asInstanceOf[Writable])
-      }
-
       lazy val foo = new Foo()
 
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         WritableSerDe.deserialize(value, foo)
         foo
       }

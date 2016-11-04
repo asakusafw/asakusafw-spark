@@ -45,28 +45,28 @@ object CacheAlways {
       f: T => U): Source with RoundAwareSource.Ops = {
       new RoundAwareMapPartitions(this, branchKey, {
         _ => (Int, iter: Iterator[T]) => iter.map(f)
-      }, preservesPartitioning = false) with CacheAlways[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning = false) with CacheAlways[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     def mapWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
       f: RoundContext => T => U): Source with RoundAwareSource.Ops = {
       new RoundAwareMapPartitions(this, branchKey, {
         rc: RoundContext => (Int, iter: Iterator[T]) => iter.map(f(rc))
-      }, preservesPartitioning = false) with CacheAlways[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning = false) with CacheAlways[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     def flatMap[T, U: ClassTag](branchKey: BranchKey)(
       f: T => TraversableOnce[U]): Source with RoundAwareSource.Ops = {
       new RoundAwareMapPartitions(this, branchKey, {
         _ => (Int, iter: Iterator[T]) => iter.flatMap(f)
-      }, preservesPartitioning = false) with CacheAlways[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning = false) with CacheAlways[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     def flatMapWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
       f: RoundContext => T => TraversableOnce[U]): Source with RoundAwareSource.Ops = {
       new RoundAwareMapPartitions(this, branchKey, {
         rc: RoundContext => (Int, iter: Iterator[T]) => iter.flatMap(f(rc))
-      }, preservesPartitioning = false) with CacheAlways[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning = false) with CacheAlways[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     def mapPartitions[T, U: ClassTag](branchKey: BranchKey)(
@@ -74,7 +74,7 @@ object CacheAlways {
       preservesPartitioning: Boolean = false): Source with RoundAwareSource.Ops = {
       new RoundAwareMapPartitions(this, branchKey, {
         _ => (index: Int, iter: Iterator[T]) => f(iter)
-      }, preservesPartitioning) with CacheAlways[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning) with CacheAlways[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     def mapPartitionsWithRoundContext[T, U: ClassTag](branchKey: BranchKey)(
@@ -82,7 +82,7 @@ object CacheAlways {
       preservesPartitioning: Boolean = false): Source with RoundAwareSource.Ops = {
       new RoundAwareMapPartitions(this, branchKey, {
         rc: RoundContext => (Int, iter: Iterator[T]) => f(rc)(iter)
-      }, preservesPartitioning) with CacheAlways[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning) with CacheAlways[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     def mapPartitionsWithIndex[T, U: ClassTag](branchKey: BranchKey)(
@@ -90,7 +90,7 @@ object CacheAlways {
       preservesPartitioning: Boolean = false): Source with RoundAwareSource.Ops = {
       new RoundAwareMapPartitions(this, branchKey, {
         _ => (index: Int, iter: Iterator[T]) => f(index, iter)
-      }, preservesPartitioning) with CacheAlways[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning) with CacheAlways[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
 
     def mapPartitionsWithIndexAndRoundContext[T, U: ClassTag](branchKey: BranchKey)(
@@ -98,7 +98,7 @@ object CacheAlways {
       preservesPartitioning: Boolean = false): Source with RoundAwareSource.Ops = {
       new RoundAwareMapPartitions(this, branchKey, {
         rc: RoundContext => (index: Int, iter: Iterator[T]) => f(rc)(index, iter)
-      }, preservesPartitioning) with CacheAlways[RoundContext, Map[BranchKey, Future[RDD[_]]]] with Ops // scalastyle:ignore
+      }, preservesPartitioning) with CacheAlways[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] with Ops // scalastyle:ignore
     }
   }
 }

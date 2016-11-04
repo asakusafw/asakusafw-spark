@@ -34,7 +34,7 @@ abstract class TemporaryInput[V: ClassTag](
   @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
     implicit jobContext: JobContext)
   extends NewHadoopInput[TemporaryInputFormat[V], NullWritable, V] {
-  self: CacheStrategy[RoundContext, Map[BranchKey, Future[RDD[_]]]] =>
+  self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 
   override def counter: InputCounter = InputCounter.External
 
