@@ -188,7 +188,8 @@ class AggregateClassBuilderSpec
 
         val result = Await.result(
           results(getBranchKey(resultMarker))
-            .map { rdd =>
+            .map { rddF =>
+              val rdd = rddF()
               assert(rdd.partitions.size === numPartitions)
               rdd.map {
                 case (_, foo: Foo) => (foo.i.get, foo.sum.get)
@@ -294,7 +295,8 @@ class AggregateClassBuilderSpec
 
         val result = Await.result(
           results(getBranchKey(resultMarker))
-            .map { rdd =>
+            .map { rddF =>
+              val rdd = rddF()
               assert(rdd.partitions.size === 1)
               rdd.map {
                 case (_, foo: Foo) => (foo.i.get, foo.sum.get)

@@ -78,7 +78,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val result = Await.result(
         aggregate.getOrCompute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
         }, Duration.Inf)
@@ -110,7 +110,7 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val result = Await.result(
         aggregate.getOrCompute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => (foo.id.get, foo.sum.get)
           }.collect.toSeq.sortBy(_._1)
         }, Duration.Inf)
@@ -134,12 +134,12 @@ class AggregateSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
     val (result1, result2) = Await.result(
       aggregate.getOrCompute(rc).apply(Result1).map {
-        _.map {
+        _().map {
           case (_, foo: Foo) => (foo.id.get, foo.sum.get)
         }.collect.toSeq.sortBy(_._1)
       }.zip {
         aggregate.getOrCompute(rc).apply(Result2).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.sum.get
           }.collect.toSeq
         }
@@ -274,11 +274,7 @@ object AggregateSpec {
         new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
       }
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        ???
-      }
-
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         ???
       }
 
@@ -336,13 +332,9 @@ object AggregateSpec {
         new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
       }
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        WritableSerDe.serialize(value.asInstanceOf[Writable])
-      }
-
       lazy val foo = new Foo()
 
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         WritableSerDe.deserialize(value, foo)
         foo
       }

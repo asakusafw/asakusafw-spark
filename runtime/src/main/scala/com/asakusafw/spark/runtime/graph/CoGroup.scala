@@ -42,7 +42,7 @@ abstract class CoGroup(
     sc.getConf.getInt(Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
   override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
 
     val future =
       Future.sequence(
@@ -50,7 +50,7 @@ abstract class CoGroup(
           case (targets, sort) =>
             val rdds = targets.map {
               case (source, branchKey) =>
-                source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]])
+                source.getOrCompute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(ShuffleKey, _)]])
             }
             Future.sequence(rdds).map((_, sort))
         }).zip(zipBroadcasts(rc)).map {

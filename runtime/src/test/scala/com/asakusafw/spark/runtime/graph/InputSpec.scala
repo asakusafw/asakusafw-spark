@@ -87,7 +87,7 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
 
       val result = Await.result(
         input.getOrCompute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -109,7 +109,7 @@ class TemporaryInputSpec extends InputSpec with RoundContextSugar with TempDirFo
 
       val result = Await.result(
         input.getOrCompute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -155,7 +155,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
 
       val result = Await.result(
         input.getOrCompute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -177,7 +177,7 @@ class DirectInputSpec extends InputSpec with RoundContextSugar with TempDirForEa
 
       val result = Await.result(
         input.getOrCompute(rc).apply(Input).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -265,11 +265,7 @@ object InputSpec {
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        ???
-      }
-
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         ???
       }
 
@@ -302,11 +298,7 @@ object InputSpec {
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        ???
-      }
-
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         ???
       }
 

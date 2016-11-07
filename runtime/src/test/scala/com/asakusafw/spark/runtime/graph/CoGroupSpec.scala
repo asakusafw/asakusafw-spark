@@ -79,23 +79,23 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
           cogroup.getOrCompute(rc).apply(FooResult).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
             cogroup.getOrCompute(rc).apply(BarResult).map {
-              _.map {
+              _().map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
             cogroup.getOrCompute(rc).apply(FooError).map {
-              _.map {
+              _().map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
               cogroup.getOrCompute(rc).apply(BarError).map {
-                _.map {
+                _().map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
@@ -157,23 +157,23 @@ class CoGroupSpec extends FlatSpec with SparkForAll with RoundContextSugar {
       val ((fooResult, barResult), (fooError, barError)) =
         Await.result(
           cogroup.getOrCompute(rc).apply(FooResult).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq
           }.zip {
             cogroup.getOrCompute(rc).apply(BarResult).map {
-              _.map {
+              _().map {
                 case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
               }.collect.toSeq
             }
           }.zip {
             cogroup.getOrCompute(rc).apply(FooError).map {
-              _.map {
+              _().map {
                 case (_, foo: Foo) => foo.id.get
               }.collect.toSeq.sorted
             }.zip {
               cogroup.getOrCompute(rc).apply(BarError).map {
-                _.map {
+                _().map {
                   case (_, bar: Bar) => (bar.id.get, bar.fooId.get)
                 }.collect.toSeq.sortBy(_._2)
               }
@@ -359,21 +359,22 @@ object CoGroupSpec {
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-    override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-      WritableSerDe.serialize(value.asInstanceOf[Writable])
-    }
-
-    lazy val foo = new Foo()
-    lazy val bar = new Bar()
-
-    override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+    override def deserializerFor(branch: BranchKey): Array[Byte] => Any = {
       branch match {
         case FooResult | FooError =>
-          WritableSerDe.deserialize(value, foo)
-          foo
+          {
+            val foo = new Foo()
+            value =>
+              WritableSerDe.deserialize(value, foo)
+              foo
+          }
         case BarResult | BarError =>
-          WritableSerDe.deserialize(value, bar)
-          bar
+          {
+            val bar = new Bar()
+            value =>
+              WritableSerDe.deserialize(value, bar)
+              bar
+          }
       }
     }
 

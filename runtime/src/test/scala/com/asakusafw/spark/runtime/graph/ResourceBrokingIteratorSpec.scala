@@ -59,7 +59,7 @@ class ResourceBrokingIteratorSpec extends FlatSpec with SparkForAll with RoundCo
 
     val result = Await.result(
       extract.getOrCompute(rc).apply(Result).map {
-        _.map {
+        _().map {
           case (_, foo: Foo) => (foo.id.get, foo.str.getAsString)
         }.collect.toSeq
       }, Duration.Inf)
@@ -132,11 +132,7 @@ object ResourceBrokingIteratorSpec {
 
     override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-    override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-      ???
-    }
-
-    override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+    override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
       ???
     }
 

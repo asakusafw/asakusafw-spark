@@ -27,7 +27,7 @@ trait Branching
   with OrderingsField
   with AggregationsField
   with PreparingKey
-  with Serializing {
+  with Deserializer {
 
   override def context: Branching.Context
 }
@@ -41,5 +41,5 @@ object Branching {
     with OrderingsField.Context
     with AggregationsField.Context
     with PreparingKey.Context
-    with Serializing.Context
+    with Deserializer.Context
 }

@@ -66,7 +66,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val result = Await.result(
         extract.getOrCompute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq
         }, Duration.Inf)
@@ -90,7 +90,7 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val result = Await.result(
         extract.getOrCompute(rc).apply(Result).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }, Duration.Inf)
@@ -111,12 +111,12 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val (result1, result2) = Await.result(
         branch.getOrCompute(rc).apply(Result1).map {
-          _.map {
+          _().map {
             case (_, foo: Foo) => foo.id.get
           }.collect.toSeq.sorted
         }.zip {
           branch.getOrCompute(rc).apply(Result2).map {
-            _.map {
+            _().map {
               case (_, foo: Foo) => foo.id.get
             }.collect.toSeq.sorted
           }
@@ -142,12 +142,12 @@ class ExtractSpec extends FlatSpec with SparkForAll with RoundContextSugar {
 
       val (result1, result2) = Await.result(
         branch.getOrCompute(rc).apply(Result1).map {
-          _.map {
+          _().map {
             case (_, bar: Bar) => (bar.id.get, bar.ord.get)
           }.collect.toSeq
         }.zip {
           branch.getOrCompute(rc).apply(Result2).map {
-            _.map {
+            _().map {
               case (_, bar: Bar) => (bar.id.get, bar.ord.get)
             }.collect.toSeq
           }
@@ -274,11 +274,7 @@ object ExtractSpec {
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        ???
-      }
-
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         ???
       }
 
@@ -313,13 +309,9 @@ object ExtractSpec {
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        WritableSerDe.serialize(value.asInstanceOf[Writable])
-      }
-
       lazy val foo = new Foo()
 
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         WritableSerDe.deserialize(value, foo)
         foo
       }
@@ -383,13 +375,9 @@ object ExtractSpec {
           WritableSerDe.serialize(bar.ord))
       }
 
-      override def serialize(branch: BranchKey, value: Any): Array[Byte] = {
-        WritableSerDe.serialize(value.asInstanceOf[Writable])
-      }
-
       lazy val bar = new Bar()
 
-      override def deserialize(branch: BranchKey, value: Array[Byte]): Any = {
+      override def deserializerFor(branch: BranchKey): Array[Byte] => Any = { value =>
         WritableSerDe.deserialize(value, bar)
         bar
       }

@@ -41,7 +41,7 @@ abstract class NewHadoopInput[IF <: InputFormat[K, V], K, V](
   def newJob(rc: RoundContext): MRJob
 
   override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
 
     val future = zipBroadcasts(rc).map { broadcasts =>
 

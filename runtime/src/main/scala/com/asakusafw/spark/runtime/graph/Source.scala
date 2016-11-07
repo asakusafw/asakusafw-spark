@@ -26,10 +26,10 @@ import com.asakusafw.spark.runtime.rdd.BranchKey
 trait Source extends Node {
 
   def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]]
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]]
 
   def getOrCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]]
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]]
 }
 
 object Source {

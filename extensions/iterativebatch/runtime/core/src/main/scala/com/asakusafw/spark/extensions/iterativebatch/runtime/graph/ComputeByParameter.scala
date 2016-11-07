@@ -31,11 +31,11 @@ trait ComputeByParameter {
   self: Source =>
 
   @transient
-  private val generatedRDDs: mutable.Map[Seq[String], Map[BranchKey, Future[RDD[_]]]] =
+  private val generatedRDDs: mutable.Map[Seq[String], Map[BranchKey, Future[() => RDD[_]]]] =
     mutable.Map.empty
 
   override def getOrCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
     synchronized {
       val stageInfo = StageInfo.deserialize(rc.hadoopConf.value.get(StageInfo.KEY_NAME))
       val batchArguments = stageInfo.getBatchArguments.toMap

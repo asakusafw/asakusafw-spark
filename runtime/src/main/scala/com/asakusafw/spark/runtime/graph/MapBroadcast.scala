@@ -40,7 +40,7 @@ abstract class MapBroadcast(
 
     val rdds = prevs.map {
       case (source, branchKey) =>
-        source.getOrCompute(rc).apply(branchKey).map(_.asInstanceOf[RDD[(ShuffleKey, _)]])
+        source.getOrCompute(rc).apply(branchKey).map(_().asInstanceOf[RDD[(ShuffleKey, _)]])
     }
 
     Future.sequence(rdds).map { prevs =>

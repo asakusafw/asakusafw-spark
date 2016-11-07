@@ -33,8 +33,8 @@ class ParallelCollectionSource[T: ClassTag](
   extends Source with ComputeOnce with ComputeOnce.Ops {
 
   override def compute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
     val rdd = sc.parallelize(data, numSlices.getOrElse(sc.defaultParallelism))
-    Map(branchKey -> Future.successful(rdd))
+    Map(branchKey -> Future.successful(() => rdd))
   }
 }

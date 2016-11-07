@@ -28,10 +28,10 @@ trait ComputeOnce {
   self: Source =>
 
   @transient
-  private var generatedRDD: Map[BranchKey, Future[RDD[_]]] = _
+  private var generatedRDD: Map[BranchKey, Future[() => RDD[_]]] = _
 
   override def getOrCompute(
-    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[RDD[_]]] = {
+    rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
     synchronized {
       if (generatedRDD == null) { // scalastyle:ignore
         generatedRDD = compute(rc)
