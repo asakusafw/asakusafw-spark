@@ -43,9 +43,9 @@
     <java.version>1.8</java.version>
     <scala.compat.version>2.11</scala.compat.version>
     <scala.version>${scala.compat.version}.8</scala.version>
-    <spark.version>2.0.1</spark.version>
-    <jetty.version>8.1.14.v20131031</jetty.version>
-    <hadoop.version>2.7.2</hadoop.version>
+    <spark.version>2.0.2</spark.version>
+    <jetty.version>9.2.16.v20160414</jetty.version>
+    <hadoop.version>2.7.3</hadoop.version>
     <asm.version>5.0.3</asm.version>
     <scala-arm.version>1.4</scala-arm.version>
     <guava.version>14.0.1</guava.version>
