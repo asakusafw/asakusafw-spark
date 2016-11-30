@@ -16,14 +16,19 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import scala.collection.JavaConversions._
+
 import org.apache.hadoop.conf.Configuration
 
+import com.asakusafw.bridge.api.activate.ApiActivator
 import com.asakusafw.bridge.broker.{ ResourceBroker, ResourceSession }
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.core.{ HadoopConfiguration, ResourceConfiguration }
 
 class ResourceBrokingIterator[+T](val hadoopConf: Configuration, _delegate: => Iterator[T])
   extends Iterator[T] {
+
+  val _ = ResourceBrokingIterator.activators // Initialize activators.
 
   val session = ResourceBroker.attach(
     ResourceBroker.Scope.THREAD,
@@ -46,4 +51,9 @@ class ResourceBrokingIterator[+T](val hadoopConf: Configuration, _delegate: => I
   }
 
   def next(): T = delegate.next()
+}
+
+object ResourceBrokingIterator {
+
+  val activators = ApiActivator.load(Thread.currentThread.getContextClassLoader).map(_.activate)
 }
