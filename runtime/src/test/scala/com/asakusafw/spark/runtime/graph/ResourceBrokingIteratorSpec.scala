@@ -32,6 +32,7 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.bridge.api.BatchContext
+import com.asakusafw.runtime.core.{ BatchContext => BatchContextStub }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, StringOption }
 import com.asakusafw.spark.runtime.aggregation.Aggregation
@@ -51,26 +52,30 @@ class ResourceBrokingIteratorSpec
 
   behavior of classOf[ResourceBrokingIterator[_]].getSimpleName
 
-  it should "broke resources" in {
-    implicit val jobContext = newJobContext(sc)
+  for {
+    bridge <- Seq(true, false)
+  } {
+    it should s"broke resources: bridge=${bridge}" in {
+      implicit val jobContext = newJobContext(sc)
 
-    val source =
-      new ParallelCollectionSource(Input, (0 until 10))("input")
-        .map(Input)(Foo.intToFoo)
+      val source =
+        new ParallelCollectionSource(Input, (0 until 10))("input")
+          .map(Input)(Foo.intToFoo)
 
-    val extract = new TestExtract((source, Input))("")
+      val extract = new TestExtract((source, Input))(bridge, "")
 
-    val rc = newRoundContext(batchArguments = Map("batcharg" -> "test"))
+      val rc = newRoundContext(batchArguments = Map("batcharg" -> "test"))
 
-    val result = Await.result(
-      extract.compute(rc).apply(Result).map {
-        _().map {
-          case (_, foo: Foo) => (foo.id.get, foo.str.getAsString)
-        }.collect.toSeq
-      }, Duration.Inf)
-    assert(result.size === 10)
-    assert(result.map(_._1) === (0 until 10))
-    assert(result.map(_._2) === (0 until 10).map(i => s"test_${i}"))
+      val result = Await.result(
+        extract.compute(rc).apply(Result).map {
+          _().map {
+            case (_, foo: Foo) => (foo.id.get, foo.str.getAsString)
+          }.collect.toSeq
+        }, Duration.Inf)
+      assert(result.size === 10)
+      assert(result.map(_._1) === (0 until 10))
+      assert(result.map(_._2) === (0 until 10).map(i => s"test_${i}"))
+    }
   }
 }
 
@@ -117,6 +122,7 @@ object ResourceBrokingIteratorSpec {
 
   class TestExtract(
     prevs: Seq[(Source, BranchKey)])(
+      bridge: Boolean,
       val label: String)(
         implicit jobContext: JobContext)
     extends Extract[Foo](prevs)(Map.empty)
@@ -124,8 +130,9 @@ object ResourceBrokingIteratorSpec {
 
     def this(
       prev: (Source, BranchKey))(
+        bridge: Boolean,
         label: String)(
-          implicit jobContext: JobContext) = this(Seq(prev))(label)
+          implicit jobContext: JobContext) = this(Seq(prev))(bridge, label)
 
     override def branchKeys: Set[BranchKey] = Set(Result)
 
@@ -146,15 +153,19 @@ object ResourceBrokingIteratorSpec {
         fragmentBufferSize: Int): (Fragment[Foo], Map[BranchKey, OutputFragment[_]]) = {
       val outputs = Map(
         Result -> new GenericOutputFragment[Foo](fragmentBufferSize))
-      val fragment = new TestFragment(outputs(Result))
+      val fragment = new TestFragment(bridge)(outputs(Result))
       (fragment, outputs)
     }
   }
 
-  class TestFragment(output: Fragment[Foo]) extends Fragment[Foo] {
+  class TestFragment(bridge: Boolean)(output: Fragment[Foo]) extends Fragment[Foo] {
 
     override def doAdd(foo: Foo): Unit = {
-      foo.str.modify(s"${BatchContext.get("batcharg")}_${foo.id.get}")
+      if (bridge) {
+        foo.str.modify(s"${BatchContext.get("batcharg")}_${foo.id.get}")
+      } else {
+        foo.str.modify(s"${BatchContextStub.get("batcharg")}_${foo.id.get}")
+      }
       output.add(foo)
     }
 
