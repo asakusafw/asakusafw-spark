@@ -6,7 +6,7 @@
   <groupId>com.asakusafw.spark</groupId>
   <artifactId>asakusa-spark</artifactId>
   <packaging>pom</packaging>
-  <version>0.3.2-SNAPSHOT</version>
+  <version>0.3.3-SNAPSHOT</version>
 
   <description>Asakusa DSL Compiler for Spark Project Root</description>
   <url>http://asakusafw.com</url>
@@ -36,9 +36,9 @@
     <artifact.version>${project.version}</artifact.version>
     <artifact.id>${artifact.name}-${artifact.version}</artifact.id>
 
-    <asakusafw.version>0.8.2-SNAPSHOT</asakusafw.version>
-    <asakusafw-sdk.version>0.8.2-SNAPSHOT</asakusafw-sdk.version>
-    <asakusafw-lang.version>0.3.2-SNAPSHOT</asakusafw-lang.version>
+    <asakusafw.version>0.8.3-SNAPSHOT</asakusafw.version>
+    <asakusafw-sdk.version>0.8.3-SNAPSHOT</asakusafw-sdk.version>
+    <asakusafw-lang.version>0.3.3-SNAPSHOT</asakusafw-lang.version>
 
     <scala.compat.version>2.10</scala.compat.version>
     <scala.version>${scala.compat.version}.6</scala.version>
