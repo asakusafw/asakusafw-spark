@@ -4,7 +4,7 @@
   <parent>
     <groupId>com.asakusafw.spark.extensions</groupId>
     <artifactId>asakusa-spark-extensions</artifactId>
-    <version>0.3.2-SNAPSHOT</version>
+    <version>0.3.2</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
