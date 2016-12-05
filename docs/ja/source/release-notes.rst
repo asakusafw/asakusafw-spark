@@ -5,7 +5,7 @@
 Release 0.3.2
 =============
 
-(開発中)
+Dec 05, 2016
 
 `Asakusa on Spark 0.3.2 documentation`_
 
