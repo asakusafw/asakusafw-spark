@@ -25,6 +25,7 @@ import scala.reflect.ClassTag
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
+import com.asakusafw.lang.compiler.analyzer.util.GroupOperatorUtil
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
@@ -34,7 +35,7 @@ import com.asakusafw.spark.runtime.fragment.user.CoGroupOperatorFragment
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
-import com.asakusafw.vocabulary.flow.processor.InputBuffer
+import com.asakusafw.vocabulary.attribute.BufferType
 import com.asakusafw.vocabulary.operator.{ CoGroup, GroupSort }
 
 class CoGroupOperatorCompiler extends UserOperatorCompiler {
@@ -90,10 +91,6 @@ private class CoGroupOperatorFragmentClassBuilder(
     None,
     classOf[CoGroupOperatorFragment].asType) {
 
-  val inputBuffer =
-    operator.annotationDesc.getElements()("inputBuffer").resolve(context.classLoader)
-      .asInstanceOf[InputBuffer]
-
   override def defCtor()(implicit mb: MethodBuilder): Unit = {
     val thisVar :: _ :: fragmentVars = mb.argVars
 
@@ -103,10 +100,13 @@ private class CoGroupOperatorFragmentClassBuilder(
         for {
           input <- operator.inputs
         } {
+          // TODO: modify to use Iterable instead of FileMapListBuffer for BufferType.VOLATILE.
+          val bufferType = GroupOperatorUtil.getBufferType(input)
           builder += pushNew0(
-            inputBuffer match {
-              case InputBuffer.EXPAND => classOf[ArrayListBuffer[_]].asType
-              case InputBuffer.ESCAPE => classOf[FileMapListBuffer[_]].asType
+            bufferType match {
+              case BufferType.HEAP => classOf[ArrayListBuffer[_]].asType
+              case BufferType.SPILL => classOf[FileMapListBuffer[_]].asType
+              case BufferType.VOLATILE => classOf[FileMapListBuffer[_]].asType
             })
         }
       },
@@ -190,10 +190,12 @@ private class CoGroupOperatorFragmentClassBuilder(
           .invokeV(
             operator.methodDesc.getName,
             (0 until operator.inputs.size).map { i =>
-              applySeq(buffersVar.push(), ldc(i)).cast(classOf[JList[_]].asType)
+              applySeq(buffersVar.push(), ldc(i))
+                .cast(operator.methodDesc.asType.getArgumentTypes()(i))
             }
               ++ (0 until operator.outputs.size).map { i =>
-                applySeq(outputsVar.push(), ldc(i)).cast(classOf[Result[_]].asType)
+                applySeq(outputsVar.push(), ldc(i))
+                  .cast(operator.methodDesc.asType.getArgumentTypes()(operator.inputs.size + i))
               }
               ++ operator.arguments.map { argument =>
                 Option(argument.value).map { value =>
