@@ -17,9 +17,12 @@ package com.asakusafw.spark.compiler
 package operator
 package user
 
+import java.lang.{ Iterable => JIterable }
 import java.util.{ List => JList }
+import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
@@ -31,7 +34,7 @@ import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
-import com.asakusafw.spark.runtime.fragment.user.CoGroupOperatorFragment
+import com.asakusafw.spark.runtime.fragment.user._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
@@ -100,13 +103,15 @@ private class CoGroupOperatorFragmentClassBuilder(
         for {
           input <- operator.inputs
         } {
-          // TODO: modify to use Iterable instead of FileMapListBuffer for BufferType.VOLATILE.
           val bufferType = GroupOperatorUtil.getBufferType(input)
           builder += pushNew0(
             bufferType match {
-              case BufferType.HEAP => classOf[ArrayListBuffer[_]].asType
-              case BufferType.SPILL => classOf[FileMapListBuffer[_]].asType
-              case BufferType.VOLATILE => classOf[FileMapListBuffer[_]].asType
+              case BufferType.HEAP =>
+                ListLikeBufferClassBuilder.getOrCompile(input.dataModelType, spill = false)
+              case BufferType.SPILL =>
+                ListLikeBufferClassBuilder.getOrCompile(input.dataModelType, spill = true)
+              case BufferType.VOLATILE =>
+                classOf[IterableBuffer[_]].asType
             })
         }
       },
@@ -121,50 +126,15 @@ private class CoGroupOperatorFragmentClassBuilder(
     super.defMethods(methodDef)
 
     methodDef.newMethod(
-      "newDataModelFor",
-      classOf[DataModel[_ <: DataModel[_]]].asType,
-      Seq(Type.INT_TYPE),
-      new MethodSignatureBuilder()
-        .newFormalTypeParameter("T") {
-          _.newInterfaceBound {
-            _.newClassType(classOf[DataModel[_]].asType) {
-              _.newTypeArgument(SignatureVisitor.INSTANCEOF, "T")
-            }
-          }
-        }
-        .newReturnType {
-          _.newTypeVariable("T")
-        }) { implicit mb =>
-        val thisVar :: iVar :: _ = mb.argVars
-        operator.inputs.zipWithIndex.foreach {
-          case (input, i) =>
-            iVar.push().unlessNe(ldc(i)) {
-              `return`(thisVar.push().invokeV(s"newDataModelFor${i}", input.dataModelType))
-            }
-        }
-        `throw`(pushNew0(classOf[AssertionError].asType))
-      }
-
-    operator.inputs.zipWithIndex.map {
-      case (input, i) =>
-        methodDef.newMethod(
-          s"newDataModelFor${i}",
-          input.dataModelType,
-          Seq.empty) { implicit mb =>
-            `return`(pushNew0(input.dataModelType))
-          }
-    }
-
-    methodDef.newMethod(
       "cogroup",
       Seq(
-        classOf[IndexedSeq[ListBuffer[_ <: DataModel[_]]]].asType,
+        classOf[IndexedSeq[JIterable[_ <: DataModel[_]]]].asType,
         classOf[IndexedSeq[Result[_]]].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[IndexedSeq[_]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(classOf[ListBuffer[_]].asType) {
+              _.newClassType(classOf[JIterable[_]].asType) {
                 _.newTypeArgument(SignatureVisitor.EXTENDS) {
                   _.newClassType(classOf[DataModel[_]].asType) {
                     _.newTypeArgument()
@@ -207,5 +177,69 @@ private class CoGroupOperatorFragmentClassBuilder(
 
         `return`()
       }
+  }
+}
+
+private class ListLikeBufferClassBuilder(
+  dataModelType: Type,
+  spill: Boolean)(
+    implicit context: CompilerContext)
+  extends ClassBuilder(
+    Type.getType(
+      s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/ListLikeBuffer$$${ListLikeBufferClassBuilder.nextId};"), // scalastyle:ignore
+    new ClassSignatureBuilder()
+      .newSuperclass {
+        _.newClassType(classOf[ListLikeBuffer[_]].asType) {
+          _.newTypeArgument(SignatureVisitor.INSTANCEOF, dataModelType)
+        }
+      },
+    classOf[ListLikeBuffer[_]].asType) {
+
+  override def defConstructors(ctorDef: ConstructorDef): Unit = {
+    ctorDef.newInit(Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
+      thisVar.push().invokeInit(
+        superType,
+        pushNew0(
+          if (spill) {
+            classOf[FileMapListBuffer[_]].asType
+          } else {
+            classOf[ArrayListBuffer[_]].asType
+          }).asType(classOf[ListBuffer[_]].asType))
+    }
+  }
+
+  override def defMethods(methodDef: MethodDef): Unit = {
+    super.defMethods(methodDef)
+
+    methodDef.newMethod("newDataModel", classOf[DataModel[_]].asType, Seq.empty) { implicit mb =>
+      val thisVar :: _ = mb.argVars
+      `return`(thisVar.push().invokeV("newDataModel", dataModelType))
+    }
+
+    methodDef.newMethod("newDataModel", dataModelType, Seq.empty) { implicit mb =>
+      `return`(pushNew0(dataModelType))
+    }
+  }
+}
+
+private object ListLikeBufferClassBuilder {
+
+  private[this] val curIds: mutable.Map[CompilerContext, AtomicLong] =
+    mutable.WeakHashMap.empty
+
+  def nextId(implicit context: CompilerContext): Long =
+    curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
+
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(Type, Boolean), Type]] =
+    mutable.WeakHashMap.empty
+
+  def getOrCompile(
+    dataModelType: Type, spill: Boolean)(
+      implicit context: CompilerContext): Type = {
+    cache.getOrElseUpdate(context, mutable.Map.empty)
+      .getOrElseUpdate(
+        (dataModelType, spill),
+        context.addClass(new ListLikeBufferClassBuilder(dataModelType, spill)))
   }
 }

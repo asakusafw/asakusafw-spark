@@ -16,41 +16,101 @@
 package com.asakusafw.spark.runtime.fragment
 package user
 
+import scala.collection.JavaConversions._
+
+import java.lang.{ Iterable => JIterable }
+import java.util.{ Iterator => JIterator }
+
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.ListBuffer
 import com.asakusafw.runtime.model.DataModel
 
 abstract class CoGroupOperatorFragment(
-  buffers: IndexedSeq[ListBuffer[_ <: DataModel[_]]], children: IndexedSeq[Fragment[_]])
+  buffers: IndexedSeq[Buffer[_ <: DataModel[_]]], children: IndexedSeq[Fragment[_]])
   extends Fragment[IndexedSeq[Iterator[_]]] {
 
-  def newDataModelFor[T <: DataModel[T]](i: Int): T
-
   override def doAdd(result: IndexedSeq[Iterator[_]]): Unit = {
-    buffers.zip(result).zipWithIndex.foreach {
-      case ((buffer, iter), i) =>
-        def prepare[T <: DataModel[T]]() = {
-          val buf = buffer.asInstanceOf[ListBuffer[T]]
-          buf.begin()
-          iter.foreach { input =>
-            if (buf.isExpandRequired()) {
-              buf.expand(newDataModelFor[T](i))
-            }
-            buf.advance().copyFrom(input.asInstanceOf[T])
+    try {
+      buffers.zip(result).foreach {
+        case (buffer, iter) =>
+          def prepare[T <: DataModel[T]]() = {
+            buffer.asInstanceOf[Buffer[T]]
+              .prepare(iter.asInstanceOf[Iterator[T]])
           }
-          buf.end()
-        }
-        prepare()
+          prepare()
+      }
+
+      cogroup(buffers.map(_.iterable), children)
+    } finally {
+      buffers.foreach(_.cleanup())
     }
-
-    cogroup(buffers, children)
-
-    buffers.foreach(_.shrink())
   }
 
-  def cogroup(inputs: IndexedSeq[ListBuffer[_]], outputs: IndexedSeq[Result[_]]): Unit
+  def cogroup(inputs: IndexedSeq[JIterable[_]], outputs: IndexedSeq[Result[_]]): Unit
 
   override def doReset(): Unit = {
     children.foreach(_.reset())
+  }
+}
+
+trait Buffer[T <: DataModel[T]] {
+
+  def prepare(iter: Iterator[T]): Unit
+
+  def iterable: JIterable[T]
+
+  def cleanup(): Unit
+}
+
+abstract class ListLikeBuffer[T <: DataModel[T]](buffer: ListBuffer[T]) extends Buffer[T] {
+
+  def newDataModel(): T
+
+  override def prepare(iter: Iterator[T]): Unit = {
+    buffer.begin()
+    iter.foreach { input =>
+      if (buffer.isExpandRequired()) {
+        buffer.expand(newDataModel())
+      }
+      buffer.advance().copyFrom(input.asInstanceOf[T])
+    }
+    buffer.end()
+  }
+
+  override def iterable: JIterable[T] = buffer
+
+  override def cleanup(): Unit = buffer.shrink()
+}
+
+class IterableBuffer[T <: DataModel[T]] extends Buffer[T] {
+  self =>
+
+  private var iter: Iterator[T] = _
+
+  def prepare(iter: Iterator[T]): Unit = {
+    this.iter = iter
+  }
+
+  def iterable: JIterable[T] = new JIterable[T] {
+
+    private var iter: JIterator[T] = self.iter
+
+    override def iterator: JIterator[T] = {
+      val result = iter
+      if (result == null) { // scalastyle:ignore
+        throw new IllegalStateException()
+      }
+      iter = null // scalastyle:ignore
+      result
+    }
+  }
+
+  def cleanup(): Unit = {
+    if (iter != null) { // scalastyle:ignore
+      while (iter.hasNext) {
+        iter.next()
+      }
+      iter = null // scalastyle:ignore
+    }
   }
 }
