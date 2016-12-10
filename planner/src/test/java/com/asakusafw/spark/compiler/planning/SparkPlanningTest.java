@@ -29,6 +29,7 @@ import com.asakusafw.lang.compiler.model.graph.CoreOperator;
 import com.asakusafw.lang.compiler.model.graph.CoreOperator.CoreOperatorKind;
 import com.asakusafw.lang.compiler.model.graph.Group;
 import com.asakusafw.lang.compiler.model.graph.Operator;
+import com.asakusafw.lang.compiler.model.graph.OperatorInput.InputUnit;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo.DataSize;
 import com.asakusafw.lang.compiler.model.testing.MockOperators;
@@ -405,6 +406,113 @@ in3 --- *B -------------/
         assertThat(s2.getOperators(), hasOperators("in2"));
         assertThat(s3.getOperators(), hasOperators("in3"));
         assertThat(s4.getOperators(), hasOperators("out"));
+    }
+
+    /**
+     * co-group w/ data table.
+<pre>{@code
+in0 --+ o0 --- out
+in1 -/
+==>
+        in0 --+- o0 --- *C --- out
+             /
+in1 --- *B -/
+}</pre>
+     */
+    @Test
+    public void extract_with_datatable() {
+        MockOperators m = new MockOperators();
+        PlanDetail detail = SparkPlanning.plan(context(), m
+                .input("in0", DataSize.LARGE)
+                .input("in1", DataSize.LARGE)
+                .bless("o0", op(Extract.class, "extract")
+                        .input("in", m.getCommonDataType(), c -> c
+                                .unit(InputUnit.RECORD))
+                        .input("side", m.getCommonDataType(), c -> c
+                                .unit(InputUnit.WHOLE)
+                                .group(group("=k")))
+                        .output("out", m.getCommonDataType()))
+                .connect("in0", "o0.in")
+                .connect("in1", "o0.side")
+                .output("out").connect("o0", "out")
+                .toGraph());
+        MockOperators mock = restore(detail);
+        Plan plan = detail.getPlan();
+        assertThat(plan.getElements(), hasSize(3));
+
+        SubPlan s0 = ownerOf(detail, mock.get("o0"));
+        SubPlan s1 = ownerOf(detail, mock.get("in1"));
+
+        assertThat(info(s0).toString(), s0, primaryOperator(isOperator("in0")));
+        assertThat(s0, driverType(is(DriverType.INPUT)));
+        assertThat(secondary(s0), inputType(is(InputType.BROADCAST)));
+        assertThat(secondary(s0), not(inputOption(is(InputOption.PRIMARY))));
+        assertThat(secondary(s0), inputPartition(is(nullValue())));
+        assertThat(secondary(s0), broadcastFormat(is(group("=k"))));
+
+        assertThat(output(s1), outputType(is(OutputType.BROADCAST)));
+        assertThat(output(s1), outputPartition(is(nullValue())));
+        assertThat(output(s1), broadcastFormat(is(group("=k"))));
+        assertThat(output(s1), outputAggregation(is(nullValue())));
+    }
+
+    /**
+     * co-group w/ data table.
+<pre>{@code
+in0 --+ o0 --- out
+in1 -/
+==>
+in0 --- *G ---+- o0 --- *C --- out
+             /
+in1 --- *B -/
+}</pre>
+     */
+    @Test
+    public void cogroup_with_datatable() {
+        MockOperators m = new MockOperators();
+        PlanDetail detail = SparkPlanning.plan(context(), m
+            .input("in0", DataSize.LARGE)
+            .input("in1", DataSize.LARGE)
+            .bless("o0", op(CoGroup.class, "cogroup")
+                    .input("in", m.getCommonDataType(), c -> c
+                            .unit(InputUnit.GROUP)
+                            .group(group("=a")))
+                    .input("side", m.getCommonDataType(), c -> c
+                            .unit(InputUnit.WHOLE)
+                            .group(group("=b")))
+                    .output("out", m.getCommonDataType()))
+                .connect("in0", "o0.in")
+                .connect("in1", "o0.side")
+            .output("out").connect("o0", "out")
+            .toGraph());
+        MockOperators mock = restore(detail);
+        Plan plan = detail.getPlan();
+        assertThat(plan.getElements(), hasSize(4));
+
+        SubPlan s0 = ownerOf(detail, mock.get("in0"));
+        SubPlan s1 = ownerOf(detail, mock.get("in1"));
+        SubPlan s2 = ownerOf(detail, mock.get("o0"));
+
+        assertThat(output(s0), outputType(is(OutputType.PARTITIONED)));
+        assertThat(output(s0), outputPartition(is(group("=a"))));
+        assertThat(output(s0), outputAggregation(is(nullValue())));
+
+        assertThat(output(s1), outputType(is(OutputType.BROADCAST)));
+        assertThat(output(s1), outputPartition(is(nullValue())));
+        assertThat(output(s1), outputAggregation(is(nullValue())));
+        assertThat(output(s1), broadcastFormat(is(group("=b"))));
+
+        assertThat(info(s2).toString(), s2, primaryOperator(isOperator("o0")));
+        assertThat(s2, driverType(is(DriverType.COGROUP)));
+        assertThat(s2, not(driverOption(is(DriverOption.PARTIAL))));
+        assertThat(primary(s2), inputType(is(InputType.PARTITIONED)));
+        assertThat(primary(s2), inputOption(is(InputOption.PRIMARY)));
+        assertThat(primary(s2), not(inputOption(is(InputOption.SPILL_OUT))));
+        assertThat(primary(s2), inputPartition(is(group("=a"))));
+        assertThat(secondary(s2), inputType(is(InputType.BROADCAST)));
+        assertThat(secondary(s2), not(inputOption(is(InputOption.PRIMARY))));
+        assertThat(secondary(s2), inputPartition(is(nullValue())));
+        assertThat(secondary(s2), broadcastFormat(is(group("=b"))));
     }
 
     /**

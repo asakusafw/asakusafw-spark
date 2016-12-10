@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.hamcrest.FeatureMatcher;
 import org.hamcrest.Matcher;
@@ -44,6 +45,7 @@ import com.asakusafw.lang.compiler.model.info.JobflowInfo;
 import com.asakusafw.lang.compiler.model.testing.MockOperators;
 import com.asakusafw.lang.compiler.planning.PlanDetail;
 import com.asakusafw.lang.compiler.planning.SubPlan;
+import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputOption;
 
 /**
  * A common test base class for planning.
@@ -252,6 +254,33 @@ public abstract class PlanningTestRoot {
         Set<? extends SubPlan.Input> inputs = sub.getInputs();
         assertThat(inputs, hasSize(1));
         return inputs.iterator().next();
+    }
+
+    /**
+     * Returns the singular primary input.
+     * @param sub the target sub-plan
+     * @return the singular input
+     */
+    public static SubPlan.Input primary(SubPlan sub) {
+        List<? extends SubPlan.Input> inputs = sub.getInputs().stream()
+                .filter(p -> p.getAttribute(SubPlanInputInfo.class).getInputOptions().contains(InputOption.PRIMARY))
+                .collect(Collectors.toList());
+        assertThat(inputs, hasSize(1));
+        return inputs.get(0);
+    }
+
+    /**
+     * Returns the singular secondary input.
+     * @param sub the target sub-plan
+     * @return the singular input
+     */
+    public static SubPlan.Input secondary(SubPlan sub) {
+        List<? extends SubPlan.Input> inputs = sub.getInputs().stream()
+                .filter(p -> p.getAttribute(SubPlanInputInfo.class).getInputOptions()
+                        .contains(InputOption.PRIMARY) == false)
+                .collect(Collectors.toList());
+        assertThat(inputs, hasSize(1));
+        return inputs.get(0);
     }
 
     /**
