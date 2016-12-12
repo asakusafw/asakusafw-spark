@@ -21,7 +21,9 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
+import java.util.function.Consumer
 import java.io.{ DataInput, DataOutput }
+import java.lang.{ Iterable => JIterable }
 import java.util.{ List => JList }
 
 import scala.collection.JavaConversions._
@@ -31,6 +33,7 @@ import org.apache.spark.broadcast.Broadcast
 
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
 import com.asakusafw.lang.compiler.model.graph.Groups
+import com.asakusafw.lang.compiler.model.graph.Operator.InputOptionBuilder
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.model.DataModel
@@ -39,6 +42,7 @@ import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
+import com.asakusafw.vocabulary.attribute.BufferType
 import com.asakusafw.vocabulary.operator.CoGroup
 
 @RunWith(classOf[JUnitRunner])
@@ -202,6 +206,279 @@ class CoGroupOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
       assert(nResult.iterator.size === 0)
     }
   }
+
+  it should "compile CoGroup operator with projective model" in {
+    val operator = OperatorExtractor
+      .extract(classOf[CoGroup], classOf[CoGroupOperator], "cogroupp")
+      .input("foos", ClassDescription.of(classOf[Foo]),
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .output("fooResult", ClassDescription.of(classOf[Foo]))
+      .output("barResult", ClassDescription.of(classOf[Bar]))
+      .output("fooError", ClassDescription.of(classOf[Foo]))
+      .output("barError", ClassDescription.of(classOf[Bar]))
+      .output("nResult", ClassDescription.of(classOf[N]))
+      .argument("n", ImmediateDescription.of(10))
+      .build()
+
+    implicit val context = newOperatorCompilerContext("flowId")
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+    val cls = context.loadClass[Fragment[IndexedSeq[Iterator[_]]]](thisType.getClassName)
+
+    val fooResult = new GenericOutputFragment[Foo]()
+    val fooError = new GenericOutputFragment[Foo]()
+
+    val barResult = new GenericOutputFragment[Bar]()
+    val barError = new GenericOutputFragment[Bar]()
+
+    val nResult = new GenericOutputFragment[N]()
+
+    val fragment = cls.getConstructor(
+      classOf[Map[BroadcastId, Broadcast[_]]],
+      classOf[Fragment[_]], classOf[Fragment[_]],
+      classOf[Fragment[_]], classOf[Fragment[_]],
+      classOf[Fragment[_]])
+      .newInstance(Map.empty, fooResult, barResult, fooError, barError, nResult)
+
+    {
+      fragment.reset()
+      val foos = Seq.empty[Foo]
+      val bars = Seq.empty[Bar]
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
+      assert(fooResult.iterator.size === 0)
+      assert(barResult.iterator.size === 0)
+      assert(fooError.iterator.size === 0)
+      assert(barError.iterator.size === 0)
+      val nResults = nResult.iterator.toSeq
+      assert(nResults.size === 1)
+      assert(nResults.head.n.get === 10)
+    }
+
+    fragment.reset()
+    assert(fooResult.iterator.size === 0)
+    assert(barResult.iterator.size === 0)
+    assert(fooError.iterator.size === 0)
+    assert(barError.iterator.size === 0)
+    assert(nResult.iterator.size === 0)
+
+    {
+      fragment.reset()
+      val foo = new Foo()
+      foo.id.modify(1)
+      val foos = Seq(foo)
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      val bars = Seq(bar)
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
+      val fooResults = fooResult.iterator.toSeq
+      assert(fooResults.size === 1)
+      assert(fooResults.head.id.get === foo.id.get)
+      val barResults = barResult.iterator.toSeq
+      assert(barResults.size === 1)
+      assert(barResults.head.id.get === bar.id.get)
+      assert(barResults.head.fooId.get === bar.fooId.get)
+      val fooErrors = fooError.iterator.toSeq
+      assert(fooErrors.size === 0)
+      val barErrors = barError.iterator.toSeq
+      assert(barErrors.size === 0)
+      val nResults = nResult.iterator.toSeq
+      assert(nResults.size === 1)
+      assert(nResults.head.n.get === 10)
+    }
+
+    fragment.reset()
+    assert(fooResult.iterator.size === 0)
+    assert(barResult.iterator.size === 0)
+    assert(fooError.iterator.size === 0)
+    assert(barError.iterator.size === 0)
+    assert(nResult.iterator.size === 0)
+
+    {
+      fragment.reset()
+      val foo = new Foo()
+      foo.id.modify(1)
+      val foos = Seq(foo)
+      val bars = (0 until 10).map { i =>
+        val bar = new Bar()
+        bar.id.modify(i)
+        bar.fooId.modify(1)
+        bar
+      }
+      fragment.add(IndexedSeq(foos.iterator, bars.iterator))
+      val fooResults = fooResult.iterator.toSeq
+      assert(fooResults.size === 0)
+      val barResults = barResult.iterator.toSeq
+      assert(barResults.size === 0)
+      val fooErrors = fooError.iterator.toSeq
+      assert(fooErrors.size === 1)
+      assert(fooErrors.head.id.get === foo.id.get)
+      val barErrors = barError.iterator.toSeq
+      assert(barErrors.size === 10)
+      barErrors.zip(bars).foreach {
+        case (actual, expected) =>
+          assert(actual.id.get === expected.id.get)
+          assert(actual.fooId.get === expected.fooId.get)
+      }
+      val nResults = nResult.iterator.toSeq
+      assert(nResults.size === 1)
+      assert(nResults.head.n.get === 10)
+    }
+
+    fragment.reset()
+    assert(fooResult.iterator.size === 0)
+    assert(barResult.iterator.size === 0)
+    assert(fooError.iterator.size === 0)
+    assert(barError.iterator.size === 0)
+    assert(nResult.iterator.size === 0)
+  }
+
+  for {
+    projective <- Seq(false, true)
+  } {
+    it should s"compile CoGroup operator with BufferType${
+      if (projective) " with projective model" else ""
+    }" in {
+      val operator = OperatorExtractor
+        .extract(classOf[CoGroup], classOf[CoGroupOperator],
+          if (projective) "cogroupbp" else "cogroupb")
+        .input("foos", ClassDescription.of(classOf[Foo]),
+          new Consumer[InputOptionBuilder] {
+            override def accept(builder: InputOptionBuilder): Unit = {
+              builder.group(Groups.parse(Seq("id")))
+                .attribute(BufferType.SPILL)
+            }
+          })
+        .input("bars", ClassDescription.of(classOf[Bar]),
+          new Consumer[InputOptionBuilder] {
+            override def accept(builder: InputOptionBuilder): Unit = {
+              builder.group(Groups.parse(Seq("fooId"), Seq("+id")))
+                .attribute(BufferType.VOLATILE)
+            }
+          })
+        .output("fooResult", ClassDescription.of(classOf[Foo]))
+        .output("barResult", ClassDescription.of(classOf[Bar]))
+        .output("fooError", ClassDescription.of(classOf[Foo]))
+        .output("barError", ClassDescription.of(classOf[Bar]))
+        .output("nResult", ClassDescription.of(classOf[N]))
+        .argument("n", ImmediateDescription.of(10))
+        .build()
+
+      implicit val context = newOperatorCompilerContext("flowId")
+
+      val thisType = OperatorCompiler.compile(operator, OperatorType.CoGroupType)
+      val cls = context.loadClass[Fragment[IndexedSeq[Iterator[_]]]](thisType.getClassName)
+
+      val fooResult = new GenericOutputFragment[Foo]()
+      val fooError = new GenericOutputFragment[Foo]()
+
+      val barResult = new GenericOutputFragment[Bar]()
+      val barError = new GenericOutputFragment[Bar]()
+
+      val nResult = new GenericOutputFragment[N]()
+
+      val fragment = cls.getConstructor(
+        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]],
+        classOf[Fragment[_]], classOf[Fragment[_]],
+        classOf[Fragment[_]])
+        .newInstance(Map.empty, fooResult, barResult, fooError, barError, nResult)
+
+      {
+        fragment.reset()
+        val foos = Seq.empty[Foo]
+        val bars = Seq.empty[Bar]
+        fragment.add(IndexedSeq(foos.iterator, bars.iterator))
+        assert(fooResult.iterator.size === 0)
+        assert(barResult.iterator.size === 0)
+        assert(fooError.iterator.size === 0)
+        assert(barError.iterator.size === 0)
+        val nResults = nResult.iterator.toSeq
+        assert(nResults.size === 1)
+        assert(nResults.head.n.get === 10)
+      }
+
+      fragment.reset()
+      assert(fooResult.iterator.size === 0)
+      assert(barResult.iterator.size === 0)
+      assert(fooError.iterator.size === 0)
+      assert(barError.iterator.size === 0)
+      assert(nResult.iterator.size === 0)
+
+      {
+        fragment.reset()
+        val foo = new Foo()
+        foo.id.modify(1)
+        val foos = Seq(foo)
+        val bar = new Bar()
+        bar.id.modify(10)
+        bar.fooId.modify(1)
+        val bars = Seq(bar)
+        fragment.add(IndexedSeq(foos.iterator, bars.iterator))
+        val fooResults = fooResult.iterator.toSeq
+        assert(fooResults.size === 1)
+        assert(fooResults.head.id.get === foo.id.get)
+        val barResults = barResult.iterator.toSeq
+        assert(barResults.size === 1)
+        assert(barResults.head.id.get === bar.id.get)
+        assert(barResults.head.fooId.get === bar.fooId.get)
+        val fooErrors = fooError.iterator.toSeq
+        assert(fooErrors.size === 0)
+        val barErrors = barError.iterator.toSeq
+        assert(barErrors.size === 0)
+        val nResults = nResult.iterator.toSeq
+        assert(nResults.size === 1)
+        assert(nResults.head.n.get === 10)
+      }
+
+      fragment.reset()
+      assert(fooResult.iterator.size === 0)
+      assert(barResult.iterator.size === 0)
+      assert(fooError.iterator.size === 0)
+      assert(barError.iterator.size === 0)
+      assert(nResult.iterator.size === 0)
+
+      {
+        fragment.reset()
+        val foo = new Foo()
+        foo.id.modify(1)
+        val foos = Seq(foo)
+        val bars = (0 until 10).map { i =>
+          val bar = new Bar()
+          bar.id.modify(i)
+          bar.fooId.modify(1)
+          bar
+        }
+        fragment.add(IndexedSeq(foos.iterator, bars.iterator))
+        val fooResults = fooResult.iterator.toSeq
+        assert(fooResults.size === 0)
+        val barResults = barResult.iterator.toSeq
+        assert(barResults.size === 0)
+        val fooErrors = fooError.iterator.toSeq
+        assert(fooErrors.size === 1)
+        assert(fooErrors.head.id.get === foo.id.get)
+        val barErrors = barError.iterator.toSeq
+        assert(barErrors.size === 10)
+        barErrors.zip(bars).foreach {
+          case (actual, expected) =>
+            assert(actual.id.get === expected.id.get)
+            assert(actual.fooId.get === expected.fooId.get)
+        }
+        val nResults = nResult.iterator.toSeq
+        assert(nResults.size === 1)
+        assert(nResults.head.n.get === 10)
+      }
+
+      fragment.reset()
+      assert(fooResult.iterator.size === 0)
+      assert(barResult.iterator.size === 0)
+      assert(fooError.iterator.size === 0)
+      assert(barError.iterator.size === 0)
+      assert(nResult.iterator.size === 0)
+    }
+  }
 }
 
 object CoGroupOperatorCompilerSpec {
@@ -331,6 +608,62 @@ object CoGroupOperatorCompilerSpec {
       } else {
         foos.foreach(fooError.add)
         bars.foreach(barError.add)
+      }
+      this.n.n.modify(n)
+      nResult.add(this.n)
+    }
+
+    @CoGroup
+    def cogroupb(
+      foos: JList[Foo], bars: JIterable[Bar],
+      fooResult: Result[Foo], barResult: Result[Bar],
+      fooError: Result[Foo], barError: Result[Bar],
+      nResult: Result[N],
+      n: Int): Unit = {
+      val barsIter = bars.iterator
+      if (foos.isEmpty) {
+        barsIter.foreach(barError.add)
+      } else if (!barsIter.hasNext) {
+        foos.foreach(fooError.add)
+      } else {
+        val fooHead = foos.get(0)
+        val barHead = barsIter.next()
+        if (foos.size == 1 && !barsIter.hasNext) {
+          fooResult.add(fooHead)
+          barResult.add(barHead)
+        } else {
+          foos.foreach(fooError.add)
+          barError.add(barHead)
+          barsIter.foreach(barError.add)
+        }
+      }
+      this.n.n.modify(n)
+      nResult.add(this.n)
+    }
+
+    @CoGroup
+    def cogroupbp[F <: FooP, B <: BarP](
+      foos: JList[F], bars: JIterable[B],
+      fooResult: Result[F], barResult: Result[B],
+      fooError: Result[F], barError: Result[B],
+      nResult: Result[N],
+      n: Int): Unit = {
+      val barsIter = bars.iterator
+      if (foos.isEmpty) {
+        barsIter.foreach(barError.add)
+      } else if (!barsIter.hasNext) {
+        foos.foreach(fooError.add)
+      } else {
+        val fooHead = foos.get(0)
+        val barHead = barsIter.next()
+        if (foos.size == 1 && !barsIter.hasNext) {
+          fooResult.add(fooHead)
+          barResult.add(barHead)
+        } else {
+          foos.foreach(fooError.add)
+          barError.add(barHead)
+          barsIter.foreach(barError.add)
+        }
       }
       this.n.n.modify(n)
       nResult.add(this.n)
