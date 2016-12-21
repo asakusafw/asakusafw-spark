@@ -61,7 +61,7 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
 private class BroadcastMasterCheckOperatorFragmentClassBuilder(
   operator: UserOperator)(
-    implicit val context: OperatorCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends JoinOperatorFragmentClassBuilder(
     operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType,
     operator,
@@ -88,7 +88,6 @@ private class BroadcastMasterCheckOperatorFragmentClassBuilder(
 
     thisVar.push().invokeInit(
       superType,
-      masters(),
       fragmentVars(MasterCheckOp.ID_OUTPUT_MISSED).push(),
       fragmentVars(MasterCheckOp.ID_OUTPUT_FOUND).push())
   }

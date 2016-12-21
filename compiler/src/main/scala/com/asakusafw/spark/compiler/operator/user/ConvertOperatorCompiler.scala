@@ -78,6 +78,7 @@ private class ConvertOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Convert.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
+    operator.inputs,
     operator.outputs)(
     Option(
       new ClassSignatureBuilder()

@@ -44,6 +44,7 @@ abstract class JoinOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     dataModelType,
     operator.implementationClass.asType,
+    operator.inputs,
     operator.outputs)(signature, superType) {
 
   val masterType: Type = masterInput.dataModelType

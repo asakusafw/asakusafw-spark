@@ -81,7 +81,7 @@ class BroadcastMasterBranchOperatorCompiler extends UserOperatorCompiler {
 
 private class BroadcastMasterBranchOperatorFragmentClassBuilder(
   operator: UserOperator)(
-    implicit val context: OperatorCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends JoinOperatorFragmentClassBuilder(
     operator.inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType,
     operator,
@@ -113,7 +113,6 @@ private class BroadcastMasterBranchOperatorFragmentClassBuilder(
 
     thisVar.push().invokeInit(
       superType,
-      masters(),
       buildMap { builder =>
         operatorOutputs.zip(fragmentVars).foreach {
           case (output, fragmentVar) =>

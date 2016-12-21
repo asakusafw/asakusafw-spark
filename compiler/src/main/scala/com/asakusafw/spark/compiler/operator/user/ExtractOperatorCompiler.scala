@@ -82,6 +82,7 @@ private class ExtractOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Extract.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
+    operator.inputs,
     operator.outputs)(
     Option(
       new ClassSignatureBuilder()

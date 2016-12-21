@@ -87,6 +87,7 @@ private class BranchOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Branch.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
+    operator.inputs,
     operator.outputs)(
     Option(
       new ClassSignatureBuilder()

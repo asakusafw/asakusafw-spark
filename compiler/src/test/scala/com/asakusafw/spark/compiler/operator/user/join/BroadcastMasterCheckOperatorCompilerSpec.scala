@@ -23,14 +23,15 @@ import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
 import java.util.{ List => JList }
+import java.util.function.Consumer
 
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.lang.compiler.model.description.ClassDescription
-import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator, Operator, OperatorInput }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.PlanMarker
 import com.asakusafw.runtime.model.DataModel
@@ -60,7 +61,14 @@ class BroadcastMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompil
     val operator = OperatorExtractor
       .extract(classOf[MasterCheckOp], classOf[MasterCheckOperator], "check")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("found", ClassDescription.of(classOf[Bar]))
@@ -83,7 +91,7 @@ class BroadcastMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompil
     val missed = new GenericOutputFragment[Bar]()
 
     val ctor = cls.getConstructor(
-      classOf[Map[BroadcastId, Broadcast[_]]],
+      classOf[Map[BroadcastId, Broadcasted[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -141,7 +149,14 @@ class BroadcastMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompil
     val operator = OperatorExtractor
       .extract(classOf[MasterCheckOp], classOf[MasterCheckOperator], "checkWithSelection")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("found", ClassDescription.of(classOf[Bar]))
@@ -164,7 +179,7 @@ class BroadcastMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompil
     val missed = new GenericOutputFragment[Bar]()
 
     val ctor = cls.getConstructor(
-      classOf[Map[BroadcastId, Broadcast[_]]],
+      classOf[Map[BroadcastId, Broadcasted[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -222,7 +237,13 @@ class BroadcastMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompil
     val operator = OperatorExtractor
       .extract(classOf[MasterCheckOp], classOf[MasterCheckOperator], "check")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")))
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("found", ClassDescription.of(classOf[Bar]))
@@ -239,7 +260,7 @@ class BroadcastMasterCheckOperatorCompilerSpec extends FlatSpec with UsingCompil
     val missed = new GenericOutputFragment[Bar]()
 
     val ctor = cls.getConstructor(
-      classOf[Map[BroadcastId, Broadcast[_]]],
+      classOf[Map[BroadcastId, Broadcasted[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]])
 
     {

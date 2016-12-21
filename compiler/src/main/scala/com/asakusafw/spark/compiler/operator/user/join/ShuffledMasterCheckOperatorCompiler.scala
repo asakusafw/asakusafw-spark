@@ -61,7 +61,7 @@ class ShuffledMasterCheckOperatorCompiler extends UserOperatorCompiler {
 
 private class ShuffledMasterCheckOperatorFragmentClassBuilder(
   operator: UserOperator)(
-    implicit val context: OperatorCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends JoinOperatorFragmentClassBuilder(
     classOf[IndexedSeq[Iterator[_]]].asType,
     operator,

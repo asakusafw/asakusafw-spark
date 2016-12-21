@@ -79,6 +79,7 @@ private class LoggingOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Logging.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
+    operator.inputs,
     operator.outputs)(
     Option(
       new ClassSignatureBuilder()

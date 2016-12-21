@@ -90,6 +90,7 @@ private class CoGroupOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     classOf[IndexedSeq[Iterator[_]]].asType,
     operator.implementationClass.asType,
+    operator.inputs,
     operator.outputs)(
     None,
     classOf[CoGroupOperatorFragment].asType) {

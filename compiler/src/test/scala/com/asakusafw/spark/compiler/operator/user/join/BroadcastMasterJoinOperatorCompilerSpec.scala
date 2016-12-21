@@ -23,14 +23,15 @@ import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
 import java.util.{ List => JList }
+import java.util.function.Consumer
 
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.lang.compiler.model.description.ClassDescription
-import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator, Operator, OperatorInput }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.PlanMarker
 import com.asakusafw.runtime.model.DataModel
@@ -61,7 +62,14 @@ class BroadcastMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompile
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinOp], classOf[MasterJoinOperator], "join")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("joined", ClassDescription.of(classOf[FooBar]))
@@ -85,7 +93,7 @@ class BroadcastMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompile
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -149,7 +157,14 @@ class BroadcastMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompile
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinOp], classOf[MasterJoinOperator], "joinWithSelection")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("joined", ClassDescription.of(classOf[FooBar]))
@@ -173,7 +188,7 @@ class BroadcastMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompile
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -237,7 +252,13 @@ class BroadcastMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompile
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinOp], classOf[MasterJoinOperator], "join")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")))
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("joined", ClassDescription.of(classOf[FooBar]))
@@ -254,7 +275,7 @@ class BroadcastMasterJoinOperatorCompilerSpec extends FlatSpec with UsingCompile
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {

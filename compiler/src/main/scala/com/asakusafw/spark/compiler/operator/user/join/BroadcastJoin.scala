@@ -24,7 +24,7 @@ import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.MarkerOperator
+import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput }
 import com.asakusafw.lang.compiler.planning.PlanMarker
 import com.asakusafw.runtime.core.GroupView
 import com.asakusafw.runtime.model.DataModel
@@ -37,44 +37,6 @@ trait BroadcastJoin
   extends JoinOperatorFragmentClassBuilder {
 
   implicit def context: OperatorCompiler.Context
-
-  protected def masters()(implicit mb: MethodBuilder): Stack = {
-    val thisVar :: broadcastsVar :: _ = mb.argVars
-    val marker: Option[MarkerOperator] = {
-      val opposites = masterInput.getOpposites
-      assert(opposites.size <= 1,
-        s"The size of master inputs should be 0 or 1: ${opposites.size} [${operator}]")
-      opposites.headOption.map { opposite =>
-        val operator = opposite.getOwner
-        assert(operator.isInstanceOf[MarkerOperator],
-          s"The master input should be marker operator: ${operator} [${operator}]")
-        assert(
-          operator.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
-            == PlanMarker.BROADCAST,
-          s"The master input should be BROADCAST marker operator: ${
-            operator.asInstanceOf[MarkerOperator].getAttribute(classOf[PlanMarker])
-          } [${operator}]")
-        operator.asInstanceOf[MarkerOperator]
-      }
-    }
-
-    val keyElementTypes = masterInput.dataModelRef.groupingTypes(masterInput.getGroup.getGrouping)
-
-    val mapGroupViewType = MapGroupViewClassBuilder.getOrCompile(keyElementTypes)
-
-    val mapGroupView = pushNew(mapGroupViewType)
-    mapGroupView.dup().invokeInit(
-      marker.map { marker =>
-        applyMap(
-          broadcastsVar.push(), context.broadcastIds.getField(marker))
-          .cast(classOf[Broadcasted[_]].asType)
-          .invokeV("value", classOf[AnyRef].asType)
-          .cast(classOf[Map[_, _]].asType)
-      }.getOrElse {
-        buildMap(_ => ())
-      })
-    mapGroupView.asType(classOf[GroupView[_]].asType)
-  }
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
@@ -111,6 +73,14 @@ trait BroadcastJoin
                   property.getDeclaration.getName, property.getType.asType)
             }
           })
+      }
+
+    methodDef.newMethod(
+      Opcodes.ACC_PROTECTED,
+      "masters",
+      classOf[GroupView[_]].asType,
+      Seq.empty) { implicit mb =>
+        `return`(getViewField(masterInput))
       }
   }
 }

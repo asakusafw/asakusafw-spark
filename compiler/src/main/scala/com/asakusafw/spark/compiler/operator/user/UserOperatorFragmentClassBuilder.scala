@@ -17,11 +17,11 @@ package com.asakusafw.spark.compiler
 package operator
 package user
 
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.OperatorOutput
+import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, OperatorOutput }
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.fragment.Fragment
 import com.asakusafw.spark.runtime.graph.BroadcastId
@@ -31,23 +31,24 @@ import com.asakusafw.spark.tools.asm.MethodBuilder._
 abstract class UserOperatorFragmentClassBuilder(
   dataModelType: Type,
   val operatorType: Type,
+  val operatorInputs: Seq[OperatorInput],
   val operatorOutputs: Seq[OperatorOutput])(
     signature: Option[ClassSignatureBuilder],
     superType: Type)(
-      implicit context: OperatorCompiler.Context)
+      implicit val context: OperatorCompiler.Context)
   extends FragmentClassBuilder(dataModelType)(signature, superType)
-  with OperatorField {
+  with OperatorField with ViewFields {
 
   override final def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(
-      classOf[Map[BroadcastId, Broadcast[_]]].asType
+      classOf[Map[BroadcastId, Broadcasted[_]]].asType
         +: (0 until operatorOutputs.size).map(_ => classOf[Fragment[_]].asType),
       ((new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
               .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-                _.newClassType(classOf[Broadcast[_]].asType) {
+                _.newClassType(classOf[Broadcasted[_]].asType) {
                   _.newTypeArgument()
                 }
               }
@@ -61,8 +62,11 @@ abstract class UserOperatorFragmentClassBuilder(
             }
         })
         .newVoidReturnType()) { implicit mb =>
+        val thisVar :: broadcastsVar :: _ = mb.argVars
+
         defCtor()
         initOperatorField()
+        initViewFields(broadcastsVar)
       }
   }
 
