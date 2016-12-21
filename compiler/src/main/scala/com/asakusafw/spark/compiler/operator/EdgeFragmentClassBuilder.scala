@@ -25,14 +25,13 @@ import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.operator.EdgeFragmentClassBuilder._
-import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.runtime.fragment.{ EdgeFragment, Fragment }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 
 class EdgeFragmentClassBuilder(
   dataModelType: Type)(
-    implicit context: OperatorCompiler.Context)
+    implicit context: CompilerContext)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/EdgeFragment$$${nextId};"),
@@ -69,21 +68,21 @@ class EdgeFragmentClassBuilder(
 
 object EdgeFragmentClassBuilder {
 
-  private[this] val curIds: mutable.Map[OperatorCompiler.Context, AtomicLong] =
+  private[this] val curIds: mutable.Map[CompilerContext, AtomicLong] =
     mutable.WeakHashMap.empty
 
-  def nextId(implicit context: OperatorCompiler.Context): Long =
+  def nextId(implicit context: CompilerContext): Long =
     curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
 
-  private[this] val cache: mutable.Map[OperatorCompiler.Context, mutable.Map[(String, Type), Type]] = // scalastyle:ignore
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[Type, Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   def getOrCompile(
     dataModelType: Type)(
-      implicit context: OperatorCompiler.Context): Type = {
-    cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
-      (context.flowId, dataModelType), {
-        context.addClass(new EdgeFragmentClassBuilder(dataModelType))
-      })
+      implicit context: CompilerContext): Type = {
+    cache.getOrElseUpdate(context, mutable.Map.empty)
+      .getOrElseUpdate(
+        dataModelType,
+        context.addClass(new EdgeFragmentClassBuilder(dataModelType)))
   }
 }

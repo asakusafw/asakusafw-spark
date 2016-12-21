@@ -118,7 +118,7 @@ object SortOrderingClassBuilder {
   def nextId(implicit context: CompilerContext): Long =
     curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
 
-  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Type, Seq[(Type, Boolean)]), Type]] = // scalastyle:ignore
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(Type, Seq[(Type, Boolean)]), Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   def getOrCompile(
@@ -137,11 +137,10 @@ object SortOrderingClassBuilder {
     if (orderingTypes.isEmpty) {
       groupingOrderingType
     } else {
-      cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
-        (context.flowId, groupingOrderingType, orderingTypes), {
-          context.addClass(
-            new SortOrderingClassBuilder(groupingOrderingType, orderingTypes))
-        })
+      cache.getOrElseUpdate(context, mutable.Map.empty)
+        .getOrElseUpdate(
+          (groupingOrderingType, orderingTypes),
+          context.addClass(new SortOrderingClassBuilder(groupingOrderingType, orderingTypes)))
     }
   }
 }

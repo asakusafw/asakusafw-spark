@@ -164,7 +164,7 @@ object AggregationClassBuilder {
     }"
   }
 
-  private[this] val cache: mutable.Map[AggregationCompiler.Context, mutable.Map[(String, Long), Type]] = // scalastyle:ignore
+  private[this] val cache: mutable.Map[AggregationCompiler.Context, mutable.Map[Long, Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   def getOrCompile(
@@ -172,7 +172,7 @@ object AggregationClassBuilder {
       implicit context: AggregationCompiler.Context): Type = {
     cache.getOrElseUpdate(context, mutable.Map.empty)
       .getOrElseUpdate(
-        (context.flowId, operator.getOriginalSerialNumber),
+        operator.getOriginalSerialNumber,
         AggregationCompiler.compile(operator))
   }
 }

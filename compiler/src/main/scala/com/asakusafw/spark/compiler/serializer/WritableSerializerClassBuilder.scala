@@ -66,15 +66,15 @@ object WritableSerializerClassBuilder {
   def nextId(implicit context: CompilerContext): Long =
     curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
 
-  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Type), Type]] =
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[Type, Type]] =
     mutable.WeakHashMap.empty
 
   def getOrCompile(
     writableType: Type)(
       implicit context: CompilerContext): Type = {
-    cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
-      (context.flowId, writableType), {
-        context.addClass(new WritableSerializerClassBuilder(writableType))
-      })
+    cache.getOrElseUpdate(context, mutable.Map.empty)
+      .getOrElseUpdate(
+        writableType,
+        context.addClass(new WritableSerializerClassBuilder(writableType)))
   }
 }
