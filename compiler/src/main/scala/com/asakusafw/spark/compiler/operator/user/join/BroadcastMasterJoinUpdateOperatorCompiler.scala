@@ -23,7 +23,6 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.user.join.BroadcastMasterJoinUpdateOperatorFragment
-import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterJoinUpdate => MasterJoinUpdateOp }
 
@@ -88,17 +87,16 @@ private class BroadcastMasterJoinUpdateOperatorFragmentClassBuilder(
     Option(
       new ClassSignatureBuilder()
         .newSuperclass {
-          _.newClassType(classOf[BroadcastMasterJoinUpdateOperatorFragment[_, _, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-              .newTypeArgument(
-                SignatureVisitor.INSTANCEOF,
-                operator.inputs(MasterJoinUpdateOp.ID_INPUT_MASTER).dataModelType)
+          _.newClassType(classOf[BroadcastMasterJoinUpdateOperatorFragment[_, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(MasterJoinUpdateOp.ID_INPUT_MASTER).dataModelType)
               .newTypeArgument(
                 SignatureVisitor.INSTANCEOF,
                 operator.inputs(MasterJoinUpdateOp.ID_INPUT_TRANSACTION).dataModelType)
           }
         }),
-    classOf[BroadcastMasterJoinUpdateOperatorFragment[_, _, _]].asType)
+    classOf[BroadcastMasterJoinUpdateOperatorFragment[_, _]].asType)
   with BroadcastJoin
   with MasterJoinUpdate {
 

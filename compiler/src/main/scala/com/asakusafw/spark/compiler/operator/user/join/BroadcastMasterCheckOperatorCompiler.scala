@@ -23,7 +23,6 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.user.join.BroadcastMasterCheckOperatorFragment
-import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.{ MasterCheck => MasterCheckOp }
 
@@ -71,17 +70,16 @@ private class BroadcastMasterCheckOperatorFragmentClassBuilder(
     Option(
       new ClassSignatureBuilder()
         .newSuperclass {
-          _.newClassType(classOf[BroadcastMasterCheckOperatorFragment[_, _, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-              .newTypeArgument(
-                SignatureVisitor.INSTANCEOF,
-                operator.inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType)
+          _.newClassType(classOf[BroadcastMasterCheckOperatorFragment[_, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(MasterCheckOp.ID_INPUT_MASTER).dataModelType)
               .newTypeArgument(
                 SignatureVisitor.INSTANCEOF,
                 operator.inputs(MasterCheckOp.ID_INPUT_TRANSACTION).dataModelType)
           }
         }),
-    classOf[BroadcastMasterCheckOperatorFragment[_, _, _]].asType)
+    classOf[BroadcastMasterCheckOperatorFragment[_, _]].asType)
   with BroadcastJoin
   with MasterCheck {
 

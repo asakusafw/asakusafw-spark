@@ -24,7 +24,6 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.user.join.BroadcastMasterJoinOperatorFragment
-import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
@@ -74,11 +73,10 @@ private class BroadcastMasterJoinOperatorFragmentClassBuilder(
     Option(
       new ClassSignatureBuilder()
         .newSuperclass {
-          _.newClassType(classOf[BroadcastMasterJoinOperatorFragment[_, _, _, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-              .newTypeArgument(
-                SignatureVisitor.INSTANCEOF,
-                operator.inputs(MasterJoinOp.ID_INPUT_MASTER).dataModelType)
+          _.newClassType(classOf[BroadcastMasterJoinOperatorFragment[_, _, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(MasterJoinOp.ID_INPUT_MASTER).dataModelType)
               .newTypeArgument(
                 SignatureVisitor.INSTANCEOF,
                 operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType)
@@ -87,7 +85,7 @@ private class BroadcastMasterJoinOperatorFragmentClassBuilder(
                 operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
           }
         }),
-    classOf[BroadcastMasterJoinOperatorFragment[_, _, _, _]].asType)
+    classOf[BroadcastMasterJoinOperatorFragment[_, _, _]].asType)
   with BroadcastJoin
   with MasterJoin {
 

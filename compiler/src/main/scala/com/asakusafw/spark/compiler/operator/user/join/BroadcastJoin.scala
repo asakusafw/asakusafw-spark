@@ -18,25 +18,17 @@ package operator
 package user
 package join
 
-import java.util.{ ArrayList, List => JList }
-
-import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
-import scala.reflect.ClassTag
 
-import org.apache.spark.broadcast.Broadcast
-import org.objectweb.asm.Type
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.{ MarkerOperator, OperatorInput, UserOperator }
+import com.asakusafw.lang.compiler.model.graph.MarkerOperator
 import com.asakusafw.lang.compiler.planning.PlanMarker
+import com.asakusafw.runtime.core.GroupView
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
-import com.asakusafw.spark.runtime.fragment.Fragment
-import com.asakusafw.spark.runtime.graph.BroadcastId
-import com.asakusafw.spark.runtime.io.WritableSerDe
-import com.asakusafw.spark.runtime.operator.DefaultMasterSelection
-import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
@@ -65,58 +57,60 @@ trait BroadcastJoin
         operator.asInstanceOf[MarkerOperator]
       }
     }
-    marker.map { marker =>
-      applyMap(
-        broadcastsVar.push(), context.broadcastIds.getField(marker))
-        .cast(classOf[Broadcast[_]].asType)
-        .invokeV("value", classOf[AnyRef].asType)
-        .cast(classOf[Map[_, _]].asType)
-    }.getOrElse {
-      buildMap(_ => ())
-    }
+
+    val keyElementTypes = masterInput.dataModelRef.groupingTypes(masterInput.getGroup.getGrouping)
+
+    val mapGroupViewType = MapGroupViewClassBuilder.getOrCompile(keyElementTypes)
+
+    val mapGroupView = pushNew(mapGroupViewType)
+    mapGroupView.dup().invokeInit(
+      marker.map { marker =>
+        applyMap(
+          broadcastsVar.push(), context.broadcastIds.getField(marker))
+          .cast(classOf[Broadcasted[_]].asType)
+          .invokeV("value", classOf[AnyRef].asType)
+          .cast(classOf[Map[_, _]].asType)
+      }.getOrElse {
+        buildMap(_ => ())
+      })
+    mapGroupView.asType(classOf[GroupView[_]].asType)
   }
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
     methodDef.newMethod(
-      "key",
-      classOf[AnyRef].asType,
+      Opcodes.ACC_PROTECTED,
+      "keyElements",
+      classOf[Array[AnyRef]].asType,
       Seq(classOf[DataModel[_]].asType)) { implicit mb =>
         val thisVar :: txVar :: _ = mb.argVars
         `return`(
-          thisVar.push().invokeV("key", classOf[ShuffleKey].asType, txVar.push().cast(txType)))
+          thisVar.push()
+            .invokeV("keyElements", classOf[Array[AnyRef]].asType, txVar.push().cast(txType)))
       }
 
     methodDef.newMethod(
-      "key",
-      classOf[ShuffleKey].asType,
+      Opcodes.ACC_PROTECTED,
+      "keyElements",
+      classOf[Array[AnyRef]].asType,
       Seq(txType)) { implicit mb =>
         val thisVar :: txVar :: _ = mb.argVars
 
         val dataModelRef = txInput.dataModelRef
         val group = txInput.getGroup
 
-        val shuffleKey = pushNew(classOf[ShuffleKey].asType)
-        shuffleKey.dup().invokeInit(
-          if (group.getGrouping.isEmpty) {
-            buildArray(Type.BYTE_TYPE)(_ => ())
-          } else {
-            pushObject(WritableSerDe)
-              .invokeV("serialize", classOf[Array[Byte]].asType,
-                buildSeq { builder =>
-                  for {
-                    propertyName <- group.getGrouping
-                    property = dataModelRef.findProperty(propertyName)
-                  } {
-                    builder +=
-                      txVar.push().invokeV(
-                        property.getDeclaration.getName, property.getType.asType)
-                  }
-                })
-          },
-          buildArray(Type.BYTE_TYPE)(_ => ()))
-        `return`(shuffleKey)
+        `return`(
+          buildArray(classOf[AnyRef].asType) { builder =>
+            for {
+              propertyName <- group.getGrouping
+              property = dataModelRef.findProperty(propertyName)
+            } {
+              builder +=
+                txVar.push().invokeV(
+                  property.getDeclaration.getName, property.getType.asType)
+            }
+          })
       }
   }
 }

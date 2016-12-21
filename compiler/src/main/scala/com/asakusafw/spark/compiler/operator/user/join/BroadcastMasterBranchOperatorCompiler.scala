@@ -25,7 +25,6 @@ import org.objectweb.asm.signature.SignatureVisitor
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.user.join.BroadcastMasterBranchOperatorFragment
-import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
@@ -91,11 +90,10 @@ private class BroadcastMasterBranchOperatorFragmentClassBuilder(
     Option(
       new ClassSignatureBuilder()
         .newSuperclass {
-          _.newClassType(classOf[BroadcastMasterBranchOperatorFragment[_, _, _, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-              .newTypeArgument(
-                SignatureVisitor.INSTANCEOF,
-                operator.inputs(MasterBranchOp.ID_INPUT_MASTER).dataModelType)
+          _.newClassType(classOf[BroadcastMasterBranchOperatorFragment[_, _, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(MasterBranchOp.ID_INPUT_MASTER).dataModelType)
               .newTypeArgument(
                 SignatureVisitor.INSTANCEOF,
                 operator.inputs(MasterBranchOp.ID_INPUT_TRANSACTION).dataModelType)
@@ -104,7 +102,7 @@ private class BroadcastMasterBranchOperatorFragmentClassBuilder(
                 operator.methodDesc.asType.getReturnType)
           }
         }),
-    classOf[BroadcastMasterBranchOperatorFragment[_, _, _, _]].asType)
+    classOf[BroadcastMasterBranchOperatorFragment[_, _, _]].asType)
   with BroadcastJoin
   with MasterBranch {
 
