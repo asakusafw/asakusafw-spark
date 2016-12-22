@@ -51,7 +51,7 @@ class SplitOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
         + s" [${operator}]")
-    assert(operator.inputs.size == 1, // FIXME to take multiple inputs for side data?
+    assert(operator.inputs.size == 1,
       s"The size of inputs should be 1: ${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size == 2,
       s"The size of outputs should be 2: ${operator.outputs.size} [${operator}]")
