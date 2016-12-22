@@ -43,8 +43,9 @@ class BroadcastMasterCheckOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
         + s" [${operator}]")
-    assert(operator.inputs.size == 2, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 2: ${operator.inputs.size} [${operator}]")
+    assert(operator.inputs.size >= 2,
+      "The size of inputs should be greater than or equals to 2: " +
+        s"${operator.inputs.size} [${operator}]")
 
     assert(
       operator.outputs.forall(output =>

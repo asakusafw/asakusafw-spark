@@ -106,9 +106,13 @@ abstract class JoinOperatorFragmentClassBuilder(
                 .invokeV(
                   name,
                   t.getReturnType(),
-                  ({ () => mastersVar.push() } +:
-                    { () => txVar.push() } +:
-                    operator.arguments.map { argument =>
+                  ({ () => mastersVar.push() }
+                    +: { () => txVar.push() }
+                    +: operator.inputs.drop(2).collect {
+                      case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE => // scalastyle:ignore
+                        () => getViewField(input)
+                    }
+                    ++: operator.arguments.map { argument =>
                       Option(argument.value).map { value =>
                         () => ldc(value)(ClassTag(argument.resolveClass), implicitly)
                       }.getOrElse {

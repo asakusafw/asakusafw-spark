@@ -19,7 +19,7 @@ package user
 package join
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.{ Assertions, FlatSpec }
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
@@ -35,6 +35,7 @@ import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator, Operator, OperatorInput }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.PlanMarker
+import com.asakusafw.runtime.core.{ GroupView, View }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.broadcast.MockBroadcast
@@ -462,6 +463,133 @@ class BroadcastMasterBranchOperatorCompilerSpec extends FlatSpec with UsingCompi
       assert(high.iterator.size === 0)
     }
   }
+
+  it should "compile MasterBranch operator with view" in {
+    val vMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.BROADCAST).build()
+    val gvMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.BROADCAST).build()
+
+    val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.BROADCAST).build()
+
+    val operator = OperatorExtractor
+      .extract(classOf[MasterBranchOp], classOf[MasterBranchOperator], "branchWithView")
+      .input("foos", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .input("v", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq.empty, Seq.empty))
+              .upstream(vMarker.getOutput)
+          }
+        })
+      .input("gv", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id"), Seq.empty))
+              .upstream(gvMarker.getOutput)
+          }
+        })
+      .output("low", ClassDescription.of(classOf[Bar]))
+      .output("high", ClassDescription.of(classOf[Bar]))
+      .build()
+
+    implicit val context = newOperatorCompilerContext("flowId")
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    context.addClass(context.broadcastIds)
+    val cls = context.loadClass[Fragment[Bar]](thisType.getClassName)
+
+    val broadcastIdsCls = context.loadClass(context.broadcastIds.thisType.getClassName)
+    def getBroadcastId(marker: MarkerOperator): BroadcastId = {
+      val sn = marker.getSerialNumber
+      broadcastIdsCls.getField(context.broadcastIds.getField(sn)).get(null).asInstanceOf[BroadcastId]
+    }
+
+    val low = new GenericOutputFragment[Bar]()
+    val high = new GenericOutputFragment[Bar]()
+
+    val ctor = cls.getConstructor(
+      classOf[Map[BroadcastId, Broadcasted[_]]],
+      classOf[Fragment[_]], classOf[Fragment[_]])
+
+    val view = new MockBroadcast(0, Map(ShuffleKey.empty -> Seq(new Foo())))
+    val groupview = new MockBroadcast(1,
+      (0 until 10).map { i =>
+        val foo = new Foo()
+        foo.id.modify(i)
+        new ShuffleKey(WritableSerDe.serialize(foo.id)) -> Seq(foo)
+      }.toMap)
+
+    {
+      val foo = new Foo()
+      foo.id.modify(10)
+      val foos = Seq(foo)
+      val shuffleKey = new ShuffleKey(
+        WritableSerDe.serialize(foo.id), Array.emptyByteArray)
+      val fragment = ctor.newInstance(
+        Map(
+          getBroadcastId(vMarker) -> view,
+          getBroadcastId(gvMarker) -> groupview,
+          getBroadcastId(foosMarker) -> new MockBroadcast(2, Map(shuffleKey -> foos))),
+        low,
+        high)
+      fragment.reset()
+      (0 until 10).foreach { i =>
+        val bar = new Bar()
+        bar.id.modify(i)
+        bar.fooId.modify(10)
+        fragment.add(bar)
+      }
+      val lows = low.iterator.toSeq
+      assert(lows.size === 5)
+      assert(lows.map(_.id.get) === (1 until 10 by 2))
+      val highs = high.iterator.toSeq
+      assert(highs.size === 5)
+      assert(highs.map(_.id.get) === (0 until 10 by 2))
+
+      fragment.reset()
+      assert(low.iterator.size === 0)
+      assert(high.iterator.size === 0)
+    }
+
+    {
+      val fragment = ctor.newInstance(
+        Map(
+          getBroadcastId(vMarker) -> view,
+          getBroadcastId(gvMarker) -> groupview,
+          getBroadcastId(foosMarker) -> new MockBroadcast(2, Map.empty)),
+        low,
+        high)
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      fragment.add(bar)
+      val lows = low.iterator.toSeq
+      assert(lows.size === 1)
+      assert(lows.head.id.get === 10)
+      val highs = high.iterator.toSeq
+      assert(highs.size === 0)
+
+      fragment.reset()
+      assert(low.iterator.size === 0)
+      assert(high.iterator.size === 0)
+    }
+  }
 }
 
 object BroadcastMasterBranchOperatorCompilerSpec {
@@ -472,7 +600,7 @@ object BroadcastMasterBranchOperatorCompilerSpec {
 
   class Foo extends DataModel[Foo] with FooP with Writable {
 
-    val id = new IntOption()
+    val id: IntOption = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
@@ -497,8 +625,8 @@ object BroadcastMasterBranchOperatorCompilerSpec {
 
   class Bar extends DataModel[Bar] with BarP with Writable {
 
-    val id = new IntOption()
-    val fooId = new IntOption()
+    val id: IntOption = new IntOption()
+    val fooId: IntOption = new IntOption()
 
     override def reset(): Unit = {
       id.setNull()
@@ -521,7 +649,7 @@ object BroadcastMasterBranchOperatorCompilerSpec {
     def getFooIdOption: IntOption = fooId
   }
 
-  class MasterBranchOperator {
+  class MasterBranchOperator extends Assertions {
 
     @MasterBranchOp
     def branch(foo: Foo, bar: Bar): BranchOperatorCompilerSpecTestBranch = {
@@ -578,6 +706,37 @@ object BroadcastMasterBranchOperatorCompilerSpec {
         }
       } else {
         null.asInstanceOf[F]
+      }
+    }
+
+    @MasterBranchOp(selection = "selectWithView")
+    def branchWithView(foo: Foo, bar: Bar, v: View[Foo], gv: GroupView[Foo]): BranchOperatorCompilerSpecTestBranch = {
+      val view = v.toSeq
+      assert(view.size === 1)
+      assert(view.head.id.isNull())
+      val group = gv.find(bar.id).toSeq
+      if (bar.id.get < 10) {
+        assert(group.size === 1)
+        assert(group.head.id.get === bar.id.get)
+      } else {
+        assert(group.size === 0)
+      }
+      if (foo == null || foo.id.get < 5) {
+        BranchOperatorCompilerSpecTestBranch.LOW
+      } else {
+        BranchOperatorCompilerSpecTestBranch.HIGH
+      }
+    }
+
+    @MasterSelection
+    def selectWithView(foos: JList[Foo], bar: Bar, v: View[Foo]): Foo = {
+      val view = v.toSeq
+      assert(view.size === 1)
+      assert(view.head.id.isNull())
+      if (bar.id.get % 2 == 0) {
+        foos.headOption.orNull
+      } else {
+        null
       }
     }
   }
