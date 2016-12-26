@@ -35,7 +35,7 @@ abstract class AggregationClassBuilder(
   val valueType: Type,
   val combinerType: Type)(
     val aggregationType: AggregationType)(
-      implicit context: AggregationCompiler.Context)
+      implicit val context: AggregationCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/${nextName(aggregationType)};"), // scalastyle:ignore

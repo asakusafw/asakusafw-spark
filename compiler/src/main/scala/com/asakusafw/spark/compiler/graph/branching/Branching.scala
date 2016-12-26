@@ -25,7 +25,7 @@ trait Branching
   with BranchKeysField
   with PartitionersField
   with OrderingsField
-  with AggregationsField
+  with Aggregations
   with PreparingKey
   with Deserializer {
 
@@ -39,7 +39,7 @@ object Branching {
     with BranchKeysField.Context
     with PartitionersField.Context
     with OrderingsField.Context
-    with AggregationsField.Context
+    with Aggregations.Context
     with PreparingKey.Context
     with Deserializer.Context
 }

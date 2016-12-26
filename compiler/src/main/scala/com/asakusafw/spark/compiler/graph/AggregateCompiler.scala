@@ -46,11 +46,6 @@ class AggregateCompiler extends NodeCompiler {
       s"The primary operator should be user operator: ${primaryOperator} [${subplan}]")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
-    assert(operator.inputs.size == 1,
-      s"The size of inputs should be 1: ${operator.inputs.size} [${subplan}]")
-    assert(operator.outputs.size == 1,
-      s"The size of outputs should be 1: ${operator.outputs.size} [${subplan}]")
-
     val valueType = operator.inputs.head.dataModelType
     val combinerType = operator.outputs.head.dataModelType
 

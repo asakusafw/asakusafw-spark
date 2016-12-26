@@ -19,11 +19,14 @@ package aggregation
 
 import scala.collection.JavaConversions._
 
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.analyzer.util.{ PropertyFolding, SummarizedModelUtil }
 import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
@@ -63,6 +66,26 @@ private class SummarizeAggregationClassBuilder(
 
   val propertyFoldings =
     SummarizedModelUtil.getPropertyFoldings(context.classLoader, operator).toSeq
+
+  override def defConstructors(ctorDef: ConstructorDef): Unit = {
+    ctorDef.newInit(
+      Seq(classOf[Map[BroadcastId, Broadcasted[_]]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcasted[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
+          }
+        }
+        .newVoidReturnType()) { implicit mb =>
+        val thisVar :: _ = mb.argVars
+        thisVar.push().invokeInit(superType)
+      }
+  }
 
   override def defMapSideCombine()(implicit mb: MethodBuilder): Unit = {
     val partialAggregation =

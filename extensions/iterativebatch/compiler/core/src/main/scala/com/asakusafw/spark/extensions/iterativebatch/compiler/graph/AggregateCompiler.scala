@@ -55,11 +55,6 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
       s"The primary operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
-    assert(operator.inputs.size == 1,
-      s"The size of inputs should be 1: ${operator.inputs.size}")
-    assert(operator.outputs.size == 1,
-      s"The size of outputs should be 1: ${operator.outputs.size}")
-
     val iterativeInfo = IterativeInfo.get(subplan)
 
     val valueType = operator.inputs.head.dataModelType

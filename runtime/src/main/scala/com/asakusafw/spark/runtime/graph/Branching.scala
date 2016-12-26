@@ -42,7 +42,8 @@ trait Branching[T] {
 
   def orderings: Map[BranchKey, Ordering[ShuffleKey]]
 
-  def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]]
+  def aggregations(
+    broadcasts: Map[BroadcastId, Broadcasted[_]]): Map[BranchKey, Aggregation[ShuffleKey, _, _]]
 
   def shuffleKey(branch: BranchKey, value: Any): ShuffleKey
 
@@ -75,8 +76,9 @@ trait Branching[T] {
           new ResourceBrokingIterator(
             hadoopConf.value, {
               val fragmentsIter = iterateFragments(iter, broadcasts)(fragmentBufferSize)
-              if (aggregations.values.exists(_.mapSideCombine)) {
-                iterateWithCombiner(fragmentsIter)
+              val aggs = aggregations(broadcasts)
+              if (aggs.values.exists(_.mapSideCombine)) {
+                iterateWithCombiner(fragmentsIter, aggs)
               } else {
                 iterateWithoutCombiner(fragmentsIter)
               }
@@ -104,7 +106,8 @@ trait Branching[T] {
   }
 
   private def iterateWithCombiner(
-    iter: Iterator[(Branch[ShuffleKey], _)]): Iterator[(Branch[ShuffleKey], Array[Byte])] = {
+    iter: Iterator[(Branch[ShuffleKey], _)],
+    aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]]): Iterator[(Branch[ShuffleKey], Array[Byte])] = { // scalastyle:ignore
     val combiners = aggregations.collect {
       case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
     }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]

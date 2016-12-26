@@ -22,12 +22,15 @@ import org.scalatest.junit.JUnitRunner
 
 import scala.collection.JavaConversions._
 
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
+
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.model.{ Key, Summarized }
@@ -54,7 +57,10 @@ class SummarizeAggregationCompilerSpec extends FlatSpec with UsingCompilerContex
     val thisType = AggregationCompiler.compile(operator)
     val cls = context.loadClass[Aggregation[Seq[_], Value, SummarizedValue]](thisType.getClassName)
 
-    val aggregation = cls.newInstance()
+    val aggregation = cls
+      .getConstructor(
+        classOf[Map[BroadcastId, Broadcasted[_]]])
+      .newInstance(Map.empty)
     assert(aggregation.mapSideCombine === true)
 
     val valueCombiner = aggregation.valueCombiner()

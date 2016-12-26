@@ -258,7 +258,7 @@ object AggregateSpec {
       prev: Seq[(Source, BranchKey)],
       sort: Option[SortOrdering],
       part: Partitioner,
-      val aggregation: Aggregation[ShuffleKey, Foo, Foo])(
+      _aggregation: Aggregation[ShuffleKey, Foo, Foo])(
         val label: String)(
           implicit jobContext: JobContext)
       extends Aggregate[Foo, Foo](prev, sort, part)(Map.empty)
@@ -272,13 +272,17 @@ object AggregateSpec {
           label: String)(
             implicit jobContext: JobContext) = this(Seq(prev), sort, part, aggregation)(label)
 
+      override def aggregation(
+        broadcasts: Map[BroadcastId, Broadcasted[_]]): Aggregation[ShuffleKey, Foo, Foo] = _aggregation
+
       override def branchKeys: Set[BranchKey] = Set(Result)
 
       override def partitioners: Map[BranchKey, Option[Partitioner]] = Map.empty
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-      override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
+      override def aggregations(
+        broadcasts: Map[BroadcastId, Broadcasted[_]]): Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {
         new ShuffleKey(WritableSerDe.serialize(value.asInstanceOf[Foo].id), Array.emptyByteArray)
@@ -334,7 +338,8 @@ object AggregateSpec {
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-      override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = {
+      override def aggregations(
+        broadcasts: Map[BroadcastId, Broadcasted[_]]): Map[BranchKey, Aggregation[ShuffleKey, _, _]] = {
         Map(Result1 -> new TestAggregation(true))
       }
 

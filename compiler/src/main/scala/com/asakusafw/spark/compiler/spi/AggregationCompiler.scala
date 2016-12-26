@@ -24,6 +24,7 @@ import scala.collection.JavaConversions._
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.{ Operator, UserOperator }
+import com.asakusafw.spark.compiler.operator.ViewFields
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 trait AggregationCompiler {
@@ -40,6 +41,7 @@ object AggregationCompiler {
     extends CompilerContext
     with ClassLoaderProvider
     with DataModelLoaderProvider
+    with ViewFields.Context
 
   private def getCompiler(
     operator: Operator)(

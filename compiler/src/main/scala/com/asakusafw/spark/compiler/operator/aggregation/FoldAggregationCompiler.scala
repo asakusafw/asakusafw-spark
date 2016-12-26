@@ -20,10 +20,14 @@ package aggregation
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, UserOperator }
+import com.asakusafw.runtime.core.GroupView
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation
@@ -40,8 +44,9 @@ class FoldAggregationCompiler extends AggregationCompiler {
     assert(operator.annotationDesc.resolveClass == of,
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
         + s" [${operator}]")
-    assert(operator.inputs.size == 1,
-      s"The size of inputs should be 1: ${operator.inputs.size} [${operator}]")
+    assert(operator.inputs.size >= 1,
+      "The size of inputs should be greater than or equals to 1: " +
+        s"${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size == 1,
       s"The size of outputs should be 1: ${operator.outputs.size} [${operator}]")
     assert(
@@ -55,8 +60,12 @@ class FoldAggregationCompiler extends AggregationCompiler {
 
     assert(
       operator.methodDesc.parameterClasses
-        .zip(operator.inputs.map(_.dataModelClass)
+        .zip(operator.inputs.take(1).map(_.dataModelClass)
           ++: operator.outputs.map(_.dataModelClass)
+          ++: operator.inputs.drop(1).collect {
+            case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+              classOf[GroupView[_]]
+          }
           ++: operator.arguments.map(_.resolveClass))
         .forall {
           case (method, model) => method.isAssignableFrom(model)
@@ -64,8 +73,12 @@ class FoldAggregationCompiler extends AggregationCompiler {
       s"The operator method parameter types are not compatible: (${
         operator.methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
       }, ${
-        (operator.inputs.map(_.dataModelClass)
+        (operator.inputs.take(1).map(_.dataModelClass)
           ++: operator.outputs.map(_.dataModelClass)
+          ++: operator.inputs.drop(1).collect {
+            case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+              classOf[GroupView[_]]
+          }
           ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       }) [${operator}]")
 
@@ -82,16 +95,32 @@ private class FoldAggregationClassBuilder(
     operator.inputs(Fold.ID_INPUT).dataModelType,
     operator.outputs(Fold.ID_OUTPUT).dataModelType)(
     AggregationClassBuilder.AggregationType.Fold)
-  with OperatorField {
+  with OperatorField with ViewFields {
 
   val operatorType = operator.implementationClass.asType
 
+  val operatorInputs: Seq[OperatorInput] = operator.inputs
+
   override def defConstructors(ctorDef: ConstructorDef): Unit = {
-    ctorDef.newInit(Seq.empty) { implicit mb =>
-      val thisVar :: _ = mb.argVars
-      thisVar.push().invokeInit(superType)
-      initOperatorField()
-    }
+    ctorDef.newInit(
+      Seq(classOf[Map[BroadcastId, Broadcasted[_]]].asType),
+      new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcasted[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
+          }
+        }
+        .newVoidReturnType()) { implicit mb =>
+        val thisVar :: broadcastsVar :: _ = mb.argVars
+        thisVar.push().invokeInit(superType)
+        initOperatorField()
+        initViewFields(broadcastsVar)
+      }
   }
 
   override def defMapSideCombine()(implicit mb: MethodBuilder): Unit = {
@@ -115,14 +144,20 @@ private class FoldAggregationClassBuilder(
     combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit = {
     getOperatorField().invokeV(
       operator.methodDesc.getName,
-      combinerVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-        +: valueVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
-        +: operator.arguments.map { argument =>
+      (combinerVar.push()
+        +: valueVar.push()
+        +: operator.inputs.drop(1).collect {
+          case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+            getViewField(input)
+        }
+        ++: operator.arguments.map { argument =>
           Option(argument.value).map { value =>
             ldc(value)(ClassTag(argument.resolveClass), implicitly)
           }.getOrElse {
             pushNull(argument.resolveClass.asType)
           }
+        }).zip(operator.methodDesc.asType.getArgumentTypes()).map {
+          case (s, t) => s.asType(t)
         }: _*)
     `return`(combinerVar.push())
   }

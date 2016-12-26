@@ -17,6 +17,7 @@ package com.asakusafw.spark.compiler
 package graph
 package branching
 
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -26,41 +27,37 @@ import com.asakusafw.spark.compiler.operator.aggregation.AggregationClassBuilder
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo
 import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.aggregation.Aggregation
+import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
+import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 
-trait AggregationsField extends ClassBuilder {
+trait Aggregations extends ClassBuilder {
 
-  implicit def context: AggregationsField.Context
+  implicit def context: Aggregations.Context
 
   def subplanOutputs: Seq[SubPlan.Output]
-
-  override def defFields(fieldDef: FieldDef): Unit = {
-    super.defFields(fieldDef)
-
-    fieldDef.newField(
-      Opcodes.ACC_PRIVATE | Opcodes.ACC_TRANSIENT,
-      "aggregations", classOf[Map[_, _]].asType,
-      new TypeSignatureBuilder()
-        .newClassType(classOf[Map[_, _]].asType) {
-          _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
-            .newTypeArgument(SignatureVisitor.INSTANCEOF) {
-              _.newClassType(classOf[Aggregation[_, _, _]].asType) {
-                _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-                  .newTypeArgument()
-                  .newTypeArgument()
-              }
-            }
-        })
-  }
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("aggregations", classOf[Map[_, _]].asType, Seq.empty,
+    methodDef.newMethod(
+      "aggregations",
+      classOf[Map[_, _]].asType,
+      Seq(classOf[Map[BroadcastId, Broadcasted[_]]].asType),
       new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcasted[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
+          }
+        }
         .newReturnType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BranchKey].asType)
@@ -73,40 +70,39 @@ trait AggregationsField extends ClassBuilder {
               }
           }
         }) { implicit mb =>
-        val thisVar :: _ = mb.argVars
-        thisVar.push().getField("aggregations", classOf[Map[_, _]].asType).unlessNotNull {
-          thisVar.push().putField("aggregations", initAggregations())
-        }
-        `return`(thisVar.push().getField("aggregations", classOf[Map[_, _]].asType))
-      }
-  }
 
-  def getAggregationsField()(implicit mb: MethodBuilder): Stack = {
-    val thisVar :: _ = mb.argVars
-    thisVar.push().invokeV("aggregations", classOf[Map[_, _]].asType)
-  }
+        val thisVar :: broadcastsVar :: _ = mb.argVars
 
-  private def initAggregations()(implicit mb: MethodBuilder): Stack = {
-    buildMap { builder =>
-      for {
-        output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
-        outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-        if outputInfo.getAggregationInfo.isInstanceOf[UserOperator]
-        operator = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
-        if (AggregationCompiler.support(operator)(context.aggregationCompilerContext))
-      } {
-        builder += (
-          context.branchKeys.getField(output.getOperator),
-          pushNew0(
-            AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)))
+        `return`(
+          buildMap { builder =>
+            for {
+              output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
+              outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
+              if outputInfo.getAggregationInfo.isInstanceOf[UserOperator]
+              operator = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
+              if AggregationCompiler.support(operator)(context.aggregationCompilerContext)
+              if operator.annotationDesc.elements("partialAggregation").value !=
+                PartialAggregation.TOTAL
+            } {
+              val aggregationType =
+                AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)
+
+              builder += (
+                context.branchKeys.getField(output.getOperator), {
+                  val aggregation = pushNew(aggregationType)
+                  aggregation.dup().invokeInit(broadcastsVar.push())
+                  aggregation
+                })
+            }
+          })
       }
-    }
   }
 }
 
-object AggregationsField {
+object Aggregations {
 
-  trait Context {
+  trait Context
+    extends ClassLoaderProvider {
 
     def branchKeys: BranchKeys
 

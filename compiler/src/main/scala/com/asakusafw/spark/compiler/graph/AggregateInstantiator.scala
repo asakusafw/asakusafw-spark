@@ -42,8 +42,6 @@ object AggregateInstantiator extends Instantiator {
     val primaryOperator =
       subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator.asInstanceOf[UserOperator]
 
-    assert(primaryOperator.inputs.size == 1,
-      s"The size of inputs should be 1: ${primaryOperator.inputs.size} [${subplan}]")
     val input = primaryOperator.inputs.head
 
     val aggregate = pushNew(nodeType)

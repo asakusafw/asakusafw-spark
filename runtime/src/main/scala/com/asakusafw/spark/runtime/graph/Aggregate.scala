@@ -21,6 +21,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.ClassTag
 
 import org.apache.spark.{ InterruptibleIterator, Partitioner, TaskContext }
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
 
 import com.asakusafw.spark.runtime.Props
@@ -43,7 +44,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
     jobContext.sparkContext.getConf.getInt(
       Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
-  def aggregation: Aggregation[ShuffleKey, V, C]
+  def aggregation(broadcasts: Map[BroadcastId, Broadcasted[_]]): Aggregation[ShuffleKey, V, C]
 
   override protected def doCompute(
     rc: RoundContext)(implicit ec: ExecutionContext): Map[BranchKey, Future[() => RDD[_]]] = {
@@ -57,7 +58,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
       case (prevs, broadcasts) =>
         withCallSite(rc) {
           val aggregated = {
-            if (aggregation.mapSideCombine) {
+            if (aggregation(broadcasts).mapSideCombine) {
               val part = Some(partitioner)
               jobContext.sparkContext.confluent(
                 prevs.map { prev =>
@@ -65,7 +66,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
                     prev.asInstanceOf[RDD[(ShuffleKey, C)]]
                   } else {
                     prev.mapPartitions({ iter =>
-                      val combiner = aggregation.valueCombiner
+                      val combiner = aggregation(broadcasts).valueCombiner
                       combiner.insertAll(
                         new ResourceBrokingIterator(
                           rc.hadoopConf.value,
@@ -76,7 +77,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
                   }
                 }, partitioner, sort)
                 .mapPartitions({ iter =>
-                  val combiner = aggregation.combinerCombiner
+                  val combiner = aggregation(broadcasts).combinerCombiner
                   combiner.insertAll(
                     new ResourceBrokingIterator(
                       rc.hadoopConf.value,
@@ -87,7 +88,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
             } else {
               jobContext.sparkContext.confluent(prevs, partitioner, sort)
                 .mapPartitions({ iter =>
-                  val combiner = aggregation.valueCombiner
+                  val combiner = aggregation(broadcasts).valueCombiner
                   combiner.insertAll(
                     new ResourceBrokingIterator(
                       rc.hadoopConf.value,

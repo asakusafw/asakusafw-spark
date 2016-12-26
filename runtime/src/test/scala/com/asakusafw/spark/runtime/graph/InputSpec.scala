@@ -314,7 +314,8 @@ object InputSpec {
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-      override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
+      override def aggregations(
+        broadcasts: Map[BroadcastId, Broadcasted[_]]): Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 
@@ -351,7 +352,8 @@ object InputSpec {
 
       override def orderings: Map[BranchKey, Ordering[ShuffleKey]] = Map.empty
 
-      override def aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
+      override def aggregations(
+        broadcasts: Map[BroadcastId, Broadcasted[_]]): Map[BranchKey, Aggregation[ShuffleKey, _, _]] = Map.empty
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = null
 

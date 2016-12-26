@@ -180,8 +180,21 @@ abstract class AggregateClassBuilder(
         `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
 
-    methodDef.newMethod("aggregation", classOf[Aggregation[_, _, _]].asType, Seq.empty,
+    methodDef.newMethod(
+      "aggregation",
+      classOf[Aggregation[_, _, _]].asType,
+      Seq(classOf[Map[BroadcastId, Broadcasted[_]]].asType),
       new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcasted[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
+          }
+        }
         .newReturnType {
           _.newClassType(classOf[Aggregation[_, _, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
@@ -190,9 +203,14 @@ abstract class AggregateClassBuilder(
           }
         }) { implicit mb =>
 
+        val thisVar :: broadcastsVar :: _ = mb.argVars
+
         val aggregationType =
           AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)
-        `return`(pushNew0(aggregationType))
+
+        val aggregation = pushNew(aggregationType)
+        aggregation.dup().invokeInit(broadcastsVar.push())
+        `return`(aggregation)
       }
   }
 }
