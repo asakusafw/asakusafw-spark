@@ -17,12 +17,13 @@ package com.asakusafw.spark.compiler
 package graph
 
 import org.junit.runner.RunWith
-import org.scalatest.{ FlatSpec, Suites }
+import org.scalatest.{ Assertions, FlatSpec, Suites }
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ File, DataInput, DataOutput }
 import java.net.URLClassLoader
 import java.util.{ List => JList }
+import java.util.function.Consumer
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Await
@@ -59,7 +60,7 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.{ ExternalInputInfo, ExternalOutputInfo }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
-import com.asakusafw.runtime.core.Result
+import com.asakusafw.runtime.core.{ GroupView, Result, View }
 import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants
@@ -422,6 +423,77 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
       oddOutputOperator))
 
     val jobType = compile(flowId, graph, 3, path, classServer.root.toFile)
+    executeJob(flowId, jobType)
+
+    {
+      val result = readResult[Foo]("even", path)
+        .map { foo =>
+          (foo.id.get, foo.foo.getAsString)
+        }.collect.toSeq.sortBy(_._1)
+      assert(result === (0 until 100).filter(_ % 2 == 0).map(i => (i, s"foo${i}")))
+    }
+    {
+      val result = readResult[Foo]("odd", path)
+        .map { foo =>
+          (foo.id.get, foo.foo.getAsString)
+        }.collect.toSeq.sortBy(_._1)
+      assert(result === (0 until 100).filterNot(_ % 2 == 0).map(i => (i, s"foo${i}")))
+    }
+  }
+
+  it should s"compile Job with Extract with View: ${configuration}" in {
+    val path = createTempDirectoryForEach("test-").toFile
+
+    prepareData("foo", path) {
+      sc.parallelize(0 until 100).map(Foo.intToFoo)
+    }
+
+    val inputOperator = ExternalInput
+      .newInstance("foo/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "test",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val extractOperator = OperatorExtractor
+      .extract(classOf[Extract], classOf[Ops], "extractWithView")
+      .input("foo", ClassDescription.of(classOf[Foo]), inputOperator.getOperatorPort)
+      .input("v", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq.empty, Seq("+id")))
+              .upstream(inputOperator.getOperatorPort)
+          }
+        })
+      .input("gv", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id"), Seq.empty))
+              .upstream(inputOperator.getOperatorPort)
+          }
+        })
+      .output("evenResult", ClassDescription.of(classOf[Foo]))
+      .output("oddResult", ClassDescription.of(classOf[Foo]))
+      .build()
+
+    val evenOutputOperator = ExternalOutput
+      .newInstance("even", extractOperator.findOutput("evenResult"))
+
+    val oddOutputOperator = ExternalOutput
+      .newInstance("odd", extractOperator.findOutput("oddResult"))
+
+    val graph = new OperatorGraph(Seq(
+      inputOperator,
+      extractOperator,
+      evenOutputOperator,
+      oddOutputOperator))
+
+    val jobType = compile(flowId, graph, 4, path, classServer.root.toFile)
     executeJob(flowId, jobType)
 
     {
@@ -1934,7 +2006,7 @@ object JobCompilerSpec {
     def getCountOption: LongOption = count
   }
 
-  class Ops {
+  class Ops extends Assertions {
 
     @Logging(Logging.Level.INFO)
     def logging(foo: Foo): String = {
@@ -1943,6 +2015,27 @@ object JobCompilerSpec {
 
     @Extract
     def extract(foo: Foo, evenResult: Result[Foo], oddResult: Result[Foo]): Unit = {
+      if (foo.id.get % 2 == 0) {
+        evenResult.add(foo)
+      } else {
+        oddResult.add(foo)
+      }
+    }
+
+    @Extract
+    def extractWithView(
+      foo: Foo,
+      v: View[Foo], gv: GroupView[Foo],
+      evenResult: Result[Foo], oddResult: Result[Foo]): Unit = {
+      v.zipWithIndex.foreach {
+        case (foo, i) =>
+          assert(foo.id.get === i)
+          assert(foo.foo.getAsString === s"foo${i}")
+      }
+      val fs = gv.find(foo.id)
+      assert(fs.size === 1)
+      assert(fs.head.id.get === foo.id.get)
+      assert(fs.head.foo.getAsString === foo.foo.getAsString)
       if (foo.id.get % 2 == 0) {
         evenResult.add(foo)
       } else {
