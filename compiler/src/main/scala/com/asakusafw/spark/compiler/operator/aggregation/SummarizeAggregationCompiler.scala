@@ -31,7 +31,6 @@ import com.asakusafw.spark.runtime.util.ValueOptionOps
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
-import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator.Summarize
 
 class SummarizeAggregationCompiler extends AggregationCompiler {
@@ -85,13 +84,6 @@ private class SummarizeAggregationClassBuilder(
         val thisVar :: _ = mb.argVars
         thisVar.push().invokeInit(superType)
       }
-  }
-
-  override def defMapSideCombine()(implicit mb: MethodBuilder): Unit = {
-    val partialAggregation =
-      operator.annotationDesc.elements("partialAggregation")
-        .value.asInstanceOf[PartialAggregation]
-    `return`(ldc(partialAggregation != PartialAggregation.TOTAL))
   }
 
   override def defNewCombiner()(implicit mb: MethodBuilder): Unit = {

@@ -44,6 +44,8 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
     jobContext.sparkContext.getConf.getInt(
       Props.FragmentBufferSize, Props.DefaultFragmentBufferSize)
 
+  def mapSideCombine: Boolean
+
   def aggregation(broadcasts: Map[BroadcastId, Broadcasted[_]]): Aggregation[ShuffleKey, V, C]
 
   override protected def doCompute(
@@ -58,7 +60,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
       case (prevs, broadcasts) =>
         withCallSite(rc) {
           val aggregated = {
-            if (aggregation(broadcasts).mapSideCombine) {
+            if (mapSideCombine) {
               val part = Some(partitioner)
               jobContext.sparkContext.confluent(
                 prevs.map { prev =>

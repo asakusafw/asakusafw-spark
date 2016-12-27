@@ -62,7 +62,7 @@ class AggregateSpec
     numSlices <- Seq(None, Some(8), Some(4))
     mapSideCombine <- Seq(true, false)
   } {
-    val conf = s"numSlices = ${numSlices}, combine = ${mapSideCombine} "
+    val conf = s"numSlices = ${numSlices}, mapSideCombine = ${mapSideCombine} "
 
     it should s"aggregate: [${conf}]" in {
       import TotalAggregate._
@@ -75,10 +75,12 @@ class AggregateSpec
 
       val sort = Option(new SortOrdering())
       val partitioner = new HashPartitioner(2)
-      val aggregation = new TestAggregation(mapSideCombine)
+      val aggregation = new TestAggregation()
 
       val aggregate =
-        new TestAggregate((foos, Input), sort, partitioner, aggregation)("aggregate")
+        new TestAggregate(
+          (foos, Input),
+          sort, partitioner, mapSideCombine, aggregation)("aggregate")
 
       val rc = newRoundContext(batchArguments = Map("bias" -> 0.toString))
 
@@ -107,12 +109,12 @@ class AggregateSpec
 
       val sort = Option(new SortOrdering())
       val partitioner = new HashPartitioner(2)
-      val aggregation = new TestAggregation(mapSideCombine)
+      val aggregation = new TestAggregation()
 
       val aggregate =
         new TestAggregate(
           Seq((foos1, Input), (foos2, Input)),
-          sort, partitioner, aggregation)("aggregate")
+          sort, partitioner, mapSideCombine, aggregation)("aggregate")
 
       val rc = newRoundContext(batchArguments = Map("bias" -> 0.toString))
 
@@ -216,8 +218,7 @@ object AggregateSpec {
     }
   }
 
-  class TestAggregation(val mapSideCombine: Boolean)
-    extends Aggregation[ShuffleKey, Foo, Foo] {
+  class TestAggregation extends Aggregation[ShuffleKey, Foo, Foo] {
 
     override def newCombiner(): Foo = {
       new Foo()
@@ -258,6 +259,7 @@ object AggregateSpec {
       prev: Seq[(Source, BranchKey)],
       sort: Option[SortOrdering],
       part: Partitioner,
+      val mapSideCombine: Boolean,
       _aggregation: Aggregation[ShuffleKey, Foo, Foo])(
         val label: String)(
           implicit jobContext: JobContext)
@@ -268,9 +270,11 @@ object AggregateSpec {
         prev: (Source, BranchKey),
         sort: Option[SortOrdering],
         part: Partitioner,
+        mapSideCombine: Boolean,
         aggregation: Aggregation[ShuffleKey, Foo, Foo])(
           label: String)(
-            implicit jobContext: JobContext) = this(Seq(prev), sort, part, aggregation)(label)
+            implicit jobContext: JobContext) =
+        this(Seq(prev), sort, part, mapSideCombine, aggregation)(label)
 
       override def aggregation(
         broadcasts: Map[BroadcastId, Broadcasted[_]]): Aggregation[ShuffleKey, Foo, Foo] = _aggregation
@@ -340,7 +344,7 @@ object AggregateSpec {
 
       override def aggregations(
         broadcasts: Map[BroadcastId, Broadcasted[_]]): Map[BranchKey, Aggregation[ShuffleKey, _, _]] = {
-        Map(Result1 -> new TestAggregation(true))
+        Map(Result1 -> new TestAggregation())
       }
 
       override def shuffleKey(branch: BranchKey, value: Any): ShuffleKey = {

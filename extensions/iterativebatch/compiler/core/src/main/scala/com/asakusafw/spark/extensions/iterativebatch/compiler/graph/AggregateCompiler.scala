@@ -66,14 +66,18 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
           new AggregateClassBuilder(
             valueType,
             combinerType,
-            operator)(
+            operator,
+            mapSideCombine =
+              subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
             subPlanInfo.getLabel,
             subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new AggregateClassBuilder(
             valueType,
             combinerType,
-            operator)(
+            operator,
+            mapSideCombine =
+              subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
             subPlanInfo.getLabel,
             subplan.getOutputs.toSeq) with CacheByParameter {
 
@@ -83,7 +87,9 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
           new AggregateClassBuilder(
             valueType,
             combinerType,
-            operator)(
+            operator,
+            mapSideCombine =
+              subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
             subPlanInfo.getLabel,
             subplan.getOutputs.toSeq) with CacheOnce
       }

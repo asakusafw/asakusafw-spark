@@ -77,7 +77,7 @@ trait Branching[T] {
             hadoopConf.value, {
               val fragmentsIter = iterateFragments(iter, broadcasts)(fragmentBufferSize)
               val aggs = aggregations(broadcasts)
-              if (aggs.values.exists(_.mapSideCombine)) {
+              if (aggs.nonEmpty) {
                 iterateWithCombiner(fragmentsIter, aggs)
               } else {
                 iterateWithoutCombiner(fragmentsIter)
@@ -108,8 +108,8 @@ trait Branching[T] {
   private def iterateWithCombiner(
     iter: Iterator[(Branch[ShuffleKey], _)],
     aggregations: Map[BranchKey, Aggregation[ShuffleKey, _, _]]): Iterator[(Branch[ShuffleKey], Array[Byte])] = { // scalastyle:ignore
-    val combiners = aggregations.collect {
-      case (b, agg) if agg.mapSideCombine => b -> agg.valueCombiner()
+    val combiners = aggregations.map {
+      case (b, agg) => b -> agg.valueCombiner()
     }.toMap[BranchKey, Aggregation.Combiner[ShuffleKey, _, _]]
 
     iter.flatMap {

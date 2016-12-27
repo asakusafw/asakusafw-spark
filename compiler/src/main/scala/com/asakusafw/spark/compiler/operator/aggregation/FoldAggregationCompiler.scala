@@ -30,7 +30,6 @@ import com.asakusafw.spark.compiler.spi.AggregationCompiler
 import com.asakusafw.spark.runtime.graph.BroadcastId
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
-import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 import com.asakusafw.vocabulary.operator.Fold
 
 class FoldAggregationCompiler extends AggregationCompiler {
@@ -121,13 +120,6 @@ private class FoldAggregationClassBuilder(
         initOperatorField()
         initViewFields(broadcastsVar)
       }
-  }
-
-  override def defMapSideCombine()(implicit mb: MethodBuilder): Unit = {
-    val partialAggregation =
-      operator.annotationDesc.elements("partialAggregation")
-        .value.asInstanceOf[PartialAggregation]
-    `return`(ldc(partialAggregation == PartialAggregation.PARTIAL))
   }
 
   override def defNewCombiner()(implicit mb: MethodBuilder): Unit = {

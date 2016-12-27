@@ -32,7 +32,6 @@ import com.asakusafw.spark.runtime.rdd.{ BranchKey, ShuffleKey }
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
-import com.asakusafw.vocabulary.flow.processor.PartialAggregation
 
 trait Aggregations extends ClassBuilder {
 
@@ -78,11 +77,9 @@ trait Aggregations extends ClassBuilder {
             for {
               output <- subplanOutputs.sortBy(_.getOperator.getSerialNumber)
               outputInfo <- Option(output.getAttribute(classOf[SubPlanOutputInfo]))
-              if outputInfo.getAggregationInfo.isInstanceOf[UserOperator]
+              if outputInfo.getOutputType == SubPlanOutputInfo.OutputType.AGGREGATED
               operator = outputInfo.getAggregationInfo.asInstanceOf[UserOperator]
               if AggregationCompiler.support(operator)(context.aggregationCompilerContext)
-              if operator.annotationDesc.elements("partialAggregation").value !=
-                PartialAggregation.TOTAL
             } {
               val aggregationType =
                 AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)

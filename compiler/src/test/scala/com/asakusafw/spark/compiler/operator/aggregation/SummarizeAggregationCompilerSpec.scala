@@ -61,7 +61,6 @@ class SummarizeAggregationCompilerSpec extends FlatSpec with UsingCompilerContex
       .getConstructor(
         classOf[Map[BroadcastId, Broadcasted[_]]])
       .newInstance(Map.empty)
-    assert(aggregation.mapSideCombine === true)
 
     val valueCombiner = aggregation.valueCombiner()
     valueCombiner.insertAll((0 until 100).map { i =>
@@ -738,7 +737,7 @@ object SummarizeAggregationCompilerSpec {
 
   abstract class SummarizeOperator {
 
-    @Summarize(partialAggregation = PartialAggregation.PARTIAL)
+    @Summarize
     def summarize(value: Value): SummarizedValue
   }
 }

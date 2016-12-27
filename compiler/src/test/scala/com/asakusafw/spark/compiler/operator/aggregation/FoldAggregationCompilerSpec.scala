@@ -73,7 +73,6 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
         .getConstructor(
           classOf[Map[BroadcastId, Broadcasted[_]]])
         .newInstance(Map.empty)
-      assert(aggregation.mapSideCombine === true)
 
       val valueCombiner = aggregation.valueCombiner()
       valueCombiner.insertAll((0 until 100).map { i =>
@@ -116,7 +115,6 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
       .getConstructor(
         classOf[Map[BroadcastId, Broadcasted[_]]])
       .newInstance(Map.empty)
-    assert(aggregation.mapSideCombine === true)
 
     val valueCombiner = aggregation.valueCombiner()
     valueCombiner.insertAll((0 until 100).map { i =>
@@ -199,7 +197,6 @@ class FoldAggregationCompilerSpec extends FlatSpec with UsingCompilerContext {
         Map(
           getBroadcastId(vMarker) -> view,
           getBroadcastId(gvMarker) -> groupview))
-    assert(aggregation.mapSideCombine === false)
 
     val valueCombiner = aggregation.combinerCombiner()
     valueCombiner.insertAll((0 until 100).map { i =>
@@ -251,7 +248,7 @@ object FoldAggregationCompilerSpec {
 
   class FoldOperator {
 
-    @Fold(partialAggregation = PartialAggregation.PARTIAL)
+    @Fold
     def fold(acc: Foo, value: Foo, n: Int, s: String): Unit = {
       acc.i.add(value.i)
       acc.i.add(n)
@@ -260,7 +257,7 @@ object FoldAggregationCompilerSpec {
       }
     }
 
-    @Fold(partialAggregation = PartialAggregation.PARTIAL)
+    @Fold
     def foldp[F <: FooP](acc: F, value: F, n: Int): Unit = {
       acc.getIOption.add(value.getIOption)
       acc.getIOption.add(n)

@@ -52,7 +52,8 @@ import com.asakusafw.spark.tools.asm4s._
 abstract class AggregateClassBuilder(
   val valueType: Type,
   val combinerType: Type,
-  val operator: UserOperator)(
+  val operator: UserOperator,
+  mapSideCombine: Boolean)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       implicit val context: NodeCompiler.Context)
@@ -131,6 +132,10 @@ abstract class AggregateClassBuilder(
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
+
+    methodDef.newMethod("mapSideCombine", Type.BOOLEAN_TYPE, Seq.empty) { implicit mb =>
+      `return`(ldc(mapSideCombine))
+    }
 
     methodDef.newMethod(
       "fragments",

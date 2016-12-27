@@ -52,8 +52,6 @@ abstract class AggregationClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
-    methodDef.newMethod("mapSideCombine", Type.BOOLEAN_TYPE, Seq.empty)(defMapSideCombine()(_))
-
     methodDef.newMethod("newCombiner", classOf[AnyRef].asType, Seq.empty) { implicit mb =>
       val thisVar :: _ = mb.argVars
       `return`(thisVar.push().invokeV("newCombiner", combinerType))
@@ -134,7 +132,6 @@ abstract class AggregationClassBuilder(
       }
   }
 
-  def defMapSideCombine()(implicit mb: MethodBuilder): Unit
   def defNewCombiner()(implicit mb: MethodBuilder): Unit
   def defInitCombinerByValue(combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit
   def defMergeValue(combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit
