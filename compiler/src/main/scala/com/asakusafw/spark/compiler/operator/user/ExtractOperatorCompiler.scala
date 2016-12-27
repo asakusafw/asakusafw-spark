@@ -22,8 +22,8 @@ import scala.reflect.ClassTag
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
-import com.asakusafw.lang.compiler.model.graph.UserOperator
-import com.asakusafw.runtime.core.Result
+import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, UserOperator }
+import com.asakusafw.runtime.core.{ GroupView, Result }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.user.ExtractOperatorFragment
@@ -49,14 +49,19 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
         + s" [${operator}]")
-    assert(operator.inputs.size == 1, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 1: ${operator.inputs.size} [${operator}]")
+    assert(operator.inputs.size >= 1,
+      "The size of inputs should be greater than or equals to 1: " +
+        s"${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size > 0,
       s"The size of outputs should be greater than 0: ${operator.outputs.size} [${operator}]")
 
     assert(
       operator.methodDesc.parameterClasses
-        .zip(operator.inputs.map(_.dataModelClass)
+        .zip(operator.inputs.take(1).map(_.dataModelClass)
+          ++: operator.inputs.drop(1).collect {
+            case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+              classOf[GroupView[_]]
+          }
           ++: operator.outputs.map(_ => classOf[Result[_]])
           ++: operator.arguments.map(_.resolveClass))
         .forall {
@@ -65,7 +70,11 @@ class ExtractOperatorCompiler extends UserOperatorCompiler {
       s"The operator method parameter types are not compatible: (${
         operator.methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
       }, ${
-        (operator.inputs.map(_.dataModelClass)
+        (operator.inputs.take(1).map(_.dataModelClass)
+          ++: operator.inputs.drop(1).collect {
+            case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+              classOf[GroupView[_]]
+          }
           ++: operator.outputs.map(_ => classOf[Result[_]])
           ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       }) [${operator}]")
@@ -82,6 +91,7 @@ private class ExtractOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     operator.inputs(Extract.ID_INPUT).dataModelType,
     operator.implementationClass.asType,
+    operator.inputs,
     operator.outputs)(
     Option(
       new ClassSignatureBuilder()
@@ -156,9 +166,13 @@ private class ExtractOperatorFragmentClassBuilder(
         getOperatorField()
           .invokeV(
             operator.methodDesc.getName,
-            inputVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-              +: (0 until operator.outputs.size).map { i =>
-                applySeq(outputsVar.push(), ldc(i)).asType(classOf[Result[_]].asType)
+            (inputVar.push()
+              +: operator.inputs.drop(1).collect {
+                case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+                  getViewField(input)
+              }
+              ++: (0 until operator.outputs.size).map { i =>
+                applySeq(outputsVar.push(), ldc(i))
               }
               ++: operator.arguments.map { argument =>
                 Option(argument.value).map { value =>
@@ -166,6 +180,8 @@ private class ExtractOperatorFragmentClassBuilder(
                 }.getOrElse {
                   pushNull(argument.resolveClass.asType)
                 }
+              }).zip(operator.methodDesc.asType.getArgumentTypes()).map {
+                case (s, t) => s.asType(t)
               }: _*)
 
         `return`()

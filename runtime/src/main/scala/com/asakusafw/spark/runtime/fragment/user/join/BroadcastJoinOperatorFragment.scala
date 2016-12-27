@@ -18,26 +18,26 @@ package user.join
 
 import scala.collection.JavaConverters._
 
+import com.asakusafw.runtime.core.GroupView
 import com.asakusafw.runtime.model.DataModel
 
-abstract class BroadcastJoinOperatorFragment[K, M <: DataModel[M], T <: DataModel[T]](
-  masters: Map[K, Seq[M]])
+abstract class BroadcastJoinOperatorFragment[M <: DataModel[M], T <: DataModel[T]]
   extends Fragment[T]
   with Join[M, T] {
 
-  def key(tx: T): K
+  protected def masters: GroupView[M]
+
+  protected def keyElements(tx: T): Array[AnyRef]
 
   override def doAdd(tx: T): Unit = {
-    val k = key(tx)
-    val master = masterSelection(masters.getOrElse(k, Seq.empty[M]).asJava, tx)
+    val master = masterSelection(masters.find(keyElements(tx): _*), tx)
     join(master, tx)
   }
 }
 
-abstract class BroadcastMasterBranchOperatorFragment[K, M <: DataModel[M], T <: DataModel[T], E <: Enum[E]]( // scalastyle:ignore
-  masters: Map[K, Seq[M]])(
-    val children: Map[E, Fragment[T]])
-  extends BroadcastJoinOperatorFragment[K, M, T](masters)
+abstract class BroadcastMasterBranchOperatorFragment[M <: DataModel[M], T <: DataModel[T], E <: Enum[E]]( // scalastyle:ignore
+  val children: Map[E, Fragment[T]])
+  extends BroadcastJoinOperatorFragment[M, T]
   with MasterBranch[M, T, E] {
 
   override def doReset(): Unit = {
@@ -45,11 +45,10 @@ abstract class BroadcastMasterBranchOperatorFragment[K, M <: DataModel[M], T <: 
   }
 }
 
-abstract class BroadcastMasterCheckOperatorFragment[K, M <: DataModel[M], T <: DataModel[T]](
-  masters: Map[K, Seq[M]])(
-    val missed: Fragment[T],
-    val found: Fragment[T])
-  extends BroadcastJoinOperatorFragment[K, M, T](masters)
+abstract class BroadcastMasterCheckOperatorFragment[M <: DataModel[M], T <: DataModel[T]](
+  val missed: Fragment[T],
+  val found: Fragment[T])
+  extends BroadcastJoinOperatorFragment[M, T]
   with MasterCheck[M, T] {
 
   override def doReset(): Unit = {
@@ -58,12 +57,11 @@ abstract class BroadcastMasterCheckOperatorFragment[K, M <: DataModel[M], T <: D
   }
 }
 
-abstract class BroadcastMasterJoinOperatorFragment[K, M <: DataModel[M], T <: DataModel[T], J <: DataModel[J]]( // scalastyle:ignore
-  masters: Map[K, Seq[M]])(
-    val missed: Fragment[T],
-    val joined: Fragment[J],
-    val joinedDataModel: J)
-  extends BroadcastJoinOperatorFragment[K, M, T](masters)
+abstract class BroadcastMasterJoinOperatorFragment[M <: DataModel[M], T <: DataModel[T], J <: DataModel[J]]( // scalastyle:ignore
+  val missed: Fragment[T],
+  val joined: Fragment[J],
+  val joinedDataModel: J)
+  extends BroadcastJoinOperatorFragment[M, T]
   with MasterJoin[M, T, J] {
 
   override def doReset(): Unit = {
@@ -72,11 +70,10 @@ abstract class BroadcastMasterJoinOperatorFragment[K, M <: DataModel[M], T <: Da
   }
 }
 
-abstract class BroadcastMasterJoinUpdateOperatorFragment[K, M <: DataModel[M], T <: DataModel[T]](
-  masters: Map[K, Seq[M]])(
-    val missed: Fragment[T],
-    val updated: Fragment[T])
-  extends BroadcastJoinOperatorFragment[K, M, T](masters)
+abstract class BroadcastMasterJoinUpdateOperatorFragment[M <: DataModel[M], T <: DataModel[T]](
+  val missed: Fragment[T],
+  val updated: Fragment[T])
+  extends BroadcastJoinOperatorFragment[M, T]
   with MasterJoinUpdate[M, T] {
 
   override def doReset(): Unit = {

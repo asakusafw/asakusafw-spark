@@ -17,7 +17,7 @@ package com.asakusafw.spark.compiler
 package operator
 package core
 
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
@@ -38,12 +38,16 @@ abstract class CoreOperatorFragmentClassBuilder(
 
   override final def defConstructors(ctorDef: ConstructorDef): Unit = {
     ctorDef.newInit(
-      Seq(classOf[Map[BroadcastId, Broadcast[_]]].asType, classOf[Fragment[_]].asType),
+      Seq(classOf[Map[BroadcastId, Broadcasted[_]]].asType, classOf[Fragment[_]].asType),
       new MethodSignatureBuilder()
         .newParameterType {
           _.newClassType(classOf[Map[_, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
-              .newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[Broadcast[_]].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcasted[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
           }
         }
         .newParameterType {

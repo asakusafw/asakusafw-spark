@@ -26,7 +26,7 @@ import java.io.{ DataInput, DataOutput }
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.lang.compiler.model.description.ClassDescription
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
@@ -66,7 +66,7 @@ class SplitOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
     val bars = new GenericOutputFragment[Bar]()
 
     val fragment = cls.getConstructor(
-      classOf[Map[BroadcastId, Broadcast[_]]],
+      classOf[Map[BroadcastId, Broadcasted[_]]],
       classOf[Fragment[_]], classOf[Fragment[_]]).newInstance(Map.empty, foos, bars)
 
     fragment.reset()

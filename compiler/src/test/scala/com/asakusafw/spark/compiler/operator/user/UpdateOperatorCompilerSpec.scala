@@ -22,19 +22,26 @@ import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
+import java.util.function.Consumer
 
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.lang.compiler.model.description.{ ClassDescription, ImmediateDescription }
+import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator, Operator, OperatorInput }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
+import com.asakusafw.lang.compiler.planning.PlanMarker
+import com.asakusafw.runtime.core.{ GroupView, View }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.{ IntOption, LongOption, StringOption }
+import com.asakusafw.spark.compiler.broadcast.MockBroadcast
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.{ Fragment, GenericOutputFragment }
 import com.asakusafw.spark.runtime.graph.BroadcastId
+import com.asakusafw.spark.runtime.io.WritableSerDe
+import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Update
 
@@ -67,7 +74,7 @@ class UpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
       val out = new GenericOutputFragment[Foo]()
 
       val fragment = cls
-        .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
+        .getConstructor(classOf[Map[BroadcastId, Broadcasted[_]]], classOf[Fragment[_]])
         .newInstance(Map.empty, out)
 
       fragment.reset()
@@ -108,8 +115,86 @@ class UpdateOperatorCompilerSpec extends FlatSpec with UsingCompilerContext {
     val out = new GenericOutputFragment[Foo]()
 
     val fragment = cls
-      .getConstructor(classOf[Map[BroadcastId, Broadcast[_]]], classOf[Fragment[_]])
+      .getConstructor(classOf[Map[BroadcastId, Broadcasted[_]]], classOf[Fragment[_]])
       .newInstance(Map.empty, out)
+
+    fragment.reset()
+    val foo = new Foo()
+    for (i <- 0 until 10) {
+      foo.reset()
+      foo.i.modify(i)
+      fragment.add(foo)
+    }
+    out.iterator.zipWithIndex.foreach {
+      case (foo, i) =>
+        assert(foo.i.get === i)
+        assert(foo.l.get === i * 100)
+        assert(foo.s.isNull)
+    }
+
+    fragment.reset()
+  }
+
+  it should "compile Update operator with view" in {
+    val vMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.BROADCAST).build()
+    val gvMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.BROADCAST).build()
+
+    val operator = OperatorExtractor.extract(
+      classOf[Update], classOf[UpdateOperator], "updateWithView")
+      .input("in", ClassDescription.of(classOf[Foo]))
+      .input("v", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq.empty, Seq.empty))
+              .upstream(vMarker.getOutput)
+          }
+        })
+      .input("gv", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("i"), Seq.empty))
+              .upstream(gvMarker.getOutput)
+          }
+        })
+      .output("out", ClassDescription.of(classOf[Foo]))
+      .argument("rate", ImmediateDescription.of(100))
+      .build();
+
+    implicit val context = newOperatorCompilerContext("flowId")
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    context.addClass(context.broadcastIds)
+    val cls = context.loadClass[Fragment[Foo]](thisType.getClassName)
+
+    val broadcastIdsCls = context.loadClass(context.broadcastIds.thisType.getClassName)
+    def getBroadcastId(marker: MarkerOperator): BroadcastId = {
+      val sn = marker.getSerialNumber
+      broadcastIdsCls.getField(context.broadcastIds.getField(sn)).get(null).asInstanceOf[BroadcastId]
+    }
+
+    val out = new GenericOutputFragment[Foo]()
+
+    val view = new MockBroadcast(0, Map(ShuffleKey.empty -> Seq(new Foo())))
+    val groupview = new MockBroadcast(1,
+      (0 until 10).map { i =>
+        val foo = new Foo()
+        foo.i.modify(i)
+        new ShuffleKey(WritableSerDe.serialize(foo.i)) -> Seq(foo)
+      }.toMap)
+
+    val fragment = cls
+      .getConstructor(classOf[Map[BroadcastId, Broadcasted[_]]], classOf[Fragment[_]])
+      .newInstance(
+        Map(
+          getBroadcastId(vMarker) -> view,
+          getBroadcastId(gvMarker) -> groupview),
+        out)
 
     fragment.reset()
     val foo = new Foo()
@@ -180,6 +265,11 @@ object UpdateOperatorCompilerSpec {
     @Update
     def updatep[F <: FooP](foo: F, rate: Int): Unit = {
       foo.getLOption.modify(rate * foo.getIOption.get)
+    }
+
+    @Update
+    def updateWithView(foo: Foo, v: View[Foo], gv: GroupView[Foo], rate: Int): Unit = {
+      foo.l.modify(rate * foo.i.get)
     }
   }
 }

@@ -46,3 +46,8 @@ class ShuffleKey(
 
   def dropOrdering: ShuffleKey = new ShuffleKey(grouping)
 }
+
+object ShuffleKey {
+
+  val empty: ShuffleKey = new ShuffleKey()
+}

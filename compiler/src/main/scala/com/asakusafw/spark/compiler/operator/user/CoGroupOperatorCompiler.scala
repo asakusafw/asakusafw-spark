@@ -29,9 +29,10 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.signature.SignatureVisitor
 
 import com.asakusafw.lang.compiler.analyzer.util.GroupOperatorUtil
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, UserOperator }
 import com.asakusafw.runtime.core.Result
 import com.asakusafw.runtime.flow.{ ArrayListBuffer, FileMapListBuffer, ListBuffer }
+import com.asakusafw.runtime.core.GroupView
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.user._
@@ -64,7 +65,13 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
 
     assert(
       operator.methodDesc.parameterClasses
-        .zip(operator.inputs.map(_ => classOf[JList[_]])
+        .zip(operator.inputs.takeWhile(_.getInputUnit != OperatorInput.InputUnit.WHOLE)
+          .map(_ => classOf[JList[_]])
+          ++: operator.inputs.dropWhile(_.getInputUnit != OperatorInput.InputUnit.WHOLE)
+          .collect {
+            case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+              classOf[GroupView[_]]
+          }
           ++: operator.outputs.map(_ => classOf[Result[_]])
           ++: operator.arguments.map(_.resolveClass))
         .forall {
@@ -73,7 +80,15 @@ class CoGroupOperatorCompiler extends UserOperatorCompiler {
       s"The operator method parameter types are not compatible: (${
         operator.methodDesc.parameterClasses.map(_.getName).mkString("(", ",", ")")
       }, ${
-        (operator.inputs.map(_ => classOf[JList[_]])
+        (operator.inputs.takeWhile { input =>
+          input.getInputUnit != OperatorInput.InputUnit.WHOLE
+        }.map(_ => classOf[JList[_]])
+          ++: operator.inputs.dropWhile { input =>
+            input.getInputUnit != OperatorInput.InputUnit.WHOLE
+          }.collect {
+            case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+              classOf[GroupView[_]]
+          }
           ++: operator.outputs.map(_ => classOf[Result[_]])
           ++: operator.arguments.map(_.resolveClass)).map(_.getName).mkString("(", ",", ")")
       }) [${operator}]")
@@ -90,6 +105,7 @@ private class CoGroupOperatorFragmentClassBuilder(
   extends UserOperatorFragmentClassBuilder(
     classOf[IndexedSeq[Iterator[_]]].asType,
     operator.implementationClass.asType,
+    operator.inputs,
     operator.outputs)(
     None,
     classOf[CoGroupOperatorFragment].asType) {
@@ -159,13 +175,17 @@ private class CoGroupOperatorFragmentClassBuilder(
         getOperatorField()
           .invokeV(
             operator.methodDesc.getName,
-            (0 until operator.inputs.size).map { i =>
-              applySeq(buffersVar.push(), ldc(i))
-                .cast(operator.methodDesc.asType.getArgumentTypes()(i))
-            }
+            (operator.inputs.takeWhile(_.getInputUnit != OperatorInput.InputUnit.WHOLE)
+              .zipWithIndex.map {
+                case (_, i) => applySeq(buffersVar.push(), ldc(i))
+              }
+              ++ operator.inputs.dropWhile(_.getInputUnit != OperatorInput.InputUnit.WHOLE)
+              .collect {
+                case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+                  getViewField(input)
+              }
               ++ (0 until operator.outputs.size).map { i =>
                 applySeq(outputsVar.push(), ldc(i))
-                  .cast(operator.methodDesc.asType.getArgumentTypes()(operator.inputs.size + i))
               }
               ++ operator.arguments.map { argument =>
                 Option(argument.value).map { value =>
@@ -173,6 +193,8 @@ private class CoGroupOperatorFragmentClassBuilder(
                 }.getOrElse {
                   pushNull(argument.resolveClass.asType)
                 }
+              }).zip(operator.methodDesc.asType.getArgumentTypes()).map {
+                case (s, t) => s.asType(t)
               }: _*)
 
         `return`()

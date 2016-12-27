@@ -24,7 +24,6 @@ import com.asakusafw.lang.compiler.model.graph.UserOperator
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.{ OperatorCompiler, OperatorType }
 import com.asakusafw.spark.runtime.fragment.user.join.BroadcastMasterJoinOperatorFragment
-import com.asakusafw.spark.runtime.rdd.ShuffleKey
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.vocabulary.operator.{ MasterJoin => MasterJoinOp }
@@ -46,10 +45,11 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
     assert(support(operator),
       s"The operator type is not supported: ${operator.annotationDesc.resolveClass.getSimpleName}"
         + s" [${operator}]")
-    assert(operator.inputs.size == 2, // FIXME to take multiple inputs for side data?
-      s"The size of inputs should be 2: ${operator.inputs.size} [${operator}]")
+    assert(operator.inputs.size >= 2,
+      "The size of inputs should be greater than or equals to 2: " +
+        s"${operator.inputs.size} [${operator}]")
     assert(operator.outputs.size == 2,
-      s"The size of outputs should be greater than 2: ${operator.outputs.size} [${operator}]")
+      s"The size of outputs should be 2: ${operator.outputs.size} [${operator}]")
 
     assert(operator.outputs(MasterJoinOp.ID_OUTPUT_MISSED).dataModelType
       == operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
@@ -65,7 +65,7 @@ class BroadcastMasterJoinOperatorCompiler extends UserOperatorCompiler {
 
 private class BroadcastMasterJoinOperatorFragmentClassBuilder(
   operator: UserOperator)(
-    implicit val context: OperatorCompiler.Context)
+    implicit context: OperatorCompiler.Context)
   extends JoinOperatorFragmentClassBuilder(
     operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType,
     operator,
@@ -74,11 +74,10 @@ private class BroadcastMasterJoinOperatorFragmentClassBuilder(
     Option(
       new ClassSignatureBuilder()
         .newSuperclass {
-          _.newClassType(classOf[BroadcastMasterJoinOperatorFragment[_, _, _, _]].asType) {
-            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
-              .newTypeArgument(
-                SignatureVisitor.INSTANCEOF,
-                operator.inputs(MasterJoinOp.ID_INPUT_MASTER).dataModelType)
+          _.newClassType(classOf[BroadcastMasterJoinOperatorFragment[_, _, _]].asType) {
+            _.newTypeArgument(
+              SignatureVisitor.INSTANCEOF,
+              operator.inputs(MasterJoinOp.ID_INPUT_MASTER).dataModelType)
               .newTypeArgument(
                 SignatureVisitor.INSTANCEOF,
                 operator.inputs(MasterJoinOp.ID_INPUT_TRANSACTION).dataModelType)
@@ -87,7 +86,7 @@ private class BroadcastMasterJoinOperatorFragmentClassBuilder(
                 operator.outputs(MasterJoinOp.ID_OUTPUT_JOINED).dataModelType)
           }
         }),
-    classOf[BroadcastMasterJoinOperatorFragment[_, _, _, _]].asType)
+    classOf[BroadcastMasterJoinOperatorFragment[_, _, _]].asType)
   with BroadcastJoin
   with MasterJoin {
 
@@ -96,7 +95,6 @@ private class BroadcastMasterJoinOperatorFragmentClassBuilder(
 
     thisVar.push().invokeInit(
       superType,
-      masters(),
       fragmentVars(MasterJoinOp.ID_OUTPUT_MISSED).push(),
       fragmentVars(MasterJoinOp.ID_OUTPUT_JOINED).push(),
       pushNew0(joinedType).asType(classOf[DataModel[_]].asType))

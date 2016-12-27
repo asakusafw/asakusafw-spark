@@ -55,11 +55,6 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
       s"The primary operator should be user operator: ${primaryOperator}")
     val operator = primaryOperator.asInstanceOf[UserOperator]
 
-    assert(operator.inputs.size == 1,
-      s"The size of inputs should be 1: ${operator.inputs.size}")
-    assert(operator.outputs.size == 1,
-      s"The size of outputs should be 1: ${operator.outputs.size}")
-
     val iterativeInfo = IterativeInfo.get(subplan)
 
     val valueType = operator.inputs.head.dataModelType
@@ -71,14 +66,18 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
           new AggregateClassBuilder(
             valueType,
             combinerType,
-            operator)(
+            operator,
+            mapSideCombine =
+              subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
             subPlanInfo.getLabel,
             subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new AggregateClassBuilder(
             valueType,
             combinerType,
-            operator)(
+            operator,
+            mapSideCombine =
+              subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
             subPlanInfo.getLabel,
             subplan.getOutputs.toSeq) with CacheByParameter {
 
@@ -88,7 +87,9 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
           new AggregateClassBuilder(
             valueType,
             combinerType,
-            operator)(
+            operator,
+            mapSideCombine =
+              subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
             subPlanInfo.getLabel,
             subplan.getOutputs.toSeq) with CacheOnce
       }

@@ -175,5 +175,7 @@ object MockCompilerContext {
 
     override val classLoader: ClassLoader = cl
     override val dataModelLoader: DataModelLoader = new MockDataModelLoader(cl)
+
+    override val broadcastIds: BroadcastIdsClassBuilder = new BroadcastIdsClassBuilder(flowId)
   }
 }

@@ -18,6 +18,7 @@ package operator.user.join
 
 import scala.reflect.ClassTag
 
+import com.asakusafw.lang.compiler.model.graph.OperatorInput
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.tools.asm._
@@ -68,14 +69,20 @@ trait MasterBranch extends JoinOperatorFragmentClassBuilder {
           .invokeV(
             operator.methodDesc.name,
             operator.methodDesc.asType.getReturnType,
-            masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-              +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
-              +: operator.arguments.map { argument =>
+            (masterVar.push()
+              +: txVar.push()
+              +: operator.inputs.drop(2).collect {
+                case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+                  getViewField(input)
+              }
+              ++: operator.arguments.map { argument =>
                 Option(argument.value).map { value =>
                   ldc(value)(ClassTag(argument.resolveClass), implicitly)
                 }.getOrElse {
                   pushNull(argument.resolveClass.asType)
                 }
+              }).zip(operator.methodDesc.asType.getArgumentTypes()).map {
+                case (s, t) => s.asType(t)
               }: _*)
         branch.dup().unlessNotNull {
           branch.pop()

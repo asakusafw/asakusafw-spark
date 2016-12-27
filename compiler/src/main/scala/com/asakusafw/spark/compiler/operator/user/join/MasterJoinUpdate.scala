@@ -20,7 +20,7 @@ import scala.reflect.ClassTag
 
 import org.objectweb.asm.Type
 
-import com.asakusafw.lang.compiler.model.graph.UserOperator
+import com.asakusafw.lang.compiler.model.graph.{ OperatorInput, UserOperator }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.spark.compiler.spi.OperatorCompiler
 import com.asakusafw.spark.tools.asm._
@@ -64,14 +64,20 @@ trait MasterJoinUpdate extends JoinOperatorFragmentClassBuilder {
         getOperatorField()
           .invokeV(
             operator.methodDesc.getName,
-            masterVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(0))
-              +: txVar.push().asType(operator.methodDesc.asType.getArgumentTypes()(1))
-              +: operator.arguments.map { argument =>
+            (masterVar.push()
+              +: txVar.push()
+              +: operator.inputs.drop(2).collect {
+                case input: OperatorInput if input.getInputUnit == OperatorInput.InputUnit.WHOLE =>
+                  getViewField(input)
+              }
+              ++: operator.arguments.map { argument =>
                 Option(argument.value).map { value =>
                   ldc(value)(ClassTag(argument.resolveClass), implicitly)
                 }.getOrElse {
                   pushNull(argument.resolveClass.asType)
                 }
+              }).zip(operator.methodDesc.asType.getArgumentTypes()).map {
+                case (s, t) => s.asType(t)
               }: _*)
         `return`()
       }

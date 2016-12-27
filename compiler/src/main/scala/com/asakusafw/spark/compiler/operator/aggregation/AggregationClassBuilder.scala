@@ -35,7 +35,7 @@ abstract class AggregationClassBuilder(
   val valueType: Type,
   val combinerType: Type)(
     val aggregationType: AggregationType)(
-      implicit context: AggregationCompiler.Context)
+      implicit val context: AggregationCompiler.Context)
   extends ClassBuilder(
     Type.getType(
       s"L${GeneratedClassPackageInternalName}/${context.flowId}/fragment/${nextName(aggregationType)};"), // scalastyle:ignore
@@ -51,8 +51,6 @@ abstract class AggregationClassBuilder(
 
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
-
-    methodDef.newMethod("mapSideCombine", Type.BOOLEAN_TYPE, Seq.empty)(defMapSideCombine()(_))
 
     methodDef.newMethod("newCombiner", classOf[AnyRef].asType, Seq.empty) { implicit mb =>
       val thisVar :: _ = mb.argVars
@@ -134,7 +132,6 @@ abstract class AggregationClassBuilder(
       }
   }
 
-  def defMapSideCombine()(implicit mb: MethodBuilder): Unit
   def defNewCombiner()(implicit mb: MethodBuilder): Unit
   def defInitCombinerByValue(combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit
   def defMergeValue(combinerVar: Var, valueVar: Var)(implicit mb: MethodBuilder): Unit
@@ -164,7 +161,7 @@ object AggregationClassBuilder {
     }"
   }
 
-  private[this] val cache: mutable.Map[AggregationCompiler.Context, mutable.Map[(String, Long), Type]] = // scalastyle:ignore
+  private[this] val cache: mutable.Map[AggregationCompiler.Context, mutable.Map[Long, Type]] = // scalastyle:ignore
     mutable.WeakHashMap.empty
 
   def getOrCompile(
@@ -172,7 +169,7 @@ object AggregationClassBuilder {
       implicit context: AggregationCompiler.Context): Type = {
     cache.getOrElseUpdate(context, mutable.Map.empty)
       .getOrElseUpdate(
-        (context.flowId, operator.getOriginalSerialNumber),
+        operator.getOriginalSerialNumber,
         AggregationCompiler.compile(operator))
   }
 }

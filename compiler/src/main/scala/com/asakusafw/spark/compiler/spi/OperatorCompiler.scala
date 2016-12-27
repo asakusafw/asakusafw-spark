@@ -25,6 +25,7 @@ import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.Operator
 import com.asakusafw.spark.compiler.graph.{ BranchKeys, BroadcastIds }
+import com.asakusafw.spark.compiler.operator.ViewFields
 import com.asakusafw.spark.tools.asm.ClassBuilder
 
 sealed trait OperatorType
@@ -54,7 +55,8 @@ object OperatorCompiler {
   trait Context
     extends CompilerContext
     with ClassLoaderProvider
-    with DataModelLoaderProvider {
+    with DataModelLoaderProvider
+    with ViewFields.Context {
 
     def branchKeys: BranchKeys
     def broadcastIds: BroadcastIds

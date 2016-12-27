@@ -125,15 +125,15 @@ object GroupingOrderingClassBuilder {
   def nextId(implicit context: CompilerContext): Long =
     curIds.getOrElseUpdate(context, new AtomicLong(0L)).getAndIncrement()
 
-  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[(String, Seq[Type]), Type]] =
+  private[this] val cache: mutable.Map[CompilerContext, mutable.Map[Seq[Type], Type]] =
     mutable.WeakHashMap.empty
 
   def getOrCompile(
     groupingTypes: Seq[Type])(
       implicit context: CompilerContext): Type = {
-    cache.getOrElseUpdate(context, mutable.Map.empty).getOrElseUpdate(
-      (context.flowId, groupingTypes), {
-        context.addClass(new GroupingOrderingClassBuilder(groupingTypes))
-      })
+    cache.getOrElseUpdate(context, mutable.Map.empty)
+      .getOrElseUpdate(
+        groupingTypes,
+        context.addClass(new GroupingOrderingClassBuilder(groupingTypes)))
   }
 }

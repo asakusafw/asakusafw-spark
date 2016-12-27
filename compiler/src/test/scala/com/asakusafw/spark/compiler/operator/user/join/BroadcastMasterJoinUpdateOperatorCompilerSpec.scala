@@ -18,21 +18,23 @@ package operator
 package user.join
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.{ Assertions, FlatSpec }
 import org.scalatest.junit.JUnitRunner
 
 import java.io.{ DataInput, DataOutput }
 import java.util.{ List => JList }
+import java.util.function.Consumer
 
 import scala.collection.JavaConversions._
 
 import org.apache.hadoop.io.Writable
-import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 
 import com.asakusafw.lang.compiler.model.description.ClassDescription
-import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator }
+import com.asakusafw.lang.compiler.model.graph.{ Groups, MarkerOperator, Operator, OperatorInput }
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning.PlanMarker
+import com.asakusafw.runtime.core.{ GroupView, View }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.broadcast.MockBroadcast
@@ -60,7 +62,14 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "update")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("updated", ClassDescription.of(classOf[Bar]))
@@ -84,7 +93,7 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -142,7 +151,14 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updateWithSelection")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("updated", ClassDescription.of(classOf[Bar]))
@@ -166,7 +182,7 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -227,7 +243,14 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updateWithSelectionWith1Argument")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("updated", ClassDescription.of(classOf[Bar]))
@@ -251,7 +274,7 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -311,7 +334,14 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updatep")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("updated", ClassDescription.of(classOf[Bar]))
@@ -335,7 +365,7 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -394,7 +424,14 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updateWithSelectionp")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")), foosMarker.getOutput)
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("updated", ClassDescription.of(classOf[Bar]))
@@ -418,7 +455,7 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
@@ -476,7 +513,13 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
     val operator = OperatorExtractor
       .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "update")
       .input("foos", ClassDescription.of(classOf[Foo]),
-        Groups.parse(Seq("id")))
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+          }
+        })
       .input("bars", ClassDescription.of(classOf[Bar]),
         Groups.parse(Seq("fooId"), Seq("+id")))
       .output("updated", ClassDescription.of(classOf[Bar]))
@@ -493,11 +536,140 @@ class BroadcastMasterJoinUpdateOperatorCompilerSpec extends FlatSpec with UsingC
 
     val ctor = cls
       .getConstructor(
-        classOf[Map[BroadcastId, Broadcast[_]]],
+        classOf[Map[BroadcastId, Broadcasted[_]]],
         classOf[Fragment[_]], classOf[Fragment[_]])
 
     {
       val fragment = ctor.newInstance(Map.empty, updated, missed)
+      fragment.reset()
+      val bar = new Bar()
+      bar.id.modify(10)
+      bar.fooId.modify(1)
+      fragment.add(bar)
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 0)
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 1)
+      assert(misseds.head.id.get === 10)
+
+      fragment.reset()
+      assert(updated.iterator.size === 0)
+      assert(missed.iterator.size === 0)
+    }
+  }
+
+  it should "compile MasterJoinUpdate operator with view" in {
+    val vMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.BROADCAST).build()
+    val gvMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.BROADCAST).build()
+
+    val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.BROADCAST).build()
+
+    val operator = OperatorExtractor
+      .extract(classOf[MasterJoinUpdateOp], classOf[MasterJoinUpdateOperator], "updateWithView")
+      .input("foos", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id")))
+              .upstream(foosMarker.getOutput)
+          }
+        })
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("fooId"), Seq("+id")))
+      .input("v", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq.empty, Seq.empty))
+              .upstream(vMarker.getOutput)
+          }
+        })
+      .input("gv", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("id"), Seq.empty))
+              .upstream(gvMarker.getOutput)
+          }
+        })
+      .output("updated", ClassDescription.of(classOf[Bar]))
+      .output("missed", ClassDescription.of(classOf[Bar]))
+      .build()
+
+    implicit val context = newOperatorCompilerContext("flowId")
+
+    val thisType = OperatorCompiler.compile(operator, OperatorType.ExtractType)
+    context.addClass(context.broadcastIds)
+    val cls = context.loadClass[Fragment[Bar]](thisType.getClassName)
+
+    val broadcastIdsCls = context.loadClass(context.broadcastIds.thisType.getClassName)
+    def getBroadcastId(marker: MarkerOperator): BroadcastId = {
+      val sn = marker.getSerialNumber
+      broadcastIdsCls.getField(context.broadcastIds.getField(sn)).get(null).asInstanceOf[BroadcastId]
+    }
+
+    val updated = new GenericOutputFragment[Bar]()
+    val missed = new GenericOutputFragment[Bar]()
+
+    val ctor = cls
+      .getConstructor(
+        classOf[Map[BroadcastId, Broadcasted[_]]],
+        classOf[Fragment[_]], classOf[Fragment[_]])
+
+    val view = new MockBroadcast(0, Map(ShuffleKey.empty -> Seq(new Foo())))
+    val groupview = new MockBroadcast(1,
+      (0 until 10).map { i =>
+        val foo = new Foo()
+        foo.id.modify(i)
+        new ShuffleKey(WritableSerDe.serialize(foo.id)) -> Seq(foo)
+      }.toMap)
+
+    {
+      val foo = new Foo()
+      foo.id.modify(0)
+      val foos = Seq(foo)
+      val shuffleKey = new ShuffleKey(
+        WritableSerDe.serialize(foo.id), Array.emptyByteArray)
+      val fragment = ctor.newInstance(
+        Map(
+          getBroadcastId(vMarker) -> view,
+          getBroadcastId(gvMarker) -> groupview,
+          getBroadcastId(foosMarker) -> new MockBroadcast(0, Map(shuffleKey -> foos))),
+        updated,
+        missed)
+      fragment.reset()
+      (0 until 10).foreach { i =>
+        val bar = new Bar()
+        bar.id.modify(i)
+        bar.fooId.modify(0)
+        fragment.add(bar)
+      }
+      val updateds = updated.iterator.toSeq
+      assert(updateds.size === 5)
+      assert(updateds.map(_.id.get) === (0 until 10 by 2))
+      val misseds = missed.iterator.toSeq
+      assert(misseds.size === 5)
+      assert(misseds.map(_.id.get) === (1 until 10 by 2))
+
+      fragment.reset()
+      assert(updated.iterator.size === 0)
+      assert(missed.iterator.size === 0)
+    }
+
+    {
+      val fragment = ctor.newInstance(
+        Map(
+          getBroadcastId(vMarker) -> view,
+          getBroadcastId(gvMarker) -> groupview,
+          getBroadcastId(foosMarker) -> new MockBroadcast(0, Map.empty)),
+        updated,
+        missed)
       fragment.reset()
       val bar = new Bar()
       bar.id.modify(10)
@@ -573,7 +745,7 @@ object BroadcastMasterJoinUpdateOperatorCompilerSpec {
     def getFooIdOption: IntOption = fooId
   }
 
-  class MasterJoinUpdateOperator {
+  class MasterJoinUpdateOperator extends Assertions {
 
     @MasterJoinUpdateOp
     def update(foo: Foo, bar: Bar): Unit = {}
@@ -614,6 +786,32 @@ object BroadcastMasterJoinUpdateOperatorCompilerSpec {
         }
       } else {
         null.asInstanceOf[F]
+      }
+    }
+
+    @MasterJoinUpdateOp(selection = "selectWithView")
+    def updateWithView(foo: Foo, bar: Bar, v: View[Foo], gv: GroupView[Foo]): Unit = {
+      val view = v.toSeq
+      assert(view.size === 1)
+      assert(view.head.id.isNull())
+      val group = gv.find(bar.id).toSeq
+      if (bar.id.get < 10) {
+        assert(group.size === 1)
+        assert(group.head.id.get === bar.id.get)
+      } else {
+        assert(group.size === 0)
+      }
+    }
+
+    @MasterSelection
+    def selectWithView(foos: JList[Foo], bar: Bar, v: View[Foo]): Foo = {
+      val view = v.toSeq
+      assert(view.size === 1)
+      assert(view.head.id.isNull())
+      if (bar.id.get % 2 == 0) {
+        foos.headOption.orNull
+      } else {
+        null
       }
     }
   }

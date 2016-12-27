@@ -52,7 +52,8 @@ import com.asakusafw.spark.tools.asm4s._
 abstract class AggregateClassBuilder(
   val valueType: Type,
   val combinerType: Type,
-  val operator: UserOperator)(
+  val operator: UserOperator,
+  mapSideCombine: Boolean)(
     val label: String,
     val subplanOutputs: Seq[SubPlan.Output])(
       implicit val context: NodeCompiler.Context)
@@ -132,6 +133,10 @@ abstract class AggregateClassBuilder(
   override def defMethods(methodDef: MethodDef): Unit = {
     super.defMethods(methodDef)
 
+    methodDef.newMethod("mapSideCombine", Type.BOOLEAN_TYPE, Seq.empty) { implicit mb =>
+      `return`(ldc(mapSideCombine))
+    }
+
     methodDef.newMethod(
       "fragments",
       classOf[(_, _)].asType,
@@ -180,8 +185,21 @@ abstract class AggregateClassBuilder(
         `return`(tuple2(fragmentVar.push(), outputsVar.push()))
       }
 
-    methodDef.newMethod("aggregation", classOf[Aggregation[_, _, _]].asType, Seq.empty,
+    methodDef.newMethod(
+      "aggregation",
+      classOf[Aggregation[_, _, _]].asType,
+      Seq(classOf[Map[BroadcastId, Broadcasted[_]]].asType),
       new MethodSignatureBuilder()
+        .newParameterType {
+          _.newClassType(classOf[Map[_, _]].asType) {
+            _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[BroadcastId].asType)
+              .newTypeArgument(SignatureVisitor.INSTANCEOF) {
+                _.newClassType(classOf[Broadcasted[_]].asType) {
+                  _.newTypeArgument()
+                }
+              }
+          }
+        }
         .newReturnType {
           _.newClassType(classOf[Aggregation[_, _, _]].asType) {
             _.newTypeArgument(SignatureVisitor.INSTANCEOF, classOf[ShuffleKey].asType)
@@ -190,9 +208,14 @@ abstract class AggregateClassBuilder(
           }
         }) { implicit mb =>
 
+        val thisVar :: broadcastsVar :: _ = mb.argVars
+
         val aggregationType =
           AggregationClassBuilder.getOrCompile(operator)(context.aggregationCompilerContext)
-        `return`(pushNew0(aggregationType))
+
+        val aggregation = pushNew(aggregationType)
+        aggregation.dup().invokeInit(broadcastsVar.push())
+        `return`(aggregation)
       }
   }
 }

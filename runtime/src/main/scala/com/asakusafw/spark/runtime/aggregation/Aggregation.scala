@@ -24,8 +24,6 @@ abstract class Aggregation[K, V, C] extends Serializable {
 
   import Aggregation._ // scalastyle:ignore
 
-  def mapSideCombine: Boolean
-
   def newCombiner(): C
 
   def initCombinerByValue(combiner: C, value: V): C
