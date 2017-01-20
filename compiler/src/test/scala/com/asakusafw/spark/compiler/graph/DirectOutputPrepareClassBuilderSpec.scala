@@ -375,6 +375,106 @@ class DirectOutputPrepareClassBuilderSpec
     assert(statistics.records === 100)
   }
 
+  it should "compile prepare group with number format" in {
+    val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
+    val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+      .attribute(classOf[PlanMarker], PlanMarker.END).build()
+
+    val outputOperator = ExternalOutput.builder(
+      "group",
+      new ExternalOutputInfo.Basic(
+        ClassDescription.of(classOf[DirectFileOutputModel]),
+        DirectFileIoConstants.MODULE_NAME,
+        ClassDescription.of(classOf[Foo]),
+        Descriptions.valueOf(
+          new DirectFileOutputModel(
+            DirectOutputDescription(
+              basePath = "test/group",
+              resourcePattern = "foo_{group:00}.bin",
+              order = Seq("-id"),
+              deletePatterns = Seq("*.bin"),
+              formatType = classOf[FooSequenceFileFormat])))))
+      .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
+      .output("end", ClassDescription.of(classOf[Foo]))
+      .build()
+    outputOperator.findOutput("end").connect(endMarker.getInput)
+
+    val plan = PlanBuilder.from(Seq(outputOperator))
+      .add(
+        Seq(foosMarker),
+        Seq(endMarker)).build().getPlan()
+    assert(plan.getElements.size === 1)
+
+    val subplan = plan.getElements.head
+    subplan.putAttr(
+      new SubPlanInfo(_,
+        SubPlanInfo.DriverType.OUTPUT,
+        Seq.empty[SubPlanInfo.DriverOption],
+        outputOperator))
+
+    val foosInput = subplan.findIn(foosMarker)
+
+    implicit val context = newNodeCompilerContext(flowId, classServer.root.toFile)
+    context.branchKeys.getField(foosInput.getOperator.getSerialNumber)
+
+    val compiler = NodeCompiler.get(subplan)
+    val thisType = compiler.compile(subplan)
+    context.addClass(context.branchKeys)
+    context.addClass(context.broadcastIds)
+    val cls = classServer.loadClass(thisType).asSubclass(classOf[DirectOutputPrepare[Foo]])
+
+    val numSlices = 2
+    val files = (0 until 10).map(i => new File(root, f"group/foo_${i}%02d.bin"))
+
+    implicit val jobContext = newJobContext(sc)
+
+    val source =
+      new ParallelCollectionSource(Input,
+        (0 until 100).map(i => (i, math.random)).sortBy(_._2).map(_._1), Some(numSlices))("input")
+        .map(Input)(Foo.intToFoo)
+
+    val setup = new Setup("setup")
+    val prepare = cls.getConstructor(
+      classOf[Action[Unit]],
+      classOf[Seq[(Source, BranchKey)]],
+      classOf[Partitioner],
+      classOf[JobContext])
+      .newInstance(
+        setup,
+        Seq((source, Input)),
+        new HashPartitioner(sc.defaultParallelism),
+        jobContext)
+    val commit = new Commit(prepare)("test/group")
+
+    val rc = newRoundContext(flowId = flowId)
+
+    assert(files.exists(_.exists()) === false)
+
+    Await.result(prepare.perform(rc), Duration.Inf)
+    assert(files.exists(_.exists()) === false)
+
+    Await.result(commit.perform(rc), Duration.Inf)
+    assert(files.forall(_.exists()) === true)
+
+    files.zipWithIndex.foreach {
+      case (file, i) =>
+        assert(
+          sc.newAPIHadoopFile[NullWritable, Foo, SequenceFileInputFormat[NullWritable, Foo]](
+            file.getAbsolutePath)
+            .map(_._2)
+            .map(foo => (foo.id.get, foo.group.get))
+            .collect.toSeq
+            === (0 until 100).reverse.filter(_ % 10 == i).map(j => (j, i)))
+    }
+
+    assert(jobContext.outputStatistics(Direct).size === 1)
+    val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
+    assert(statistics.files === 10)
+    assert(statistics.bytes === 3150)
+    assert(statistics.records === 100)
+  }
+
   it should "compile prepare group with batch argument" in {
     val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
       .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()

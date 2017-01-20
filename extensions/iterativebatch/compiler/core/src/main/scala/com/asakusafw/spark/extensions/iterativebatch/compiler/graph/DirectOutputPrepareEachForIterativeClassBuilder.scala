@@ -257,18 +257,16 @@ abstract class DirectOutputPrepareGroupEachForIterativeClassBuilder(
                                 pushObject(OutputPatternGenerator)
                                 .invokeV("natural", classOf[Fragment].asType,
                                   ldc(segment.getTarget.getName.toMemberName))
-                            case Format.DATE =>
+
+                            case f @ (Format.BYTE | Format.SHORT | Format.INT | Format.LONG
+                              | Format.FLOAT | Format.DOUBLE | Format.DECIMAL
+                              | Format.DATE | Format.DATETIME) =>
                               builder +=
                                 pushObject(OutputPatternGenerator)
-                                .invokeV("date", classOf[Fragment].asType,
+                                .invokeV(f.name.toLowerCase, classOf[Fragment].asType,
                                   ldc(segment.getTarget.getName.toMemberName),
                                   ldc(segment.getArgument))
-                            case Format.DATETIME =>
-                              builder +=
-                                pushObject(OutputPatternGenerator)
-                                .invokeV("dateTime", classOf[Fragment].asType,
-                                  ldc(segment.getTarget.getName.toMemberName),
-                                  ldc(segment.getArgument))
+
                             case _ =>
                               throw new AssertionError(
                                 s"Unknown StringTemplate.Format: ${segment.getFormat}")

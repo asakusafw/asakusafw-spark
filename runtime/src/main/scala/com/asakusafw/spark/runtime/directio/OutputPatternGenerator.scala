@@ -15,7 +15,7 @@
  */
 package com.asakusafw.spark.runtime.directio
 
-import java.text.SimpleDateFormat
+import java.text.{ DecimalFormat => JDecimalFormat, SimpleDateFormat }
 import java.util.{ Calendar, Random }
 
 import com.asakusafw.bridge.stage.StageInfo
@@ -32,6 +32,8 @@ abstract class OutputPatternGenerator[T](fragments: Seq[Fragment]) {
     val str = fragments.map {
       case Fragment.Constant(value) => stageInfo.resolveUserVariables(value)
       case Fragment.Natural(property) => getProperty(target, property)
+      case num: Fragment.NumberFormat[_] =>
+        num.format(getProperty(target, num.property))
       case date: Fragment.DateFormat =>
         date.format(getProperty(target, date.property))
       case dateTime: Fragment.DateTimeFormat =>
@@ -49,10 +51,31 @@ object OutputPatternGenerator {
 
   def natural(property: String): Fragment = Fragment.Natural(property)
 
+  def byte(property: String, formatString: String): Fragment =
+    Fragment.ByteFormat(property, formatString)
+
+  def short(property: String, formatString: String): Fragment =
+    Fragment.ShortFormat(property, formatString)
+
+  def int(property: String, formatString: String): Fragment =
+    Fragment.IntFormat(property, formatString)
+
+  def long(property: String, formatString: String): Fragment =
+    Fragment.LongFormat(property, formatString)
+
+  def float(property: String, formatString: String): Fragment =
+    Fragment.FloatFormat(property, formatString)
+
+  def double(property: String, formatString: String): Fragment =
+    Fragment.DoubleFormat(property, formatString)
+
+  def decimal(property: String, formatString: String): Fragment =
+    Fragment.DecimalFormat(property, formatString)
+
   def date(property: String, formatString: String): Fragment =
     Fragment.DateFormat(property, formatString)
 
-  def dateTime(property: String, formatString: String): Fragment =
+  def datetime(property: String, formatString: String): Fragment =
     Fragment.DateTimeFormat(property, formatString)
 
   def random(seed: Long, min: Int, max: Int): Fragment =
@@ -65,6 +88,67 @@ object OutputPatternGenerator {
     case class Constant(value: String) extends Fragment
 
     case class Natural(property: String) extends Fragment
+
+    sealed abstract class NumberFormat[T <: ValueOption[T]] extends Fragment {
+
+      def property: String
+
+      def formatString: String
+
+      protected val nf = new JDecimalFormat(formatString)
+
+      def format(propertyValue: ValueOption[_]): String = {
+        if (propertyValue.isNull()) {
+          String.valueOf(propertyValue)
+        } else {
+          formatValue(propertyValue.asInstanceOf[T])
+        }
+      }
+
+      def formatValue(opt: T): String
+    }
+
+    case class ByteFormat(property: String, formatString: String)
+      extends NumberFormat[ByteOption] {
+
+      override def formatValue(opt: ByteOption): String = nf.format(opt.get)
+    }
+
+    case class ShortFormat(property: String, formatString: String)
+      extends NumberFormat[ShortOption] {
+
+      override def formatValue(opt: ShortOption): String = nf.format(opt.get)
+    }
+
+    case class IntFormat(property: String, formatString: String)
+      extends NumberFormat[IntOption] {
+
+      override def formatValue(opt: IntOption): String = nf.format(opt.get)
+    }
+
+    case class LongFormat(property: String, formatString: String)
+      extends NumberFormat[LongOption] {
+
+      override def formatValue(opt: LongOption): String = nf.format(opt.get)
+    }
+
+    case class FloatFormat(property: String, formatString: String)
+      extends NumberFormat[FloatOption] {
+
+      override def formatValue(opt: FloatOption): String = nf.format(opt.get)
+    }
+
+    case class DoubleFormat(property: String, formatString: String)
+      extends NumberFormat[DoubleOption] {
+
+      override def formatValue(opt: DoubleOption): String = nf.format(opt.get)
+    }
+
+    case class DecimalFormat(property: String, formatString: String)
+      extends NumberFormat[DecimalOption] {
+
+      override def formatValue(opt: DecimalOption): String = nf.format(opt.get)
+    }
 
     case class DateFormat(property: String, formatString: String) extends Fragment {
 

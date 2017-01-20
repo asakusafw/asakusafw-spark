@@ -768,6 +768,133 @@ class DirectOutputPrepareForIterativeClassBuilderSpec
         idx += 1
       }
 
+      it should s"prepare group simple with number format: [${conf}]" in {
+        val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+          .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
+        val endMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
+          .attribute(classOf[PlanMarker], PlanMarker.END).build()
+
+        val outputOperator = ExternalOutput.builder(
+          s"group${idx}",
+          new ExternalOutputInfo.Basic(
+            ClassDescription.of(classOf[DirectFileOutputModel]),
+            DirectFileIoConstants.MODULE_NAME,
+            ClassDescription.of(classOf[Foo]),
+            Descriptions.valueOf(
+              new DirectFileOutputModel(
+                DirectOutputDescription(
+                  basePath = s"test/group${idx}_$${arg}_$${round}",
+                  resourcePattern = "foo_${arg}_{group:00}.bin",
+                  order = Seq("-id"),
+                  deletePatterns = Seq("*.bin"),
+                  formatType = classOf[FooSequenceFileFormat])))))
+          .input(ExternalOutput.PORT_NAME, ClassDescription.of(classOf[Foo]), foosMarker.getOutput)
+          .output("end", ClassDescription.of(classOf[Foo]))
+          .build()
+        outputOperator.findOutput("end").connect(endMarker.getInput)
+
+        val plan = PlanBuilder.from(Seq(outputOperator))
+          .add(
+            Seq(foosMarker),
+            Seq(endMarker)).build().getPlan()
+        assert(plan.getElements.size === 1)
+
+        val subplan = plan.getElements.head
+        subplan.putAttr(
+          new SubPlanInfo(_,
+            SubPlanInfo.DriverType.OUTPUT,
+            Seq.empty[SubPlanInfo.DriverOption],
+            outputOperator))
+        subplan.putAttr(_ => iterativeInfo)
+
+        val foosInput = subplan.findIn(foosMarker)
+
+        implicit val context = newNodeCompilerContext(flowId, classServer.root.toFile)
+        context.branchKeys.getField(foosInput.getOperator.getSerialNumber)
+
+        val rounds = 0 to 1
+        val numSlices = 2
+        val files = rounds.map { round =>
+          (0 until numSlices).map(i => new File(root, f"group${idx}_bar_${round}/foo_bar_${i}%02d.bin"))
+        }
+
+        implicit val jobContext = newJobContext(sc)
+
+        val source =
+          new RoundAwareParallelCollectionSource(Input, 0 until 100, Some(numSlices))("input")
+            .mapWithRoundContext(Input)(Foo.intToFoo)
+
+        val setup = new Setup("setup")
+        val prepareEach = newPrepareGroupEach(subplan)(
+          Seq((source, Input)))(new HashPartitioner(sc.defaultParallelism))
+        val prepare = newPrepare(subplan)(setup, prepareEach)
+        val commit = new Commit(prepare)(s"test/group${idx}_$${round}")
+
+        val origin = newRoundContext()
+        val rcs = rounds.map { round =>
+          newRoundContext(
+            stageId = s"round_${round}",
+            batchArguments = Map("arg" -> "bar", "round" -> round.toString))
+        }
+
+        assert(files.exists(_.exists(_.exists())) === false)
+
+        rcs.foreach { rc =>
+          Await.result(prepareEach.perform(rc), Duration.Inf)
+        }
+
+        Await.result(prepare.perform(origin, rcs), Duration.Inf)
+        assert(files.exists(_.exists(_.exists())) === false)
+
+        Await.result(commit.perform(origin, rcs), Duration.Inf)
+        if (iterativeInfo.getRecomputeKind != IterativeInfo.RecomputeKind.NEVER) {
+          assert(files.forall(_.forall(_.exists())) === true)
+
+          rounds.zip(files).foreach {
+            case (round, files) =>
+              files.zipWithIndex.foreach {
+                case (file, i) =>
+                  assert(
+                    sc.newAPIHadoopFile[NullWritable, Foo, SequenceFileInputFormat[NullWritable, Foo]](
+                      file.getAbsolutePath)
+                      .map(_._2)
+                      .map(foo => (foo.id.get, foo.group.get))
+                      .collect.toSeq
+                      === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
+              }
+          }
+
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
+          assert(statistics.files === 20)
+          assert(statistics.bytes === 7060)
+          assert(statistics.records === 200)
+
+        } else {
+          assert(files.head.forall(_.exists()) === true)
+          assert(files.tail.exists(_.exists(_.exists())) === false)
+
+          val round = rounds.head
+          files.head.zipWithIndex.foreach {
+            case (file, i) =>
+              assert(
+                sc.newAPIHadoopFile[NullWritable, Foo, SequenceFileInputFormat[NullWritable, Foo]](
+                  file.getAbsolutePath)
+                  .map(_._2)
+                  .map(foo => (foo.id.get, foo.group.get))
+                  .collect.toSeq
+                  === (0 until 100).reverse.filter(_ % 10 == i).map(j => (100 * round + j, i)))
+          }
+
+          assert(jobContext.outputStatistics(Direct).size === 1)
+          val statistics = jobContext.outputStatistics(Direct)(outputOperator.getName)
+          assert(statistics.files === 10)
+          assert(statistics.bytes === 3530)
+          assert(statistics.records === 100)
+        }
+        idx += 1
+      }
+
       it should s"prepare group simple with batch argument: [${conf}]" in {
         val foosMarker = MarkerOperator.builder(ClassDescription.of(classOf[Foo]))
           .attribute(classOf[PlanMarker], PlanMarker.GATHER).build()
