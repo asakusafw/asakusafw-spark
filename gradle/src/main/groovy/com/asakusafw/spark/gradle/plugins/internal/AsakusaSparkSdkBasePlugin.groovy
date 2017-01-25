@@ -126,6 +126,9 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
                     if (features.hive) {
                         asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-hive:${base.langVersion}"
                     }
+                    if (features.incubating) {
+                        asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-info:${base.langVersion}"
+                    }
                 }
                 if (features.testing) {
                     asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-test-adapter:${base.featureVersion}"
