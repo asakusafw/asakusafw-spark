@@ -965,6 +965,73 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
+  it should s"compile Job with CoGroup with an empty input: ${configuration}" in {
+    val path = createTempDirectoryForEach("test-").toFile
+
+    prepareData("bar", path) {
+      sc.parallelize(0 until 10).map(Bar.intToBar)
+    }
+
+    val barInputOperator = ExternalInput
+      .newInstance("bar/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Bar]),
+          "bars",
+          ClassDescription.of(classOf[Bar]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val cogroupOperator = OperatorExtractor
+      .extract(classOf[CoGroup], classOf[Ops], "cogroup")
+      .input("empty", ClassDescription.of(classOf[Foo]),
+        Groups.parse(Seq("id")))
+      .input("bars", ClassDescription.of(classOf[Bar]),
+        Groups.parse(Seq("id")),
+        barInputOperator.getOperatorPort)
+      .output("fooResult", ClassDescription.of(classOf[Foo]))
+      .output("barResult", ClassDescription.of(classOf[Bar]))
+      .output("fooError", ClassDescription.of(classOf[Foo]))
+      .output("barError", ClassDescription.of(classOf[Bar]))
+      .build()
+
+    val fooResultOutputOperator = ExternalOutput
+      .newInstance("fooResult", cogroupOperator.findOutput("fooResult"))
+
+    val fooErrorOutputOperator = ExternalOutput
+      .newInstance("fooError", cogroupOperator.findOutput("fooError"))
+
+    val barResultOutputOperator = ExternalOutput
+      .newInstance("barResult", cogroupOperator.findOutput("barResult"))
+
+    val barErrorOutputOperator = ExternalOutput
+      .newInstance("barError", cogroupOperator.findOutput("barError"))
+
+    val graph = new OperatorGraph(Seq(
+      barInputOperator,
+      cogroupOperator,
+      fooResultOutputOperator, fooErrorOutputOperator,
+      barResultOutputOperator, barErrorOutputOperator))
+
+    val jobType = compile(flowId, graph, 6, path, classServer.root.toFile)
+    executeJob(flowId, jobType)
+
+    {
+      val fooResult = readResult[Foo]("fooResult", path).collect()
+      assert(fooResult.size === 0)
+    }
+    {
+      val fooError = readResult[Foo]("fooError", path).collect()
+      assert(fooError.size === 0)
+    }
+    {
+      val barResult = readResult[Bar]("barResult", path).collect()
+      assert(barResult.size === 0)
+    }
+    {
+      val barError = readResult[Bar]("barError", path).collect()
+      assert(barError.size === 10)
+    }
+  }
+
   it should s"compile Job with MasterCheck with multiple masters: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 

@@ -83,9 +83,14 @@ object CoGroupInstantiator extends Instantiator {
       if (properties.head.isEmpty) {
         partitioner(ldc(1))
       } else {
-        partitioner(
-          numPartitions(vars.jobContext.push())(
-            subplan.findInput(primaryOperator.inputs.head.getOpposites.head.getOwner)))
+        primaryOperator.inputs.find(op => op.getOpposites.nonEmpty) match {
+          case Some(operator) =>
+            partitioner(
+              numPartitions(vars.jobContext.push())(
+                subplan.findInput(operator.getOpposites.head.getOwner)))
+          case None =>
+            throw new AssertionError(s"All inputs have empty opposites for ${primaryOperator}.")
+        }
       },
       vars.broadcasts.push(),
       vars.jobContext.push())
