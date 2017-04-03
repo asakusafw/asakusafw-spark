@@ -36,9 +36,9 @@
     <artifact.version>${project.version}</artifact.version>
     <artifact.id>${artifact.name}-${artifact.version}</artifact.id>
 
-    <asakusafw.version>0.9.1-SNAPSHOT</asakusafw.version>
-    <asakusafw-sdk.version>0.9.1-SNAPSHOT</asakusafw-sdk.version>
-    <asakusafw-lang.version>0.4.1-SNAPSHOT</asakusafw-lang.version>
+    <asakusafw.version>0.9.1-RC3</asakusafw.version>
+    <asakusafw-sdk.version>0.9.1-RC3</asakusafw-sdk.version>
+    <asakusafw-lang.version>0.4.1-RC3</asakusafw-lang.version>
 
     <java.version>1.8</java.version>
     <scala.compat.version>2.11</scala.compat.version>
