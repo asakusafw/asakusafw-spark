@@ -124,6 +124,10 @@ package object compiler {
       operator.getArguments
     }
 
+    def nonBroadcastInputs: Seq[OperatorInput] = {
+      operator.inputs.filter(_.getInputUnit != OperatorInput.InputUnit.WHOLE)
+    }
+
     def branchOutputMap(
       implicit provider: ClassLoaderProvider): Map[OperatorOutput, Enum[_]] = {
       BranchOperatorUtil.getOutputMap(provider.classLoader, operator).toMap

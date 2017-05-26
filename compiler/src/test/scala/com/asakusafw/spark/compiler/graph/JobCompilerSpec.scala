@@ -895,6 +895,84 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
     }
   }
 
+  it should s"compile Job with CoGroup with View: ${configuration}" in {
+    val path = createTempDirectoryForEach("test-").toFile
+
+    prepareData("in0", path) {
+      sc.parallelize(0 until 20).map(Foo.intToFoo)
+    }
+    prepareData("in1", path) {
+      sc.parallelize(10 until 30).map(Foo.intToFoo)
+    }
+    prepareData("v", path) {
+      sc.parallelize(5 until 15).map(Foo.intToFoo)
+    }
+
+    val in0Operator = ExternalInput
+      .newInstance("in0/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "in0",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val in1Operator = ExternalInput
+      .newInstance("in1/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "in1",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val vOperator = ExternalInput
+      .newInstance("v/part-*",
+        new ExternalInputInfo.Basic(
+          ClassDescription.of(classOf[Foo]),
+          "v",
+          ClassDescription.of(classOf[Foo]),
+          ExternalInputInfo.DataSize.UNKNOWN))
+
+    val cogroupOperator = OperatorExtractor
+      .extract(classOf[CoGroup], classOf[Ops], "cogroupWithView")
+      .input("in0", ClassDescription.of(classOf[Foo]),
+        Groups.parse(Seq("id")),
+        in0Operator.getOperatorPort)
+      .input("in1", ClassDescription.of(classOf[Foo]),
+        Groups.parse(Seq("id")),
+        in1Operator.getOperatorPort)
+      .input("v", ClassDescription.of(classOf[Foo]),
+        new Consumer[Operator.InputOptionBuilder] {
+          override def accept(builder: Operator.InputOptionBuilder): Unit = {
+            builder
+              .unit(OperatorInput.InputUnit.WHOLE)
+              .group(Groups.parse(Seq("foo"), Seq.empty))
+              .upstream(vOperator.getOperatorPort)
+          }
+        })
+      .output("result", ClassDescription.of(classOf[Foo]))
+      .build()
+
+    val resultOperator = ExternalOutput
+      .newInstance("result", cogroupOperator.findOutput("result"))
+
+    val graph = new OperatorGraph(Seq(
+      in0Operator,
+      in1Operator,
+      cogroupOperator,
+      resultOperator))
+
+    val jobType = compile(flowId, graph, 5, path, classServer.root.toFile)
+    executeJob(flowId, jobType)
+
+    {
+      val result = readResult[Foo]("result", path)
+        .map { foo =>
+          (foo.id.get, foo.foo.getAsString)
+        }.collect.toSeq.sortBy(_._1)
+      assert(result === (10 until 15).map(i => (i, s"foo${i}")))
+    }
+  }
+
   it should s"compile Job with MasterCheck: ${configuration}" in {
     val path = createTempDirectoryForEach("test-").toFile
 
@@ -2134,6 +2212,19 @@ object JobCompilerSpec {
         case (left, right) =>
           fooError.add(left)
           fooError.add(right)
+      }
+    }
+
+    @CoGroup
+    def cogroupWithView(
+      in0: JList[Foo], in1: JList[Foo],
+      v: GroupView[Foo],
+      result: Result[Foo]): Unit = {
+      in0.zip(in1).foreach {
+        case (left, right)
+          if left.id == right.id && left.foo == right.foo && !v.find(left.foo).isEmpty =>
+          result.add(left)
+        case _ =>
       }
     }
 
