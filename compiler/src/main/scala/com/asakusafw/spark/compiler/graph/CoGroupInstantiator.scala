@@ -41,7 +41,7 @@ object CoGroupInstantiator extends Instantiator {
 
     val primaryOperator = subplan.getAttribute(classOf[SubPlanInfo]).getPrimaryOperator
 
-    val properties = primaryOperator.inputs.map { input =>
+    val properties = primaryOperator.nonBroadcastInputs.map { input =>
       input.dataModelRef.groupingTypes(input.getGroup.getGrouping)
     }.toSet
     assert(properties.size == 1,
@@ -53,7 +53,7 @@ object CoGroupInstantiator extends Instantiator {
     cogroup.dup().invokeInit(
       buildSeq { builder =>
         for {
-          input <- primaryOperator.getInputs
+          input <- primaryOperator.nonBroadcastInputs
         } {
           builder +=
             tuple2(
@@ -83,7 +83,7 @@ object CoGroupInstantiator extends Instantiator {
       if (properties.head.isEmpty) {
         partitioner(ldc(1))
       } else {
-        primaryOperator.inputs.find(op => op.getOpposites.nonEmpty) match {
+        primaryOperator.nonBroadcastInputs.find(op => op.getOpposites.nonEmpty) match {
           case Some(operator) =>
             partitioner(
               numPartitions(vars.jobContext.push())(

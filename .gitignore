@@ -11,3 +11,8 @@ target
 dependency-reduced-pom.xml
 *.crc
 .tmpBin
+
+# IntelliJ IDEA
+.idea
+*.iml
+
