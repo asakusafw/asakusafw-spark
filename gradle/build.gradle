@@ -74,6 +74,19 @@ tasks.withType(AbstractCompile) { task ->
 eclipse.jdt {
     javaRuntimeName = 'JavaSE-1.7'
 }
+if (project.hasProperty('referProject')) {
+    eclipse.classpath.file.whenMerged { classpath ->
+        classpath.entries = classpath.entries.collect { entry ->
+            if (entry instanceof org.gradle.plugins.ide.eclipse.model.Library \
+                    && entry.moduleVersion \
+                    && entry.moduleVersion.name == 'asakusa-gradle-plugins') {
+                new org.gradle.plugins.ide.eclipse.model.ProjectDependency('/asakusa-gradle-plugins')
+            } else {
+                entry
+            }
+        }.unique() as List
+    }
+}
 
 groovydoc {
     docTitle "Asakusa on Spark Gradle Plugins ${version}"
