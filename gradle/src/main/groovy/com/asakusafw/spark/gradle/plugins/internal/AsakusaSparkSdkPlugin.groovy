@@ -91,7 +91,7 @@ class AsakusaSparkSdkPlugin implements Plugin<Project> {
             task.toolClasspath << { project.configurations.asakusaSparkCompiler }
             task.toolClasspath << { project.sourceSets.main.compileClasspath - project.configurations.compile }
 
-            task.explore << { [project.sourceSets.main.output.classesDir].findAll { it.exists() } }
+            task.explore << { PluginUtils.getClassesDirs(project, project.sourceSets.main.output).findAll { it.exists() } }
             task.embed << { [project.sourceSets.main.output.resourcesDir].findAll { it.exists() } }
             task.attach << { project.configurations.embedded }
 
