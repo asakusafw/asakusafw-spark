@@ -146,6 +146,7 @@ abstract class DirectOutputPrepare[T: Manifest](
           "error occurred while processing Direct file output: " +
             s"basePath=${basePath}, context=${context}",
           t)
+        throw t
     } finally {
       dataSource.cleanupAttemptOutput(context)
     }
