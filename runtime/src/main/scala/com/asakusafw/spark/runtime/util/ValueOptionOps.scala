@@ -18,6 +18,8 @@ package com.asakusafw.spark.runtime.util
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime.orderings._
 
+import scala.tools.cmd.Spec.Accumulator
+
 object ValueOptionOps {
 
   def copy(from: BooleanOption, to: BooleanOption): Unit = {
@@ -73,170 +75,117 @@ object ValueOptionOps {
   }
 
   def setZero(to: DecimalOption): Unit = {
-    to.modify(BigDecimal(0).underlying)
+    to.modify(java.math.BigDecimal.ZERO)
   }
 
   def inc(to: LongOption): Unit = {
     to.add(1L)
   }
 
-  def add(value: ByteOption, acc: LongOption): Unit = {
-    acc.add(value.get)
+  def copyAlways[V <: ValueOption[V]](accumulator: V, operand: V): Unit = {
+    accumulator.copyFrom(operand)
   }
 
-  def add(value: ShortOption, acc: LongOption): Unit = {
-    acc.add(value.get)
+  def maxUnsafe[V <: ValueOption[V]](accumulator: V, operand: V): Unit = {
+    accumulator.max(operand)
   }
 
-  def add(value: IntOption, acc: LongOption): Unit = {
-    acc.add(value.get)
+  def minUnsafe[V <: ValueOption[V]](accumulator: V, operand: V): Unit = {
+    accumulator.min(operand)
   }
 
-  def add(value: LongOption, acc: LongOption): Unit = {
-    acc.add(value.get)
+  def addUnsafe(accumulator: LongOption, operand: ByteOption): Unit = {
+    accumulator.add(operand.get())
   }
 
-  def add(value: FloatOption, acc: DoubleOption): Unit = {
-    acc.add(value.get)
+  def addUnsafe(accumulator: LongOption, operand: ShortOption): Unit = {
+    accumulator.add(operand.get())
   }
 
-  def add(value: DoubleOption, acc: DoubleOption): Unit = {
-    acc.add(value.get)
+  def addUnsafe(accumulator: LongOption, operand: IntOption): Unit = {
+    accumulator.add(operand.get())
   }
 
-  def add(value: DecimalOption, acc: DecimalOption): Unit = {
-    acc.add(value.get)
+  def addUnsafe(accumulator: LongOption, operand: LongOption): Unit = {
+    accumulator.add(operand)
   }
 
-  def max(combiner: BooleanOption, value: BooleanOption): Unit = {
-    if (combiner.isNull || BooleanOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def addUnsafe(accumulator: DecimalOption, operand: DecimalOption): Unit = {
+    accumulator.add(operand)
   }
 
-  def max(combiner: ByteOption, value: ByteOption): Unit = {
-    if (combiner.isNull || ByteOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def addUnsafe(accumulator: DoubleOption, operand: FloatOption): Unit = {
+    accumulator.add(operand.get())
   }
 
-  def max(combiner: ShortOption, value: ShortOption): Unit = {
-    if (combiner.isNull || ShortOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def addUnsafe(accumulator: DoubleOption, operand: DoubleOption): Unit = {
+    accumulator.add(operand)
   }
 
-  def max(combiner: IntOption, value: IntOption): Unit = {
-    if (combiner.isNull || IntOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def copyWithName[V <: ValueOption[V]](
+    accumulator: V, operand: V, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.copyFrom(operand)
   }
 
-  def max(combiner: LongOption, value: LongOption): Unit = {
-    if (combiner.isNull || LongOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def maxWithName[V <: ValueOption[V]](
+    accumulator: V, operand: V, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.max(operand)
   }
 
-  def max(combiner: FloatOption, value: FloatOption): Unit = {
-    if (combiner.isNull || FloatOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def minWithName[V <: ValueOption[V]](
+    accumulator: V, operand: V, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.min(operand)
   }
 
-  def max(combiner: DoubleOption, value: DoubleOption): Unit = {
-    if (combiner.isNull || DoubleOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def addWithName(
+    accumulator: LongOption, operand: ByteOption, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.add(operand.get())
   }
 
-  def max(combiner: DecimalOption, value: DecimalOption): Unit = {
-    if (combiner.isNull || DecimalOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def addWithName(
+    accumulator: LongOption, operand: ShortOption, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.add(operand.get())
   }
 
-  def max(combiner: StringOption, value: StringOption): Unit = {
-    if (combiner.isNull || StringOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def addWithName(
+    accumulator: LongOption, operand: IntOption, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.add(operand.get())
   }
 
-  def max(combiner: DateOption, value: DateOption): Unit = {
-    if (combiner.isNull || DateOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def addWithName(
+    accumulator: LongOption, operand: LongOption, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.add(operand)
   }
 
-  def max(combiner: DateTimeOption, value: DateTimeOption): Unit = {
-    if (combiner.isNull || DateTimeOptionOrdering.compare(combiner, value) < 0) {
-      combiner.modify(value.get)
-    }
+  def addWithName(
+    accumulator: DecimalOption, operand: DecimalOption, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.add(operand)
   }
 
-  def min(combiner: BooleanOption, value: BooleanOption): Unit = {
-    if (combiner.isNull || BooleanOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
+  def addWithName(
+    accumulator: DoubleOption, operand: FloatOption, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.add(operand.get())
   }
 
-  def min(combiner: ByteOption, value: ByteOption): Unit = {
-    if (combiner.isNull || ByteOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
+  def addWithName(
+    accumulator: DoubleOption, operand: DoubleOption, name: String, record: AnyRef): Unit = {
+    checkNull(operand, name, record)
+    accumulator.add(operand)
   }
 
-  def min(combiner: ShortOption, value: ShortOption): Unit = {
-    if (combiner.isNull || ShortOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
-  }
-
-  def min(combiner: IntOption, value: IntOption): Unit = {
-    if (combiner.isNull || IntOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
-  }
-
-  def min(combiner: LongOption, value: LongOption): Unit = {
-    if (combiner.isNull || LongOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
-  }
-
-  def min(combiner: FloatOption, value: FloatOption): Unit = {
-    if (combiner.isNull || FloatOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
-  }
-
-  def min(combiner: DoubleOption, value: DoubleOption): Unit = {
-    if (combiner.isNull || DoubleOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
-  }
-
-  def min(combiner: DecimalOption, value: DecimalOption): Unit = {
-    if (combiner.isNull || DecimalOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
-  }
-
-  def min(combiner: StringOption, value: StringOption): Unit = {
-    if (combiner.isNull || StringOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
-  }
-
-  def min(combiner: DateOption, value: DateOption): Unit = {
-    if (combiner.isNull || DateOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
-    }
-  }
-
-  def min(combiner: DateTimeOption, value: DateTimeOption): Unit = {
-    if (combiner.isNull || DateTimeOptionOrdering.compare(combiner, value) > 0) {
-      combiner.modify(value.get)
+  private[this] def checkNull(operand: ValueOption[_], name: String, record: AnyRef): Unit = {
+    if (operand.isNull) {
+      throw new NullPointerException(
+        s"${name} must not be null: ${record}")
     }
   }
 }
