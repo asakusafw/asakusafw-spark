@@ -490,6 +490,11 @@ encoding/<project>=UTF-8
       </dependency>
 
       <dependency>
+        <groupId>com.asakusafw.lang.utils</groupId>
+        <artifactId>asakusa-lang-common</artifactId>
+        <version>${asakusafw-lang.version}</version>
+      </dependency>
+      <dependency>
         <groupId>com.asakusafw.lang.compiler</groupId>
         <artifactId>asakusa-compiler-common</artifactId>
         <version>${asakusafw-lang.version}</version>
@@ -547,6 +552,11 @@ encoding/<project>=UTF-8
       <dependency>
         <groupId>com.asakusafw.lang.compiler</groupId>
         <artifactId>asakusa-compiler-extension-directio</artifactId>
+        <version>${asakusafw-lang.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.asakusafw.lang.compiler</groupId>
+        <artifactId>asakusa-compiler-extension-operator</artifactId>
         <version>${asakusafw-lang.version}</version>
       </dependency>
       <dependency>
