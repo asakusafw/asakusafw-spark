@@ -69,7 +69,7 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
             operator,
             mapSideCombine =
               subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new AggregateClassBuilder(
@@ -78,7 +78,7 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
             operator,
             mapSideCombine =
               subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
@@ -90,7 +90,7 @@ class AggregateCompiler extends RoundAwareNodeCompiler {
             operator,
             mapSideCombine =
               subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheOnce
       }
 

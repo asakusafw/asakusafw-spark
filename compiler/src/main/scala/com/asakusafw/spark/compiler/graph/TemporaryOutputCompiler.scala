@@ -69,7 +69,7 @@ class TemporaryOutputCompiler extends NodeCompiler {
     val builder =
       new TemporaryOutputClassBuilder(
         operator)(
-        subPlanInfo.getLabel)
+        subplan.label)
 
     context.addClass(builder)
   }

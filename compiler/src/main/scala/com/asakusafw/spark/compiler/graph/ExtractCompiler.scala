@@ -50,7 +50,7 @@ class ExtractCompiler extends NodeCompiler {
     val builder =
       new ExtractClassBuilder(
         marker)(
-        subPlanInfo.getLabel,
+        subplan.label,
         subplan.getOutputs.toSeq) with CacheOnce
 
     context.addClass(builder)

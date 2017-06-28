@@ -77,13 +77,13 @@ class DirectOutputPrepareEachForIterativeCompiler extends RoundAwareNodeCompiler
             operator)(
             pattern,
             model)(
-            subPlanInfo.getLabel) with CacheAlways
+            subplan.label) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new DirectOutputPrepareGroupEachForIterativeClassBuilder(
             operator)(
             pattern,
             model)(
-            subPlanInfo.getLabel) with CacheByParameter {
+            subplan.label) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
           }
@@ -92,7 +92,7 @@ class DirectOutputPrepareEachForIterativeCompiler extends RoundAwareNodeCompiler
             operator)(
             pattern,
             model)(
-            subPlanInfo.getLabel) with CacheOnce
+            subplan.label) with CacheOnce
       }
     } else {
       iterativeInfo.getRecomputeKind match {
@@ -100,12 +100,12 @@ class DirectOutputPrepareEachForIterativeCompiler extends RoundAwareNodeCompiler
           new DirectOutputPrepareEachFlatForIterativeClassBuilder(
             operator)(
             model)(
-            subPlanInfo.getLabel) with CacheAlways
+            subplan.label) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new DirectOutputPrepareEachFlatForIterativeClassBuilder(
             operator)(
             model)(
-            subPlanInfo.getLabel) with CacheByParameter {
+            subplan.label) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
           }
@@ -113,7 +113,7 @@ class DirectOutputPrepareEachForIterativeCompiler extends RoundAwareNodeCompiler
           new DirectOutputPrepareEachFlatForIterativeClassBuilder(
             operator)(
             model)(
-            subPlanInfo.getLabel) with CacheOnce
+            subplan.label) with CacheOnce
       }
     }
 

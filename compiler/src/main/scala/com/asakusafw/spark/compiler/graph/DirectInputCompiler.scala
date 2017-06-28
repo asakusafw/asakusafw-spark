@@ -71,7 +71,7 @@ class DirectInputCompiler extends NodeCompiler {
         inputFormatInfo.getKeyClass.asType,
         inputFormatInfo.getValueClass.asType,
         inputFormatInfo.getExtraConfiguration.toMap)(
-        subPlanInfo.getLabel,
+        subplan.label,
         subplan.getOutputs.toSeq) with CacheOnce
 
     context.addClass(builder)

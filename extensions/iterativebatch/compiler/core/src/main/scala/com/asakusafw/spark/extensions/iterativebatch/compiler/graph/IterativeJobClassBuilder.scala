@@ -20,47 +20,23 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.runtime.BoxedUnit
-
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
-
 import com.asakusafw.lang.compiler.extension.directio.DirectFileIoModels
 import com.asakusafw.lang.compiler.model.graph.{ ExternalOutput, MarkerOperator }
 import com.asakusafw.lang.compiler.planning.{ Plan, Planning, SubPlan }
 import com.asakusafw.spark.compiler.graph.Instantiator
 import com.asakusafw.spark.compiler.`package`._
-import com.asakusafw.spark.compiler.planning.{
-  BroadcastInfo,
-  IterativeInfo,
-  SubPlanInfo,
-  SubPlanInputInfo,
-  SubPlanOutputInfo
-}
+import com.asakusafw.spark.compiler.planning._
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.{ JobContext, RoundContext }
-import com.asakusafw.spark.runtime.graph.{
-  Broadcast,
-  BroadcastId,
-  MapBroadcastOnce,
-  Node,
-  Source
-}
+import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
 import com.asakusafw.utils.graph.Graphs
-
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
-import com.asakusafw.spark.extensions.iterativebatch.runtime.graph.{
-  DirectOutputCommitForIterative,
-  DirectOutputPrepareEachForIterative,
-  DirectOutputPrepareForIterative,
-  DirectOutputSetupForIterative,
-  IterativeAction,
-  IterativeJob,
-  MapBroadcastAlways,
-  MapBroadcastByParameter
-}
+import com.asakusafw.spark.extensions.iterativebatch.runtime.graph._
 
 class IterativeJobClassBuilder(
   plan: Plan)(
@@ -326,6 +302,7 @@ class IterativeJobClassBuilder(
               context.broadcastIds.getField(marker),
               newBroadcast(
                 marker,
+                subplan,
                 broadcastInfo,
                 iterativeInfo)(
                   () => buildSeq { builder =>
@@ -367,6 +344,7 @@ class IterativeJobClassBuilder(
         context.broadcastIds.getField(marker),
         newBroadcast(
           marker,
+          subplan,
           broadcastInfo,
           iterativeInfo)(
             () => buildSeq { builder =>
@@ -381,6 +359,7 @@ class IterativeJobClassBuilder(
 
   private def newBroadcast(
     marker: MarkerOperator,
+    subplan: SubPlan,
     broadcastInfo: BroadcastInfo,
     iterativeInfo: IterativeInfo)(
       nodes: () => Stack,
@@ -396,6 +375,15 @@ class IterativeJobClassBuilder(
       case IterativeInfo.RecomputeKind.NEVER =>
         pushNew(classOf[MapBroadcastOnce].asType)
     }
+    val label = Seq(
+      Option(subplan.getAttribute(classOf[SubPlanInfo]))
+        .flatMap(info => Option(info.getLabel)),
+      Option(subplan.getAttribute(classOf[NameInfo]))
+        .map(_.getName))
+      .flatten match {
+      case Seq() => "N/A"
+      case s => s.mkString(":")
+    }
     broadcast.dup()
     val arguments = Seq.newBuilder[Stack]
     arguments += nodes()
@@ -405,7 +393,7 @@ class IterativeJobClassBuilder(
         dataModelRef.orderingTypes(group.getOrdering)))
     arguments += groupingOrdering(dataModelRef.groupingTypes(group.getGrouping))
     arguments += partitioner(ldc(1))
-    arguments += ldc(broadcastInfo.getLabel)
+    arguments += ldc(label)
     if (iterativeInfo.getRecomputeKind == IterativeInfo.RecomputeKind.PARAMETER) {
       arguments +=
         buildSet { builder =>

@@ -18,17 +18,15 @@ package com.asakusafw.spark
 import java.lang.{ Boolean => JBoolean }
 
 import scala.collection.JavaConversions._
-
 import org.objectweb.asm.Type
-
 import com.asakusafw.lang.compiler.analyzer.util.{ BranchOperatorUtil, MasterJoinOperatorUtil }
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.reference.DataModelReference
 import com.asakusafw.lang.compiler.model.PropertyName
 import com.asakusafw.lang.compiler.model.description._
 import com.asakusafw.lang.compiler.model.graph._
-import com.asakusafw.runtime.value._
-import com.asakusafw.spark.tools.asm._
+import com.asakusafw.lang.compiler.planning.SubPlan
+import com.asakusafw.spark.compiler.planning.{ NameInfo, SubPlanInfo }
 
 package object compiler {
 
@@ -220,6 +218,27 @@ package object compiler {
         (dataModelRef.findProperty(ordering.getPropertyName).getType.asType,
           ordering.getDirection == Group.Direction.ASCENDANT)
       }
+    }
+  }
+
+  implicit class SubPlanNames(val subplan: SubPlan) extends AnyVal {
+
+    def name: String = {
+      Option(subplan.getAttribute(classOf[NameInfo]))
+        .map(_.getName)
+        .getOrElse("N/A")
+    }
+
+    def label: String = {
+      Seq(
+        Option(subplan.getAttribute(classOf[NameInfo]))
+          .map(_.getName),
+        Option(subplan.getAttribute(classOf[SubPlanInfo]))
+          .flatMap(info => Option(info.getLabel)))
+        .flatten match {
+          case Seq() => "N/A"
+          case s => s.mkString(":")
+        }
     }
   }
 }

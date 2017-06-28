@@ -78,7 +78,7 @@ class DirectInputCompiler extends RoundAwareNodeCompiler {
             inputFormatInfo.getKeyClass.asType,
             inputFormatInfo.getValueClass.asType,
             inputFormatInfo.getExtraConfiguration.toMap)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new DirectInputClassBuilder(
@@ -87,7 +87,7 @@ class DirectInputCompiler extends RoundAwareNodeCompiler {
             inputFormatInfo.getKeyClass.asType,
             inputFormatInfo.getValueClass.asType,
             inputFormatInfo.getExtraConfiguration.toMap)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
@@ -99,7 +99,7 @@ class DirectInputCompiler extends RoundAwareNodeCompiler {
             inputFormatInfo.getKeyClass.asType,
             inputFormatInfo.getValueClass.asType,
             inputFormatInfo.getExtraConfiguration.toMap)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheOnce
       }
 

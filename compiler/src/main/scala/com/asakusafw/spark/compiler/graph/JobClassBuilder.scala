@@ -18,30 +18,16 @@ package graph
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-
 import org.objectweb.asm.{ Opcodes, Type }
 import org.objectweb.asm.signature.SignatureVisitor
-
 import com.asakusafw.lang.compiler.extension.directio.DirectFileIoModels
 import com.asakusafw.lang.compiler.model.graph.{ ExternalOutput, MarkerOperator }
 import com.asakusafw.lang.compiler.planning.{ Plan, Planning, SubPlan }
-import com.asakusafw.spark.compiler.planning.{
-  BroadcastInfo,
-  SubPlanInfo,
-  SubPlanInputInfo,
-  SubPlanOutputInfo
-}
+import com.asakusafw.spark.compiler.planning._
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.compiler.util.SparkIdioms._
 import com.asakusafw.spark.runtime.JobContext
-import com.asakusafw.spark.runtime.graph.{
-  Broadcast,
-  BroadcastId,
-  Job,
-  MapBroadcastOnce,
-  Node,
-  Source
-}
+import com.asakusafw.spark.runtime.graph._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.spark.tools.asm.MethodBuilder._
 import com.asakusafw.spark.tools.asm4s._
@@ -253,6 +239,7 @@ class JobClassBuilder(
                   context.broadcastIds.getField(marker),
                   newBroadcast(
                     marker,
+                    subplan,
                     broadcastInfo)(
                       () => buildSeq { builder =>
                         prevSubPlanOutputs.foreach { subPlanOutput =>
@@ -293,6 +280,7 @@ class JobClassBuilder(
             context.broadcastIds.getField(subPlanOutput.getOperator),
             newBroadcast(
               marker,
+              subplan,
               broadcastInfo)(
                 () => buildSeq { builder =>
                   builder += tuple2(
@@ -307,6 +295,7 @@ class JobClassBuilder(
 
   private def newBroadcast(
     marker: MarkerOperator,
+    subplan: SubPlan,
     broadcastInfo: BroadcastInfo)(
       nodes: () => Stack,
       sc: () => Stack)(
@@ -314,6 +303,15 @@ class JobClassBuilder(
     val dataModelRef = marker.getInput.dataModelRef
     val group = broadcastInfo.getFormatInfo
     val broadcast = pushNew(classOf[MapBroadcastOnce].asType)
+    val label = Seq(
+      Option(subplan.getAttribute(classOf[SubPlanInfo]))
+        .flatMap(info => Option(info.getLabel)),
+      Option(subplan.getAttribute(classOf[NameInfo]))
+        .map(_.getName))
+      .flatten match {
+      case Seq() => "N/A"
+      case s => s.mkString(":")
+    }
     broadcast.dup().invokeInit(
       nodes(),
       option(
@@ -322,7 +320,7 @@ class JobClassBuilder(
           dataModelRef.orderingTypes(group.getOrdering))),
       groupingOrdering(dataModelRef.groupingTypes(group.getGrouping)),
       partitioner(ldc(1)),
-      ldc(broadcastInfo.getLabel),
+      ldc(label),
       sc())
     broadcast
   }

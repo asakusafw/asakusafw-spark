@@ -69,12 +69,12 @@ class DirectOutputPrepareCompiler extends NodeCompiler {
         operator)(
         pattern,
         model)(
-        subPlanInfo.getLabel) with CacheOnce
+        subplan.label) with CacheOnce
     } else {
       new DirectOutputPrepareFlatClassBuilder(
         operator)(
         model)(
-        subPlanInfo.getLabel) with CacheOnce
+        subplan.label) with CacheOnce
     }
 
     context.addClass(builder)
