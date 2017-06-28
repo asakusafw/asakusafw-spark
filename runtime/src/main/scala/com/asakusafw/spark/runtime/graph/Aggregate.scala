@@ -72,7 +72,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
                       combiner.insertAll(
                         new ResourceBrokingIterator(
                           rc.hadoopConf.value,
-                          iter))
+                          iter)(label))
                       val context = TaskContext.get
                       new InterruptibleIterator(context, combiner.iterator)
                     }, preservesPartitioning = true)
@@ -83,7 +83,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
                   combiner.insertAll(
                     new ResourceBrokingIterator(
                       rc.hadoopConf.value,
-                      iter.map { case (k, v) => (k.dropOrdering, v) }))
+                      iter.map { case (k, v) => (k.dropOrdering, v) })(label))
                   val context = TaskContext.get
                   new InterruptibleIterator(context, combiner.iterator)
                 }, preservesPartitioning = true)
@@ -94,7 +94,7 @@ abstract class Aggregate[V: ClassTag, C: ClassTag](
                   combiner.insertAll(
                     new ResourceBrokingIterator(
                       rc.hadoopConf.value,
-                      iter.map { case (k, v) => (k.dropOrdering, v) }))
+                      iter.map { case (k, v) => (k.dropOrdering, v) })(label))
                   val context = TaskContext.get
                   new InterruptibleIterator(context, combiner.iterator)
                 }, preservesPartitioning = true)

@@ -17,15 +17,16 @@ package com.asakusafw.spark.runtime
 package graph
 
 import scala.collection.JavaConversions._
-
 import org.apache.hadoop.conf.Configuration
-
 import com.asakusafw.bridge.api.activate.ApiActivator
 import com.asakusafw.bridge.broker.{ ResourceBroker, ResourceSession }
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.core.{ HadoopConfiguration, ResourceConfiguration }
 
-class ResourceBrokingIterator[+T](val hadoopConf: Configuration, _delegate: => Iterator[T])
+import scala.util.control.NonFatal
+
+class ResourceBrokingIterator[+T](val hadoopConf: Configuration, _delegate: => Iterator[T])(
+  val label: String = "N/A")
   extends Iterator[T] {
 
   val _ = ResourceBrokingIterator.activators // Initialize activators.
@@ -42,7 +43,14 @@ class ResourceBrokingIterator[+T](val hadoopConf: Configuration, _delegate: => I
   val delegate = _delegate
 
   def hasNext: Boolean = {
-    if (delegate.hasNext) {
+    if (
+      try {
+        delegate.hasNext
+      } catch {
+        case e: VertexException => throw e
+        case NonFatal(e) => throw new VertexException(label, e)
+      }
+    ) {
       true
     } else {
       session.close()
@@ -50,7 +58,14 @@ class ResourceBrokingIterator[+T](val hadoopConf: Configuration, _delegate: => I
     }
   }
 
-  def next(): T = delegate.next()
+  def next(): T = {
+    try {
+      delegate.next()
+    } catch {
+      case e: VertexException => throw e
+      case NonFatal(e) => throw new VertexException(label, e)
+    }
+  }
 }
 
 object ResourceBrokingIterator {
