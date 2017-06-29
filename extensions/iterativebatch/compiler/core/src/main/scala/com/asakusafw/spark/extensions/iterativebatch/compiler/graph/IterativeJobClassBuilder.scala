@@ -382,7 +382,7 @@ class IterativeJobClassBuilder(
         .map(_.getName))
       .flatten match {
       case Seq() => "N/A"
-      case s => s.mkString(":")
+      case s: Seq[String] => s.mkString(":")
     }
     broadcast.dup()
     val arguments = Seq.newBuilder[Stack]

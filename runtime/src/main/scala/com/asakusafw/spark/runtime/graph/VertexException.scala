@@ -17,6 +17,7 @@ package com.asakusafw.spark.runtime.graph
 
 import org.apache.spark.SparkException
 
-class VertexException(label: String, cause: Throwable = null) extends SparkException(
+class VertexException(label: String, cause: Throwable = null) // scalastyle:ignore
+  extends SparkException(
   s"error occurred while processing vertex: ${label}",
   cause)

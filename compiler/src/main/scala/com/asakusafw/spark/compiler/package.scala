@@ -237,7 +237,7 @@ package object compiler {
           .flatMap(info => Option(info.getLabel)))
         .flatten match {
           case Seq() => "N/A"
-          case s => s.mkString(":")
+          case s: Seq[String] => s.mkString(":")
         }
     }
   }

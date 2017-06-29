@@ -309,9 +309,9 @@ class JobClassBuilder(
       Option(subplan.getAttribute(classOf[NameInfo]))
         .map(_.getName))
       .flatten match {
-      case Seq() => "N/A"
-      case s => s.mkString(":")
-    }
+        case Seq() => "N/A"
+        case s: Seq[String] => s.mkString(":")
+      }
     broadcast.dup().invokeInit(
       nodes(),
       option(
