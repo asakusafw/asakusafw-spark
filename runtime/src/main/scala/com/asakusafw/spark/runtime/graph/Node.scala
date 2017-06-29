@@ -19,6 +19,8 @@ package graph
 import org.apache.spark.backdoor._
 import org.apache.spark.util.backdoor._
 
+import scala.util.control.NonFatal
+
 trait Node extends Serializable {
 
   implicit def jobContext: JobContext
@@ -30,6 +32,9 @@ trait Node extends Serializable {
       CallSite(rc.roundId.map(r => s"${label}: [${r}]").getOrElse(label), rc.toString))
     try {
       block
+    } catch {
+      case e: VertexException => throw e
+      case NonFatal(e) => throw new VertexException(label, e)
     } finally {
       jobContext.sparkContext.clearCallSite()
     }

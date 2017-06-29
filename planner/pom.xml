@@ -18,6 +18,10 @@
 
   <dependencies>
     <dependency>
+      <groupId>com.asakusafw.lang.utils</groupId>
+      <artifactId>asakusa-lang-common</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.asakusafw.lang.compiler</groupId>
       <artifactId>asakusa-compiler-plan</artifactId>
     </dependency>
@@ -28,6 +32,10 @@
     <dependency>
       <groupId>com.asakusafw.iterative</groupId>
       <artifactId>asakusa-compiler-model-iterative</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.asakusafw.lang.compiler</groupId>
+      <artifactId>asakusa-compiler-extension-operator</artifactId>
     </dependency>
     <dependency>
       <groupId>com.asakusafw</groupId>

@@ -77,7 +77,7 @@ class TemporaryOutputCompiler extends RoundAwareNodeCompiler {
     val builder =
       new TemporaryOutputClassBuilder(
         operator)(
-        subPlanInfo.getLabel)
+        subplan.label)
 
     context.addClass(builder)
   }

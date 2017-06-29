@@ -50,7 +50,7 @@ object DirectOutputPrepareForIterativeCompiler {
       operator)(
       pattern,
       model)(
-      subPlanInfo.getLabel) with CacheOnce
+      subplan.label) with CacheOnce
 
     context.addClass(builder)
   }

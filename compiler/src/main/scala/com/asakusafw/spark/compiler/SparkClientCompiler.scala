@@ -74,6 +74,8 @@ class SparkClientCompiler extends JobflowProcessor {
 
     val plan = preparePlan(jpContext, source)
 
+    SparkPlanning.saveInfo(jpContext, plan)
+
     InspectionExtension.inspect(
       jpContext, Location.of("META-INF/asakusa-spark/plan.json", '/'), plan)
 

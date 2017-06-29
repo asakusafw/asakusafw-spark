@@ -242,6 +242,7 @@ public abstract class PlanningTestRoot {
                 managed.add(operator);
             }
         }
+        assertThat(SparkPlanning.toInfo(detail.getPlan()), is(notNullValue()));
         return new MockOperators(managed);
     }
 

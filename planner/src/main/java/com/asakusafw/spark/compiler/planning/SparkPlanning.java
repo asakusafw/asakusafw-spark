@@ -17,9 +17,12 @@ package com.asakusafw.spark.compiler.planning;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -28,6 +31,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -55,6 +59,8 @@ import com.asakusafw.lang.compiler.model.graph.OperatorProperty;
 import com.asakusafw.lang.compiler.model.graph.Operators;
 import com.asakusafw.lang.compiler.model.graph.UserOperator;
 import com.asakusafw.lang.compiler.model.info.JobflowInfo;
+import com.asakusafw.lang.compiler.operator.info.OperatorGraphConverter;
+import com.asakusafw.lang.compiler.operator.info.PlanAttributeStore;
 import com.asakusafw.lang.compiler.optimizer.OperatorCharacterizers;
 import com.asakusafw.lang.compiler.optimizer.OperatorRewriters;
 import com.asakusafw.lang.compiler.optimizer.adapter.OptimizerContextAdapter;
@@ -69,6 +75,18 @@ import com.asakusafw.lang.compiler.planning.PlanMarkers;
 import com.asakusafw.lang.compiler.planning.Planning;
 import com.asakusafw.lang.compiler.planning.SubPlan;
 import com.asakusafw.lang.compiler.planning.util.GraphStatistics;
+import com.asakusafw.lang.info.graph.Input;
+import com.asakusafw.lang.info.graph.Node;
+import com.asakusafw.lang.info.graph.Output;
+import com.asakusafw.lang.info.operator.InputAttribute;
+import com.asakusafw.lang.info.operator.OperatorAttribute;
+import com.asakusafw.lang.info.operator.OperatorSpec;
+import com.asakusafw.lang.info.operator.OutputAttribute;
+import com.asakusafw.lang.info.plan.DataExchange;
+import com.asakusafw.lang.info.plan.PlanAttribute;
+import com.asakusafw.lang.info.plan.PlanInputSpec;
+import com.asakusafw.lang.info.plan.PlanOutputSpec;
+import com.asakusafw.lang.info.plan.PlanVertexSpec;
 import com.asakusafw.spark.compiler.planning.PartitionGroupInfo.DataSize;
 import com.asakusafw.spark.compiler.planning.PlanningContext.Option;
 import com.asakusafw.utils.graph.Graph;
@@ -99,7 +117,7 @@ import com.asakusafw.utils.graph.Graph;
  * </li>
  * </ul>
  * @since 0.1.0
- * @version 0.4.1
+ * @version 0.4.2
  */
 public final class SparkPlanning {
 
@@ -200,6 +218,110 @@ public final class SparkPlanning {
         prepareOperatorGraph(context, operators);
         PlanDetail result = createPlan(context, operators);
         return result;
+    }
+
+    /**
+     * Saves execution plan information into the current package.
+     * @param context the current context
+     * @param plan the target execution plan
+     * @since 0.4.2
+     */
+    public static void saveInfo(JobflowProcessor.Context context, Plan plan) {
+        Node root = toInfo(plan);
+        PlanAttributeStore.save(context, new PlanAttribute(root));
+    }
+
+    static Node toInfo(Plan plan) {
+        Node root = new Node();
+        Map<SubPlan.Input, Input> inputs = new HashMap<>();
+        Map<SubPlan.Output, Output> outputs = new HashMap<>();
+        try {
+            plan.getElements().forEach(it -> convertPlanVertex(it, root.newElement(), inputs, outputs));
+            outputs.forEach((upstream, output) -> upstream.getOpposites().stream()
+                    .map(inputs::get)
+                    .forEach(output::connect));
+        } catch (RuntimeException e) {
+            LOG.warn("error occurred while saving execution plan", e);
+        }
+        return root;
+    }
+
+    private static void convertPlanVertex(
+            SubPlan sub, Node node,
+            Map<SubPlan.Input, Input> inputs, Map<SubPlan.Output, Output> outputs) {
+        SubPlanInfo info = sub.getAttribute(SubPlanInfo.class);
+        node.withAttribute(new OperatorAttribute(PlanVertexSpec.of(
+                NameInfo.getName(sub),
+                info.getLabel(),
+                Collections.emptyList())));
+        sub.getInputs().stream()
+            .sorted(Comparator.comparing(it -> NameInfo.getName(it)))
+            .forEach(it -> inputs.put(it, node.newInput().withAttribute(new InputAttribute(
+                        NameInfo.getName(it),
+                        OperatorGraphConverter.convert(it.getOperator().getDataType()),
+                        null, null))));
+        sub.getOutputs().stream()
+            .sorted(Comparator.comparing(it -> NameInfo.getName(it)))
+            .forEach(it -> outputs.put(it, node.newOutput().withAttribute(new OutputAttribute(
+                    NameInfo.getName(it),
+                    OperatorGraphConverter.convert(it.getOperator().getDataType())))));
+
+        Map<MarkerOperator, OperatorSpec> mapper = new HashMap<>();
+        sub.getInputs().forEach(s -> {
+            SubPlanInputInfo r = s.getAttribute(SubPlanInputInfo.class);
+            mapper.put(s.getOperator(), PlanInputSpec.of(
+                    NameInfo.getName(s),
+                    toDataExchange(r),
+                    OperatorGraphConverter.convert(r.getPartitionInfo())));
+        });
+        sub.getOutputs().forEach(s -> {
+            SubPlanOutputInfo r = s.getAttribute(SubPlanOutputInfo.class);
+            mapper.put(s.getOperator(), PlanOutputSpec.of(
+                    NameInfo.getName(s),
+                    toDataExchange(r),
+                    OperatorGraphConverter.convert(r.getPartitionInfo()),
+                    Optional.ofNullable(r.getAggregationInfo())
+                        .filter(it -> it instanceof UserOperator)
+                        .map(it -> (UserOperator) it)
+                        .map(it -> Arrays.asList(
+                                it.getMethod().getDeclaringClass().getSimpleName(),
+                                it.getMethod().getName()))
+                        .orElse(Collections.emptyList())));
+        });
+        OperatorGraph graph = new OperatorGraph(sub.getOperators());
+        new OperatorGraphConverter(mapper::get).process(graph, node);
+    }
+
+    private static DataExchange toDataExchange(SubPlanInputInfo info) {
+        switch (info.getInputType()) {
+        case DONT_CARE:
+            return DataExchange.MOVE;
+        case PARTITIONED:
+            return DataExchange.SHUFFLE;
+        case VOID:
+            return DataExchange.NOTHING;
+        case BROADCAST:
+            return DataExchange.BROADCAST;
+        default:
+            return DataExchange.UNKNOWN;
+        }
+    }
+
+    private static DataExchange toDataExchange(SubPlanOutputInfo info) {
+        switch (info.getOutputType()) {
+        case DONT_CARE:
+            return DataExchange.MOVE;
+        case AGGREGATED:
+            return DataExchange.AGGREGATE;
+        case BROADCAST:
+            return DataExchange.BROADCAST;
+        case DISCARD:
+            return DataExchange.NOTHING;
+        case PARTITIONED:
+            return DataExchange.SHUFFLE;
+        default:
+            return DataExchange.UNKNOWN;
+        }
     }
 
     /**
@@ -519,6 +641,7 @@ public final class SparkPlanning {
 
     private static void decoratePlan(PlanningContext context, Plan plan, SubPlanAnalyzer analyzer) {
         attachCoreInfo(plan, analyzer);
+        attachNameInfo(plan);
         attachBroadcastInfo(plan, analyzer);
         if (context.getOptions().contains(Option.SIZE_ESTIMATION)) {
             attachSizeInfo(context, plan);
@@ -556,6 +679,13 @@ public final class SparkPlanning {
                 output.putAttribute(SubPlanOutputInfo.class, info);
             }
         }
+
+    }
+
+    private static void attachNameInfo(Plan plan) {
+        Util.computeIds("v", Util.sortElements(plan)).forEach(NameInfo::bind);
+        Util.computeIds("i", plan.getElements(), Util::sortInputs).forEach(NameInfo::bind);
+        Util.computeIds("o", plan.getElements(), Util::sortOutputs).forEach(NameInfo::bind);
     }
 
     private static void attachBroadcastInfo(Plan plan, SubPlanAnalyzer analyzer) {

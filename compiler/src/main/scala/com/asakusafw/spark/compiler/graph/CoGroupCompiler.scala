@@ -49,7 +49,7 @@ class CoGroupCompiler extends NodeCompiler {
     val builder =
       new CoGroupClassBuilder(
         operator)(
-        subPlanInfo.getLabel,
+        subplan.label,
         subplan.getOutputs.toSeq) with CacheOnce
 
     context.addClass(builder)

@@ -84,14 +84,14 @@ class TemporaryInputCompiler extends RoundAwareNodeCompiler {
               operator,
               operator.getDataType.asType,
               inputRef.getPaths.toSeq.sorted)(
-              subPlanInfo.getLabel,
+              subplan.label,
               subplan.getOutputs.toSeq) with CacheAlways
           case IterativeInfo.RecomputeKind.PARAMETER =>
             new TemporaryInputClassBuilder(
               operator,
               operator.getDataType.asType,
               inputRef.getPaths.toSeq.sorted)(
-              subPlanInfo.getLabel,
+              subplan.label,
               subplan.getOutputs.toSeq) with CacheByParameter {
 
               override val parameters: Set[String] = iterativeInfo.getParameters.toSet
@@ -101,7 +101,7 @@ class TemporaryInputCompiler extends RoundAwareNodeCompiler {
               operator,
               operator.getDataType.asType,
               inputRef.getPaths.toSeq.sorted)(
-              subPlanInfo.getLabel,
+              subplan.label,
               subplan.getOutputs.toSeq) with CacheOnce
         }
 

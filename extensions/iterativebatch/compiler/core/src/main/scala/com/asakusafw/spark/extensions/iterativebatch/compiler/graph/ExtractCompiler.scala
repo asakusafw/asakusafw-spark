@@ -61,12 +61,12 @@ class ExtractCompiler extends RoundAwareNodeCompiler {
         case IterativeInfo.RecomputeKind.ALWAYS =>
           new ExtractClassBuilder(
             marker)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new ExtractClassBuilder(
             marker)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
@@ -74,7 +74,7 @@ class ExtractCompiler extends RoundAwareNodeCompiler {
         case IterativeInfo.RecomputeKind.NEVER =>
           new ExtractClassBuilder(
             marker)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheOnce
       }
 

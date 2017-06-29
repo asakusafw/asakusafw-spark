@@ -56,7 +56,7 @@ class AggregateCompiler extends NodeCompiler {
         operator,
         mapSideCombine =
           subPlanInfo.getDriverOptions.contains(SubPlanInfo.DriverOption.PARTIAL))(
-        subPlanInfo.getLabel,
+        subplan.label,
         subplan.getOutputs.toSeq) with CacheOnce
 
     context.addClass(builder)

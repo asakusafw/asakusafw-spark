@@ -60,12 +60,12 @@ class CoGroupCompiler extends RoundAwareNodeCompiler {
         case IterativeInfo.RecomputeKind.ALWAYS =>
           new CoGroupClassBuilder(
             operator)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheAlways
         case IterativeInfo.RecomputeKind.PARAMETER =>
           new CoGroupClassBuilder(
             operator)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheByParameter {
 
             override val parameters: Set[String] = iterativeInfo.getParameters.toSet
@@ -73,7 +73,7 @@ class CoGroupCompiler extends RoundAwareNodeCompiler {
         case IterativeInfo.RecomputeKind.NEVER =>
           new CoGroupClassBuilder(
             operator)(
-            subPlanInfo.getLabel,
+            subplan.label,
             subplan.getOutputs.toSeq) with CacheOnce
       }
 

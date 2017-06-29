@@ -36,6 +36,8 @@ trait Branching[T] {
 
   def jobContext: JobContext
 
+  def label: String
+
   def branchKeys: Set[BranchKey]
 
   def partitioners: Map[BranchKey, Option[Partitioner]]
@@ -65,7 +67,7 @@ trait Branching[T] {
             hadoopConf.value,
             iterateFragments(iter, broadcasts)(fragmentBufferSize).map {
               case (Branch(_, k), v) => (k, v)
-            })
+            })(label)
         }, preservesPartitioning = true)
         () => mapped
       })
@@ -82,7 +84,7 @@ trait Branching[T] {
               } else {
                 iterateWithoutCombiner(fragmentsIter)
               }
-            })
+            })(label)
         },
         partitioners =
           partitioners.map {
