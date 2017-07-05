@@ -54,7 +54,7 @@ repositories {
 
 dependencies {
     compile gradleApi()
-    compile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: parentPom.sdkVersion
+    compile group: 'com.asakusafw.lang', name: 'asakusa-lang-gradle', version: parentPom.langVersion
     testCompile gradleTestKit()
     testCompile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: parentPom.sdkVersion, classifier: 'tests'
     testCompile 'junit:junit:4.11'
@@ -79,8 +79,8 @@ if (project.hasProperty('referProject')) {
         classpath.entries = classpath.entries.collect { entry ->
             if (entry instanceof org.gradle.plugins.ide.eclipse.model.Library \
                     && entry.moduleVersion \
-                    && entry.moduleVersion.name == 'asakusa-gradle-plugins') {
-                new org.gradle.plugins.ide.eclipse.model.ProjectDependency('/asakusa-gradle-plugins')
+                    && entry.moduleVersion.name in ['asakusa-gradle-plugins', 'asakusa-lang-gradle']) {
+                new org.gradle.plugins.ide.eclipse.model.ProjectDependency("/${entry.moduleVersion.name}")
             } else {
                 entry
             }

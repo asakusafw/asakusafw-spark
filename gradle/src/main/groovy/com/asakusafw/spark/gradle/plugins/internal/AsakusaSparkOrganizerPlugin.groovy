@@ -24,6 +24,7 @@ import com.asakusafw.gradle.plugins.AsakusafwOrganizerPlugin
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerPluginConvention
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
 import com.asakusafw.gradle.plugins.internal.PluginUtils
+import com.asakusafw.lang.gradle.plugins.internal.AsakusaLangOrganizerPlugin
 import com.asakusafw.spark.gradle.plugins.AsakusafwOrganizerSparkExtension
 
 /**
@@ -40,7 +41,7 @@ class AsakusaSparkOrganizerPlugin implements Plugin<Project> {
         this.project = project
         this.organizers = project.container(AsakusaSparkOrganizer)
 
-        project.apply plugin: 'asakusafw-organizer'
+        project.apply plugin: AsakusaLangOrganizerPlugin
         project.apply plugin: AsakusaSparkBasePlugin
 
         configureConvention()

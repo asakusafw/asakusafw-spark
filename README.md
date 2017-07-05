@@ -19,9 +19,10 @@ This project includes the followings:
 And then import projects from Eclipse
 
 ## How to build Gradle Plugin
+
 ```sh
 cd gradle
-./gradlew clean build
+./gradlew clean build [install] [-PmavenLocal]
 ```
 
 ## Referred Projects
