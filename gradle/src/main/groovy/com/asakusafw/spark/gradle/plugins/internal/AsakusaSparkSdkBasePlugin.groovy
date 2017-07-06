@@ -25,6 +25,7 @@ import org.gradle.api.artifacts.ResolutionStrategy
 import com.asakusafw.gradle.plugins.AsakusafwSdkExtension
 import com.asakusafw.gradle.plugins.internal.AsakusaSdkPlugin
 import com.asakusafw.gradle.plugins.internal.PluginUtils
+import com.asakusafw.lang.gradle.plugins.internal.AsakusaLangSdkPlugin
 
 /**
  * A base plug-in of {@link AsakusaSparkSdkPlugin}.
@@ -39,7 +40,7 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
     void apply(Project project) {
         this.project = project
 
-        project.apply plugin: AsakusaSdkPlugin
+        project.apply plugin: AsakusaLangSdkPlugin
         project.apply plugin: AsakusaSparkBasePlugin
 
         configureTestkit()
@@ -55,15 +56,17 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
         project.configurations {
             asakusaSparkCommon {
                 description 'Common libraries of Asakusa DSL Compiler for Spark'
+                extendsFrom project.configurations.asakusaLangCommon
                 exclude group: 'asm', module: 'asm'
             }
             asakusaSparkCompiler {
                 description 'Full classpath of Asakusa DSL Compiler for Spark'
-                extendsFrom project.configurations.compile
+                extendsFrom project.configurations.asakusaLangCompiler
                 extendsFrom project.configurations.asakusaSparkCommon
             }
             asakusaSparkTestkit {
                 description 'Asakusa DSL testkit classpath for Spark'
+                extendsFrom project.configurations.asakusaLangTestkit
                 extendsFrom project.configurations.asakusaSparkCommon
             }
         }
@@ -99,36 +102,8 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
                     asakusaSparkCommon("com.asakusafw.spark:asakusa-spark-compiler:${base.featureVersion}") {
                         exclude module: 'hadoop-client'
                     }
-
-                    asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-cli:${base.langVersion}"
-                    asakusaSparkCommon "com.asakusafw:simple-graph:${base.coreVersion}"
-                    asakusaSparkCommon "com.asakusafw:java-dom:${base.coreVersion}"
-
-                    asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-cleanup:${base.langVersion}"
-                    asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-redirector:${base.langVersion}"
-                    asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-yaess:${base.langVersion}"
-
-                    asakusaSparkCompiler "com.asakusafw:asakusa-dsl-vocabulary:${base.coreVersion}"
-                    asakusaSparkCompiler "com.asakusafw:asakusa-runtime:${base.coreVersion}"
-                    asakusaSparkCompiler "com.asakusafw:asakusa-yaess-core:${base.coreVersion}"
-
                     asakusaSparkCommon "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.langVersion}"
                     asakusaSparkCommon "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.featureVersion}"
-
-                    if (features.directio) {
-                        asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-directio:${base.langVersion}"
-                        asakusaSparkCompiler "com.asakusafw:asakusa-directio-vocabulary:${base.coreVersion}"
-                    }
-                    if (features.windgate) {
-                        asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-windgate:${base.langVersion}"
-                        asakusaSparkCompiler "com.asakusafw:asakusa-windgate-vocabulary:${base.coreVersion}"
-                    }
-                    if (features.hive) {
-                        asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-hive:${base.langVersion}"
-                    }
-                    if (features.incubating) {
-                        asakusaSparkCommon "com.asakusafw.lang.compiler:asakusa-compiler-extension-info:${base.langVersion}"
-                    }
                 }
                 if (features.testing) {
                     asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-test-adapter:${base.featureVersion}"

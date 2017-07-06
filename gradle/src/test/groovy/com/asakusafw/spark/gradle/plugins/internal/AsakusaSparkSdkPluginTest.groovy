@@ -32,6 +32,7 @@ import com.asakusafw.gradle.plugins.AsakusafwCompilerExtension
 import com.asakusafw.gradle.plugins.AsakusafwPluginConvention
 import com.asakusafw.gradle.tasks.AsakusaCompileTask
 import com.asakusafw.gradle.tasks.internal.ResolutionUtils
+import com.asakusafw.lang.gradle.plugins.internal.AsakusaLangSdkPlugin
 
 /**
  * Test for {@link AsakusaSparkSdkPlugin}.
@@ -59,6 +60,7 @@ class AsakusaSparkSdkPluginTest {
     void base() {
         assert project.plugins.hasPlugin('asakusafw-sdk') != null
         assert project.plugins.hasPlugin(AsakusaSparkBasePlugin) != null
+        assert project.plugins.hasPlugin(AsakusaLangSdkPlugin) != null
     }
 
     /**
