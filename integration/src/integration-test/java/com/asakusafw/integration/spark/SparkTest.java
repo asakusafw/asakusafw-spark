@@ -105,15 +105,22 @@ public class SparkTest {
     }
 
     /**
-     * {@code test}.
+     * {@code test} w/ {@code HADOOP_CMD}.
      */
     @Test
-    public void test() {
-        AsakusaProject project = provider.newInstance("prj");
+    public void test_hadoop() {
+        AsakusaProject project = provider.newInstance("prj")
+                .with(AsakusaConfigurator.hadoop(AsakusaConfigurator.Action.SKIP_IF_UNDEFINED));
+        project.gradle("installAsakusafw", "test");
+    }
 
-        // FIXME: testdriver requires hadoop command
-        project.with(AsakusaConfigurator.hadoop(AsakusaConfigurator.Action.SKIP_IF_UNDEFINED));
-
+    /**
+     * {@code test} w/o {@code HADOOP_CMD}.
+     */
+    @Test
+    public void test_nohadoop() {
+        AsakusaProject project = provider.newInstance("prj")
+                .with(AsakusaConfigurator.hadoop(AsakusaConfigurator.Action.UNSET_ALWAYS));
         project.gradle("installAsakusafw", "test");
     }
 
@@ -153,9 +160,6 @@ public class SparkTest {
     @Test
     public void yaess_windgate() {
         AsakusaProject project = provider.newInstance("prj");
-
-        // FIXME: WindGate always requires hadoop command
-        project.with(AsakusaConfigurator.hadoop(AsakusaConfigurator.Action.SKIP_IF_UNDEFINED));
 
         project.gradle("attachSparkBatchapps", "installAsakusafw");
 
