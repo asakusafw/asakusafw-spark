@@ -90,7 +90,6 @@ class AsakusaSparkBasePlugin implements Plugin<Project> {
         driveProperties(ARTIFACT_INFO_PATH, [
             'feature-version': 'Asakusa on Spark',
             'core-version': 'Asakusa Core libraries',
-            'sdk-version': 'Asakusa SDK',
             'lang-version': 'Asakusa DSL compiler',
             'spark-version': 'Apache Spark',
             'hadoop-version': 'Apache Hadoop',
