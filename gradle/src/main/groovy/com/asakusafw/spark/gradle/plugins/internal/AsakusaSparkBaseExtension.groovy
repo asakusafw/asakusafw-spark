@@ -34,11 +34,6 @@ class AsakusaSparkBaseExtension {
     String coreVersion
 
     /**
-     * The SDK libraries version.
-     */
-    String sdkVersion
-
-    /**
      * The compiler libraries version.
      */
     String langVersion
