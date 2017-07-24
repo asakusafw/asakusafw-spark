@@ -86,6 +86,10 @@ feature=true
       <artifactId>simple-graph</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.asakusafw.info</groupId>
+      <artifactId>asakusa-info-model</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.asakusafw.bridge</groupId>
       <artifactId>asakusa-bridge-runtime</artifactId>
     </dependency>
