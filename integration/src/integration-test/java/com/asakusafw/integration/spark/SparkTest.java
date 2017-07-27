@@ -183,4 +183,64 @@ public class SparkTest {
             assertThat(results, containsInAnyOrder(csv));
         });
     }
+
+    /**
+     * {@code asakusafw.sh run}.
+     */
+    @Test
+    public void workflow() {
+        AsakusaProject project = provider.newInstance("prj");
+        project.gradle("attachSparkBatchapps", "installAsakusafw");
+
+        String[] csv = new String[] {
+                "1,1.0,A",
+                "2,2.0,B",
+                "3,3.0,C",
+        };
+        project.getContents().put("var/data/input/file.csv", f -> {
+            Files.write(f, Arrays.asList(csv), StandardCharsets.UTF_8);
+        });
+
+        project.getFramework().withLaunch(
+                "bin/asakusafw.sh", "run", "spark.perf.average.sort",
+                "-Ainput=input", "-Aoutput=output");
+
+        project.getContents().get("var/data/output", dir -> {
+            List<String> results = Files.list(dir)
+                .flatMap(Util::lines)
+                .sorted()
+                .collect(Collectors.toList());
+            assertThat(results, containsInAnyOrder(csv));
+        });
+    }
+
+    /**
+     * {@code asakusafw.sh run}.
+     */
+    @Test
+    public void workflow_windgate() {
+        AsakusaProject project = provider.newInstance("prj");
+
+        project.gradle("attachSparkBatchapps", "installAsakusafw");
+
+        String[] csv = new String[] {
+                "1,1.0,A",
+                "2,2.0,B",
+                "3,3.0,C",
+        };
+
+        project.getContents().put("var/windgate/input.csv", f -> {
+            Files.write(f, Arrays.asList(csv), StandardCharsets.UTF_8);
+        });
+
+        project.getFramework().withLaunch(
+                "bin/asakusafw.sh", "run", "spark.wg.perf.average.sort",
+                "-Ainput=input.csv", "-Aoutput=output.csv");
+
+        project.getContents().get("var/windgate/output.csv", file -> {
+            List<String> results = lines(file)
+                .collect(Collectors.toList());
+            assertThat(results, containsInAnyOrder(csv));
+        });
+    }
 }
