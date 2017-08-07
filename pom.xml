@@ -487,6 +487,12 @@ encoding/<project>=UTF-8
         <version>${asakusafw.version}</version>
         <scope>provided</scope>
       </dependency>
+      <dependency>
+        <groupId>com.asakusafw.info</groupId>
+        <artifactId>asakusa-info-model</artifactId>
+        <version>${asakusafw.version}</version>
+        <scope>provided</scope>
+      </dependency>
 
       <dependency>
         <groupId>com.asakusafw.lang.utils</groupId>

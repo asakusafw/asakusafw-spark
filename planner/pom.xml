@@ -49,6 +49,10 @@
       <groupId>com.asakusafw</groupId>
       <artifactId>asakusa-runtime</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.asakusafw.info</groupId>
+      <artifactId>asakusa-info-model</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>

@@ -79,6 +79,10 @@ feature=true
       <groupId>com.asakusafw</groupId>
       <artifactId>simple-graph</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.asakusafw.info</groupId>
+      <artifactId>asakusa-info-model</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>com.asakusafw.spark</groupId>
