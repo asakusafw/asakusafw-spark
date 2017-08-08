@@ -26,9 +26,11 @@ import com.asakusafw.utils.gradle.Bundle;
 import com.asakusafw.utils.gradle.ContentsConfigurator;
 
 /**
- * Test for {@code tools/bin/info.sh}.
+ * Test for {@code bin/asakusafw.sh}.
  */
-public class ToolsInfoTest {
+public class PortalTest {
+
+    private static final String CMD = "bin/asakusafw.sh";
 
     /**
      * project provider.
@@ -54,7 +56,7 @@ public class ToolsInfoTest {
      */
     @Test
     public void info_list_plan() {
-        framework.withLaunch("tools/bin/info.sh", "list", "plan", "-v",
+        framework.withLaunch(CMD, "list", "plan", "-v",
                 "spark.perf.average.sort");
     }
 
@@ -63,7 +65,9 @@ public class ToolsInfoTest {
      */
     @Test
     public void info_draw_plan() {
-        framework.withLaunch("tools/bin/info.sh", "draw", "plan", "-v",
+        framework.withLaunch(CMD, "draw", "plan", "-v",
                 "spark.perf.average.sort");
     }
+
+    // we'll test `run` command in SparkTest
 }
