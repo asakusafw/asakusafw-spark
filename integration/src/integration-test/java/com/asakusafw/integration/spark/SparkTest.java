@@ -30,6 +30,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import com.asakusafw.integration.AsakusaConfigurator;
+import com.asakusafw.integration.AsakusaConstants;
 import com.asakusafw.integration.AsakusaProject;
 import com.asakusafw.integration.AsakusaProjectProvider;
 import com.asakusafw.utils.gradle.Bundle;
@@ -125,7 +126,7 @@ public class SparkTest {
     }
 
     /**
-     * {@code yaess-batch.sh}.
+     * YAESS.
      */
     @Test
     public void yaess() {
@@ -142,7 +143,7 @@ public class SparkTest {
         });
 
         project.getFramework().withLaunch(
-                "yaess/bin/yaess-batch.sh", "spark.perf.average.sort",
+                AsakusaConstants.CMD_YAESS, "spark.perf.average.sort",
                 "-A", "input=input", "-A", "output=output");
 
         project.getContents().get("var/data/output", dir -> {
@@ -155,7 +156,7 @@ public class SparkTest {
     }
 
     /**
-     * {@code yaess-batch.sh}.
+     * YAESS w/ WindGate tasks.
      */
     @Test
     public void yaess_windgate() {
@@ -174,7 +175,7 @@ public class SparkTest {
         });
 
         project.getFramework().withLaunch(
-                "yaess/bin/yaess-batch.sh", "spark.wg.perf.average.sort",
+                AsakusaConstants.CMD_YAESS, "spark.wg.perf.average.sort",
                 "-A", "input=input.csv", "-A", "output=output.csv");
 
         project.getContents().get("var/windgate/output.csv", file -> {
@@ -185,10 +186,10 @@ public class SparkTest {
     }
 
     /**
-     * {@code asakusafw.sh run}.
+     * {@code run}.
      */
     @Test
-    public void workflow() {
+    public void run() {
         AsakusaProject project = provider.newInstance("prj");
         project.gradle("attachSparkBatchapps", "installAsakusafw");
 
@@ -202,7 +203,7 @@ public class SparkTest {
         });
 
         project.getFramework().withLaunch(
-                "bin/asakusafw.sh", "run", "spark.perf.average.sort",
+                AsakusaConstants.CMD_PORTAL, "run", "spark.perf.average.sort",
                 "-Ainput=input", "-Aoutput=output");
 
         project.getContents().get("var/data/output", dir -> {
@@ -215,10 +216,10 @@ public class SparkTest {
     }
 
     /**
-     * {@code asakusafw.sh run}.
+     * {@code run} w/ WindGate task.
      */
     @Test
-    public void workflow_windgate() {
+    public void run_windgate() {
         AsakusaProject project = provider.newInstance("prj");
 
         project.gradle("attachSparkBatchapps", "installAsakusafw");
@@ -234,7 +235,7 @@ public class SparkTest {
         });
 
         project.getFramework().withLaunch(
-                "bin/asakusafw.sh", "run", "spark.wg.perf.average.sort",
+                AsakusaConstants.CMD_PORTAL, "run", "spark.wg.perf.average.sort",
                 "-Ainput=input.csv", "-Aoutput=output.csv");
 
         project.getContents().get("var/windgate/output.csv", file -> {

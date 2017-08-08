@@ -21,16 +21,15 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.asakusafw.integration.AsakusaConfigurator;
+import com.asakusafw.integration.AsakusaConstants;
 import com.asakusafw.integration.AsakusaProjectProvider;
 import com.asakusafw.utils.gradle.Bundle;
 import com.asakusafw.utils.gradle.ContentsConfigurator;
 
 /**
- * Test for {@code bin/asakusafw.sh}.
+ * Test for the portal command.
  */
 public class PortalTest {
-
-    private static final String CMD = "bin/asakusafw.sh";
 
     /**
      * project provider.
@@ -52,22 +51,22 @@ public class PortalTest {
     static Bundle framework;
 
     /**
-     * {@code info.sh list plan}.
+     * {@code list plan}.
      */
     @Test
-    public void info_list_plan() {
-        framework.withLaunch(CMD, "list", "plan", "-v",
+    public void list_plan() {
+        framework.withLaunch(AsakusaConstants.CMD_PORTAL, "list", "plan", "-v",
                 "spark.perf.average.sort");
     }
 
     /**
-     * {@code info.sh draw plan}.
+     * {@code draw plan}.
      */
     @Test
-    public void info_draw_plan() {
-        framework.withLaunch(CMD, "draw", "plan", "-v",
+    public void draw_plan() {
+        framework.withLaunch(AsakusaConstants.CMD_PORTAL, "draw", "plan", "-v",
                 "spark.perf.average.sort");
     }
 
-    // we'll test `run` command in SparkTest
+    // `run` command test is in SparkTest
 }
