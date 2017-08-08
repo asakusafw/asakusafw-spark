@@ -102,15 +102,25 @@ class AsakusaSparkSdkBasePlugin implements Plugin<Project> {
                     asakusaSparkCommon("com.asakusafw.spark:asakusa-spark-compiler:${base.featureVersion}") {
                         exclude module: 'hadoop-client'
                     }
-                    asakusaSparkCommon "com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.langVersion}"
-                    asakusaSparkCommon "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.featureVersion}"
+                    asakusaSparkCommon("com.asakusafw.iterative:asakusa-compiler-extension-iterative:${base.langVersion}")
+                    asakusaSparkCommon("com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-compiler-iterative:${base.featureVersion}") {
+                        exclude module: 'hadoop-client'
+                    }
                 }
                 if (features.testing) {
-                    asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-test-adapter:${base.featureVersion}"
-                    asakusaSparkTestkit "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.langVersion}"
-                    asakusaSparkTestkit "com.asakusafw.spark:asakusa-spark-runtime:${base.featureVersion}"
-                    asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.featureVersion}"
-                    asakusaSparkTestkit "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.featureVersion}"
+                    asakusaSparkTestkit("com.asakusafw.spark:asakusa-spark-test-adapter:${base.featureVersion}") {
+                        exclude module: 'hadoop-client'
+                    }
+                    asakusaSparkTestkit("com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.langVersion}")
+                    asakusaSparkTestkit("com.asakusafw.spark:asakusa-spark-runtime:${base.featureVersion}") {
+                        exclude module: 'hadoop-client'
+                    }
+                    asakusaSparkTestkit("com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.featureVersion}") {
+                        exclude module: 'hadoop-client'
+                    }
+                    asakusaSparkTestkit("com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.featureVersion}") {
+                        exclude module: 'hadoop-client'
+                    }
                 }
             }
         }
