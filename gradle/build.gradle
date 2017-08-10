@@ -133,7 +133,3 @@ task sourcesJar(type: Jar) {
 artifacts {
     archives tasks.sourcesJar
 }
-
-tasks.withType(Wrapper) {
-    jarFile file('.buildtools/gradlew.jar')
-}
