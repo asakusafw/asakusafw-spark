@@ -60,13 +60,17 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
         PluginUtils.afterEvaluate(project) {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
             createDependencies('asakusafw', [
-                SparkDist : "com.asakusafw.spark:asakusa-spark-assembly:${base.featureVersion}:dist@jar",
+                SparkDist : [
+                    "com.asakusafw.spark:asakusa-spark-assembly:${base.featureVersion}:dist@jar",
+                    "com.asakusafw.spark:asakusa-spark-bootstrap:${base.featureVersion}:dist@jar",
+                ],
                 SparkLib : [
                     "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.langVersion}:lib@jar",
                     "com.asakusafw.spark:asakusa-spark-runtime:${base.featureVersion}@jar",
                     "com.asakusafw:asakusa-iterative-common:${base.coreVersion}@jar",
                     "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.featureVersion}@jar",
                     "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.featureVersion}@jar",
+                    "com.asakusafw.spark:asakusa-spark-bootstrap:${base.featureVersion}:exec@jar",
                     "com.jsuereth:scala-arm_2.11:1.4@jar",
                 ],
             ])
@@ -86,6 +90,9 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
                 }
                 into('spark/lib') {
                     put configuration('asakusafwSparkLib')
+                    process {
+                        rename(/(asakusa-spark-bootstrap)-.*-exec\.jar/, '$1.jar')
+                    }
                 }
             },
         ]
