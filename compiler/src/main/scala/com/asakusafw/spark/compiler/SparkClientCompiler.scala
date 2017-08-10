@@ -121,7 +121,7 @@ object SparkClientCompiler {
 
   val ProfileName: String = "spark"
 
-  val Command: Location = Location.of("spark/bin/spark-execute.sh")
+  val Command: Location = Location.of("spark/bin/spark-execute")
 
   object Options {
     val SparkPlanVerify = "spark.plan.verify"

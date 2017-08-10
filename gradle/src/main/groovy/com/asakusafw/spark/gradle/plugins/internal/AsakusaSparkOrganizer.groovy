@@ -17,6 +17,7 @@ package com.asakusafw.spark.gradle.plugins.internal
 
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.file.FileCopyDetails
 
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
 import com.asakusafw.gradle.plugins.internal.AbstractOrganizer
@@ -77,6 +78,11 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
             Spark : {
                 into('.') {
                     extract configuration('asakusafwSparkDist')
+                    process {
+                        filesMatching('**/spark/bin/spark-execute') { FileCopyDetails f ->
+                            f.setMode(0755)
+                        }
+                    }
                 }
                 into('spark/lib') {
                     put configuration('asakusafwSparkLib')

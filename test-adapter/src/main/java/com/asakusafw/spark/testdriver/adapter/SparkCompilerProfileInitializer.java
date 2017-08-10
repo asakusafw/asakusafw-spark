@@ -34,7 +34,7 @@ import com.asakusafw.testdriver.compiler.CompilerConfiguration;
  */
 public class SparkCompilerProfileInitializer implements CompilerProfileInitializer {
 
-    private static final String COMMAND_PATH = "spark/bin/spark-execute.sh"; //$NON-NLS-1$
+    private static final String COMMAND_PATH = "spark/bin/spark-execute"; //$NON-NLS-1$
 
     private static final Map<String, String> REDIRECT_MAP;
     static {
