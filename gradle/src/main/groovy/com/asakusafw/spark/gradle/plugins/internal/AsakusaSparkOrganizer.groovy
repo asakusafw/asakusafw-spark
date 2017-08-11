@@ -17,6 +17,7 @@ package com.asakusafw.spark.gradle.plugins.internal
 
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.file.FileCopyDetails
 
 import com.asakusafw.gradle.plugins.AsakusafwOrganizerProfile
 import com.asakusafw.gradle.plugins.internal.AbstractOrganizer
@@ -59,13 +60,17 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
         PluginUtils.afterEvaluate(project) {
             AsakusaSparkBaseExtension base = AsakusaSparkBasePlugin.get(project)
             createDependencies('asakusafw', [
-                SparkDist : "com.asakusafw.spark:asakusa-spark-assembly:${base.featureVersion}:dist@jar",
+                SparkDist : [
+                    "com.asakusafw.spark:asakusa-spark-assembly:${base.featureVersion}:dist@jar",
+                    "com.asakusafw.spark:asakusa-spark-bootstrap:${base.featureVersion}:dist@jar",
+                ],
                 SparkLib : [
                     "com.asakusafw.bridge:asakusa-bridge-runtime-all:${base.langVersion}:lib@jar",
                     "com.asakusafw.spark:asakusa-spark-runtime:${base.featureVersion}@jar",
                     "com.asakusafw:asakusa-iterative-common:${base.coreVersion}@jar",
                     "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-core:${base.featureVersion}@jar",
                     "com.asakusafw.spark.extensions:asakusa-spark-extensions-iterativebatch-runtime-iterative:${base.featureVersion}@jar",
+                    "com.asakusafw.spark:asakusa-spark-bootstrap:${base.featureVersion}:exec@jar",
                     "com.jsuereth:scala-arm_2.11:1.4@jar",
                 ],
             ])
@@ -77,9 +82,17 @@ class AsakusaSparkOrganizer extends AbstractOrganizer {
             Spark : {
                 into('.') {
                     extract configuration('asakusafwSparkDist')
+                    process {
+                        filesMatching('**/spark/bin/spark-execute') { FileCopyDetails f ->
+                            f.setMode(0755)
+                        }
+                    }
                 }
                 into('spark/lib') {
                     put configuration('asakusafwSparkLib')
+                    process {
+                        rename(/(asakusa-spark-bootstrap)-.*-exec\.jar/, '$1.jar')
+                    }
                 }
             },
         ]
