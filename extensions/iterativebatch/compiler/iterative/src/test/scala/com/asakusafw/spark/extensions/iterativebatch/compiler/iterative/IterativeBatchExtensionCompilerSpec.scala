@@ -19,20 +19,18 @@ package iterative
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.io.{ File, DataInput, DataOutput }
+import java.io.{ DataInput, DataOutput, File }
 import java.net.URLClassLoader
 
 import scala.collection.JavaConversions._
 import scala.reflect.{ classTag, ClassTag }
-
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
-
 import com.asakusafw.bridge.api.BatchContext
+import com.asakusafw.bridge.hadoop.temporary.{ TemporaryFileInputFormat, TemporaryFileOutputFormat }
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.common.IterativeExtensions
 import com.asakusafw.iterative.launch.IterativeStageInfo
@@ -48,15 +46,13 @@ import com.asakusafw.lang.compiler.model.iterative.IterativeExtension
 import com.asakusafw.lang.compiler.model.testing.OperatorExtractor
 import com.asakusafw.lang.compiler.planning._
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
-import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.{ GeneratedClassPackageInternalName, SparkClientCompiler }
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
 import com.asakusafw.vocabulary.operator.Update
-
-import com.asakusafw.spark.extensions.iterativebatch.runtime.iterative.IterativeBatchSparkClient
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 
 @RunWith(classOf[JUnitRunner])
 class IterativeBatchExtensionCompilerSpecTest extends IterativeBatchExtensionCompilerSpec
@@ -82,8 +78,8 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass)
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
-    TemporaryOutputFormat.setOutputPath(
+    job.setOutputFormatClass(classOf[TemporaryFileOutputFormat[T]])
+    FileOutputFormat.setOutputPath(
       job,
       new Path(path.getPath, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}${name}"))
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
@@ -93,12 +89,12 @@ class IterativeBatchExtensionCompilerSpec extends FlatSpec with LoadClassSugar w
     name: String, round: Int, path: File)(
       implicit sc: SparkContext): RDD[T] = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
-    TemporaryInputFormat.setInputPaths(
+    FileInputFormat.setInputPaths(
       job,
-      Seq(new Path(path.getPath, s"${name}/round_${round}/part-*")))
+      new Path(path.getPath, s"${name}/round_${round}/part-*"))
     sc.newAPIHadoopRDD(
       job.getConfiguration,
-      classOf[TemporaryInputFormat[T]],
+      classOf[TemporaryFileInputFormat[T]],
       classOf[NullWritable],
       classTag[T].runtimeClass.asInstanceOf[Class[T]]).map(_._2)
   }

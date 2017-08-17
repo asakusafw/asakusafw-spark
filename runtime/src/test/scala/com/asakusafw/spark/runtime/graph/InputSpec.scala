@@ -19,14 +19,12 @@ package graph
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
 import java.io.{ DataInput, DataOutput, File }
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.reflect.{ classTag, ClassTag }
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
@@ -36,12 +34,10 @@ import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOu
 import org.apache.spark.{ Partitioner, SparkConf }
 import org.apache.spark.broadcast.{ Broadcast => Broadcasted }
 import org.apache.spark.rdd.RDD
-
 import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
+import com.asakusafw.bridge.hadoop.temporary.TemporaryFileOutputFormat
 import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
-import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.TempDirForEach
@@ -80,8 +76,8 @@ class TemporaryInputSpec
   behavior of classOf[TemporaryInput[_]].getSimpleName
 
   val configurePath: (MRJob, String) => Unit = { (job, path) =>
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
-    TemporaryOutputFormat.setOutputPath(job, new Path(path))
+    job.setOutputFormatClass(classOf[TemporaryFileOutputFormat[Foo]])
+    FileOutputFormat.setOutputPath(job, new Path(path))
   }
 
   for {

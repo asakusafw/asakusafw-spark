@@ -19,22 +19,19 @@ package graph
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
 import java.io.{ DataInput, DataOutput, File }
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ InputFormat, Job => MRJob }
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOutputFormat }
-
 import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
+import com.asakusafw.bridge.hadoop.temporary.TemporaryFileOutputFormat
 import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
@@ -44,19 +41,12 @@ import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.planning.{ PlanBuilder, PlanMarker }
 import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
-import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.compiler.planning.{ SubPlanInfo, SubPlanOutputInfo }
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.runtime.JobContext.InputCounter
-import com.asakusafw.spark.runtime.graph.{
-  Broadcast,
-  BroadcastId,
-  DirectInput,
-  TemporaryInput
-}
+import com.asakusafw.spark.runtime.graph.{ Broadcast, BroadcastId, DirectInput, TemporaryInput }
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class InputClassBuilderSpec extends FlatSpec with ClassServerForAll with SparkForAll {
@@ -92,8 +82,8 @@ class TemporaryInputClassBuilderSpec
   behavior of classOf[TemporaryInputClassBuilder].getSimpleName
 
   val configurePath: (MRJob, String) => Unit = { (job, path) =>
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[Foo]])
-    TemporaryOutputFormat.setOutputPath(job, new Path(path))
+    job.setOutputFormatClass(classOf[TemporaryFileOutputFormat[Foo]])
+    FileOutputFormat.setOutputPath(job, new Path(path))
   }
 
   it should "build TemporaryInput class" in {
