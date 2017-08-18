@@ -18,12 +18,10 @@ package graph
 
 import scala.collection.JavaConversions._
 
-import org.apache.hadoop.io.NullWritable
 import org.objectweb.asm.Type
 
 import com.asakusafw.lang.compiler.model.graph.ExternalInput
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
 

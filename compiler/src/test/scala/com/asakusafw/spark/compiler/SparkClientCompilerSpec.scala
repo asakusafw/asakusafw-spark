@@ -18,19 +18,18 @@ package com.asakusafw.spark.compiler
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import java.io.{ File, DataInput, DataOutput }
+import java.io.{ DataInput, DataOutput, File }
 import java.net.URLClassLoader
+
+import com.asakusafw.bridge.hadoop.temporary.{ TemporaryFileInputFormat, TemporaryFileOutputFormat }
 
 import scala.collection.JavaConversions._
 import scala.reflect.{ classTag, ClassTag }
-
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.spark.{ SparkConf, SparkContext }
 import org.apache.spark.rdd.RDD
-
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.common.IterativeExtensions
 import com.asakusafw.iterative.launch.IterativeStageInfo
@@ -44,11 +43,11 @@ import com.asakusafw.lang.compiler.model.graph._
 import com.asakusafw.lang.compiler.model.info.ExternalInputInfo
 import com.asakusafw.lang.compiler.planning.Plan
 import com.asakusafw.runtime.model.DataModel
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
-import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.runtime._
 import com.asakusafw.spark.tools.asm._
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 
 @RunWith(classOf[JUnitRunner])
 class SparkClientCompilerSpecTest extends SparkClientCompilerSpec
@@ -74,8 +73,8 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     val job = MRJob.getInstance(sc.hadoopConfiguration)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass)
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[_]])
-    TemporaryOutputFormat.setOutputPath(
+    job.setOutputFormatClass(classOf[TemporaryFileOutputFormat[_]])
+    FileOutputFormat.setOutputPath(
       job,
       new Path(path.getPath, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}${name}"))
     rdd.map((NullWritable.get, _)).saveAsNewAPIHadoopDataset(job.getConfiguration)
@@ -85,10 +84,10 @@ class SparkClientCompilerSpec extends FlatSpec with LoadClassSugar with TempDirF
     name: String, path: File)(
       implicit sc: SparkContext): RDD[T] = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
-    TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/-/part-*")))
+    FileInputFormat.setInputPaths(job, new Path(path.getPath, s"${name}/-/part-*"))
     sc.newAPIHadoopRDD(
       job.getConfiguration,
-      classOf[TemporaryInputFormat[T]],
+      classOf[TemporaryFileInputFormat[T]],
       classOf[NullWritable],
       classTag[T].runtimeClass.asInstanceOf[Class[T]]).map(_._2)
   }

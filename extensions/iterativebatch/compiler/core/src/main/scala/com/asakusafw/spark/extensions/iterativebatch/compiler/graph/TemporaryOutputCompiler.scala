@@ -16,14 +16,13 @@
 package com.asakusafw.spark.extensions.iterativebatch.compiler
 package graph
 
+import com.asakusafw.bridge.hadoop.temporary.TemporaryFileOutputFormat
+
 import scala.collection.JavaConversions._
-
 import org.objectweb.asm.Type
-
 import com.asakusafw.lang.compiler.extension.directio.DirectFileIoModels
 import com.asakusafw.lang.compiler.model.graph.ExternalOutput
 import com.asakusafw.lang.compiler.planning.SubPlan
-import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
@@ -32,7 +31,6 @@ import com.asakusafw.spark.compiler.graph.{
   TemporaryOutputClassBuilder,
   TemporaryOutputInstantiator
 }
-
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 
 class TemporaryOutputCompiler extends RoundAwareNodeCompiler {
@@ -72,7 +70,7 @@ class TemporaryOutputCompiler extends RoundAwareNodeCompiler {
     context.addExternalOutput(
       operator.getName, operator.getInfo,
       Seq(context.options.getRuntimeWorkingPath(
-        s"${operator.getName}/*/${TemporaryOutputFormat.DEFAULT_FILE_NAME}-*")))
+        s"${operator.getName}/*/${TemporaryFileOutputFormat.DEFAULT_FILE_NAME}-*")))
 
     val builder =
       new TemporaryOutputClassBuilder(

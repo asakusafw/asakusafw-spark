@@ -16,16 +16,16 @@
 package com.asakusafw.spark.runtime
 package graph
 
-import scala.reflect.{ classTag, ClassTag }
+import com.asakusafw.bridge.hadoop.temporary.TemporaryFileOutputFormat
 
+import scala.reflect.{ classTag, ClassTag }
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
-
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.spark.runtime.JobContext.OutputCounter
 import com.asakusafw.spark.runtime.rdd.BranchKey
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 
 abstract class TemporaryOutput[T: ClassTag](
   prevs: Seq[(Source, BranchKey)])(
@@ -40,10 +40,10 @@ abstract class TemporaryOutput[T: ClassTag](
     val job = MRJob.getInstance(rc.hadoopConf.value)
     job.setOutputKeyClass(classOf[NullWritable])
     job.setOutputValueClass(classTag[T].runtimeClass.asInstanceOf[Class[T]])
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[T]])
+    job.setOutputFormatClass(classOf[TemporaryFileOutputFormat[T]])
 
     val stageInfo = StageInfo.deserialize(job.getConfiguration.get(StageInfo.KEY_NAME))
-    TemporaryOutputFormat.setOutputPath(
+    FileOutputFormat.setOutputPath(
       job,
       new Path(stageInfo.resolveUserVariables(
         s"${path}/${Option(stageInfo.getStageId).getOrElse("-")}")))

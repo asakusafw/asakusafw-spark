@@ -16,24 +16,23 @@
 package com.asakusafw.spark.runtime
 package graph
 
+import com.asakusafw.bridge.hadoop.temporary.TemporaryFileInputFormat
+
 import scala.concurrent.Future
 import scala.reflect.ClassTag
-
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.rdd.RDD
-
 import com.asakusafw.bridge.stage.StageInfo
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.spark.runtime.JobContext.InputCounter
 import com.asakusafw.spark.runtime.rdd.BranchKey
 
 abstract class TemporaryInput[V: ClassTag](
   @transient val broadcasts: Map[BroadcastId, Broadcast[_]])(
     implicit jobContext: JobContext)
-  extends NewHadoopInput[TemporaryInputFormat[V], NullWritable, V] {
+  extends NewHadoopInput[TemporaryFileInputFormat[V], NullWritable, V] {
   self: CacheStrategy[RoundContext, Map[BranchKey, Future[() => RDD[_]]]] =>
 
   override def counter: InputCounter = InputCounter.External

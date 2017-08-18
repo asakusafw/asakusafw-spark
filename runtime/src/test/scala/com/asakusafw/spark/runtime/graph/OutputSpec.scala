@@ -19,24 +19,22 @@ package graph
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
 import java.io.{ DataInput, DataOutput, File }
+
+import com.asakusafw.bridge.hadoop.temporary.TemporaryFileInputFormat
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.spark.SparkConf
-
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants.EXPR_EXECUTION_ID
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
 import com.asakusafw.runtime.value.IntOption
 import com.asakusafw.spark.runtime.JobContext.OutputCounter.External
 import com.asakusafw.spark.runtime.TempDirForEach
@@ -54,7 +52,7 @@ abstract class OutputSpec extends FlatSpec with SparkForAll {
 
     sc.newAPIHadoopRDD(
       job.getConfiguration,
-      classOf[TemporaryInputFormat[Foo]],
+      classOf[TemporaryFileInputFormat[Foo]],
       classOf[NullWritable],
       classOf[Foo]).map(_._2.id.get).collect.toSeq.sorted
   }

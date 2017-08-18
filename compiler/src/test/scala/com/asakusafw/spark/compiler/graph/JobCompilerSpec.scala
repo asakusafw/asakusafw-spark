@@ -19,8 +19,7 @@ package graph
 import org.junit.runner.RunWith
 import org.scalatest.{ Assertions, FlatSpec, Suites }
 import org.scalatest.junit.JUnitRunner
-
-import java.io.{ File, DataInput, DataOutput }
+import java.io.{ DataInput, DataOutput, File }
 import java.net.URLClassLoader
 import java.util.{ List => JList }
 import java.util.function.Consumer
@@ -30,7 +29,6 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.reflect.{ classTag, ClassTag }
-
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{ NullWritable, Writable }
 import org.apache.hadoop.mapreduce.{ Job => MRJob }
@@ -39,8 +37,8 @@ import org.apache.hadoop.mapreduce.lib.output.{ FileOutputFormat, SequenceFileOu
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.objectweb.asm.Type
-
 import com.asakusafw.bridge.hadoop.directio.DirectFileInputFormat
+import com.asakusafw.bridge.hadoop.temporary.{ TemporaryFileInputFormat, TemporaryFileOutputFormat }
 import com.asakusafw.bridge.stage.StageInfo
 import com.asakusafw.iterative.common.IterativeExtensions
 import com.asakusafw.iterative.launch.IterativeStageInfo
@@ -48,10 +46,7 @@ import com.asakusafw.lang.compiler.api.CompilerOptions
 import com.asakusafw.lang.compiler.api.JobflowProcessor.{ Context => JPContext }
 import com.asakusafw.lang.compiler.api.testing.MockJobflowProcessorContext
 import com.asakusafw.lang.compiler.common.Location
-import com.asakusafw.lang.compiler.extension.directio.{
-  DirectFileIoConstants,
-  DirectFileOutputModel
-}
+import com.asakusafw.lang.compiler.extension.directio.{ DirectFileIoConstants, DirectFileOutputModel }
 import com.asakusafw.lang.compiler.hadoop.{ InputFormatInfo, InputFormatInfoExtension }
 import com.asakusafw.lang.compiler.inspection.{ AbstractInspectionExtension, InspectionExtension }
 import com.asakusafw.lang.compiler.model.PropertyName
@@ -64,8 +59,6 @@ import com.asakusafw.runtime.core.{ GroupView, Result, View }
 import com.asakusafw.runtime.directio.hadoop.{ HadoopDataSource, SequenceFileFormat }
 import com.asakusafw.runtime.model.DataModel
 import com.asakusafw.runtime.stage.StageConstants
-import com.asakusafw.runtime.stage.input.TemporaryInputFormat
-import com.asakusafw.runtime.stage.output.TemporaryOutputFormat
 import com.asakusafw.runtime.value._
 import com.asakusafw.spark.compiler.directio.DirectOutputDescription
 import com.asakusafw.spark.compiler.planning.SparkPlanning
@@ -124,8 +117,8 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
   }
 
   val configurePath: (MRJob, File, String) => Unit = { (job, path, name) =>
-    job.setOutputFormatClass(classOf[TemporaryOutputFormat[_]])
-    TemporaryOutputFormat.setOutputPath(
+    job.setOutputFormatClass(classOf[TemporaryFileOutputFormat[_]])
+    FileOutputFormat.setOutputPath(
       job,
       new Path(path.getPath, s"${MockJobflowProcessorContext.EXTERNAL_INPUT_BASE}${name}"))
   }
@@ -144,10 +137,10 @@ class JobCompilerSpecBase(threshold: Option[Int], parallelism: Option[Int])
 
   def readResult[T: ClassTag](name: String, path: File): RDD[T] = {
     val job = MRJob.getInstance(sc.hadoopConfiguration)
-    TemporaryInputFormat.setInputPaths(job, Seq(new Path(path.getPath, s"${name}/-/part-*")))
+    FileInputFormat.setInputPaths(job, new Path(path.getPath, s"${name}/-/part-*"))
     sc.newAPIHadoopRDD(
       job.getConfiguration,
-      classOf[TemporaryInputFormat[T]],
+      classOf[TemporaryFileInputFormat[T]],
       classOf[NullWritable],
       classTag[T].runtimeClass.asInstanceOf[Class[T]]).map(_._2)
   }
