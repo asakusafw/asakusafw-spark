@@ -26,7 +26,11 @@ import com.asakusafw.lang.compiler.planning.SubPlan
 import com.asakusafw.spark.compiler.`package`._
 import com.asakusafw.spark.compiler.planning.SubPlanInfo
 import com.asakusafw.spark.compiler.spi.NodeCompiler
-import com.asakusafw.spark.compiler.graph.{ Instantiator, TemporaryOutputClassBuilder, TemporaryOutputInstantiator }
+import com.asakusafw.spark.compiler.graph.{
+  Instantiator,
+  TemporaryOutputClassBuilder,
+  TemporaryOutputInstantiator
+}
 import com.asakusafw.spark.extensions.iterativebatch.compiler.spi.RoundAwareNodeCompiler
 
 class TemporaryOutputCompiler extends RoundAwareNodeCompiler {
