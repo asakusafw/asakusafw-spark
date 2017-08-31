@@ -56,7 +56,7 @@ dependencies {
     compile group: 'com.asakusafw.lang', name: 'asakusa-lang-gradle', version: parentPom.langVersion
     testCompile gradleTestKit()
     testCompile group: 'com.asakusafw', name: 'asakusa-gradle-plugins', version: parentPom.coreVersion, classifier: 'tests'
-    testCompile 'junit:junit:4.11'
+    testCompile 'junit:junit:4.12'
     deployerJars 'org.springframework.build:aws-maven:5.0.0.RELEASE'
 }
 
