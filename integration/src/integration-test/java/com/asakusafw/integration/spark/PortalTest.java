@@ -60,11 +60,11 @@ public class PortalTest {
     }
 
     /**
-     * {@code draw plan}.
+     * {@code generate dot plan}.
      */
     @Test
-    public void draw_plan() {
-        framework.withLaunch(AsakusaConstants.CMD_PORTAL, "draw", "plan", "-v",
+    public void generate_dot_plan() {
+        framework.withLaunch(AsakusaConstants.CMD_PORTAL, "generate", "dot", "plan", "-v",
                 "spark.perf.average.sort");
     }
 
