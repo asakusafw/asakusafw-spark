@@ -56,7 +56,9 @@ public class SparkBootstrap {
         SparkBootstrap bootstrap = new SparkBootstrap(Environment.system());
         int exitValue = bootstrap.exec(Context.parse(args));
         if (exitValue != 0) {
-            System.exit(exitValue);
+            throw new RuntimeException(MessageFormat.format(
+                    "Spark execution returned non-zero value: {0}",
+                    exitValue));
         }
     }
 
