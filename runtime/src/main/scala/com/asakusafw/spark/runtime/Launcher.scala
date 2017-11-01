@@ -58,8 +58,9 @@ object Launcher {
 
       if (!RuntimeContext.get.isSimulation) {
         val status = sparkClient.execute(sparkConf, conf.getStageInfo)
-        if (status != 0)
+        if (status != 0) {
           throw new RuntimeException(s"Spark execution returned non-zero value: ${status}")
+        }
       }
     } catch {
       case t: Throwable =>
