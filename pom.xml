@@ -262,12 +262,14 @@ encoding/<project>=UTF-8
               <include>src/**/*.flex</include>
               <include>src/**/*.jj</include>
               <include>src/**/*.sh</include>
+              <include>src/main/dist/**/bin/*</include>
             </includes>
             <encoding>UTF-8</encoding>
             <mapping>
               <scala>SLASHSTAR_STYLE</scala>
               <flex>JAVADOC_STYLE</flex>
               <jj>JAVADOC_STYLE</jj>
+              <spark-execute>SCRIPT_STYLE</spark-execute>
             </mapping>
           </configuration>
         </plugin>
