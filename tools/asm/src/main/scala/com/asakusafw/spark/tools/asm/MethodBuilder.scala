@@ -23,7 +23,8 @@ import java.lang.{
   Integer => JInt,
   Long => JLong,
   Float => JFloat,
-  Double => JDouble
+  Double => JDouble,
+  Enum => JEnum
 }
 import java.lang.invoke.CallSite
 import java.lang.invoke.MethodHandles
@@ -131,7 +132,8 @@ object MethodBuilder {
   }
 
   def ldc[A <: Any: ClassTag](value: A)(implicit mb: MethodBuilder): Stack = {
-    val `type` = Type.getType(implicitly[ClassTag[A]].runtimeClass)
+    val `class` = implicitly[ClassTag[A]].runtimeClass
+    val `type` = Type.getType(`class`)
     `type`.getSort() match {
       case Type.BOOLEAN =>
         ldc(value.asInstanceOf[Boolean])
@@ -150,8 +152,13 @@ object MethodBuilder {
       case Type.DOUBLE =>
         ldc(value.asInstanceOf[Double])
       case _ =>
-        mb.mv.visitLdcInsn(value)
-        Stack(`type`)
+        if (`class`.isEnum) {
+          val name = value.asInstanceOf[JEnum[_]].name
+          getStatic(`type`, name, `type`)
+        } else {
+          mb.mv.visitLdcInsn(value)
+          Stack(`type`)
+        }
     }
   }
 
