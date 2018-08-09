@@ -70,7 +70,7 @@ tasks.withType(AbstractCompile) { task ->
 }
 
 eclipse.jdt {
-    javaRuntimeName = 'JavaSE-1.7'
+    javaRuntimeName = "JavaSE-${sourceCompatibility}"
 }
 if (project.hasProperty('referProject')) {
     eclipse.classpath.file.whenMerged { classpath ->
