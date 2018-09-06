@@ -120,7 +120,7 @@ public class PlanningContext {
     /**
      * Represents an option for planning.
      * @since 0.1.0
-     * @version 0.3.0
+     * @version 0.5.2
      */
     public enum Option {
 
@@ -138,6 +138,12 @@ public class PlanningContext {
          * Inserts {@code CHECKPOINT} before external outputs.
          */
         CHECKPOINT_BEFORE_EXTERNAL_OUTPUTS(true),
+
+        /**
+         * Removes cyclic broadcast operations.
+         * @since 0.5.2
+         */
+        REMOVE_CYCLIC_BROADCASTS(true),
 
         /**
          * Enables {@link SizeInfo} and {@link PartitionGroupInfo} for sub-plan I/O ports.

@@ -357,6 +357,60 @@ in0 --- *B -/
     }
 
     /**
+     * with broadcast from cross origin.
+<pre>{@code
+in0 --\ /-- o0 --- out0
+       +
+in1 --/ \-- o1 --- out1
+
+==>
+
+in0 \-- *C [C0]
+     \
+      +- *B --\
+               \
+        in1 \---+ x0 --- *C --- out1
+             \
+              \   [C0] ---+ x1 --- *C ---out2
+               \         /
+                +- *B --/
+}</pre>
+     */
+    @Test
+    public void broadcast_cross_origin() {
+        MockOperators m = new MockOperators();
+        PlanDetail detail = SparkPlanning.plan(context(), m
+                .input("in0", DataSize.TINY)
+                .input("in1", DataSize.TINY)
+                .bless("x0", newJoin(m))
+                .bless("x1", newJoin(m))
+                .connect("in0", "x0.t")
+                .connect("in0", "x1.m")
+                .connect("in1", "x0.m")
+                .connect("in1", "x1.t")
+                .output("out0").connect("x0.f", "out0")
+                .output("out1").connect("x1.f", "out1")
+                .toGraph());
+        MockOperators mock = restore(detail);
+        Plan plan = detail.getPlan();
+        assertThat(plan.getElements(), hasSize(5));
+
+        SubPlan si0 = ownerOf(detail, mock.get("in0"));
+        SubPlan si1 = ownerOf(detail, mock.get("in1"));
+        SubPlan sx0 = ownerOf(detail, mock.get("x0"));
+        SubPlan sx1 = ownerOf(detail, mock.get("x1"));
+        SubPlan so0 = ownerOf(detail, mock.get("out0"));
+        SubPlan so1 = ownerOf(detail, mock.get("out1"));
+
+        assertThat(si0, either(is(sx0)).or(isIn(pred(sx0))));
+        assertThat(si0, isIn(pred(sx1)));
+        assertThat(si1, either(is(sx1)).or(isIn(pred(sx1))));
+        assertThat(si1, isIn(pred(sx0)));
+        assertThat(sx0, isIn(pred(so0)));
+        assertThat(sx1, isIn(pred(so1)));
+    }
+
+    /**
      * multiple broadcast inputs.
 <pre>{@code
 in0 --+ o0 --+ o1 --+ o2 --- out
