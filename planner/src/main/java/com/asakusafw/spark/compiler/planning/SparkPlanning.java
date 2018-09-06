@@ -16,11 +16,13 @@
 package com.asakusafw.spark.compiler.planning;
 
 import java.text.MessageFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +55,9 @@ import com.asakusafw.info.plan.PlanVertexSpec;
 import com.asakusafw.lang.compiler.api.CompilerOptions;
 import com.asakusafw.lang.compiler.api.JobflowProcessor;
 import com.asakusafw.lang.compiler.common.AttributeContainer;
+import com.asakusafw.lang.compiler.common.BasicDiagnostic;
+import com.asakusafw.lang.compiler.common.Diagnostic;
+import com.asakusafw.lang.compiler.common.DiagnosticException;
 import com.asakusafw.lang.compiler.extension.operator.info.OperatorGraphConverter;
 import com.asakusafw.lang.compiler.extension.operator.info.PlanAttributeStore;
 import com.asakusafw.lang.compiler.model.description.TypeDescription;
@@ -87,9 +93,11 @@ import com.asakusafw.lang.compiler.planning.PlanMarkers;
 import com.asakusafw.lang.compiler.planning.Planning;
 import com.asakusafw.lang.compiler.planning.SubPlan;
 import com.asakusafw.lang.compiler.planning.util.GraphStatistics;
+import com.asakusafw.lang.utils.common.Invariants;
 import com.asakusafw.spark.compiler.planning.PartitionGroupInfo.DataSize;
 import com.asakusafw.spark.compiler.planning.PlanningContext.Option;
 import com.asakusafw.utils.graph.Graph;
+import com.asakusafw.utils.graph.Graphs;
 
 /**
  * Utilities for execution planning on Spark compiler.
@@ -117,13 +125,13 @@ import com.asakusafw.utils.graph.Graph;
  * </li>
  * </ul>
  * @since 0.1.0
- * @version 0.4.2
+ * @version 0.5.2
  */
 public final class SparkPlanning {
 
     static final Logger LOG = LoggerFactory.getLogger(SparkPlanning.class);
 
-    private static final int OPTIMIZATION_STEP_LIMIT = 1_000;
+    private static final int REDUCTION_STEP_LIMIT = 1_000;
 
     /**
      * The compiler property key prefix of planning options.
@@ -335,6 +343,21 @@ public final class SparkPlanning {
         fixOperatorGraph(context, graph);
         insertPlanMarkers(context, graph);
         Planning.simplifyTerminators(graph);
+        validate(graph);
+    }
+
+    private static void validate(OperatorGraph graph) {
+        Graph<Operator> dependencies = Planning.toDependencyGraph(graph);
+        Set<Set<Operator>> circuits = Graphs.findCircuit(dependencies);
+        if (circuits.isEmpty() == false) {
+            List<Diagnostic> diagnostics = new ArrayList<>();
+            for (Set<Operator> loop : circuits) {
+                diagnostics.add(new BasicDiagnostic(Diagnostic.Level.ERROR, MessageFormat.format(
+                        "operator graph must be acyclic: {0}",
+                        loop)).with(graph));
+            }
+            throw new DiagnosticException(diagnostics);
+        }
     }
 
     private static void optimize(PlanningContext context, OperatorGraph graph) {
@@ -344,10 +367,10 @@ public final class SparkPlanning {
             step++;
             LOG.debug("optimize step#{}", step);
             Planning.removeDeadFlow(graph);
-            if (step > OPTIMIZATION_STEP_LIMIT) {
+            if (step > REDUCTION_STEP_LIMIT) {
                 LOG.warn(MessageFormat.format(
                         "the number of optimization steps exceeded limit: {0}",
-                        OPTIMIZATION_STEP_LIMIT));
+                        REDUCTION_STEP_LIMIT));
                 break;
             }
             OperatorGraph.Snapshot before = graph.getSnapshot();
@@ -361,25 +384,24 @@ public final class SparkPlanning {
         } while (changed);
     }
 
-
     private static void fixOperatorGraph(PlanningContext context, OperatorGraph graph) {
         Map<Operator, OperatorClass> characteristics = OperatorCharacterizers.apply(
                 context.getOptimizerContext(),
                 context.getEstimator(),
                 context.getClassifier(),
                 graph.getOperators(false));
-        for (Operator operator : graph.getOperators(true)) {
-            if (operator.getOperatorKind() != OperatorKind.USER) {
-                continue;
-            }
-            OperatorClass info = characteristics.get(operator);
-            if (isFixTarget(info)) {
-                Operator replacement = fixOperator(info);
-                Operators.replace(operator, replacement);
-                graph.add(replacement);
-                graph.remove(operator);
-            }
-        }
+        graph.getOperators(false).stream()
+                .filter(it -> it.getOperatorKind() == OperatorKind.USER)
+                .sorted(Planning.OPERATOR_ORDER)
+                .map(characteristics::get)
+                .filter(it -> isFixTarget(it))
+                .forEach(info -> {
+                    LOG.debug("fixing operator: {}", info.getOperator());
+                    Operator replacement = fixOperator(info);
+                    Operators.replace(info.getOperator(), replacement);
+                    graph.add(replacement);
+                    graph.remove(info.getOperator());
+                });
         graph.rebuild();
     }
 
@@ -447,6 +469,9 @@ public final class SparkPlanning {
             if (context.getOptions().contains(Option.CHECKPOINT_BEFORE_EXTERNAL_OUTPUTS)) {
                 insertPlanMarkerForPreparingExternalOutput(info);
             }
+        }
+        if (context.getOptions().contains(Option.REMOVE_CYCLIC_BROADCASTS)) {
+            removeCyclicBroadcast(graph);
         }
         graph.rebuild();
     }
@@ -518,6 +543,32 @@ public final class SparkPlanning {
         }
         ExternalOutput output = (ExternalOutput) info.getOperator();
         PlanMarkers.insert(PlanMarker.CHECKPOINT, output.getOperatorPort());
+    }
+
+    private static void removeCyclicBroadcast(OperatorGraph graph) {
+        int step = 0;
+        while (true) {
+            step++;
+            if (step > REDUCTION_STEP_LIMIT) {
+                LOG.warn(MessageFormat.format(
+                        "removing cyclic broadcast step was exceeded: {0}",
+                        REDUCTION_STEP_LIMIT));
+                break;
+            }
+            graph.rebuild();
+            MarkerOperator target = Planning.findPotentiallyCyclicBroadcast(graph.getOperators(false));
+            if (target == null) {
+                break;
+            }
+            List<OperatorInput> targets = Operators.getSuccessors(target).stream()
+                    .flatMap(it -> it.getInputs().stream())
+                    .filter(it -> Operators.getPredecessors(Collections.singleton(it)).stream()
+                            .noneMatch(PlanMarkers::exists))
+                    .collect(Collectors.toList());
+            Invariants.require(targets.isEmpty() == false);
+            LOG.debug("resolving cyclic broadcast dependencies: {}", targets);
+            targets.forEach(it -> PlanMarkers.insert(PlanMarker.CHECKPOINT, it));
+        }
     }
 
     static PlanDetail createPlan(PlanningContext context, OperatorGraph normalized) {
@@ -625,7 +676,7 @@ public final class SparkPlanning {
 
     private static Set<SubPlan> computeBlockers(Graph<SubPlan> dependencies, SubPlanGroup group) {
         Set<SubPlan> saw = new HashSet<>();
-        LinkedList<SubPlan> work = new LinkedList<>(group.elements);
+        Deque<SubPlan> work = new ArrayDeque<>(group.elements);
         while (work.isEmpty() == false) {
             SubPlan first = work.removeFirst();
             for (SubPlan blocker : dependencies.getConnected(first)) {
