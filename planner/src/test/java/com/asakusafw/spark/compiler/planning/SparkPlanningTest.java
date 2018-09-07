@@ -19,6 +19,7 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 import java.lang.annotation.Annotation;
+import java.util.Arrays;
 import java.util.Set;
 
 import org.hamcrest.FeatureMatcher;
@@ -43,6 +44,7 @@ import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputOption;
 import com.asakusafw.spark.compiler.planning.SubPlanInputInfo.InputType;
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo.OutputOption;
 import com.asakusafw.spark.compiler.planning.SubPlanOutputInfo.OutputType;
+import com.asakusafw.vocabulary.attribute.ViewInfo;
 import com.asakusafw.vocabulary.flow.processor.InputBuffer;
 import com.asakusafw.vocabulary.flow.processor.PartialAggregation;
 import com.asakusafw.vocabulary.operator.CoGroup;
@@ -315,61 +317,119 @@ in1 --- *B -/
     /**
      * with broadcast from same origin.
 <pre>{@code
-in0 +---+ o0 --- out
-     \-/
+in +-----+ x0 --- out
+    \   /
+     +-+
 ==>
-       in0 --+ o0 --- *C --- out
-in0 --- *B -/
+
+in +--- *C ---+ x0 --- *C --- out
+    \        /
+     +- *B -+
 }</pre>
      */
     @Test
     public void broadcast_same_origin() {
         MockOperators m = new MockOperators();
         PlanDetail detail = SparkPlanning.plan(context(), m
-            .input("in0", DataSize.TINY)
-            .bless("o0", newJoin(m))
-                .connect("in0", "o0.t")
-                .connect("in0", "o0.m")
-            .output("out").connect("o0.f", "out")
+            .input("in", DataSize.TINY)
+            .bless("x0", newJoin(m))
+                .connect("in", "x0.t")
+                .connect("in", "x0.m")
+            .output("out").connect("x0.f", "out")
             .toGraph());
         MockOperators mock = restore(detail);
         Plan plan = detail.getPlan();
         assertThat(plan.getElements(), hasSize(3));
 
-        SubPlan s0 = ownerOf(detail, mock.get("o0"));
-        SubPlan s1 = pred(s0).iterator().next();
+        SubPlan s0 = ownerOf(detail, mock.get("in"));
+        SubPlan s1 = ownerOf(detail, mock.get("x0"));
+        SubPlan s2 = ownerOf(detail, mock.get("out"));
 
-        assertThat(info(s0).toString(), s0, primaryOperator(isOperator("in0")));
-        assertThat(s0, driverType(is(DriverType.INPUT)));
-        assertThat(s0, not(driverOption(is(DriverOption.PARTIAL))));
+        assertThat(pred(s0), is(empty()));
+        assertThat(pred(s1), contains(s0));
+        assertThat(pred(s2), contains(s1));
 
-        assertThat(output(s1), outputType(is(OutputType.BROADCAST)));
-        assertThat(output(s1), outputPartition(is(nullValue())));
-        assertThat(output(s1), outputAggregation(is(nullValue())));
-        assertThat(output(s1), broadcastFormat(is(group("+k"))));
+        assertThat(s0.getOutputs(), containsInAnyOrder(Arrays.asList(
+                outputType(is(OutputType.DONT_CARE)),
+                outputType(is(OutputType.BROADCAST)))));
 
-        assertThat(output(s1).getOpposites(), hasSize(1));
-        SubPlan.Input bIn = output(s1).getOpposites().iterator().next();
-        assertThat(bIn, inputType(is(InputType.BROADCAST)));
-        assertThat(bIn, not(inputOption(is(InputOption.PRIMARY))));
-        assertThat(bIn, inputPartition(is(nullValue())));
-        assertThat(bIn, broadcastFormat(is(group("+k"))));
+        assertThat(s1.getInputs(), containsInAnyOrder(Arrays.asList(
+                inputType(is(InputType.DONT_CARE)),
+                inputType(is(InputType.BROADCAST)))));
+    }
+
+    /**
+     * with broadcast from same origin that requires scatter-gather for its input.
+<pre>{@code
+in --- x0 +-----+ x1 --- out
+           \   /
+            +-+
+==>
+
+in --- *G --- x0 +--- *C ---+ x1 --- *C --- out
+                  \        /
+                   +- *B -+
+}</pre>
+     */
+    @Test
+    public void broadcast_self_join() {
+        MockOperators m = new MockOperators();
+        PlanDetail detail = SparkPlanning.plan(context(), m
+            .input("in", DataSize.TINY)
+            .bless("x0", op(CoGroup.class, "cogroup")
+                    .input("in", m.getCommonDataType(), group("=a"))
+                    .output("out", m.getCommonDataType()))
+                .connect("in", "x0")
+            .bless("x1", op(Extract.class, "extract")
+                    .input("t", m.getCommonDataType())
+                    .input("m", m.getCommonDataType(), c -> c
+                            .unit(InputUnit.WHOLE)
+                            .group(group())
+                            .attribute(ViewInfo.class, ViewInfo.flat()))
+                    .output("out", m.getCommonDataType()))
+                .connect("x0", "x1.t")
+                .connect("x0", "x1.m")
+            .output("out").connect("x1", "out")
+            .toGraph());
+        MockOperators mock = restore(detail);
+        Plan plan = detail.getPlan();
+        assertThat(plan.getElements(), hasSize(4));
+
+        SubPlan s0 = ownerOf(detail, mock.get("in"));
+        SubPlan s1 = ownerOf(detail, mock.get("x0"));
+        SubPlan s2 = ownerOf(detail, mock.get("x1"));
+        SubPlan s3 = ownerOf(detail, mock.get("out"));
+
+        assertThat(pred(s0), is(empty()));
+        assertThat(pred(s1), contains(s0));
+        assertThat(pred(s2), contains(s1));
+        assertThat(pred(s3), contains(s2));
+
+        assertThat(s1.getOutputs(), containsInAnyOrder(Arrays.asList(
+                outputType(is(OutputType.DONT_CARE)),
+                outputType(is(OutputType.BROADCAST)))));
+
+        assertThat(s2.getInputs(), containsInAnyOrder(Arrays.asList(
+                inputType(is(InputType.DONT_CARE)),
+                inputType(is(InputType.BROADCAST)))));
     }
 
     /**
      * with broadcast from cross origin.
 <pre>{@code
-in0 --\ /-- o0 --- out0
-       +
-in1 --/ \-- o1 --- out1
+in0 +---+ o0 --- out0
+     \ /
+      +
+     / \
+in1 +---+ o1 --- out1
 
 ==>
 
-in0 \-- *C [C0]
+in0 +-- *C [C0]
      \
-      +- *B --\
+      +- *B --+
                \
-        in1 \---+ x0 --- *C --- out1
+        in1 +---+ x0 --- *C --- out1
              \
               \   [C0] ---+ x1 --- *C ---out2
                \         /
@@ -408,6 +468,14 @@ in0 \-- *C [C0]
         assertThat(si1, isIn(pred(sx0)));
         assertThat(sx0, isIn(pred(so0)));
         assertThat(sx1, isIn(pred(so1)));
+
+        assertThat(si0.getOutputs(), containsInAnyOrder(Arrays.asList(
+                outputType(isOneOf(OutputType.DONT_CARE, OutputType.PREPARE_EXTERNAL_OUTPUT)),
+                outputType(is(OutputType.BROADCAST)))));
+
+        assertThat(si1.getOutputs(), containsInAnyOrder(Arrays.asList(
+                outputType(isOneOf(OutputType.DONT_CARE, OutputType.PREPARE_EXTERNAL_OUTPUT)),
+                outputType(is(OutputType.BROADCAST)))));
     }
 
     /**
