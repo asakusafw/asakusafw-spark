@@ -278,7 +278,7 @@ abstract class DirectOutputPrepareGroupClassBuilder(
                   pushNew(OutputPatternGeneratorClassBuilder.getOrCompile(dataModelRef))
                 generator.dup().invokeInit(
                   buildSeq { builder =>
-                    var randoms = 0
+                    var randoms = 0L
                     pattern.getResourcePattern.foreach { segment =>
                       segment.getKind match {
                         case OutputPattern.SourceKind.NOTHING =>
