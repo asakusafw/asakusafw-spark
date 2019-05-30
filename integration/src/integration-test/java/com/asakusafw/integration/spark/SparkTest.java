@@ -35,6 +35,7 @@ import com.asakusafw.integration.AsakusaProject;
 import com.asakusafw.integration.AsakusaProjectProvider;
 import com.asakusafw.utils.gradle.Bundle;
 import com.asakusafw.utils.gradle.ContentsConfigurator;
+import com.asakusafw.utils.gradle.PropertyConfigurator;
 
 /**
  * Test for {@code spark}.
@@ -49,6 +50,7 @@ public class SparkTest {
             .withProject(ContentsConfigurator.copy(data("spark")))
             .withProject(ContentsConfigurator.copy(data("ksv")))
             .withProject(ContentsConfigurator.copy(data("logback-test")))
+            .withProject(PropertyConfigurator.of("hive.version", (String) null))
             .withProject(AsakusaConfigurator.projectHome())
             .withProject(AsakusaConfigurator.hadoop(AsakusaConfigurator.Action.UNSET_IF_UNDEFINED))
             .withProject(AsakusaConfigurator.spark(AsakusaConfigurator.Action.SKIP_IF_UNDEFINED));

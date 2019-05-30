@@ -55,3 +55,17 @@ test {
         exceptionFormat 'full'
     }
 }
+
+if (System.getProperty('hive.version')) {
+    asakusafw {
+        sdk.hive true
+    }
+    asakusafwOrganizer {
+        hive.enabled true
+    }
+    if (System.getProperty('hive.version', 'default') != 'default') {
+        asakusafwOrganizer {
+            hive.libraries = ["org.apache.hive:hive-exec:${System.getProperty('hive.version')}"]
+        }
+    }
+}

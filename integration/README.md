@@ -24,7 +24,7 @@ This integration test requires both development and runtime environment of Asaku
 ### Available options
 
 * `-PmavenLocal`
-  * use artifacts of *test tools* on local repository, this also refers artifacts of `asakusa-core-integration`
+  * use artifacts of *test tools* on local repository, this also refers artifacts of `asakusa-core-integration` and `asakusa-lang-integration`
   * default: never use artifacts on local repository
 * `-Dmaven.local=false`
   * use artifacts of *testee* only on remote repositories
