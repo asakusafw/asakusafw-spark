@@ -75,7 +75,7 @@
     <junit.version>4.12</junit.version>
     <hamcrest.version>1.3</hamcrest.version>
     <scalatest.version>2.2.3</scalatest.version>
-    <checkstyle.version>8.1</checkstyle.version>
+    <checkstyle.version>8.18</checkstyle.version>
 
     <!-- build configuration -->
     <java.version>1.8</java.version>
