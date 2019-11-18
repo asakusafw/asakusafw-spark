@@ -9,7 +9,7 @@
   <version>0.5.4-SNAPSHOT</version>
 
   <description>Asakusa DSL Compiler for Spark Project Root</description>
-  <url>http://asakusafw.com</url>
+  <url>https://asakusafw.com</url>
   <licenses>
     <license>
       <name>Apache License, Version 2.0</name>
@@ -21,7 +21,7 @@
   <inceptionYear>2011</inceptionYear>
   <organization>
     <name>Asakusa Framework Team</name>
-    <url>http://asakusafw.com</url>
+    <url>https://asakusafw.com</url>
   </organization>
 
   <scm>
@@ -800,7 +800,7 @@ encoding/<project>=UTF-8
   <repositories>
     <repository>
       <id>com.asakusafw.releases</id>
-      <url>http://asakusafw.s3.amazonaws.com/maven/releases</url>
+      <url>https://asakusafw.s3.amazonaws.com/maven/releases</url>
       <releases>
         <enabled>true</enabled>
       </releases>
@@ -811,7 +811,7 @@ encoding/<project>=UTF-8
     <repository>
       <id>com.asakusafw.snapshots</id>
       <name>Asakusa Framework Snapshot Repository</name>
-      <url>http://asakusafw.s3.amazonaws.com/maven/snapshots</url>
+      <url>https://asakusafw.s3.amazonaws.com/maven/snapshots</url>
       <releases>
         <enabled>false</enabled>
       </releases>
@@ -838,7 +838,7 @@ encoding/<project>=UTF-8
     <pluginRepository>
       <id>central</id>
       <name>Central Repository</name>
-      <url>http://repo.maven.apache.org/maven2</url>
+      <url>https://repo.maven.apache.org/maven2</url>
       <layout>default</layout>
       <snapshots>
         <enabled>false</enabled>
@@ -850,7 +850,7 @@ encoding/<project>=UTF-8
     <pluginRepository>
       <id>com.asakusafw.releases</id>
       <name>Asakusa Framework Repository</name>
-      <url>http://asakusafw.s3.amazonaws.com/maven/releases</url>
+      <url>https://asakusafw.s3.amazonaws.com/maven/releases</url>
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
@@ -858,7 +858,7 @@ encoding/<project>=UTF-8
     <pluginRepository>
       <id>com.asakusafw.snapshots</id>
       <name>Asakusa Framework Snapshot Repository</name>
-      <url>http://asakusafw.s3.amazonaws.com/maven/snapshots</url>
+      <url>https://asakusafw.s3.amazonaws.com/maven/snapshots</url>
       <releases>
         <enabled>false</enabled>
       </releases>
