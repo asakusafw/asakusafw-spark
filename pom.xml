@@ -6,7 +6,7 @@
   <groupId>com.asakusafw.spark</groupId>
   <artifactId>asakusa-spark</artifactId>
   <packaging>pom</packaging>
-  <version>0.5.4-SNAPSHOT</version>
+  <version>0.5.4-RC1</version>
 
   <description>Asakusa DSL Compiler for Spark Project Root</description>
   <url>https://asakusafw.com</url>
@@ -28,7 +28,7 @@
     <connection>scm:git:git@github.com:asakusafw/asakusafw-spark.git</connection>
     <developerConnection>scm:git:git@github.com:asakusafw/asakusafw-spark.git</developerConnection>
     <url>https://github.com/asakusafw/asakusafw-spark</url>
-    <tag>HEAD</tag>
+    <tag>0.5.4-RC1</tag>
   </scm>
 
   <properties>
