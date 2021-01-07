@@ -18,3 +18,5 @@ dependency-reduced-pom.xml
 
 # Visual Studio Code
 .vscode
+.metals
+.bloop
